@@ -1,0 +1,177 @@
+# ============================================================================
+# Dockerfile for Processing Worker - Document Processing and Embedding
+# ============================================================================
+# Handles document parsing, visual/text embedding, and ChromaDB storage
+# Platform: linux/arm64 (M1 Mac with PyTorch MPS support)
+# ============================================================================
+
+ARG PYTHON_VERSION=3.10
+ARG BUILDPLATFORM=linux/arm64
+ARG TARGETPLATFORM=linux/arm64
+
+FROM --platform=${BUILDPLATFORM} python:${PYTHON_VERSION}-slim
+
+LABEL maintainer="Tucker <tucker@example.com>"
+LABEL description="DocuSearch processing worker with ColNomic 7B embeddings"
+LABEL version="1.0.0"
+
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    # PyTorch MPS configuration
+    PYTORCH_ENABLE_MPS_FALLBACK=1 \
+    # Model cache directory
+    TRANSFORMERS_CACHE=/models \
+    HF_HOME=/models \
+    # Application directory
+    PYTHONPATH=/app
+
+# ============================================================================
+# Install System Dependencies
+# ============================================================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build essentials
+    build-essential \
+    gcc \
+    g++ \
+    # Graphics and image processing
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    # PDF processing
+    poppler-utils \
+    # Network tools
+    curl \
+    wget \
+    ca-certificates \
+    # Git (for installing from GitHub)
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# Create Application User (non-root)
+# ============================================================================
+RUN useradd -m -u 1000 -s /bin/bash worker && \
+    mkdir -p /app /uploads /models /data/logs && \
+    chown -R worker:worker /app /uploads /models /data
+
+# ============================================================================
+# Set Working Directory
+# ============================================================================
+WORKDIR /app
+
+# ============================================================================
+# Install Python Dependencies
+# ============================================================================
+
+# Core ML/AI dependencies
+RUN pip install --no-cache-dir \
+    # PyTorch with MPS support (M1)
+    torch==2.1.0 \
+    torchvision==0.16.0 \
+    # Transformers and HuggingFace
+    transformers==4.35.0 \
+    sentence-transformers==2.2.2 \
+    # Image processing
+    Pillow==10.1.0 \
+    opencv-python-headless==4.8.1.78 \
+    pdf2image==1.16.3 \
+    # Document parsing
+    docling==2.0.0 \
+    pypdf==3.17.0 \
+    python-docx==1.1.0 \
+    python-pptx==0.6.23 \
+    # Vector database client
+    chromadb==0.4.18 \
+    # Utilities
+    numpy==1.24.3 \
+    pydantic==2.5.0 \
+    python-dotenv==1.0.0 \
+    tqdm==4.66.1 \
+    # Logging
+    structlog==23.2.0
+
+# Install ColPali from GitHub (not on PyPI)
+RUN pip install --no-cache-dir \
+    git+https://github.com/illuin-tech/colpali.git
+
+# ============================================================================
+# Copy Application Source Code
+# ============================================================================
+# Note: Source code mounted as volume in development mode
+# For production, uncomment and build with source code:
+# COPY --chown=worker:worker src/ /app/src/
+# COPY --chown=worker:worker requirements.txt /app/
+
+# Create source directory structure
+RUN mkdir -p /app/src/storage \
+             /app/src/embeddings \
+             /app/src/processing \
+             /app/src/search \
+             /app/src/config && \
+    chown -R worker:worker /app/src
+
+# ============================================================================
+# Create __init__.py files for Python packages
+# ============================================================================
+RUN touch /app/src/__init__.py \
+          /app/src/storage/__init__.py \
+          /app/src/embeddings/__init__.py \
+          /app/src/processing/__init__.py \
+          /app/src/search/__init__.py \
+          /app/src/config/__init__.py && \
+    chown -R worker:worker /app/src
+
+# ============================================================================
+# Switch to Non-Root User
+# ============================================================================
+USER worker
+
+# ============================================================================
+# Expose Port (optional, for status API)
+# ============================================================================
+EXPOSE 8002
+
+# ============================================================================
+# Health Check
+# ============================================================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD python3 -c "import torch; exit(0 if torch.backends.mps.is_available() else 1)"
+
+# ============================================================================
+# Default Command
+# ============================================================================
+# Run processing worker daemon
+# Note: Will be overridden by docker-compose or docker run command
+CMD ["python3", "-m", "src.processing.worker"]
+
+# ============================================================================
+# Usage
+# ============================================================================
+# Build:
+#   docker build -f Dockerfile.processing-worker \
+#                --build-arg BUILDPLATFORM=linux/arm64 \
+#                --build-arg TARGETPLATFORM=linux/arm64 \
+#                -t docusearch-worker .
+#
+# Run (development with source mount):
+#   docker run -it \
+#              -v ./src:/app/src \
+#              -v ./data/uploads:/uploads:ro \
+#              -v ./data/models:/models \
+#              -v ./data/logs:/data/logs \
+#              -e MODEL_NAME=vidore/colqwen2-v0.1 \
+#              -e DEVICE=mps \
+#              docusearch-worker
+#
+# Test PyTorch MPS:
+#   docker run -it docusearch-worker \
+#              python3 -c "import torch; print('MPS:', torch.backends.mps.is_available())"
+# ============================================================================
