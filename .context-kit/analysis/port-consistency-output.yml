@@ -1,0 +1,202 @@
+port_consistency_analysis:
+  timestamp: "2025-10-06T00:00:00Z"
+  status: "completed"
+  compliance_status: "COMPLIANT"
+
+  current_allocation:
+    total_ports: 5
+    compliant: 5
+    non_compliant: 0
+    conflicts: 0
+
+  port_scheme:
+    name: "42xxx Port Allocation"
+    range: "42000-42999"
+    documentation: ".context-kit/_ref/context-kit/port-architecture-doc.md"
+    rationale: "Avoids well-known ports (0-1023), registered ports conflicts, and ephemeral ports (49152-65535)"
+
+  port_inventory:
+    allocated:
+      - port: 42001
+        service: "dashboard"
+        type: "React UI (Vite Development Server)"
+        status: "compliant"
+        protocol: "HTTP"
+        location:
+          - ".context-kit/_context-kit.yml (lines 112, 433, 537, 546, 569)"
+          - ".context-kit/_ref/context-kit/port-architecture-doc.md (line 26)"
+          - ".context-kit/scripts/check-ports.sh (line 20)"
+          - ".context-kit/dashboard/src/App.tsx (hardcoded in demo data line 1880)"
+        usage: "active"
+        notes: "Primary dashboard development server using Vite"
+
+      - port: 42003
+        service: "knowledge_graph_api"
+        type: "Node.js HTTP API + SQLite Backend"
+        status: "compliant"
+        protocol: "HTTP"
+        location:
+          - ".context-kit/_context-kit.yml (lines 121, 440, 538, 547, 570)"
+          - ".context-kit/_ref/context-kit/port-architecture-doc.md (line 28)"
+          - ".context-kit/scripts/check-ports.sh (line 21)"
+          - ".context-kit/knowledge-graph/src/api/http-server.ts (line 32)"
+          - ".context-kit/knowledge-graph/src/api/http-server-simple.ts (line 30)"
+        usage: "active"
+        notes: "HTTP API server for knowledge graph operations and logging"
+
+      - port: 42005
+        service: "logging_service"
+        type: "Reserved for Future Use"
+        status: "compliant"
+        protocol: "HTTP"
+        location:
+          - ".context-kit/scripts/check-ports.sh (line 22)"
+        usage: "reserved"
+        notes: "Future dedicated logging service endpoint"
+
+      - port: 42007
+        service: "mcp_tools"
+        type: "Reserved for Future Use"
+        status: "compliant"
+        protocol: "HTTP"
+        location:
+          - ".context-kit/scripts/check-ports.sh (line 23)"
+        usage: "reserved"
+        notes: "Future MCP tools HTTP endpoint (currently MCP uses STDIO, not TCP)"
+
+      - port: 42009
+        service: "auto_logging_monitoring"
+        type: "Reserved for Future Use"
+        status: "compliant"
+        protocol: "HTTP"
+        location:
+          - ".context-kit/scripts/check-ports.sh (line 24)"
+        usage: "reserved"
+        notes: "Future auto-logging monitoring service"
+
+    mcp_services:
+      - service: "context-kit MCP server"
+        protocol: "STDIO"
+        port: "N/A"
+        notes: "MCP servers use STDIO protocol, not TCP ports. Configured in .claude/claude_desktop_config.json"
+        location: ".context-kit/mcp/"
+
+      - service: "context7 MCP server"
+        protocol: "STDIO"
+        port: "N/A"
+        notes: "Third-party library ID resolution via MCP STDIO protocol"
+        external: true
+
+  issues_found: []
+
+  changes_made: []
+
+  validation:
+    script_run: false
+    script_path: ".context-kit/scripts/check-ports.sh"
+    script_result: "N/A"
+    remaining_conflicts: []
+    validation_notes: "Script not executed during analysis. Can be run with: ./.context-kit/scripts/check-ports.sh --verbose"
+
+  third_party_references:
+    total_files: 87
+    location: ".context-kit/_ref/packages/"
+    note: "Third-party package documentation contains port references (Chroma, CopyParty, etc.) but these are not part of this project's configuration"
+    packages:
+      - name: "chroma"
+        ports: ["8000"]
+        purpose: "ChromaDB vector database documentation examples"
+      - name: "copyparty"
+        ports: ["3923", "8080", "9000", "9005", "9091", "9443"]
+        purpose: "File sharing server documentation and examples"
+      - name: "smolagents"
+        ports: []
+        purpose: "AI agent framework - no port configurations"
+
+  architecture_compliance:
+    - check: "Port range compliance (42000-42999)"
+      status: "PASS"
+      details: "All active ports are within the 42xxx range"
+
+    - check: "Documentation consistency"
+      status: "PASS"
+      details: "Port architecture document exists and is comprehensive"
+
+    - check: "Configuration file consistency"
+      status: "PASS"
+      details: "_context-kit.yml matches port-architecture-doc.md and source code"
+
+    - check: "Source code hardcoded ports"
+      status: "PASS"
+      details: "Server implementations correctly use configurable ports with 42xxx defaults"
+
+    - check: "Port conflict detection tooling"
+      status: "PASS"
+      details: "check-ports.sh script exists and validates all allocated ports"
+
+    - check: "MCP protocol understanding"
+      status: "PASS"
+      details: "Correctly identifies MCP servers use STDIO, not TCP ports"
+
+    - check: "Docker/Compose configuration"
+      status: "N/A"
+      details: "No docker-compose files found in project root or .context-kit/"
+
+    - check: "Environment variable configuration"
+      status: "N/A"
+      details: "No .env files found in project"
+
+  recommendations:
+    - priority: "low"
+      category: "documentation"
+      recommendation: "Consider adding port environment variable examples to .env.example file"
+      rationale: "Would help developers understand how to override default ports"
+
+    - priority: "low"
+      category: "tooling"
+      recommendation: "Add port validation to CI/CD pipeline"
+      rationale: "Automated validation prevents port conflicts before deployment"
+
+    - priority: "info"
+      category: "future-planning"
+      recommendation: "Document migration path for reserved ports (42005, 42007, 42009)"
+      rationale: "Clear plan for when these reserved ports will be activated"
+
+    - priority: "info"
+      category: "monitoring"
+      recommendation: "Consider service discovery mechanism for dynamic port allocation"
+      rationale: "Mentioned in port-architecture-doc.md future considerations"
+
+  summary:
+    total_ports_analyzed: 5
+    active_ports: 2
+    reserved_ports: 3
+    compliance_rate: "100%"
+    conflicts_detected: 0
+    issues_requiring_action: 0
+
+  files_analyzed:
+    configuration:
+      - ".context-kit/_context-kit.yml"
+      - ".context-kit/_ref/context-kit/port-architecture-doc.md"
+      - ".context-kit/scripts/check-ports.sh"
+
+    source_code:
+      - ".context-kit/knowledge-graph/src/api/http-server.ts"
+      - ".context-kit/knowledge-graph/src/api/http-server-simple.ts"
+      - ".context-kit/dashboard/src/App.tsx"
+
+    scripts:
+      - ".context-kit/scripts/check-ports.sh"
+      - ".context-kit/scripts/utils.sh"
+      - ".context-kit/knowledge-graph/scripts/manage-ports.sh"
+
+    total_project_files: 9
+    third_party_files: 87
+
+  metadata:
+    analysis_tool: "port-consistency agent"
+    analysis_date: "2025-10-06"
+    project: "tkr-docusearch"
+    toolkit_version: "3.6.1"
+    port_scheme: "42xxx"

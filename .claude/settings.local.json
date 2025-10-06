@@ -92,7 +92,8 @@
       "Bash(.context-kit/logging-client/setup-logging.sh:*)",
       "Bash(npx eslint:*)",
       "Read(//private/tmp/**)",
-      "Bash(npx license-checker:*)"
+      "Bash(npx license-checker:*)",
+      "Bash(cp:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
