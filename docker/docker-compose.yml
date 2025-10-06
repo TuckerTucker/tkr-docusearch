@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Copyparty - File Upload and Web UI
+  # ============================================================================
+  copyparty:
+    build:
+      context: .
+      dockerfile: Dockerfile.copyparty
+    container_name: docusearch-copyparty
+    ports:
+      - "${COPYPARTY_PORT:-8000}:8000"
+    volumes:
+      - ../data/uploads:/uploads
+      - ../data/copyparty/www:/www
+      - ../data/copyparty/hooks:/hooks
+    environment:
+      - CPP_PORT=8000
+      - CPP_UPLOAD_DIR=/uploads
+      - CPP_HOOK_ON_UPLOAD=/hooks/on_upload.py
+      - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
+    networks:
+      - docusearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================================
+  # ChromaDB - Vector Database
+  # ============================================================================
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: docusearch-chromadb
+    platform: linux/arm64
+    ports:
+      - "${CHROMADB_PORT:-8001}:8000"
+    volumes:
+      - ../data/chroma_db:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    networks:
+      - docusearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ============================================================================
+  # Processing Worker - Document Processing and Embedding
+  # ============================================================================
+  processing-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.processing-worker
+      args:
+        - BUILDPLATFORM=linux/arm64
+        - TARGETPLATFORM=linux/arm64
+        - PYTHON_VERSION=3.10
+    container_name: docusearch-worker
+    volumes:
+      # Read-only access to uploads
+      - ../data/uploads:/uploads:ro
+      # Model cache (persistent, 14GB+ for ColNomic 7B)
+      - ../data/models:/models
+      # Log output
+      - ../data/logs:/data/logs
+      # Source code (development mode - remove for production)
+      - ../src:/app/src
+    environment:
+      # Model configuration
+      - MODEL_NAME=${MODEL_NAME:-vidore/colqwen2-v0.1}
+      - MODEL_PRECISION=${MODEL_PRECISION:-fp16}
+      - DEVICE=${DEVICE:-mps}
+      - BATCH_SIZE_VISUAL=${BATCH_SIZE_VISUAL:-4}
+      - BATCH_SIZE_TEXT=${BATCH_SIZE_TEXT:-8}
+      # ChromaDB connection
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - VISUAL_COLLECTION=${VISUAL_COLLECTION:-visual_collection}
+      - TEXT_COLLECTION=${TEXT_COLLECTION:-text_collection}
+      # Processing configuration
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx}
+      - TEXT_CHUNK_SIZE=${TEXT_CHUNK_SIZE:-250}
+      - TEXT_CHUNK_OVERLAP=${TEXT_CHUNK_OVERLAP:-50}
+      - PAGE_RENDER_DPI=${PAGE_RENDER_DPI:-150}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - LOG_FILE=/data/logs/worker.log
+      # Python environment
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    networks:
+      - docusearch
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 10G  # Prevent OOM for ColNomic 7B model
+        reservations:
+          memory: 4G   # Minimum required
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import torch; print('MPS:', torch.backends.mps.is_available())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Model loading takes time
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  docusearch:
+    driver: bridge
+    name: docusearch-network
+
+# ============================================================================
+# Volumes (optional explicit definitions)
+# ============================================================================
+volumes:
+  chroma_data:
+    driver: local
+  model_cache:
+    driver: local

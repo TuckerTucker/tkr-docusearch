@@ -1,0 +1,80 @@
+# ============================================================================
+# Dockerfile for Copyparty - File Upload Server
+# ============================================================================
+# Provides web-based file upload with event hooks for document processing
+# Platform: linux/arm64 (M1 Mac compatible)
+# ============================================================================
+
+FROM --platform=linux/arm64 python:3.11-slim
+
+LABEL maintainer="Tucker <tucker@example.com>"
+LABEL description="Copyparty file server with DocuSearch event hooks"
+LABEL version="1.0.0"
+
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# ============================================================================
+# Install System Dependencies
+# ============================================================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# Install Copyparty
+# ============================================================================
+RUN pip install --no-cache-dir \
+    copyparty==1.9.0
+
+# ============================================================================
+# Create Directories
+# ============================================================================
+RUN mkdir -p /uploads /www /hooks
+
+# ============================================================================
+# Set Working Directory
+# ============================================================================
+WORKDIR /app
+
+# ============================================================================
+# Copy Copyparty Configuration
+# ============================================================================
+# Configuration will be mounted at runtime via volumes
+
+# ============================================================================
+# Expose Port
+# ============================================================================
+EXPOSE 8000
+
+# ============================================================================
+# Health Check
+# ============================================================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# ============================================================================
+# Run Copyparty
+# ============================================================================
+CMD ["copyparty", \
+    "--http-only", \
+    "--port", "8000", \
+    "--bind", "0.0.0.0", \
+    "--theme", "slate", \
+    "--no-robots", \
+    "--no-readme", \
+    "/uploads::rw,g"]
+
+# ============================================================================
+# Usage
+# ============================================================================
+# Build: docker build -f Dockerfile.copyparty -t docusearch-copyparty .
+# Run:   docker run -p 8000:8000 -v ./data/uploads:/uploads docusearch-copyparty
+# ============================================================================
