@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Comprehensive performance bottleneck analysis including memory leaks, inefficient algorithms, and React optimization opportunities">
+    <title>Performance Analysis Report - tkr-project-kit</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <link rel="stylesheet" href="../../assets/css/themes/light.css">
+    <link rel="stylesheet" href="../../assets/css/themes/dark.css">
+    <link rel="stylesheet" href="../../assets/css/components/cards.css">
+    <link rel="stylesheet" href="../../assets/css/components/badges.css">
+    <link rel="stylesheet" href="../../assets/css/components/tables.css">
+    <link rel="stylesheet" href="../../assets/css/components/progress.css">
+    <link rel="stylesheet" href="../../assets/css/components/buttons.css">
+    <link rel="stylesheet" href="../../assets/css/components/navigation.css">
+
+    <!-- Report Configuration -->
+    <script>
+        window.REPORT_CONFIG = {
+            reportType: 'performance-report',
+            reportDate: '2025-01-30',
+            reportTitle: 'Performance Analysis Report',
+            agent: 'performance-agent'
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs"></div>
+
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h1>⚡ Performance Analysis Report</h1>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-lg); margin-top: 0.5rem;">
+                        Comprehensive performance bottleneck analysis including memory leaks, inefficient algorithms, and React optimization opportunities
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: var(--font-size-sm);">
+                        <span>📅 Generated: 2025-01-30</span>
+                        <span>🤖 Agent: performance-agent</span>
+                        <span>📊 Version: 3.6.0</span>
+                    </div>
+                </div>
+                <div id="theme-toggle-container"></div>
+            </div>
+        </header>
+
+        <!-- Quick Navigation -->
+        <div id="report-navigation"></div>
+
+        <!-- Main Content -->
+        <main>
+            
+<section class="section">
+<h2 id="executive-summary">Executive Summary</h2>
+<div class="score-card score-grade-d">
+<div class="score-header"><div class="score-value">35/100</div><div class="score-label">Performance Score</div></div>
+<div class="score-breakdown">
+<div class="score-item"><span>Critical:</span><span class="badge badge-critical">2</span></div>
+<div class="score-item"><span>High:</span><span class="badge badge-high">8</span></div>
+<div class="score-item"><span>Medium:</span><span class="badge badge-medium">15</span></div>
+<div class="score-item"><span>Low:</span><span class="badge badge-low">5</span></div>
+</div></div>
+<div class="info-box"><h3>Analysis Summary</h3><ul>
+<li><strong>Files Analyzed:</strong> 91 TypeScript/JavaScript files</li>
+<li><strong>React Components:</strong> 20+ components analyzed</li>
+<li><strong>Total Issues:</strong> 30</li>
+<li><strong>Bundle Size:</strong> Good - Vite build optimized</li>
+<li><strong>Asset Optimization:</strong> Good - minimal footprint</li>
+</ul></div>
+</section>
+
+<section class="section">
+<h2 id="memory-leaks">Memory Leak Detection</h2>
+<div class="finding finding-critical">
+<div class="finding-header"><span class="badge badge-critical">CRITICAL</span>
+<h4>Event Listener Without Cleanup</h4></div>
+<div class="finding-body">
+<p><strong>File:</strong> .context-kit/analysis/assets/js/theme-toggle.js:205-219</p>
+<p><strong>Issue:</strong> MediaQuery addEventListener without removeEventListener causes memory leak</p>
+<pre><code>// Problematic
+darkModeQuery.addEventListener('change', (e) => {
+  if (this.currentTheme === this.THEMES.AUTO) {
+    this.applyTheme(this.THEMES.AUTO);
+  }
+});</code></pre>
+<p><strong>Fix:</strong> Store reference and add cleanup method</p>
+<p><strong>Impact:</strong> HIGH - Accumulates listeners on theme changes</p>
+</div></div>
+
+<div class="finding finding-success">
+<div class="finding-header"><span class="badge badge-success">GOOD</span>
+<h4>React useEffect Cleanup</h4></div>
+<div class="finding-body">
+<p><strong>Files:</strong> AppWithServices.tsx, App.tsx</p>
+<p>All setInterval calls properly cleaned up in useEffect returns</p>
+</div></div>
+</section>
+
+<section class="section">
+<h2 id="algorithms">Inefficient Algorithms</h2>
+<div class="finding finding-high">
+<div class="finding-header"><span class="badge badge-high">HIGH</span>
+<h4>O(n²) Graph Layout Algorithm</h4></div>
+<div class="finding-body">
+<p><strong>File:</strong> .context-kit/dashboard/src/App.tsx:909-1021</p>
+<p><strong>Issue:</strong> Complex nested iterations in calculateHierarchicalLayout</p>
+<p><strong>Fix:</strong> Wrap in useMemo to prevent recalculation on every render</p>
+<p><strong>Impact:</strong> MEDIUM - Noticeable with 100+ entities</p>
+</div></div>
+
+<div class="finding finding-medium">
+<div class="finding-header"><span class="badge badge-medium">MEDIUM</span>
+<h4>Repeated Filter Logic</h4></div>
+<div class="finding-body">
+<p><strong>File:</strong> App.tsx - LogViewer component</p>
+<p>Same filter logic duplicated 3 times (lines 448, 734, 756)</p>
+<p><strong>Fix:</strong> Extract to useCallback hook</p>
+</div></div>
+</section>
+
+<section class="section">
+<h2 id="react">React Performance</h2>
+<div class="finding finding-medium">
+<div class="finding-header"><span class="badge badge-medium">MEDIUM</span>
+<h4>Large Component File (2040 lines)</h4></div>
+<div class="finding-body">
+<p><strong>File:</strong> .context-kit/dashboard/src/App.tsx</p>
+<p>Multiple sub-components in single file limits code splitting</p>
+<p><strong>Components:</strong> CustomNode, StatusBadge, ServiceHealthCard, StatsOverview, LogViewer (440+ lines), KnowledgeGraph (600+ lines)</p>
+<p><strong>Fix:</strong> Split into separate files for React.lazy() optimization</p>
+</div></div>
+
+<div class="finding finding-success">
+<div class="finding-header"><span class="badge badge-success">GOOD</span>
+<h4>Memoization Used Correctly</h4></div>
+<div class="finding-body">
+<p>useMemo properly used for: filteredLogs, uniqueServices, serviceInfos, filteredNodes, entityTypes</p>
+</div></div>
+</section>
+
+<section class="section">
+<h2 id="bundle">Bundle Size</h2>
+<div class="finding finding-success">
+<div class="finding-header"><span class="badge badge-success">EXCELLENT</span>
+<h4>Optimized Build Configuration</h4></div>
+<div class="finding-body">
+<p><strong>Build:</strong> Vite 5.0.8 with code splitting and tree-shaking</p>
+<p><strong>Dependencies:</strong> react+react-dom (~130KB), reactflow (~80KB), lucide-react (~10KB)</p>
+<p><strong>Status:</strong> No heavy libraries (lodash, moment) detected</p>
+</div></div>
+</section>
+
+<section class="section">
+<h2 id="priority">Top Priority Fixes</h2>
+<div class="recommendation-list">
+<div class="recommendation-item">
+<span class="badge badge-critical">1. CRITICAL</span>
+<h3>Fix Event Listener Memory Leak</h3>
+<p><strong>File:</strong> theme-toggle.js:205</p>
+<p><strong>Effort:</strong> 15 minutes</p>
+</div>
+<div class="recommendation-item">
+<span class="badge badge-high">2. HIGH</span>
+<h3>Optimize Graph Layout Calculations</h3>
+<p><strong>File:</strong> App.tsx:909-1021</p>
+<p><strong>Effort:</strong> 30 minutes</p>
+</div>
+<div class="recommendation-item">
+<span class="badge badge-medium">3. MEDIUM</span>
+<h3>Split Large Dashboard Component</h3>
+<p><strong>File:</strong> App.tsx (2040 lines)</p>
+<p><strong>Effort:</strong> 2-3 hours</p>
+</div>
+</div>
+</section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Performance Analysis Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by performance-agent | W3C Design Token Format 3.0 Compliant</p>
+            <p style="margin-top: 0.5rem;">tkr-project-kit 3.6.0 | 2025-01-30</p>
+            <p style="margin-top: 1rem; font-size: var(--font-size-xs);">
+                <a href="https://github.com/tuckertucker/tkr-project-kit" target="_blank" rel="noopener">GitHub</a> |
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../../assets/js/navigation.js"></script>
+    <script src="../../assets/js/theme-toggle.js"></script>
+
+    <!-- Custom Report Script (optional) -->
+    
+</body>
+</html>

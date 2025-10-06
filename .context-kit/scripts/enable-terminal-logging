@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Auto-generated helper script to enable terminal logging
+# Source this script to enable terminal logging in your shell
+
+# Source the centralized path management
+source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+get_project_paths
+
+source "$PROJECT_ROOT/.context-kit/logging-client/tkr-logger-enhanced.sh"
+echo "✅ Terminal logging enabled - commands will be captured and sent to dashboard"
+echo "📊 View logs at: http://localhost:42001"

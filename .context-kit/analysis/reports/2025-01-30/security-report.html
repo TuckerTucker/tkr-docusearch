@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Comprehensive defensive security analysis identifying vulnerabilities, credential leaks, and attack vectors">
+    <title>Security Audit Report - tkr-project-kit</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <link rel="stylesheet" href="../../assets/css/themes/light.css">
+    <link rel="stylesheet" href="../../assets/css/themes/dark.css">
+    <link rel="stylesheet" href="../../assets/css/components/cards.css">
+    <link rel="stylesheet" href="../../assets/css/components/badges.css">
+    <link rel="stylesheet" href="../../assets/css/components/tables.css">
+    <link rel="stylesheet" href="../../assets/css/components/progress.css">
+    <link rel="stylesheet" href="../../assets/css/components/buttons.css">
+    <link rel="stylesheet" href="../../assets/css/components/navigation.css">
+
+    <!-- Report Configuration -->
+    <script>
+        window.REPORT_CONFIG = {
+            reportType: 'security-report',
+            reportDate: '2025-01-30',
+            reportTitle: 'Security Audit Report',
+            agent: 'security-agent'
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs"></div>
+
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h1>🔒 Security Audit Report</h1>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-lg); margin-top: 0.5rem;">
+                        Comprehensive defensive security analysis identifying vulnerabilities, credential leaks, and attack vectors
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: var(--font-size-sm);">
+                        <span>📅 Generated: 2025-01-30</span>
+                        <span>🤖 Agent: security-agent</span>
+                        <span>📊 Version: 3.6.0</span>
+                    </div>
+                </div>
+                <div id="theme-toggle-container"></div>
+            </div>
+        </header>
+
+        <!-- Quick Navigation -->
+        <div id="report-navigation"></div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Executive Summary -->
+<section class="section">
+    <h2>Executive Summary</h2>
+    <div class="info-box">
+        <p><strong>Security Posture:</strong> <span class="badge badge-warning">Moderate Risk</span></p>
+        <p>Comprehensive security analysis identified <strong>14 security findings</strong> across the codebase. The project demonstrates good security practices in several areas, but requires attention to CORS configuration, information disclosure, and dependency management.</p>
+    </div>
+    
+    <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+        <div class="metric-card card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-error);">0</div>
+            <div style="color: var(--color-text-secondary); margin-top: 0.5rem;">Critical</div>
+        </div>
+        <div class="metric-card card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-warning);">5</div>
+            <div style="color: var(--color-text-secondary); margin-top: 0.5rem;">High</div>
+        </div>
+        <div class="metric-card card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-accent);">6</div>
+            <div style="color: var(--color-text-secondary); margin-top: 0.5rem;">Medium</div>
+        </div>
+        <div class="metric-card card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-success);">3</div>
+            <div style="color: var(--color-text-secondary); margin-top: 0.5rem;">Low</div>
+        </div>
+    </div>
+</section>
+
+<!-- Critical Findings -->
+<section class="section">
+    <h2>🔴 Critical Findings</h2>
+    <div class="info-box info-box-success">
+        <p><strong>✓ No Critical vulnerabilities detected</strong></p>
+        <p>The codebase does not contain any hardcoded production credentials, SQL injection in authentication endpoints, or remote code execution vulnerabilities.</p>
+    </div>
+</section>
+
+<!-- High Severity Findings -->
+<section class="section">
+    <h2>🟠 High Severity Findings</h2>
+    
+    <!-- Finding 1: CORS Misconfiguration -->
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">1. CORS Misconfiguration - Wildcard Origin</h3>
+            <span class="badge badge-warning">HIGH</span>
+        </div>
+        
+        <p><strong>CVSS Score:</strong> 7.5 (High)</p>
+        <p><strong>Category:</strong> Security Headers / CORS Configuration</p>
+        
+        <div class="info-box info-box-warning" style="margin: 1rem 0;">
+            <p><strong>Description:</strong> Multiple endpoints use wildcard CORS origin ('Access-Control-Allow-Origin: *'), which allows any domain to make requests. This can lead to unauthorized data access and CSRF attacks.</p>
+        </div>
+        
+        <details style="margin: 1rem 0;">
+            <summary style="cursor: pointer; font-weight: 600; padding: 0.5rem; background: var(--color-bg-secondary); border-radius: 4px;">📍 Affected Locations (6 instances)</summary>
+            <div style="margin-top: 1rem; font-family: var(--font-mono); font-size: var(--font-size-sm);">
+                <p><strong>File:</strong> .context-kit/knowledge-graph/src/api/logging-endpoints.js</p>
+                <ul>
+                    <li>Line 489: Error response CORS header</li>
+                    <li>Line 506: Client script response headers</li>
+                    <li>Line 524: Error handling CORS header</li>
+                </ul>
+                
+                <p><strong>File:</strong> .context-kit/logging-client/plugins/vite/middleware.js</p>
+                <ul>
+                    <li>Line 60: Health check endpoint</li>
+                    <li>Line 90: Log endpoint</li>
+                </ul>
+                
+                <p><strong>File:</strong> .context-kit/logging-client/tests/browser.test.js</p>
+                <ul>
+                    <li>Line 101: Test server CORS header</li>
+                </ul>
+            </div>
+        </details>
+        
+        <div class="info-box" style="margin-top: 1rem;">
+            <p><strong>🔧 Remediation:</strong></p>
+            <ol>
+                <li><strong>Define allowed origins</strong> - Create whitelist of trusted domains</li>
+                <li><strong>Environment-based configuration</strong> - Use strict origins in production</li>
+                <li><strong>Add CORS middleware</strong> - Implement centralized CORS handling</li>
+            </ol>
+        </div>
+        
+        <p style="margin-top: 1rem;"><strong>Priority:</strong> <span class="badge badge-warning">IMMEDIATE - Week 1</span></p>
+    </div>
+    
+    <!-- Finding 2: Command Injection Risk -->
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">2. Command Injection Risk - execSync Usage</h3>
+            <span class="badge badge-warning">HIGH</span>
+        </div>
+        
+        <p><strong>CVSS Score:</strong> 7.2 (High)</p>
+        <p><strong>Category:</strong> Injection Vulnerabilities</p>
+        <p><strong>Location:</strong> .context-kit/logging-client/src/metadata-enricher.js:253</p>
+        
+        <div class="info-box info-box-warning" style="margin: 1rem 0;">
+            <p><strong>Description:</strong> Use of execSync() in metadata enrichment could lead to command injection if user-controlled data flows into the command string.</p>
+        </div>
+        
+        <div class="info-box" style="margin-top: 1rem;">
+            <p><strong>🔧 Remediation:</strong></p>
+            <ol>
+                <li>Validate and sanitize all inputs before passing to execSync</li>
+                <li>Use spawn() with argument array to prevent injection</li>
+                <li>Whitelist allowed commands</li>
+            </ol>
+        </div>
+        
+        <p style="margin-top: 1rem;"><strong>Priority:</strong> <span class="badge badge-warning">Week 1</span></p>
+    </div>
+    
+    <!-- Finding 3: SQL Injection via String Interpolation -->
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">3. SQL Injection - String Interpolation in Queries</h3>
+            <span class="badge badge-warning">HIGH</span>
+        </div>
+        
+        <p><strong>CVSS Score:</strong> 8.0 (High)</p>
+        <p><strong>Category:</strong> Injection Vulnerabilities</p>
+        
+        <div class="info-box info-box-warning" style="margin: 1rem 0;">
+            <p><strong>Description:</strong> SQL queries use template literals for table names. While mitigated by controlled table name generation, this pattern could lead to SQL injection if table names derive from user input.</p>
+        </div>
+        
+        <details style="margin: 1rem 0;">
+            <summary style="cursor: pointer; font-weight: 600; padding: 0.5rem; background: var(--color-bg-secondary); border-radius: 4px;">📍 Affected Locations</summary>
+            <div style="margin-top: 1rem;">
+                <ul>
+                    <li>.context-kit/knowledge-graph/migration/migration-script.cjs:106</li>
+                    <li>.context-kit/knowledge-graph/migration/migration-script.cjs:428</li>
+                    <li>.context-kit/core/src/logging/service.js:271</li>
+                </ul>
+            </div>
+        </details>
+        
+        <div class="info-box" style="margin-top: 1rem;">
+            <p><strong>🔧 Remediation:</strong></p>
+            <ol>
+                <li>Whitelist table names - Only allow predefined, safe table names</li>
+                <li>Validate inputs - Use strict validation for dynamic identifiers</li>
+                <li>Escape identifiers - Use proper SQL identifier escaping</li>
+            </ol>
+        </div>
+        
+        <p style="margin-top: 1rem;"><strong>Priority:</strong> <span class="badge badge-warning">Week 1</span></p>
+    </div>
+    
+    <!-- Finding 4: Missing Security Headers -->
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">4. Missing Security Headers</h3>
+            <span class="badge badge-warning">HIGH</span>
+        </div>
+        
+        <p><strong>CVSS Score:</strong> 7.0 (High)</p>
+        <p><strong>Category:</strong> Security Headers</p>
+        
+        <div class="info-box info-box-warning" style="margin: 1rem 0;">
+            <p><strong>Description:</strong> API endpoints do not implement critical security headers that protect against common web vulnerabilities.</p>
+        </div>
+        
+        <div class="info-box" style="margin-top: 1rem;">
+            <p><strong>Missing Headers:</strong></p>
+            <ul>
+                <li><code>Strict-Transport-Security</code> - Prevents protocol downgrade attacks</li>
+                <li><code>X-Frame-Options</code> - Prevents clickjacking</li>
+                <li><code>X-Content-Type-Options</code> - Prevents MIME-sniffing</li>
+                <li><code>Content-Security-Policy</code> - Prevents XSS</li>
+            </ul>
+        </div>
+        
+        <p style="margin-top: 1rem;"><strong>Priority:</strong> <span class="badge badge-warning">Week 1-2</span></p>
+    </div>
+    
+    <!-- Finding 5: Environment Variable Exposure Risk -->
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">5. Environment Variable Exposure in Configuration</h3>
+            <span class="badge badge-warning">HIGH</span>
+        </div>
+        
+        <p><strong>CVSS Score:</strong> 7.0 (High)</p>
+        <p><strong>Category:</strong> Information Disclosure</p>
+        <p><strong>Location:</strong> .context-kit/core/src/utils/config.ts:33</p>
+        
+        <div class="info-box info-box-warning" style="margin: 1rem 0;">
+            <p><strong>Description:</strong> Configuration loading directly exposes process.env.API_KEYS without sanitization, potentially logging sensitive values.</p>
+        </div>
+        
+        <div class="info-box" style="margin-top: 1rem;">
+            <p><strong>🔧 Remediation:</strong></p>
+            <ol>
+                <li>Sanitize config objects - Redact sensitive values before logging</li>
+                <li>Use secrets management - Consider vault or secrets service</li>
+                <li>Never log full config objects</li>
+            </ol>
+        </div>
+        
+        <p style="margin-top: 1rem;"><strong>Priority:</strong> <span class="badge badge-warning">Week 1</span></p>
+    </div>
+</section>
+
+<!-- Medium Severity Findings -->
+<section class="section">
+    <h2>🟡 Medium Severity Findings</h2>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>6. XSS Risk - innerHTML Usage</h3>
+        <p><strong>CVSS Score:</strong> 6.1 (Medium)</p>
+        <p><strong>Locations:</strong> .context-kit/analysis/assets/js/theme-toggle.js:150, navigation.js:112, 213</p>
+        <p><strong>Description:</strong> Use of innerHTML in UI components could lead to XSS if dynamic content is not properly sanitized.</p>
+        <p><strong>Remediation:</strong> Use textContent or createElement for dynamic content. If innerHTML required, use DOMPurify.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>7. Dependency Vulnerability Scanning Not Available</h3>
+        <p><strong>CVSS Score:</strong> 5.0 (Medium)</p>
+        <p><strong>Description:</strong> npm audit could not run due to missing package-lock.json.</p>
+        <p><strong>Remediation:</strong> Generate lockfile with <code>npm install --package-lock-only</code> and enable automated scanning in CI/CD.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>8. Unrestricted Command Execution in Test Scripts</h3>
+        <p><strong>CVSS Score:</strong> 5.5 (Medium)</p>
+        <p><strong>Description:</strong> Test scripts use spawn() and exec() without input validation.</p>
+        <p><strong>Remediation:</strong> Add input validation and use spawn() with argument arrays.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>9. Sensitive Data in Environment Variable Names</h3>
+        <p><strong>CVSS Score:</strong> 5.0 (Medium)</p>
+        <p><strong>Description:</strong> Metadata enricher exclusion list documents sensitive variable names.</p>
+        <p><strong>Remediation:</strong> Use pattern matching instead of explicit lists.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>10. localStorage Usage Without Encryption</h3>
+        <p><strong>CVSS Score:</strong> 4.5 (Medium)</p>
+        <p><strong>Description:</strong> Browser logging client uses localStorage without encryption.</p>
+        <p><strong>Remediation:</strong> Encrypt sensitive data before storing.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-accent);">
+        <h3>11. Database Exec Operations Without Prepared Statements</h3>
+        <p><strong>CVSS Score:</strong> 4.8 (Medium)</p>
+        <p><strong>Description:</strong> db.exec() bypasses parameterization.</p>
+        <p><strong>Remediation:</strong> Use exec() only for static SQL.</p>
+    </div>
+</section>
+
+<!-- Low Severity Findings -->
+<section class="section">
+    <h2>🟢 Low Severity Findings</h2>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-success);">
+        <h3>12. rm -rf Usage in Shell Scripts</h3>
+        <p><strong>CVSS Score:</strong> 2.5 (Low)</p>
+        <p><strong>Location:</strong> .context-kit/logging-client/tests/terminal.test.sh:602</p>
+        <p><strong>Remediation:</strong> Validate paths, use absolute paths, check existence before deletion.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-success);">
+        <h3>13. Relative Path Imports in Node Modules</h3>
+        <p><strong>CVSS Score:</strong> 2.0 (Low)</p>
+        <p><strong>Remediation:</strong> Use absolute imports or module path aliases.</p>
+    </div>
+    
+    <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-success);">
+        <h3>14. Cache Control Headers on Sensitive Endpoints</h3>
+        <p><strong>CVSS Score:</strong> 2.2 (Low)</p>
+        <p><strong>Remediation:</strong> Use shorter cache duration for security-critical resources.</p>
+    </div>
+</section>
+
+<!-- Security Best Practices Assessment -->
+<section class="section">
+    <h2>✓ Security Best Practices Assessment</h2>
+    
+    <div class="card">
+        <h3>Strengths</h3>
+        <ul>
+            <li>✓ No hardcoded credentials in production code</li>
+            <li>✓ Proper exclusion of sensitive environment variables in logging</li>
+            <li>✓ No use of deprecated cryptographic functions (MD5, SHA1)</li>
+            <li>✓ No dangerouslySetInnerHTML in React components</li>
+            <li>✓ SQL prepared statements used for data queries</li>
+            <li>✓ TypeScript strict mode enabled</li>
+            <li>✓ Proper error handling in security-critical code</li>
+        </ul>
+    </div>
+    
+    <div class="card" style="margin-top: 1.5rem;">
+        <h3>Areas for Improvement</h3>
+        <ul>
+            <li>⚠️ CORS configuration needs tightening</li>
+            <li>⚠️ Security headers implementation required</li>
+            <li>⚠️ Command injection risks need mitigation</li>
+            <li>⚠️ SQL identifier validation needed</li>
+            <li>⚠️ Dependency scanning should be enabled</li>
+        </ul>
+    </div>
+</section>
+
+<!-- Remediation Timeline -->
+<section class="section">
+    <h2>📅 Remediation Timeline</h2>
+    
+    <div class="card">
+        <h3>Immediate (Week 1)</h3>
+        <ol>
+            <li><strong>CORS Configuration:</strong> Implement origin whitelist (2-4 hours)</li>
+            <li><strong>Security Headers:</strong> Add middleware (2-3 hours)</li>
+            <li><strong>SQL Identifier Validation:</strong> Add whitelist validation (3-4 hours)</li>
+            <li><strong>Command Injection:</strong> Refactor execSync usage (4-6 hours)</li>
+            <li><strong>Environment Variable Handling:</strong> Add sanitization (2-3 hours)</li>
+        </ol>
+        <p><strong>Estimated effort:</strong> 13-20 hours</p>
+    </div>
+    
+    <div class="card" style="margin-top: 1.5rem;">
+        <h3>Short-term (Week 2-3)</h3>
+        <ol>
+            <li>XSS Prevention - Replace innerHTML</li>
+            <li>Dependency Scanning - Setup npm audit</li>
+            <li>localStorage Encryption</li>
+            <li>Test Script Security</li>
+        </ol>
+        <p><strong>Estimated effort:</strong> 10-15 hours</p>
+    </div>
+</section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Security Audit Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by security-agent | W3C Design Token Format 3.0 Compliant</p>
+            <p style="margin-top: 0.5rem;">tkr-project-kit 3.6.0 | 2025-01-30</p>
+            <p style="margin-top: 1rem; font-size: var(--font-size-xs);">
+                <a href="https://github.com/tuckertucker/tkr-project-kit" target="_blank" rel="noopener">GitHub</a> |
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../../assets/js/navigation.js"></script>
+    <script src="../../assets/js/theme-toggle.js"></script>
+
+    <!-- Custom Report Script (optional) -->
+    function generatePlan(r) { var m = "/create_plan " + r + " - " + window.location.pathname; if (confirm("Generate plan for: " + r + "?")) { alert("Copy to Claude Code:\n\n" + m); } }
+</body>
+</html>

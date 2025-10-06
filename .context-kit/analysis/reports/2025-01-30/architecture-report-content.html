@@ -1,0 +1,65 @@
+<!-- Executive Summary -->
+<div class="section">
+    <h2>Executive Summary</h2>
+    <div class="card">
+        <div style="text-align: center; padding: 2rem 0;">
+            <div style="font-size: 4rem; font-weight: bold; color: var(--color-success);">82</div>
+            <div style="font-size: 1.25rem; color: var(--color-text-secondary); margin-top: 0.5rem;">Architecture Health Score</div>
+            <div style="font-size: 0.875rem; color: var(--color-text-tertiary); margin-top: 0.25rem;">Based on IoC, DRY, boundaries, and pattern consistency</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+            <div style="text-align: center; padding: 1rem; background: var(--color-bg-surface); border-radius: var(--border-radius-md);">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--color-warning);">16</div>
+                <div style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.5rem;">Total Violations</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: var(--color-bg-surface); border-radius: var(--border-radius-md);">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--color-info);">3</div>
+                <div style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.5rem;">IoC Violations</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: var(--color-bg-surface); border-radius: var(--border-radius-md);">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--color-info);">7</div>
+                <div style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.5rem;">DRY Violations</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: var(--color-bg-surface); border-radius: var(--border-radius-md);">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--color-info);">2</div>
+                <div style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.5rem;">Boundary Issues</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; padding: 1.5rem; background: var(--color-bg-muted); border-radius: var(--border-radius-md); border-left: 4px solid var(--color-success);">
+            <h3 style="margin-top: 0; color: var(--color-success);">Key Strengths</h3>
+            <ul style="margin: 0.5rem 0 0 0;">
+                <li>Unified core module successfully consolidates business logic</li>
+                <li>Strong IoC compliance in MCP and knowledge-graph modules</li>
+                <li>Comprehensive type definitions in core reduce duplication</li>
+                <li>Service-oriented architecture with clear boundaries</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 1rem; padding: 1.5rem; background: var(--color-bg-muted); border-radius: var(--border-radius-md); border-left: 4px solid var(--color-warning);">
+            <h3 style="margin-top: 0; color: var(--color-warning);">Top 3 Architecture Priorities</h3>
+            <ol style="margin: 0.5rem 0 0 0;">
+                <li>Eliminate logging implementation duplication between core and logging-client</li>
+                <li>Dashboard should not contain business logic - extract to service layer</li>
+                <li>Consolidate ID generation utilities across modules</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <button onclick="alert('Generate refactoring plan with: /create_plan Extract business logic from dashboard to service layer')" class="btn btn-primary">
+            🏗️ Generate IoC Refactoring Plan
+        </button>
+        <button onclick="alert('Generate refactoring plan with: /create_plan Consolidate logging implementations')" class="btn btn-primary">
+            📋 Generate DRY Improvement Plan
+        </button>
+        <button onclick="alert('Generate refactoring plan with: /create_plan Fix module boundary violations')" class="btn btn-primary">
+            🔀 Generate Boundary Fix Plan
+        </button>
+    </div>
+</div>

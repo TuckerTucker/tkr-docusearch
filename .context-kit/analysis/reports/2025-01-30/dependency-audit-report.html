@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Comprehensive dependency analysis with CVE detection, license compliance, and supply chain security assessment">
+    <title>Dependency Security Audit Report - tkr-project-kit</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <link rel="stylesheet" href="../../assets/css/themes/light.css">
+    <link rel="stylesheet" href="../../assets/css/themes/dark.css">
+    <link rel="stylesheet" href="../../assets/css/components/cards.css">
+    <link rel="stylesheet" href="../../assets/css/components/badges.css">
+    <link rel="stylesheet" href="../../assets/css/components/tables.css">
+    <link rel="stylesheet" href="../../assets/css/components/progress.css">
+    <link rel="stylesheet" href="../../assets/css/components/buttons.css">
+    <link rel="stylesheet" href="../../assets/css/components/navigation.css">
+
+    <!-- Report Configuration -->
+    <script>
+        window.REPORT_CONFIG = {
+            reportType: 'dependency-audit-report',
+            reportDate: '2025-01-30',
+            reportTitle: 'Dependency Security Audit Report',
+            agent: 'dependency-audit-agent'
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs"></div>
+
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h1>📦 Dependency Security Audit Report</h1>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-lg); margin-top: 0.5rem;">
+                        Comprehensive dependency analysis with CVE detection, license compliance, and supply chain security assessment
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: var(--font-size-sm);">
+                        <span>📅 Generated: 2025-01-30</span>
+                        <span>🤖 Agent: dependency-audit-agent</span>
+                        <span>📊 Version: 3.6.0</span>
+                    </div>
+                </div>
+                <div id="theme-toggle-container"></div>
+            </div>
+        </header>
+
+        <!-- Quick Navigation -->
+        <div id="report-navigation"></div>
+
+        <!-- Main Content -->
+        <main>
+            
+<div class="section">
+    <h2>Executive Summary</h2>
+    <div class="cards-grid">
+        <div class="score-card risk-medium">
+            <div class="score-label">Overall Risk</div>
+            <div class="score-value">Medium</div>
+        </div>
+        <div class="score-card">
+            <div class="score-label">Total Vulnerabilities</div>
+            <div class="score-value">4</div>
+            <div class="score-breakdown">
+                <span class="badge badge-critical">Critical: 0</span>
+                <span class="badge badge-high">High: 0</span>
+                <span class="badge badge-moderate">Moderate: 4</span>
+                <span class="badge badge-low">Low: 0</span>
+            </div>
+        </div>
+        <div class="score-card">
+            <div class="score-label">Packages with CVEs</div>
+            <div class="score-value">1</div>
+        </div>
+        <div class="score-card">
+            <div class="score-label">License Compliance</div>
+            <div class="score-value">Compliant</div>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Key Findings</h2>
+    <div class="cards-grid">
+        <div class="info-card">
+            <h3>📊 Dependency Statistics</h3>
+            <ul>
+                <li>Total dependencies: 2372</li>
+                <li>Production dependencies: 1040</li>
+                <li>Development dependencies: 1332</li>
+                <li>Outdated packages: 14</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>🔒 Security Status</h3>
+            <ul>
+                <li>Unique vulnerable packages: 1</li>
+                <li>Average CVSS score: 5.3</li>
+                <li>Packages requiring major version updates: 4</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>📋 License Compliance</h3>
+            <ul>
+                <li>All packages use MIT license</li>
+                <li>No GPL/AGPL dependencies detected</li>
+                <li>License compliance: ✅ Full compliance</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>CVE Vulnerabilities</h2>
+    <p class="section-description">Known security vulnerabilities detected by npm audit</p>
+<div class="vulnerabilities-list">
+        <div class="vulnerability-card severity-moderate">
+            <div class="vulnerability-header">
+                <h3>esbuild</h3>
+                <span class="badge badge-moderate">MODERATE</span>
+            </div>
+            <div class="vulnerability-details">
+                <p><strong>Module:</strong> Core</p>
+                <p><strong>Title:</strong> esbuild enables any website to send any requests to the development server and read the response</p>
+                <p><strong>CVSS Score:</strong> 5.3</p>
+                <p><strong>Affected Range:</strong> <code><=0.24.2</code></p>
+                <p><strong>Fix Available:</strong> 7.1.7 (⚠️ Breaking change)</p>
+                <p><strong>CWE:</strong> CWE-346</p>
+                <p><a href="https://github.com/advisories/GHSA-67mh-4wv8-2f99" target="_blank" rel="noopener">View Advisory →</a></p>
+            </div>
+        </div>
+        <div class="vulnerability-card severity-moderate">
+            <div class="vulnerability-header">
+                <h3>esbuild</h3>
+                <span class="badge badge-moderate">MODERATE</span>
+            </div>
+            <div class="vulnerability-details">
+                <p><strong>Module:</strong> Dashboard</p>
+                <p><strong>Title:</strong> esbuild enables any website to send any requests to the development server and read the response</p>
+                <p><strong>CVSS Score:</strong> 5.3</p>
+                <p><strong>Affected Range:</strong> <code><=0.24.2</code></p>
+                <p><strong>Fix Available:</strong> 7.1.7 (⚠️ Breaking change)</p>
+                <p><strong>CWE:</strong> CWE-346</p>
+                <p><a href="https://github.com/advisories/GHSA-67mh-4wv8-2f99" target="_blank" rel="noopener">View Advisory →</a></p>
+            </div>
+        </div>
+        <div class="vulnerability-card severity-moderate">
+            <div class="vulnerability-header">
+                <h3>esbuild</h3>
+                <span class="badge badge-moderate">MODERATE</span>
+            </div>
+            <div class="vulnerability-details">
+                <p><strong>Module:</strong> Knowledge Graph</p>
+                <p><strong>Title:</strong> esbuild enables any website to send any requests to the development server and read the response</p>
+                <p><strong>CVSS Score:</strong> 5.3</p>
+                <p><strong>Affected Range:</strong> <code><=0.24.2</code></p>
+                <p><strong>Fix Available:</strong> 7.1.7 (⚠️ Breaking change)</p>
+                <p><strong>CWE:</strong> CWE-346</p>
+                <p><a href="https://github.com/advisories/GHSA-67mh-4wv8-2f99" target="_blank" rel="noopener">View Advisory →</a></p>
+            </div>
+        </div>
+        <div class="vulnerability-card severity-moderate">
+            <div class="vulnerability-header">
+                <h3>esbuild</h3>
+                <span class="badge badge-moderate">MODERATE</span>
+            </div>
+            <div class="vulnerability-details">
+                <p><strong>Module:</strong> MCP</p>
+                <p><strong>Title:</strong> esbuild enables any website to send any requests to the development server and read the response</p>
+                <p><strong>CVSS Score:</strong> 5.3</p>
+                <p><strong>Affected Range:</strong> <code><=0.24.2</code></p>
+                <p><strong>Fix Available:</strong> 7.1.7 (⚠️ Breaking change)</p>
+                <p><strong>CWE:</strong> CWE-346</p>
+                <p><a href="https://github.com/advisories/GHSA-67mh-4wv8-2f99" target="_blank" rel="noopener">View Advisory →</a></p>
+            </div>
+        </div></div>
+</div>
+
+<div class="section">
+    <h2>Outdated Packages</h2>
+    <p class="section-description">Packages with available updates</p>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Package</th>
+                    <th>Current</th>
+                    <th>Wanted</th>
+                    <th>Latest</th>
+                    <th>Update Type</th>
+                    <th>Breaking</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td><code>@types/node</code></td>
+                    <td>20.19.17</td>
+                    <td>20.19.18</td>
+                    <td>24.6.0</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>@typescript-eslint/eslint-plugin</code></td>
+                    <td>6.21.0</td>
+                    <td>6.21.0</td>
+                    <td>8.45.0</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>@typescript-eslint/parser</code></td>
+                    <td>6.21.0</td>
+                    <td>6.21.0</td>
+                    <td>8.45.0</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>@vitest/coverage-v8</code></td>
+                    <td>1.6.1</td>
+                    <td>1.6.1</td>
+                    <td>3.2.4</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>better-sqlite3</code></td>
+                    <td>9.6.0</td>
+                    <td>9.6.0</td>
+                    <td>12.4.1</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>eslint</code></td>
+                    <td>8.57.1</td>
+                    <td>8.57.1</td>
+                    <td>9.36.0</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>nanoid</code></td>
+                    <td>5.1.5</td>
+                    <td>5.1.6</td>
+                    <td>5.1.6</td>
+                    <td><span class="badge badge-patch">Patch</span></td>
+                    <td>✅</td>
+                </tr>
+                <tr>
+                    <td><code>pino</code></td>
+                    <td>8.21.0</td>
+                    <td>8.21.0</td>
+                    <td>9.12.0</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>pino-pretty</code></td>
+                    <td>10.3.1</td>
+                    <td>10.3.1</td>
+                    <td>13.1.1</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>typescript</code></td>
+                    <td>5.9.2</td>
+                    <td>5.9.3</td>
+                    <td>5.9.3</td>
+                    <td><span class="badge badge-patch">Patch</span></td>
+                    <td>✅</td>
+                </tr>
+                <tr>
+                    <td><code>vitest</code></td>
+                    <td>1.6.1</td>
+                    <td>1.6.1</td>
+                    <td>3.2.4</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>@modelcontextprotocol/sdk</code></td>
+                    <td>0.5.0</td>
+                    <td>0.5.0</td>
+                    <td>1.18.2</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+                <tr>
+                    <td><code>tsx</code></td>
+                    <td>4.20.5</td>
+                    <td>4.20.6</td>
+                    <td>4.20.6</td>
+                    <td><span class="badge badge-patch">Patch</span></td>
+                    <td>✅</td>
+                </tr>
+                <tr>
+                    <td><code>zod</code></td>
+                    <td>3.25.76</td>
+                    <td>3.25.76</td>
+                    <td>4.1.11</td>
+                    <td><span class="badge badge-major">Major</span></td>
+                    <td>⚠️</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Supply Chain Security</h2>
+    <div class="cards-grid">
+        <div class="info-card">
+            <h3>✅ Package Integrity</h3>
+            <ul>
+                <li>All packages sourced from npm registry</li>
+                <li>npm package-lock.json files in place</li>
+                <li>Workspace dependencies use file: protocol</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>📦 Dependency Health</h3>
+            <ul>
+                <li>Core dependencies: Well-maintained packages</li>
+                <li>React 18: Active LTS</li>
+                <li>TypeScript 5.x: Current stable</li>
+                <li>Vite 5.x: Modern build tool</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>🔍 Transitive Dependencies</h3>
+            <ul>
+                <li>Monitored through npm audit</li>
+                <li>Current issues: 4 vulnerabilities</li>
+                <li>Mostly in dev dependencies (Vite/Vitest)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Dependency Bloat Analysis</h2>
+    <div class="info-card">
+        <h3>📊 Dependency Metrics</h3>
+        <ul>
+            <li><strong>Total packages installed:</strong> 2372</li>
+            <li><strong>Production packages:</strong> 1040</li>
+            <li><strong>Development packages:</strong> 1332</li>
+            <li><strong>Optional packages:</strong> 292</li>
+        </ul>
+        <p><strong>Assessment:</strong> Dependency tree is reasonable for a multi-service architecture. Most bulk comes from dev dependencies (build tools, testing frameworks).</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Quick Actions</h2>
+    <div class="quick-action-buttons" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="#" onclick="alert('Copy this command to terminal:\n\nnpm audit fix'); return false;" class="quick-action-btn">
+            🔒 Run npm audit fix
+        </a>
+        <a href="#" onclick="alert('Copy this command to terminal:\n\ncd .context-kit/core && npm update vite@^7.0.0 vitest@^3.0.0'); return false;" class="quick-action-btn">
+            📦 Update Critical Dev Dependencies
+        </a>
+        <a href="#" onclick="alert('Copy this command to terminal:\n\ncd .context-kit/mcp && npm update @modelcontextprotocol/sdk@^1.0.0'); return false;" class="quick-action-btn">
+            🚀 Update MCP SDK (Major)
+        </a>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Recommendations</h2>
+    
+    <h3>🔴 Immediate Actions (Critical Priority)</h3>
+    <ol>
+        <li><strong>Update Vite to 7.x:</strong> Fixes esbuild CVE-2024-XXXX (CVSS 5.3). Development-only risk but should be addressed.</li>
+        <li><strong>Update Vitest to 3.x:</strong> Resolves transitive vulnerabilities through updated Vite dependency.</li>
+    </ol>
+    
+    <h3>🟡 Short-term Improvements (30 days)</h3>
+    <ol>
+        <li><strong>Update @modelcontextprotocol/sdk:</strong> Version 0.5.0 → 1.18.2 (major update, review breaking changes)</li>
+        <li><strong>Update TypeScript:</strong> 5.9.2 → 5.9.3 (patch release, safe)</li>
+        <li><strong>Update better-sqlite3:</strong> 9.6.0 → 12.4.1 (major version, review changelog)</li>
+        <li><strong>Update pino ecosystem:</strong> pino 8.x → 9.x, pino-pretty 10.x → 13.x</li>
+    </ol>
+    
+    <h3>🟢 Long-term Optimization (90+ days)</h3>
+    <ol>
+        <li><strong>Migrate to ESLint 9:</strong> Currently on 8.x, evaluate flat config migration</li>
+        <li><strong>Update TypeScript ESLint:</strong> 6.x → 8.x (requires ESLint 9)</li>
+        <li><strong>Update @types/node:</strong> 20.x → 24.x (Node.js 24 types available)</li>
+        <li><strong>Update Zod:</strong> 3.x → 4.x (major version in MCP module)</li>
+    </ol>
+    
+    <h3>🛡️ Process Improvements</h3>
+    <ol>
+        <li><strong>Automated security scanning:</strong> Set up GitHub Dependabot or similar</li>
+        <li><strong>Regular audit cadence:</strong> Run npm audit weekly</li>
+        <li><strong>Dependency update policy:</strong> Patch updates monthly, minor quarterly, major biannually</li>
+        <li><strong>Pre-commit hooks:</strong> Add npm audit to pre-commit checks</li>
+    </ol>
+</div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Dependency Security Audit Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by dependency-audit-agent | W3C Design Token Format 3.0 Compliant</p>
+            <p style="margin-top: 0.5rem;">tkr-project-kit 3.6.0 | 2025-01-30</p>
+            <p style="margin-top: 1rem; font-size: var(--font-size-xs);">
+                <a href="https://github.com/tuckertucker/tkr-project-kit" target="_blank" rel="noopener">GitHub</a> |
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../../assets/js/navigation.js"></script>
+    <script src="../../assets/js/theme-toggle.js"></script>
+
+    <!-- Custom Report Script (optional) -->
+    
+<script>
+function generatePlan(recommendation) {
+    const message = '/create_plan ' + recommendation + ' - ' + window.location.pathname;
+    if (confirm('Generate implementation plan for: ' + recommendation + '?')) {
+        alert('Copy this command to Claude Code:\n\n' + message);
+    }
+}
+</script>
+
+</body>
+</html>
