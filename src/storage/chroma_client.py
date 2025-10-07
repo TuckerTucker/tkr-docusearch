@@ -115,6 +115,16 @@ class ChromaClient:
             f"Collections initialized: {visual_collection}, {text_collection}"
         )
 
+    @property
+    def visual_collection(self) -> Collection:
+        """Public accessor for visual collection."""
+        return self._visual_collection
+
+    @property
+    def text_collection(self) -> Collection:
+        """Public accessor for text collection."""
+        return self._text_collection
+
     def _get_or_create_collection(
         self,
         name: str,
