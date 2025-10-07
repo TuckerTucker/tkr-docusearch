@@ -93,7 +93,9 @@
       "Bash(npx eslint:*)",
       "Read(//private/tmp/**)",
       "Bash(npx license-checker:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(./scripts/setup.sh:*)",
+      "Bash(awk:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
