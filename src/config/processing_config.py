@@ -2,12 +2,27 @@
 Processing configuration for document processing.
 
 This module defines configuration for file handling, text chunking,
-and visual processing parameters.
+and visual processing parameters, including enhanced Docling features.
 """
 
 from dataclasses import dataclass
 from typing import List, Tuple
+from enum import Enum
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class ChunkingStrategy(Enum):
+    """Chunking strategy selection.
+
+    Attributes:
+        LEGACY: Word-based sliding window (backward compatible)
+        HYBRID: Document-aware hybrid chunker (recommended)
+    """
+    LEGACY = "legacy"
+    HYBRID = "hybrid"
 
 
 @dataclass
@@ -127,3 +142,198 @@ class ProcessingConfig:
             f"chunk_size={self.chunk_size_words}w, "
             f"dpi={self.page_render_dpi})"
         )
+
+
+@dataclass
+class EnhancedModeConfig:
+    """Configuration for Docling enhanced mode features.
+
+    This configuration controls which advanced Docling features are enabled
+    and how document processing behaves. All features have sensible defaults
+    that can be overridden via environment variables.
+
+    Attributes:
+        enable_table_structure: Enable table structure recognition with TableFormer
+        enable_picture_classification: Enable image type classification
+        enable_code_enrichment: Enable code block language detection (slower)
+        enable_formula_enrichment: Enable formula LaTeX extraction (slower)
+        chunking_strategy: Text chunking strategy (legacy or hybrid)
+        max_chunk_tokens: Maximum tokens per chunk
+        min_chunk_tokens: Minimum tokens per chunk
+        merge_peer_chunks: Merge adjacent small chunks with same headings
+        table_structure_mode: TableFormer mode (fast or accurate)
+        images_scale: Image generation scale factor
+        generate_page_images: Generate full page images
+        generate_picture_images: Generate individual picture images
+        max_structure_size_kb: Maximum size of structure metadata
+    """
+
+    # Feature flags (all default to True for enhanced mode)
+    enable_table_structure: bool = True
+    enable_picture_classification: bool = True
+    enable_code_enrichment: bool = False  # Optional, adds overhead
+    enable_formula_enrichment: bool = False  # Optional, adds overhead
+
+    # Chunking configuration
+    chunking_strategy: ChunkingStrategy = ChunkingStrategy.HYBRID
+    max_chunk_tokens: int = 512
+    min_chunk_tokens: int = 100
+    merge_peer_chunks: bool = True
+
+    # Pipeline options
+    table_structure_mode: str = "accurate"  # "fast" or "accurate"
+    images_scale: float = 2.0
+    generate_page_images: bool = True
+    generate_picture_images: bool = True
+
+    # Performance limits
+    max_structure_size_kb: int = 100  # Max size of structure metadata
+
+    @classmethod
+    def from_env(cls) -> "EnhancedModeConfig":
+        """Load configuration from environment variables.
+
+        Environment variables:
+            ENABLE_TABLE_STRUCTURE: Enable table structure (default: true)
+            ENABLE_PICTURE_CLASSIFICATION: Enable picture classification (default: true)
+            ENABLE_CODE_ENRICHMENT: Enable code enrichment (default: false)
+            ENABLE_FORMULA_ENRICHMENT: Enable formula enrichment (default: false)
+            CHUNKING_STRATEGY: Chunking strategy (default: hybrid)
+            MAX_CHUNK_TOKENS: Max tokens per chunk (default: 512)
+            MIN_CHUNK_TOKENS: Min tokens per chunk (default: 100)
+            MERGE_PEER_CHUNKS: Merge peer chunks (default: true)
+            TABLE_STRUCTURE_MODE: Table mode (default: accurate)
+            IMAGES_SCALE: Image scale (default: 2.0)
+
+        Returns:
+            EnhancedModeConfig instance with values from environment
+        """
+        try:
+            # Parse feature flags
+            enable_table = os.getenv("ENABLE_TABLE_STRUCTURE", "true").lower() == "true"
+            enable_pictures = os.getenv("ENABLE_PICTURE_CLASSIFICATION", "true").lower() == "true"
+            enable_code = os.getenv("ENABLE_CODE_ENRICHMENT", "false").lower() == "true"
+            enable_formula = os.getenv("ENABLE_FORMULA_ENRICHMENT", "false").lower() == "true"
+
+            # Parse chunking config
+            chunking_str = os.getenv("CHUNKING_STRATEGY", "hybrid").lower()
+            try:
+                chunking_strategy = ChunkingStrategy(chunking_str)
+            except ValueError:
+                logger.warning(
+                    f"Invalid CHUNKING_STRATEGY '{chunking_str}', using default 'hybrid'"
+                )
+                chunking_strategy = ChunkingStrategy.HYBRID
+
+            max_tokens = int(os.getenv("MAX_CHUNK_TOKENS", "512"))
+            min_tokens = int(os.getenv("MIN_CHUNK_TOKENS", "100"))
+            merge_peers = os.getenv("MERGE_PEER_CHUNKS", "true").lower() == "true"
+
+            # Parse pipeline options
+            table_mode = os.getenv("TABLE_STRUCTURE_MODE", "accurate").lower()
+            if table_mode not in ["fast", "accurate"]:
+                logger.warning(
+                    f"Invalid TABLE_STRUCTURE_MODE '{table_mode}', using 'accurate'"
+                )
+                table_mode = "accurate"
+
+            images_scale = float(os.getenv("IMAGES_SCALE", "2.0"))
+
+            config = cls(
+                enable_table_structure=enable_table,
+                enable_picture_classification=enable_pictures,
+                enable_code_enrichment=enable_code,
+                enable_formula_enrichment=enable_formula,
+                chunking_strategy=chunking_strategy,
+                max_chunk_tokens=max_tokens,
+                min_chunk_tokens=min_tokens,
+                merge_peer_chunks=merge_peers,
+                table_structure_mode=table_mode,
+                images_scale=images_scale
+            )
+
+            # Validate configuration
+            validate_config(config)
+
+            logger.info(
+                f"Loaded enhanced mode config: "
+                f"table_structure={enable_table}, "
+                f"picture_classification={enable_pictures}, "
+                f"chunking={chunking_strategy.value}, "
+                f"tokens={min_tokens}-{max_tokens}"
+            )
+
+            return config
+
+        except Exception as e:
+            logger.error(f"Error loading config from environment: {e}")
+            logger.info("Using default configuration")
+            return cls()
+
+
+def validate_config(config: EnhancedModeConfig) -> None:
+    """Validate configuration values.
+
+    Args:
+        config: Configuration to validate
+
+    Raises:
+        AssertionError: If configuration values are invalid
+    """
+    # Token limits
+    assert 10 <= config.min_chunk_tokens <= 1000, \
+        f"min_chunk_tokens {config.min_chunk_tokens} out of range [10, 1000]"
+
+    assert 100 <= config.max_chunk_tokens <= 4096, \
+        f"max_chunk_tokens {config.max_chunk_tokens} out of range [100, 4096]"
+
+    assert config.min_chunk_tokens < config.max_chunk_tokens, \
+        f"min_chunk_tokens {config.min_chunk_tokens} must be < max_chunk_tokens {config.max_chunk_tokens}"
+
+    # Image scale
+    assert 0.5 <= config.images_scale <= 4.0, \
+        f"images_scale {config.images_scale} out of range [0.5, 4.0]"
+
+    # Table mode
+    assert config.table_structure_mode in ["fast", "accurate"], \
+        f"Invalid table_structure_mode: {config.table_structure_mode}"
+
+
+def create_pipeline_options(config: EnhancedModeConfig):
+    """Create Docling pipeline options from configuration.
+
+    Args:
+        config: Enhanced mode configuration
+
+    Returns:
+        PdfPipelineOptions configured according to settings
+    """
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
+
+    options = PdfPipelineOptions()
+
+    # Structure features
+    options.do_table_structure = config.enable_table_structure
+    options.do_picture_classification = config.enable_picture_classification
+    options.do_code_enrichment = config.enable_code_enrichment
+    options.do_formula_enrichment = config.enable_formula_enrichment
+
+    # Table structure mode
+    if config.enable_table_structure:
+        options.table_structure_options.mode = (
+            TableFormerMode.ACCURATE if config.table_structure_mode == "accurate"
+            else TableFormerMode.FAST
+        )
+
+    # Image options
+    options.generate_page_images = config.generate_page_images
+    options.generate_picture_images = config.generate_picture_images
+    options.images_scale = config.images_scale
+
+    logger.debug(
+        f"Created pipeline options: "
+        f"table_structure={options.do_table_structure}, "
+        f"picture_classification={options.do_picture_classification}"
+    )
+
+    return options
