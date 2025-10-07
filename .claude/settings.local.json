@@ -106,7 +106,8 @@
       "Bash(done)",
       "Bash(./scripts/query-chromadb.sh:*)",
       "Bash(. ./.venv-native/bin/activate)",
-      "Bash(pip3 list:*)"
+      "Bash(pip3 list:*)",
+      "Bash(kill:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",

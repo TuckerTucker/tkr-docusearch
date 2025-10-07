@@ -42,8 +42,8 @@ MPS built: True
 
 **Virtual Environment**:
 - Created requirements.txt with all production dependencies
-- Using `tkr_env/project_env` with Python 3.13.3
-- Source with: `source start_env`
+- Using `.venv-native` with Python 3.13.3
+- Source with: `source .venv-native/bin/activate`
 
 ---
 

@@ -183,7 +183,7 @@ results = search.search("query", n_results=10, search_mode="hybrid")
 3. **`7d7f6e9`** - chore(infrastructure): add Wave 2 documentation and environment setup
    - 19 files, 5,140 insertions
    - Wave 2 documentation
-   - Development environment (tkr_env)
+   - Development environment (.venv-native)
    - Copyparty integration files
 
 4. **`0dd8f85`** - docs(deployment): finalize Wave 3+4 production-ready state
