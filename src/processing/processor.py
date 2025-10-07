@@ -199,29 +199,36 @@ class DocumentProcessor:
                 f"{visual_stats['total_time_ms']:.0f}ms"
             )
 
-            # Stage 3: Text Embedding
-            status = ProcessingStatus(
-                doc_id=doc_id,
-                filename=filename,
-                status="embedding_text",
-                progress=0.6,
-                stage=f"Generating text embeddings for {len(parsed_doc.text_chunks)} chunks",
-                total_pages=total_pages,
-                elapsed_seconds=int(time.time() - start_time)
-            )
-            self._update_status(status, status_callback)
+            # Stage 3: Text Embedding (skip if no text extracted)
+            text_results = []
+            if parsed_doc.text_chunks:
+                status = ProcessingStatus(
+                    doc_id=doc_id,
+                    filename=filename,
+                    status="embedding_text",
+                    progress=0.6,
+                    stage=f"Generating text embeddings for {len(parsed_doc.text_chunks)} chunks",
+                    total_pages=total_pages,
+                    elapsed_seconds=int(time.time() - start_time)
+                )
+                self._update_status(status, status_callback)
 
-            text_results = self.text_processor.process_chunks(
-                chunks=parsed_doc.text_chunks,
-                doc_id=doc_id
-            )
+                text_results = self.text_processor.process_chunks(
+                    chunks=parsed_doc.text_chunks,
+                    doc_id=doc_id
+                )
 
-            text_stats = self.text_processor.get_processing_stats(text_results)
-            logger.info(
-                f"Text processing complete: "
-                f"{text_stats['num_chunks']} chunks in "
-                f"{text_stats['total_time_ms']:.0f}ms"
-            )
+                text_stats = self.text_processor.get_processing_stats(text_results)
+                logger.info(
+                    f"Text processing complete: "
+                    f"{text_stats['num_chunks']} chunks in "
+                    f"{text_stats['total_time_ms']:.0f}ms"
+                )
+            else:
+                logger.info(
+                    f"No text extracted from {filename} - "
+                    "document appears to be image-only (e.g., scanned PDF)"
+                )
 
             # Stage 4: Storage
             status = ProcessingStatus(
