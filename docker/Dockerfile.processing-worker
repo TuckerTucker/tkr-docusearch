@@ -39,12 +39,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
     g++ \
-    # Graphics and image processing
-    libgl1-mesa-glx \
+    # Graphics and image processing (updated for Debian Trixie)
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
-    libxrender-dev \
+    libxrender1 \
     # PDF processing
     poppler-utils \
     # Network tools
