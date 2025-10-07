@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.storage import ChromaClient
 from src.embeddings import ColPaliEngine
+from src.search import SearchEngine
 import argparse
 from typing import List, Dict, Any
 
@@ -83,54 +84,57 @@ def list_documents(client: ChromaClient):
         print(f"❌ Error listing documents: {e}")
 
 
-def search_documents(client: ChromaClient, query: str, top_k: int = 5):
-    """Search documents with a text query."""
+def search_documents(client: ChromaClient, query: str, top_k: int = 5, mode: str = "hybrid"):
+    """Search documents using semantic similarity search with ColPali."""
     print("\n" + "="*70)
-    print(f"Search Results for: '{query}'")
+    print(f"Semantic Search for: '{query}' (mode: {mode})")
     print("="*70)
-    
-    try:
-        # For now, we'll do a simple metadata search
-        # Full semantic search would require loading the ColPali model
-        
-        text_collection = client._text_collection
-        
-        # Get all documents and filter by text
-        results = text_collection.get(
-            include=["metadatas", "documents"]
-        )
-        
-        matches = []
-        if results['metadatas']:
-            for idx, metadata in enumerate(results['metadatas']):
-                doc_text = results['documents'][idx] if results['documents'] and idx < len(results['documents']) else ""
-                # Handle None values
-                if doc_text is None:
-                    doc_text = ""
 
-                # Simple text matching
-                if query.lower() in doc_text.lower():
-                    matches.append({
-                        'filename': metadata.get('filename', 'N/A'),
-                        'doc_id': metadata.get('doc_id', 'unknown'),
-                        'page': metadata.get('page_num', 'N/A'),
-                        'chunk': metadata.get('chunk_id', 'N/A'),
-                        'preview': doc_text[:200] + '...' if len(doc_text) > 200 else doc_text
-                    })
-        
-        print(f"\n🔍 Found {len(matches)} matches (showing first {min(len(matches), top_k)}):\n")
-        
-        for idx, match in enumerate(matches[:top_k], 1):
-            print(f"{idx}. {match['filename']}")
-            print(f"   Doc ID: {match['doc_id']} | Page: {match['page']} | Chunk: {match['chunk']}")
-            print(f"   Preview: {match['preview']}")
+    try:
+        # Initialize ColPali engine and SearchEngine
+        print("\n⏳ Loading ColPali model (this may take a moment on first run)...")
+        embedding_engine = ColPaliEngine()
+        search_engine = SearchEngine(
+            storage_client=client,
+            embedding_engine=embedding_engine
+        )
+        print("✅ Model loaded successfully")
+
+        # Perform semantic search
+        print(f"\n🔍 Searching with semantic similarity...")
+        response = search_engine.search(
+            query=query,
+            n_results=top_k,
+            search_mode=mode,
+            enable_reranking=True
+        )
+
+        results = response["results"]
+
+        print(f"\n📊 Search Statistics:")
+        print(f"  Total candidates: {response['candidates_retrieved']}")
+        print(f"  Reranked: {response['reranked_count']}")
+        print(f"  Stage 1 time: {response['stage1_time_ms']:.1f}ms")
+        print(f"  Stage 2 time: {response['stage2_time_ms']:.1f}ms")
+        print(f"  Total time: {response['total_time_ms']:.1f}ms")
+
+        print(f"\n🎯 Found {len(results)} results:\n")
+
+        for idx, result in enumerate(results, 1):
+            print(f"{idx}. {result['filename']}")
+            print(f"   Doc ID: {result['doc_id']}")
+            print(f"   Page: {result.get('page_num', 'N/A')}")
+            print(f"   Score: {result['score']:.4f}")
+            print(f"   Type: {result.get('result_type', 'N/A')}")
             print()
-        
-        if not matches:
-            print("No matches found. Try a different query or use semantic search.")
-        
+
+        if not results:
+            print("No matches found. Try a different query or search mode.")
+
     except Exception as e:
         print(f"❌ Error searching: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def main():
@@ -139,38 +143,42 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 scripts/query-chromadb.py                    # Show statistics
-  python3 scripts/query-chromadb.py --list-docs        # List all documents
-  python3 scripts/query-chromadb.py --search "revenue" # Search for text
-  python3 scripts/query-chromadb.py --top-k 10         # Show more results
+  python3 scripts/query-chromadb.py                           # Show statistics
+  python3 scripts/query-chromadb.py --list-docs               # List all documents
+  python3 scripts/query-chromadb.py --search "prompting"      # Semantic search (hybrid)
+  python3 scripts/query-chromadb.py --search "revenue" --mode visual_only  # Visual search only
+  python3 scripts/query-chromadb.py --search "quarterly" --top-k 10       # Show more results
         """
     )
     
     parser.add_argument('--list-docs', action='store_true',
                        help='List all stored documents')
     parser.add_argument('--search', type=str,
-                       help='Search documents for text')
+                       help='Search documents using semantic similarity')
+    parser.add_argument('--mode', type=str, default='hybrid',
+                       choices=['hybrid', 'visual_only', 'text_only'],
+                       help='Search mode (default: hybrid)')
     parser.add_argument('--top-k', type=int, default=5,
                        help='Number of results to show (default: 5)')
     parser.add_argument('--host', default='localhost',
                        help='ChromaDB host (default: localhost)')
     parser.add_argument('--port', type=int, default=8001,
                        help='ChromaDB port (default: 8001)')
-    
+
     args = parser.parse_args()
-    
+
     # Initialize ChromaDB client
     print(f"\n🔗 Connecting to ChromaDB at {args.host}:{args.port}...")
-    
+
     try:
         client = ChromaClient(host=args.host, port=args.port)
         print("✅ Connected successfully!")
-        
+
         # Execute requested operation
         if args.list_docs:
             list_documents(client)
         elif args.search:
-            search_documents(client, args.search, args.top_k)
+            search_documents(client, args.search, args.top_k, args.mode)
         else:
             show_stats(client)
         

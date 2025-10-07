@@ -41,17 +41,27 @@ Simple utility to inspect and query the ChromaDB vector database.
    Source: N/A
 ```
 
-### Search Documents
+### Search Documents (Semantic Similarity)
 
 ```bash
-# Simple text search in stored text chunks
-./scripts/query-chromadb.sh --search "revenue"
+# Semantic search using ColPali embeddings (hybrid mode: visual + text)
+./scripts/query-chromadb.sh --search "prompting techniques"
+
+# Visual-only search
+./scripts/query-chromadb.sh --search "revenue" --mode visual_only
+
+# Text-only search
+./scripts/query-chromadb.sh --search "quarterly" --mode text_only
 
 # Show more results
-./scripts/query-chromadb.sh --search "quarterly" --top-k 10
+./scripts/query-chromadb.sh --search "data science" --top-k 10
 ```
 
-**Note:** Text search only works if text embeddings are stored. Currently, the system stores visual embeddings only.
+**How it works:**
+- Uses ColPali model to generate query embeddings
+- Two-stage search: fast retrieval (Stage 1) + precise re-ranking (Stage 2)
+- Supports hybrid, visual-only, or text-only search modes
+- Returns results ranked by semantic similarity scores
 
 ### Custom ChromaDB Instance
 
@@ -79,6 +89,23 @@ Simple utility to inspect and query the ChromaDB vector database.
 ./scripts/query-chromadb.sh --list-docs
 ```
 
+### Semantic search examples
+```bash
+# Find documents about prompting
+./scripts/query-chromadb.sh --search "prompting techniques" --top-k 3
+
+# Expected output:
+# 1. Five_7_figure_prompting_techniques_530_Penfriend_1700543858.pdf
+#    Score: 0.8740
+
+# Search for data science content
+./scripts/query-chromadb.sh --search "data science stories"
+
+# Expected output:
+# 1. Stories_Data_1755806421.pdf
+#    Score: 0.6764
+```
+
 ### Verify specific document
 ```bash
 ./scripts/query-chromadb.sh --list-docs | grep "myfile.pdf"
@@ -94,5 +121,6 @@ Simple utility to inspect and query the ChromaDB vector database.
 - Run setup: `./scripts/run-worker-native.sh setup`
 
 **"No matches found":**
-- Text search requires text embeddings to be stored
+- Try different search modes: `--mode hybrid`, `--mode visual_only`, or `--mode text_only`
 - Use `--list-docs` to see what documents exist
+- Try broader or more specific queries
