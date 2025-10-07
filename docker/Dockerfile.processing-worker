@@ -71,36 +71,38 @@ WORKDIR /app
 # Install Python Dependencies
 # ============================================================================
 
-# Core ML/AI dependencies
+# Core ML/AI dependencies - Install in stages for better error handling
 RUN pip install --no-cache-dir \
-    # PyTorch with MPS support (M1)
-    torch==2.1.0 \
-    torchvision==0.16.0 \
-    # Transformers and HuggingFace
-    transformers==4.35.0 \
-    sentence-transformers==2.2.2 \
-    # Image processing
-    Pillow==10.1.0 \
-    opencv-python-headless==4.8.1.78 \
-    pdf2image==1.16.3 \
-    # Document parsing
-    docling==2.0.0 \
-    pypdf==3.17.0 \
-    python-docx==1.1.0 \
-    python-pptx==0.6.23 \
-    # Vector database client
-    chromadb==0.4.18 \
-    # Utilities
-    numpy==1.24.3 \
-    pydantic==2.5.0 \
-    python-dotenv==1.0.0 \
-    tqdm==4.66.1 \
-    # Logging
-    structlog==23.2.0
+    # PyTorch with MPS support (M1) - separate install for better compatibility
+    torch \
+    torchvision
+
+# Transformers and ML libraries
+RUN pip install --no-cache-dir \
+    transformers \
+    sentence-transformers \
+    Pillow \
+    opencv-python-headless \
+    pdf2image
+
+# Document parsing libraries
+RUN pip install --no-cache-dir \
+    pypdf \
+    python-docx \
+    python-pptx
+
+# Vector database and utilities
+RUN pip install --no-cache-dir \
+    chromadb \
+    numpy \
+    pydantic \
+    python-dotenv \
+    tqdm \
+    structlog
 
 # Install ColPali from GitHub (not on PyPI)
-RUN pip install --no-cache-dir \
-    git+https://github.com/illuin-tech/colpali.git
+# Skip for now - will install manually in Wave 2 component implementation
+# RUN pip install --no-cache-dir git+https://github.com/illuin-tech/colpali.git
 
 # ============================================================================
 # Copy Application Source Code

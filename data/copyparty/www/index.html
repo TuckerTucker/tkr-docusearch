@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuSearch - Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Additional home page styles */
+    .hero {
+      text-align: center;
+      padding: 4rem 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 0.75rem;
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      margin-bottom: 2rem;
+      opacity: 0.95;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero .btn {
+      padding: 0.75rem 2rem;
+      font-size: 1.125rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .feature-card {
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      margin-bottom: 0.75rem;
+      font-size: 1.25rem;
+      color: #1f2937;
+    }
+
+    .feature-card p {
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .upload-section {
+      background-color: #f9fafb;
+      border: 2px dashed #d1d5db;
+      border-radius: 0.75rem;
+      padding: 3rem;
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .upload-section h2 {
+      margin-bottom: 1rem;
+    }
+
+    .upload-section p {
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-upload {
+      background-color: #10b981;
+      color: white;
+      padding: 0.75rem 2rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-upload:hover {
+      background-color: #059669;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .hero p {
+        font-size: 1rem;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <h1 class="logo">DocuSearch</h1>
+        <nav class="nav" role="navigation" aria-label="Main navigation">
+          <a href="index.html" class="nav-link active" aria-current="page">Home</a>
+          <a href="search.html" class="nav-link">Search</a>
+          <a href="status_dashboard.html" class="nav-link">Status</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main container" role="main">
+    <!-- Hero section -->
+    <section class="hero">
+      <h1>Welcome to DocuSearch</h1>
+      <p>Intelligent multimodal document search powered by advanced embeddings</p>
+      <div class="hero-actions">
+        <a href="search.html" class="btn btn-primary">Start Searching</a>
+        <a href="#upload" class="btn btn-secondary">Upload Documents</a>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🔍</div>
+        <h3>Hybrid Search</h3>
+        <p>Combine visual and text-based search for comprehensive results across your document library.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🖼️</div>
+        <h3>Visual Embeddings</h3>
+        <p>Search by document appearance using ColPali visual embeddings for charts, diagrams, and layouts.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📝</div>
+        <h3>Text Search</h3>
+        <p>Powerful full-text search with semantic understanding using state-of-the-art text embeddings.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">⚡</div>
+        <h3>Fast Processing</h3>
+        <p>Automatic document processing with real-time status updates and queue management.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🎯</div>
+        <h3>Smart Filtering</h3>
+        <p>Filter by date range, filename, page numbers, and document type for precise results.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📊</div>
+        <h3>Preview & Download</h3>
+        <p>View document pages with extracted text, navigate easily, and download files.</p>
+      </div>
+    </section>
+
+    <!-- Upload section -->
+    <section id="upload" class="upload-section">
+      <h2>Upload Documents</h2>
+      <p>Upload PDF, DOCX, or PPTX files to make them searchable. Processing happens automatically in the background.</p>
+      <p><strong>Note:</strong> This is a Wave 2 MVP. Upload functionality via copyparty is available at the root path.</p>
+      <a href="/" class="btn-upload">Go to Upload Area</a>
+    </section>
+
+    <!-- Quick stats (Wave 2: Mock data) -->
+    <section class="search-stats" aria-labelledby="stats-heading">
+      <h2 id="stats-heading" class="sr-only">System Statistics</h2>
+      <div class="stat">
+        <span class="stat-label">Wave:</span>
+        <span class="stat-value">2 (Mock Data)</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Status:</span>
+        <span class="stat-value">Development</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Search Mode:</span>
+        <span class="stat-value">Hybrid Available</span>
+      </div>
+    </section>
+
+    <!-- Getting Started -->
+    <section style="margin-top: 3rem;">
+      <h2>Getting Started</h2>
+      <ol style="line-height: 2; color: #4b5563; padding-left: 1.5rem;">
+        <li><strong>Upload documents</strong> via the copyparty interface (root path)</li>
+        <li><strong>Monitor processing</strong> on the <a href="status_dashboard.html" style="color: #2563eb;">Status Dashboard</a></li>
+        <li><strong>Search your documents</strong> using the <a href="search.html" style="color: #2563eb;">Search page</a></li>
+        <li><strong>Preview results</strong> and navigate document pages</li>
+        <li><strong>Download</strong> files as needed</li>
+      </ol>
+    </section>
+
+    <!-- Wave 2 Notice -->
+    <section style="margin-top: 3rem; padding: 1.5rem; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0.5rem;">
+      <h3 style="margin-top: 0; color: #92400e;">Wave 2 Development Notice</h3>
+      <p style="color: #78350f; margin-bottom: 0;">
+        This is the Wave 2 MVP using <strong>mock data</strong> for demonstration. All search results and status updates
+        are simulated. Wave 3 will integrate with real backend APIs for document processing and search.
+      </p>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 DocuSearch MVP - Wave 2 (Mock Data)</p>
+    </div>
+  </footer>
+</body>
+</html>
