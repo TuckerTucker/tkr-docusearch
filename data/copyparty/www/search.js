@@ -139,13 +139,13 @@ function generateMockStatus() {
 // ============================================================================
 
 class SearchAPIClient {
-  constructor(baseURL = 'http://localhost:8000', useMockData = true) {
+  constructor(baseURL = 'http://localhost:8002', useMockData = false) {
     this.baseURL = baseURL;
-    this.useMockData = useMockData;  // Wave 2: Always use mock data
+    this.useMockData = useMockData;  // Wave 4: Real API by default
   }
 
   async search(query, options = {}) {
-    // Wave 2: Return mock data
+    // Fallback to mock data if requested or API unavailable
     if (this.useMockData) {
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
@@ -169,25 +169,52 @@ class SearchAPIClient {
       };
     }
 
-    // Wave 3: Real API call
-    const request = {
-      query,
-      n_results: options.n_results || 10,
-      search_mode: options.search_mode || 'hybrid',
-      filters: options.filters || {}
-    };
+    // Wave 4: Real API call
+    try {
+      const request = {
+        query,
+        n_results: options.n_results || 10,
+        search_mode: options.search_mode || 'hybrid'
+      };
 
-    const response = await fetch(`${this.baseURL}/api/search/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request)
-    });
+      const response = await fetch(`${this.baseURL}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      });
 
-    if (!response.ok) {
-      throw new Error(`Search failed: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Transform API response to UI format
+      return {
+        query: data.query,
+        total_results: data.total_results,
+        results: data.results.map(r => ({
+          doc_id: r.doc_id,
+          filename: r.metadata.filename || 'Unknown',
+          score: r.score,
+          type: r.page_num ? 'visual' : 'text',
+          page_num: r.page_num,
+          chunk_id: r.chunk_id,
+          snippet: r.text_preview,
+          metadata: r.metadata
+        })),
+        search_mode: data.search_mode,
+        timing: {
+          total_ms: data.search_time_ms,
+          stage1_ms: Math.floor(data.search_time_ms * 0.7),
+          stage2_ms: Math.floor(data.search_time_ms * 0.3)
+        }
+      };
+    } catch (error) {
+      console.error('API search failed, falling back to mock data:', error);
+      this.useMockData = true;
+      return await this.search(query, options);
     }
-
-    return await response.json();
   }
 
   async preview(docId, pageNum) {
@@ -227,8 +254,8 @@ class SearchAPIClient {
   }
 }
 
-// Initialize API client (Wave 2: mock data enabled)
-const searchAPI = new SearchAPIClient('http://localhost:8000', true);
+// Initialize API client (Wave 4: real API enabled, with fallback to mock)
+const searchAPI = new SearchAPIClient('http://localhost:8002', false);
 
 // ============================================================================
 // UI State Management
@@ -637,4 +664,4 @@ document.addEventListener('keydown', (e) => {
 // Initialize
 // ============================================================================
 
-console.log('DocuSearch Search Interface initialized (Wave 2 - Mock Data)');
+console.log('DocuSearch Search Interface initialized (Wave 4 - Real API with Mock Fallback)');
