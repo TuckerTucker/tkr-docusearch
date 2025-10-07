@@ -79,13 +79,15 @@ Upload files at: **http://localhost:8000**
 
 ## Service URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Upload UI** | http://localhost:8000 | Upload documents |
-| **ChromaDB** | http://localhost:8001 | Vector database |
-| **Worker API** | http://localhost:8002 | Document processing |
-| **Worker Status** | http://localhost:8002/status | Processing stats |
-| **Health Check** | http://localhost:8002/health | Worker health |
+| Service | URL | Purpose | Credentials |
+|---------|-----|---------|-------------|
+| **Upload UI** | http://localhost:8000 | Upload documents | admin / admin |
+| **ChromaDB** | http://localhost:8001 | Vector database | None |
+| **Worker API** | http://localhost:8002 | Document processing | None |
+| **Worker Status** | http://localhost:8002/status | Processing stats | None |
+| **Health Check** | http://localhost:8002/health | Worker health | None |
+
+**Note**: The upload UI requires authentication. Use username `admin` and password `admin` to log in.
 
 ## Architecture Modes
 
@@ -141,31 +143,37 @@ Upload files at: **http://localhost:8000**
 ### 1. Upload Documents
 
 **Via Web UI:**
-- Open http://localhost:8000
-- Drag & drop PDF/DOCX/PPTX files
-- Files automatically trigger processing
+1. Open http://localhost:8000
+2. Log in with username: `admin`, password: `admin`
+3. Drag & drop PDF/DOCX/PPTX files
+4. Files automatically trigger processing via webhook
 
 **Via CLI:**
 ```bash
-# Upload file
-curl -F "f=@document.pdf" http://localhost:8000/u/
+# Upload file (authentication required)
+curl -u admin:admin -F "f=@document.pdf" http://localhost:8000/
 
-# Upload to folder
-curl -F "f=@document.pdf" http://localhost:8000/u/my-folder/
+# Note: Webhook is automatically triggered on successful upload
 ```
 
 ### 2. Processing Pipeline
 
-1. **Copyparty** receives file
-2. **Webhook** triggers worker (HTTP POST)
-3. **Worker** processes:
+1. **Copyparty** receives file upload
+2. **Webhook** (`/hooks/on_upload.py`) triggers automatically:
+   - Translates container path → host path
+   - POSTs to worker at http://host.docker.internal:8002/process
+3. **Worker** processes document:
    - Parse document (Docling)
    - Extract pages as images
-   - Generate visual embeddings (ColPali)
+   - Generate visual embeddings (ColPali + Metal GPU)
    - Extract text chunks
    - Generate text embeddings
    - Store in ChromaDB
-4. **Status** updates via API
+4. **Status** available via http://localhost:8002/status
+
+**Note**: GPU mode uses container-to-host path translation:
+- Container sees: `/uploads/file.pdf`
+- Worker receives: `/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/file.pdf`
 
 ### 3. Search Documents
 
