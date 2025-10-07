@@ -89,7 +89,8 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     pypdf \
     python-docx \
-    python-pptx
+    python-pptx \
+    PyMuPDF
 
 # Vector database and utilities
 RUN pip install --no-cache-dir \
