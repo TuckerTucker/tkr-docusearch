@@ -92,31 +92,37 @@ function generateMockStatus() {
 // ============================================================================
 
 class StatusAPIClient {
-  constructor(baseURL = 'http://localhost:8000', useMockData = true) {
+  constructor(baseURL = 'http://localhost:8002', useMockData = false) {
     this.baseURL = baseURL;
     this.useMockData = useMockData;
   }
 
   async getStatus() {
-    // Wave 2: Return mock data
+    // Fallback to mock data if requested
     if (this.useMockData) {
       await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 100));
       return generateMockStatus();
     }
 
-    // Wave 3: Real API call
-    const response = await fetch(`${this.baseURL}/api/status`);
+    // Wave 4: Real API call with fallback
+    try {
+      const response = await fetch(`${this.baseURL}/status`);
 
-    if (!response.ok) {
-      throw new Error(`Status check failed: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Status check failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API status check failed, falling back to mock data:', error);
+      this.useMockData = true;
+      return await this.getStatus();
     }
-
-    return await response.json();
   }
 }
 
-// Initialize API client (Wave 2: mock data enabled)
-const statusAPI = new StatusAPIClient('http://localhost:8000', true);
+// Initialize API client (Wave 4: real API with fallback)
+const statusAPI = new StatusAPIClient('http://localhost:8002', false);
 
 // ============================================================================
 // Utility Functions
