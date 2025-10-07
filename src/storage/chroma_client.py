@@ -15,7 +15,8 @@ import chromadb
 from chromadb.config import Settings
 from chromadb.api.models.Collection import Collection
 
-from .compression import compress_embeddings, decompress_embeddings
+from .compression import compress_embeddings, decompress_embeddings, compress_structure_metadata
+from .metadata_schema import DocumentStructure, ChunkContext
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -398,6 +399,74 @@ class ChromaClient:
             error_msg = f"Failed to store text embedding {embedding_id}: {str(e)}"
             logger.error(error_msg)
             raise StorageError(error_msg) from e
+
+    def _prepare_enhanced_visual_metadata(
+        self,
+        base_metadata: Dict[str, Any],
+        structure: Optional[DocumentStructure] = None
+    ) -> Dict[str, Any]:
+        """Prepare visual embedding metadata with optional structure.
+
+        Args:
+            base_metadata: Base metadata (filename, source_path, etc.)
+            structure: Optional document structure metadata
+
+        Returns:
+            Enhanced metadata dictionary ready for storage
+        """
+        metadata = base_metadata.copy()
+
+        # Add structure metadata if provided (compressed)
+        if structure:
+            compressed_structure = compress_structure_metadata(structure.to_dict())
+            metadata["structure"] = compressed_structure
+            metadata["has_structure"] = True
+
+            # Add summary statistics for quick filtering
+            metadata["num_headings"] = len(structure.headings)
+            metadata["num_tables"] = len(structure.tables)
+            metadata["num_pictures"] = len(structure.pictures)
+            metadata["max_heading_depth"] = structure.max_heading_depth
+        else:
+            metadata["has_structure"] = False
+
+        return metadata
+
+    def _prepare_enhanced_text_metadata(
+        self,
+        base_metadata: Dict[str, Any],
+        chunk_context: Optional[ChunkContext] = None
+    ) -> Dict[str, Any]:
+        """Prepare text embedding metadata with optional chunk context.
+
+        Args:
+            base_metadata: Base metadata (filename, page, source_path, etc.)
+            chunk_context: Optional chunk context metadata
+
+        Returns:
+            Enhanced metadata dictionary ready for storage
+        """
+        metadata = base_metadata.copy()
+
+        # Add chunk context if provided
+        if chunk_context:
+            context_dict = chunk_context.to_dict()
+
+            # Store context inline (not compressed - it's small)
+            metadata["chunk_context"] = context_dict
+            metadata["has_context"] = True
+
+            # Add key fields for filtering
+            if chunk_context.parent_heading:
+                metadata["parent_heading"] = chunk_context.parent_heading
+            if chunk_context.section_path:
+                metadata["section_path"] = chunk_context.section_path
+            metadata["element_type"] = chunk_context.element_type
+            metadata["is_page_boundary"] = chunk_context.is_page_boundary
+        else:
+            metadata["has_context"] = False
+
+        return metadata
 
     def search_visual(
         self,

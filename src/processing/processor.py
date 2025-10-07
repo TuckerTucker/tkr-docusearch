@@ -18,6 +18,8 @@ from datetime import datetime
 from .docling_parser import DoclingParser, ParsingError
 from .visual_processor import VisualProcessor
 from .text_processor import TextProcessor
+from src.config.processing_config import EnhancedModeConfig
+from src.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +88,8 @@ class DocumentProcessor:
         storage_client,
         parser_config: Optional[Dict[str, Any]] = None,
         visual_batch_size: int = 4,
-        text_batch_size: int = 8
+        text_batch_size: int = 8,
+        enhanced_mode_config: Optional[EnhancedModeConfig] = None
     ):
         """Initialize document processor.
 
@@ -96,9 +99,11 @@ class DocumentProcessor:
             parser_config: Optional parser configuration
             visual_batch_size: Batch size for visual processing
             text_batch_size: Batch size for text processing
+            enhanced_mode_config: Optional enhanced mode configuration
         """
         self.embedding_engine = embedding_engine
         self.storage_client = storage_client
+        self.enhanced_mode_config = enhanced_mode_config
 
         # Initialize pipeline components
         parser_config = parser_config or {}
@@ -114,9 +119,10 @@ class DocumentProcessor:
             batch_size=text_batch_size
         )
 
+        mode = "enhanced" if enhanced_mode_config else "legacy"
         logger.info(
-            "Initialized DocumentProcessor "
-            f"(visual_batch={visual_batch_size}, text_batch={text_batch_size})"
+            f"Initialized DocumentProcessor ({mode} mode, "
+            f"visual_batch={visual_batch_size}, text_batch={text_batch_size})"
         )
 
     def process_document(
@@ -164,7 +170,8 @@ class DocumentProcessor:
             parsed_doc = self.parser.parse_document(
                 file_path=file_path,
                 chunk_size_words=chunk_size_words,
-                chunk_overlap_words=chunk_overlap_words
+                chunk_overlap_words=chunk_overlap_words,
+                config=self.enhanced_mode_config
             )
 
             doc_id = parsed_doc.doc_id
@@ -245,6 +252,7 @@ class DocumentProcessor:
             confirmation = self._store_embeddings(
                 visual_results=visual_results,
                 text_results=text_results,
+                text_chunks=parsed_doc.text_chunks,
                 doc_metadata=parsed_doc.metadata,
                 filename=filename,
                 file_path=file_path
@@ -319,15 +327,17 @@ class DocumentProcessor:
         self,
         visual_results,
         text_results,
+        text_chunks,
         doc_metadata: Dict[str, Any],
         filename: str,
         file_path: str
     ) -> StorageConfirmation:
-        """Store embeddings in ChromaDB.
+        """Store embeddings in ChromaDB with enhanced metadata.
 
         Args:
             visual_results: List of VisualEmbeddingResult
             text_results: List of TextEmbeddingResult
+            text_chunks: List of TextChunk (with context)
             doc_metadata: Document metadata
             filename: Original filename
             file_path: Source file path
@@ -343,14 +353,28 @@ class DocumentProcessor:
             text_ids = []
             total_size_bytes = 0
 
+            # Extract structure from metadata if available (enhanced mode)
+            structure = None
+            if "structure" in doc_metadata and self.enhanced_mode_config:
+                # Structure metadata is already in doc_metadata from parser
+                logger.debug("Enhanced mode: Document structure available")
+
             # Store visual embeddings
             for result in visual_results:
-                metadata = {
+                base_metadata = {
                     "filename": filename,
                     "page": result.page_num,
                     "source_path": file_path,
                     **doc_metadata
                 }
+
+                # Prepare enhanced metadata if available
+                if hasattr(self.storage_client, '_prepare_enhanced_visual_metadata') and structure:
+                    metadata = self.storage_client._prepare_enhanced_visual_metadata(
+                        base_metadata, structure
+                    )
+                else:
+                    metadata = base_metadata
 
                 embedding_id = self.storage_client.add_visual_embedding(
                     doc_id=result.doc_id,
@@ -365,9 +389,12 @@ class DocumentProcessor:
 
             logger.debug(f"Stored {len(visual_ids)} visual embeddings")
 
+            # Create chunk lookup by chunk_id for context
+            chunk_lookup = {chunk.chunk_id: chunk for chunk in text_chunks}
+
             # Store text embeddings
             for result in text_results:
-                metadata = {
+                base_metadata = {
                     "filename": filename,
                     "chunk_id": result.chunk_id,
                     "page": result.page_num,
@@ -376,6 +403,20 @@ class DocumentProcessor:
                     "source_path": file_path,
                     **doc_metadata
                 }
+
+                # Get chunk context if available
+                chunk_context = None
+                chunk = chunk_lookup.get(result.chunk_id)
+                if chunk and chunk.context:
+                    chunk_context = chunk.context
+
+                # Prepare enhanced metadata if available
+                if hasattr(self.storage_client, '_prepare_enhanced_text_metadata') and chunk_context:
+                    metadata = self.storage_client._prepare_enhanced_text_metadata(
+                        base_metadata, chunk_context
+                    )
+                else:
+                    metadata = base_metadata
 
                 embedding_id = self.storage_client.add_text_embedding(
                     doc_id=result.doc_id,

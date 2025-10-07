@@ -7,8 +7,9 @@ multi-vector embeddings in ChromaDB metadata fields (max 2MB per entry).
 
 import gzip
 import base64
+import json
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 
 def compress_embeddings(embeddings: np.ndarray) -> str:
@@ -112,3 +113,65 @@ def compression_ratio(embeddings: np.ndarray) -> float:
         return 0.0
 
     return original_size / compressed_size
+
+
+def compress_structure_metadata(metadata_dict: Dict[str, Any]) -> str:
+    """Compress structure metadata using gzip + base64 encoding.
+
+    For storing DocumentStructure and ChunkContext in ChromaDB metadata.
+    Target: <50KB compressed per document.
+
+    Args:
+        metadata_dict: Dictionary representation of metadata (from .to_dict())
+
+    Returns:
+        Base64-encoded compressed JSON string
+
+    Example:
+        >>> from src.storage.metadata_schema import DocumentStructure
+        >>> structure = DocumentStructure()
+        >>> compressed = compress_structure_metadata(structure.to_dict())
+        >>> isinstance(compressed, str)
+        True
+    """
+    # Convert dict to JSON string
+    json_str = json.dumps(metadata_dict, separators=(',', ':'))  # Compact JSON
+    json_bytes = json_str.encode('utf-8')
+
+    # Compress with gzip
+    compressed_bytes = gzip.compress(json_bytes, compresslevel=6)
+
+    # Encode as base64
+    encoded = base64.b64encode(compressed_bytes).decode('utf-8')
+
+    return encoded
+
+
+def decompress_structure_metadata(compressed_str: str) -> Dict[str, Any]:
+    """Decompress structure metadata from base64 + gzip format.
+
+    Args:
+        compressed_str: Base64-encoded compressed JSON string
+
+    Returns:
+        Dictionary representation of metadata
+
+    Example:
+        >>> from src.storage.metadata_schema import DocumentStructure
+        >>> structure = DocumentStructure()
+        >>> compressed = compress_structure_metadata(structure.to_dict())
+        >>> decompressed = decompress_structure_metadata(compressed)
+        >>> isinstance(decompressed, dict)
+        True
+    """
+    # Decode from base64
+    compressed_bytes = base64.b64decode(compressed_str.encode('utf-8'))
+
+    # Decompress with gzip
+    json_bytes = gzip.decompress(compressed_bytes)
+
+    # Parse JSON
+    json_str = json_bytes.decode('utf-8')
+    metadata_dict = json.loads(json_str)
+
+    return metadata_dict
