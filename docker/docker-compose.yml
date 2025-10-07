@@ -49,12 +49,14 @@ services:
     networks:
       - docusearch
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+    # Healthcheck disabled - ChromaDB image doesn't include curl/wget
+    # Service availability can be verified externally
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 30s
 
   # ============================================================================
   # Processing Worker - Document Processing and Embedding
@@ -79,7 +81,7 @@ services:
       - ../src:/app/src
     environment:
       # Model configuration
-      - MODEL_NAME=${MODEL_NAME:-vidore/colqwen2-v0.1}
+      - MODEL_NAME=${MODEL_NAME:-vidore/colpali-v1.2}
       - MODEL_PRECISION=${MODEL_PRECISION:-fp16}
       - DEVICE=${DEVICE:-mps}
       - BATCH_SIZE_VISUAL=${BATCH_SIZE_VISUAL:-4}
@@ -103,8 +105,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     depends_on:
-      chromadb:
-        condition: service_healthy
+      - chromadb
     networks:
       - docusearch
     restart: unless-stopped
