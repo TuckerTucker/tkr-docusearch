@@ -1,0 +1,38 @@
+version: '3.8'
+
+# ============================================================================
+# Docker Compose Override for Native Worker
+# ============================================================================
+# Use this when running the processing worker natively on macOS for Metal/MPS.
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml up -d
+#
+# This configuration:
+# - Disables the containerized processing-worker
+# - Keeps ChromaDB and Copyparty running in Docker
+# - Expects worker to run natively on host at http://host.docker.internal:8002
+# ============================================================================
+
+services:
+  # Disable the containerized worker
+  processing-worker:
+    profiles:
+      - disabled
+
+  # Update Copyparty to connect to native worker
+  copyparty:
+    environment:
+      # Point to native worker on host
+      - WORKER_HOST=host.docker.internal  # macOS Docker Desktop hostname
+      - WORKER_PORT=8002
+    extra_hosts:
+      # Allow container to reach host
+      - "host.docker.internal:host-gateway"
+
+  # ChromaDB remains the same but needs to be accessible from host
+  chromadb:
+    # Expose to host network for native worker
+    network_mode: bridge
+    ports:
+      - "8001:8000"  # Keep same port mapping
