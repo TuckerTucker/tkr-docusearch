@@ -8,73 +8,18 @@ with full Docling integration in future waves.
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
-from dataclasses import dataclass
-from PIL import Image
+from typing import List, Dict, Any, Optional
 import uuid
 
+from src.config.processing_config import EnhancedModeConfig, create_pipeline_options
+from src.storage.metadata_schema import ChunkContext, DocumentStructure
+from src.processing.structure_extractor import extract_document_structure
+from src.processing.smart_chunker import create_chunker, SmartChunker
+
+# Import shared types (re-exported for backward compatibility)
+from src.processing.types import Page, TextChunk, ParsedDocument
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Page:
-    """Represents a parsed document page.
-
-    Attributes:
-        page_num: Page number (1-indexed)
-        image: Rendered page image
-        width: Image width in pixels
-        height: Image height in pixels
-        text: Extracted page text
-    """
-
-    page_num: int
-    image: Image.Image
-    width: int
-    height: int
-    text: str
-
-
-@dataclass
-class TextChunk:
-    """Represents a text chunk from a document.
-
-    Attributes:
-        chunk_id: Unique chunk identifier
-        page_num: Source page number
-        text: Chunk text content
-        start_offset: Character offset in page
-        end_offset: Character offset in page
-        word_count: Approximate word count
-    """
-
-    chunk_id: str
-    page_num: int
-    text: str
-    start_offset: int
-    end_offset: int
-    word_count: int
-
-
-@dataclass
-class ParsedDocument:
-    """Represents a fully parsed document.
-
-    Attributes:
-        filename: Original filename
-        doc_id: Unique identifier
-        num_pages: Total page count
-        pages: List of Page objects
-        text_chunks: List of TextChunk objects
-        metadata: Document-level metadata
-    """
-
-    filename: str
-    doc_id: str
-    num_pages: int
-    pages: List[Page]
-    text_chunks: List[TextChunk]
-    metadata: Dict[str, Any]
 
 
 class ParsingError(Exception):
@@ -238,14 +183,16 @@ class DoclingParser:
         self,
         file_path: str,
         chunk_size_words: int = 250,
-        chunk_overlap_words: int = 50
+        chunk_overlap_words: int = 50,
+        config: Optional[EnhancedModeConfig] = None
     ) -> ParsedDocument:
         """Parse document and extract pages and text.
 
         Args:
             file_path: Path to document file
-            chunk_size_words: Average words per chunk
-            chunk_overlap_words: Word overlap between chunks
+            chunk_size_words: Average words per chunk (legacy mode)
+            chunk_overlap_words: Word overlap between chunks (legacy mode)
+            config: Enhanced mode configuration (overrides legacy params)
 
         Returns:
             ParsedDocument with pages and chunks
@@ -266,15 +213,32 @@ class DoclingParser:
 
         try:
             # Parse with Docling (supports PDF, DOCX, PPTX)
-            pages, metadata = self._parse_with_docling(file_path)
+            pages, metadata, doc = self._parse_with_docling(file_path, config)
 
-            # Generate text chunks
-            text_chunks = self._chunk_text(
-                pages,
-                doc_id,
-                chunk_size_words,
-                chunk_overlap_words
-            )
+            # Generate text chunks based on mode
+            if config:
+                # Enhanced mode with structure extraction
+                text_chunks, structure = self._chunk_document_enhanced(
+                    doc, pages, doc_id, config
+                )
+                # Add structure metadata to document metadata
+                metadata["structure"] = {
+                    "headings": len(structure.headings),
+                    "tables": len(structure.tables),
+                    "pictures": len(structure.pictures),
+                    "code_blocks": len(structure.code_blocks),
+                    "formulas": len(structure.formulas),
+                    "max_heading_depth": structure.max_heading_depth,
+                    "has_toc": structure.has_table_of_contents
+                }
+            else:
+                # Legacy mode with word-based chunking
+                text_chunks = self._chunk_text(
+                    pages,
+                    doc_id,
+                    chunk_size_words,
+                    chunk_overlap_words
+                )
 
             parsed_doc = ParsedDocument(
                 filename=filename,
@@ -296,14 +260,19 @@ class DoclingParser:
             logger.error(f"Failed to parse {filename}: {e}")
             raise ParsingError(f"Parsing failed: {e}") from e
 
-    def _parse_with_docling(self, file_path: str) -> tuple:
+    def _parse_with_docling(
+        self,
+        file_path: str,
+        config: Optional[EnhancedModeConfig] = None
+    ) -> tuple:
         """Parse document using Docling.
 
         Args:
             file_path: Path to document file (PDF, DOCX, or PPTX)
+            config: Enhanced mode configuration (optional)
 
         Returns:
-            Tuple of (pages, metadata)
+            Tuple of (pages, metadata, docling_document)
 
         Raises:
             ParsingError: If Docling parsing fails
@@ -313,10 +282,15 @@ class DoclingParser:
             from docling.datamodel.base_models import InputFormat
             from docling.datamodel.pipeline_options import PdfPipelineOptions
 
-            # Configure PDF rendering with images
-            pipeline_options = PdfPipelineOptions()
-            pipeline_options.generate_page_images = True
-            pipeline_options.generate_picture_images = True
+            # Create pipeline options based on config
+            if config:
+                pipeline_options = create_pipeline_options(config)
+                logger.debug(f"Using enhanced mode pipeline options")
+            else:
+                # Default pipeline options (legacy mode)
+                pipeline_options = PdfPipelineOptions()
+                pipeline_options.generate_page_images = True
+                pipeline_options.generate_picture_images = True
 
             converter = DocumentConverter(
                 format_options={
@@ -349,7 +323,7 @@ class DoclingParser:
                     metadata["mimetype"] = origin.mimetype
 
             logger.info(f"Docling conversion complete: {len(pages)} pages")
-            return pages, metadata
+            return pages, metadata, doc
 
         except ImportError as e:
             logger.error(f"Docling not installed: {e}")
@@ -421,3 +395,43 @@ class DoclingParser:
 
         logger.debug(f"Created {len(chunks)} chunks from {len(pages)} pages")
         return chunks
+
+    def _chunk_document_enhanced(
+        self,
+        doc,
+        pages: List[Page],
+        doc_id: str,
+        config: EnhancedModeConfig
+    ) -> tuple:
+        """Chunk document using enhanced mode with structure extraction.
+
+        Args:
+            doc: DoclingDocument from parsing
+            pages: List of Page objects
+            doc_id: Document identifier
+            config: Enhanced mode configuration
+
+        Returns:
+            Tuple of (text_chunks, document_structure)
+        """
+        # Extract document structure
+        structure = extract_document_structure(doc, config)
+        logger.info(
+            f"Extracted structure: {len(structure.headings)} headings, "
+            f"{len(structure.tables)} tables, {len(structure.pictures)} pictures"
+        )
+
+        # Create appropriate chunker
+        chunker = create_chunker(config)
+
+        # Chunk based on strategy
+        if isinstance(chunker, SmartChunker):
+            # Use HybridChunker with structure awareness
+            text_chunks = chunker.chunk_document(doc, doc_id, structure)
+            logger.info(f"Created {len(text_chunks)} smart chunks with context")
+        else:
+            # Fall back to legacy chunking
+            text_chunks = chunker.chunk_pages(pages, doc_id)
+            logger.info(f"Created {len(text_chunks)} legacy chunks")
+
+        return text_chunks, structure
