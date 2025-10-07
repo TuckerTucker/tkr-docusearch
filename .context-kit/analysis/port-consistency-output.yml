@@ -1,202 +1,309 @@
 port_consistency_analysis:
-  timestamp: "2025-10-06T00:00:00Z"
+  timestamp: "2025-10-07T00:00:00Z"
   status: "completed"
-  compliance_status: "COMPLIANT"
+  project: "tkr-docusearch"
+
+  compliance_status: "FULLY_COMPLIANT"
 
   current_allocation:
-    total_ports: 5
-    compliant: 5
+    total_ports: 3
+    compliant: 3
     non_compliant: 0
     conflicts: 0
 
   port_scheme:
-    name: "42xxx Port Allocation"
-    range: "42000-42999"
-    documentation: ".context-kit/_ref/context-kit/port-architecture-doc.md"
-    rationale: "Avoids well-known ports (0-1023), registered ports conflicts, and ephemeral ports (49152-65535)"
+    name: "Standard Port Allocation (8xxx range)"
+    range: "8000-8002"
+    rationale: "DocuSearch uses standard development ports for simplicity and compatibility with common service defaults (ChromaDB default is 8000)"
+    note: "This is SEPARATE from the .context-kit infrastructure which uses 42xxx ports"
 
   port_inventory:
     allocated:
-      - port: 42001
-        service: "dashboard"
-        type: "React UI (Vite Development Server)"
+      - port: 8000
+        service: "copyparty"
+        type: "File Upload Server + Web UI"
         status: "compliant"
         protocol: "HTTP"
+        container: "docusearch-copyparty"
         location:
-          - ".context-kit/_context-kit.yml (lines 112, 433, 537, 546, 569)"
-          - ".context-kit/_ref/context-kit/port-architecture-doc.md (line 26)"
-          - ".context-kit/scripts/check-ports.sh (line 20)"
-          - ".context-kit/dashboard/src/App.tsx (hardcoded in demo data line 1880)"
+          docker:
+            - "docker/docker-compose.yml (lines 11, 17)"
+            - "docker/docker-compose.native-worker.yml (not exposed, only internal)"
+            - "docker/Dockerfile.copyparty"
+            - "docker/.env (line 23: COPYPARTY_PORT=8000)"
+            - "docker/.env.template (line 23: COPYPARTY_PORT=8000)"
+          scripts:
+            - "scripts/start-all.sh (lines 82, 89, 116, 124, 187)"
+            - "scripts/status.sh (lines 54, 95-97, 148, 199)"
+            - "scripts/run-worker-native.sh (no direct reference)"
+          hooks:
+            - "docker/data/copyparty/hooks/on_upload.py (no direct reference, uses WORKER_PORT)"
+            - "hooks/on_upload.py (no direct reference)"
+            - "hooks/on_delete.py (no direct reference)"
+          documentation:
+            - "docs/QUICK_START.md (lines 16, 84)"
+            - "docs/SCRIPTS.md (references service URLs)"
+            - "docs/NATIVE_WORKER_SETUP.md (references upload UI)"
+            - "docs/GETTING_STARTED.md"
+            - "docs/DEPLOYMENT.md"
+            - "README.md"
+          ui_source:
+            - "src/ui/status_dashboard.js (hardcoded references)"
+            - "src/ui/search.js (hardcoded references)"
+        environment_vars:
+          - "COPYPARTY_PORT (default: 8000)"
+          - "CPP_PORT (internal: 8000)"
         usage: "active"
-        notes: "Primary dashboard development server using Vite"
+        description: "Primary file upload interface with Copyparty web UI. Handles document uploads and triggers webhooks to worker."
 
-      - port: 42003
-        service: "knowledge_graph_api"
-        type: "Node.js HTTP API + SQLite Backend"
+      - port: 8001
+        service: "chromadb"
+        type: "Vector Database (ChromaDB HTTP API)"
         status: "compliant"
         protocol: "HTTP"
+        container: "docusearch-chromadb"
         location:
-          - ".context-kit/_context-kit.yml (lines 121, 440, 538, 547, 570)"
-          - ".context-kit/_ref/context-kit/port-architecture-doc.md (line 28)"
-          - ".context-kit/scripts/check-ports.sh (line 21)"
-          - ".context-kit/knowledge-graph/src/api/http-server.ts (line 32)"
-          - ".context-kit/knowledge-graph/src/api/http-server-simple.ts (line 30)"
+          docker:
+            - "docker/docker-compose.yml (lines 43, 50: external 8001 -> internal 8000)"
+            - "docker/docker-compose.native-worker.yml (line 34: explicit 8001:8000)"
+            - "docker/.env (line 26: CHROMADB_PORT=8001)"
+            - "docker/.env.template (line 26: CHROMADB_PORT=8001)"
+          python_source:
+            - "src/config/storage_config.py (line 26: default '8001')"
+            - "src/storage/chroma_client.py (line 64: default port=8000 for INTERNAL)"
+            - "src/processing/worker_webhook.py (line 49: CHROMA_PORT default '8000' INTERNAL)"
+            - "src/processing/worker.py (line 43: CHROMA_PORT default '8001')"
+            - "src/test_end_to_end.py (line 49: port=8001)"
+            - "src/storage/test_real_chromadb.py (line 38: port=8001)"
+            - "src/storage/test_storage.py (line 72: port=8000)"
+            - "scripts/query-chromadb.py (line 167: default=8001)"
+          scripts:
+            - "scripts/start-all.sh (lines 82, 89, 116-120, 188)"
+            - "scripts/status.sh (lines 59-62, 87-92, 148)"
+            - "scripts/run-worker-native.sh (line 45: CHROMA_PORT default 8001)"
+          documentation:
+            - "docs/QUICK_START.md (line 85)"
+            - "docs/SCRIPTS.md"
+            - "docs/NATIVE_WORKER_SETUP.md"
+            - "src/storage/README.md"
+            - "src/storage/QUICK_REFERENCE.md"
+            - "src/storage/IMPLEMENTATION_SUMMARY.md"
+        environment_vars:
+          - "CHROMADB_PORT (external/host: 8001)"
+          - "CHROMA_PORT (internal/container: 8000)"
+          - "CHROMA_HOST (default: chromadb or localhost)"
+        port_mapping: "8001 (host) -> 8000 (container)"
         usage: "active"
-        notes: "HTTP API server for knowledge graph operations and logging"
+        description: "ChromaDB vector database for storing and searching document embeddings. Exposed on host at 8001, runs internally on 8000."
+        important_note: "Docker container runs on internal port 8000, exposed to host as 8001"
 
-      - port: 42005
-        service: "logging_service"
-        type: "Reserved for Future Use"
+      - port: 8002
+        service: "processing-worker"
+        type: "Document Processing Worker + Webhook API"
         status: "compliant"
         protocol: "HTTP"
+        container: "docusearch-worker (Docker) OR native process (GPU mode)"
         location:
-          - ".context-kit/scripts/check-ports.sh (line 22)"
-        usage: "reserved"
-        notes: "Future dedicated logging service endpoint"
+          docker:
+            - "docker/docker-compose.yml (lines 22: WORKER_PORT=8002 env var only)"
+            - "docker/docker-compose.native-worker.yml (line 26: WORKER_PORT=8002)"
+            - "docker/.env (line 29: WORKER_PORT=8002)"
+            - "docker/.env.template (line 29: WORKER_PORT=8002)"
+          python_source:
+            - "src/api/server.py (line 480: default port=8002)"
+            - "src/processing/worker_webhook.py (line 53: WORKER_PORT default '8002')"
+            - "hooks/on_upload.py (line 25: WORKER_PORT default '8002')"
+            - "hooks/on_delete.py (line 25: WORKER_PORT default '8002')"
+            - "docker/data/copyparty/hooks/on_upload.py (line 25: WORKER_PORT default '8002')"
+          scripts:
+            - "scripts/start-all.sh (lines 82, 131-136, 170-171, 189-190)"
+            - "scripts/status.sh (lines 68-73, 115-143, 204)"
+            - "scripts/run-worker-native.sh (line 172: binds to 0.0.0.0:8002)"
+          documentation:
+            - "docs/QUICK_START.md (lines 86-88)"
+            - "docs/SCRIPTS.md"
+            - "docs/NATIVE_WORKER_SETUP.md"
+            - "src/processing/WAVE2_SUMMARY.md"
+        environment_vars:
+          - "WORKER_PORT (default: 8002)"
+          - "WORKER_HOST (copyparty uses this to find worker)"
+        usage: "active"
+        modes:
+          gpu_native: "Native Python process on macOS with Metal/MPS GPU acceleration"
+          cpu_docker: "Containerized worker using CPU only"
+        description: "Document processing worker with FastAPI server. Receives webhook calls from Copyparty, processes documents, generates embeddings, stores in ChromaDB."
 
-      - port: 42007
-        service: "mcp_tools"
-        type: "Reserved for Future Use"
-        status: "compliant"
-        protocol: "HTTP"
-        location:
-          - ".context-kit/scripts/check-ports.sh (line 23)"
-        usage: "reserved"
-        notes: "Future MCP tools HTTP endpoint (currently MCP uses STDIO, not TCP)"
-
-      - port: 42009
-        service: "auto_logging_monitoring"
-        type: "Reserved for Future Use"
-        status: "compliant"
-        protocol: "HTTP"
-        location:
-          - ".context-kit/scripts/check-ports.sh (line 24)"
-        usage: "reserved"
-        notes: "Future auto-logging monitoring service"
-
-    mcp_services:
-      - service: "context-kit MCP server"
-        protocol: "STDIO"
-        port: "N/A"
-        notes: "MCP servers use STDIO protocol, not TCP ports. Configured in .claude/claude_desktop_config.json"
-        location: ".context-kit/mcp/"
-
-      - service: "context7 MCP server"
-        protocol: "STDIO"
-        port: "N/A"
-        notes: "Third-party library ID resolution via MCP STDIO protocol"
-        external: true
+  port_mapping_summary:
+    host_to_container:
+      "8000": "8000 (copyparty - direct mapping)"
+      "8001": "8000 (chromadb - port translation)"
+      "8002": "8002 (worker - direct mapping, or native process)"
 
   issues_found: []
+
+  potential_confusion_points:
+    - issue: "ChromaDB port mapping inconsistency"
+      description: "ChromaDB container runs on internal port 8000 but is exposed to host as 8001. Python code uses different defaults depending on context."
+      locations:
+        - "src/storage/chroma_client.py uses port=8000 (for container-internal)"
+        - "src/processing/worker_webhook.py uses CHROMA_PORT default '8000' (for container name)"
+        - "src/processing/worker.py uses CHROMA_PORT default '8001' (for localhost)"
+        - "src/config/storage_config.py uses CHROMA_PORT default '8001' (for host access)"
+      resolution: "This is CORRECT behavior - not an issue. Different defaults based on whether code runs inside Docker (port 8000, host 'chromadb') or outside Docker (port 8001, host 'localhost')"
+      status: "clarified"
 
   changes_made: []
 
   validation:
+    manual_inspection: true
     script_run: false
-    script_path: ".context-kit/scripts/check-ports.sh"
-    script_result: "N/A"
+    script_path: "N/A - no port validation script exists for tkr-docusearch project"
     remaining_conflicts: []
-    validation_notes: "Script not executed during analysis. Can be run with: ./.context-kit/scripts/check-ports.sh --verbose"
-
-  third_party_references:
-    total_files: 87
-    location: ".context-kit/_ref/packages/"
-    note: "Third-party package documentation contains port references (Chroma, CopyParty, etc.) but these are not part of this project's configuration"
-    packages:
-      - name: "chroma"
-        ports: ["8000"]
-        purpose: "ChromaDB vector database documentation examples"
-      - name: "copyparty"
-        ports: ["3923", "8080", "9000", "9005", "9091", "9443"]
-        purpose: "File sharing server documentation and examples"
-      - name: "smolagents"
-        ports: []
-        purpose: "AI agent framework - no port configurations"
+    cross_reference_check: "PASS - all port references are consistent"
 
   architecture_compliance:
-    - check: "Port range compliance (42000-42999)"
+    - check: "Port consistency across Docker Compose files"
       status: "PASS"
-      details: "All active ports are within the 42xxx range"
+      details: "docker-compose.yml and docker-compose.native-worker.yml use consistent port definitions"
 
-    - check: "Documentation consistency"
+    - check: "Environment variable usage"
       status: "PASS"
-      details: "Port architecture document exists and is comprehensive"
+      details: ".env and .env.template define all ports correctly with defaults"
 
-    - check: "Configuration file consistency"
+    - check: "Python source code port references"
       status: "PASS"
-      details: "_context-kit.yml matches port-architecture-doc.md and source code"
+      details: "All Python code uses environment variables or correct defaults based on deployment context"
 
-    - check: "Source code hardcoded ports"
+    - check: "Script port consistency"
       status: "PASS"
-      details: "Server implementations correctly use configurable ports with 42xxx defaults"
+      details: "Management scripts (start-all, stop-all, status) reference correct ports"
 
-    - check: "Port conflict detection tooling"
+    - check: "Documentation accuracy"
       status: "PASS"
-      details: "check-ports.sh script exists and validates all allocated ports"
+      details: "All documentation (QUICK_START, SCRIPTS, NATIVE_WORKER_SETUP) shows correct port numbers"
 
-    - check: "MCP protocol understanding"
+    - check: "Port conflicts with system services"
+      status: "INFO"
+      details: "8000-8002 are common development ports, may conflict with other local services"
+      recommendation: "Consider implementing port conflict detection at startup"
+
+    - check: "Separation from .context-kit infrastructure"
       status: "PASS"
-      details: "Correctly identifies MCP servers use STDIO, not TCP ports"
+      details: "DocuSearch ports (8000-8002) are completely separate from .context-kit infrastructure ports (42xxx). No conflicts."
 
-    - check: "Docker/Compose configuration"
-      status: "N/A"
-      details: "No docker-compose files found in project root or .context-kit/"
+  cross_project_port_allocation:
+    docusearch_app:
+      range: "8000-8002"
+      services: ["copyparty", "chromadb", "worker"]
+      purpose: "Main document search application"
 
-    - check: "Environment variable configuration"
-      status: "N/A"
-      details: "No .env files found in project"
+    context_kit_infrastructure:
+      range: "42000-42999"
+      services: ["dashboard:42001", "api:42003", "logging:42002", "etc"]
+      purpose: "Development toolkit and project management infrastructure"
+      note: "Completely separate from DocuSearch - no conflicts"
 
   recommendations:
     - priority: "low"
       category: "documentation"
-      recommendation: "Consider adding port environment variable examples to .env.example file"
-      rationale: "Would help developers understand how to override default ports"
+      recommendation: "Add a PORT_ALLOCATION.md document to root directory"
+      rationale: "Clarify the distinction between DocuSearch ports (8xxx) and .context-kit ports (42xxx)"
 
     - priority: "low"
       category: "tooling"
-      recommendation: "Add port validation to CI/CD pipeline"
-      rationale: "Automated validation prevents port conflicts before deployment"
+      recommendation: "Create a port validation script in scripts/check-ports.sh"
+      rationale: "Similar to .context-kit/scripts/check-ports.sh but for DocuSearch ports"
+      example: |
+        #!/bin/bash
+        # Check if ports 8000, 8001, 8002 are available
+        for port in 8000 8001 8002; do
+          if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null; then
+            echo "ERROR: Port $port is already in use"
+            exit 1
+          fi
+        done
+        echo "All ports available"
+
+    - priority: "info"
+      category: "container-optimization"
+      recommendation: "Consider standardizing ChromaDB port to avoid confusion"
+      rationale: "ChromaDB uses 8000 internally but 8001 externally - consider using 8001 everywhere or documenting the mapping more clearly"
+      note: "Current setup works correctly, this is just for consistency"
 
     - priority: "info"
       category: "future-planning"
-      recommendation: "Document migration path for reserved ports (42005, 42007, 42009)"
-      rationale: "Clear plan for when these reserved ports will be activated"
+      recommendation: "Document port allocation strategy in README.md"
+      rationale: "Help developers understand why 8000-8002 were chosen and how they relate to service architecture"
 
-    - priority: "info"
-      category: "monitoring"
-      recommendation: "Consider service discovery mechanism for dynamic port allocation"
-      rationale: "Mentioned in port-architecture-doc.md future considerations"
+  third_party_references:
+    note: "The .context-kit/_ref/packages/ directory contains third-party documentation with various port references (ChromaDB examples use 8000, etc). These are reference materials only and do not affect the project's port allocation."
+    excluded_from_analysis: true
 
   summary:
-    total_ports_analyzed: 5
-    active_ports: 2
-    reserved_ports: 3
+    total_ports_analyzed: 3
+    active_ports: 3
+    reserved_ports: 0
     compliance_rate: "100%"
     conflicts_detected: 0
     issues_requiring_action: 0
+    clarity_note: "Port allocation is consistent and well-documented across the codebase"
 
   files_analyzed:
-    configuration:
-      - ".context-kit/_context-kit.yml"
-      - ".context-kit/_ref/context-kit/port-architecture-doc.md"
-      - ".context-kit/scripts/check-ports.sh"
+    docker_configuration:
+      - "docker/docker-compose.yml"
+      - "docker/docker-compose.native-worker.yml"
+      - "docker/.env"
+      - "docker/.env.template"
+      - "docker/Dockerfile.copyparty"
 
-    source_code:
-      - ".context-kit/knowledge-graph/src/api/http-server.ts"
-      - ".context-kit/knowledge-graph/src/api/http-server-simple.ts"
-      - ".context-kit/dashboard/src/App.tsx"
+    python_source:
+      - "src/config/storage_config.py"
+      - "src/storage/chroma_client.py"
+      - "src/processing/worker_webhook.py"
+      - "src/processing/worker.py"
+      - "src/api/server.py"
+      - "src/test_end_to_end.py"
+      - "src/storage/test_real_chromadb.py"
+      - "src/storage/test_storage.py"
+      - "src/processing/test_wave3_integration.py"
+
+    hooks:
+      - "hooks/on_upload.py"
+      - "hooks/on_delete.py"
+      - "docker/data/copyparty/hooks/on_upload.py"
 
     scripts:
-      - ".context-kit/scripts/check-ports.sh"
-      - ".context-kit/scripts/utils.sh"
-      - ".context-kit/knowledge-graph/scripts/manage-ports.sh"
+      - "scripts/start-all.sh"
+      - "scripts/stop-all.sh"
+      - "scripts/status.sh"
+      - "scripts/run-worker-native.sh"
+      - "scripts/query-chromadb.py"
 
-    total_project_files: 9
-    third_party_files: 87
+    documentation:
+      - "README.md"
+      - "docs/QUICK_START.md"
+      - "docs/SCRIPTS.md"
+      - "docs/NATIVE_WORKER_SETUP.md"
+      - "docs/GETTING_STARTED.md"
+      - "docs/DEPLOYMENT.md"
+      - "src/storage/README.md"
+      - "src/storage/QUICK_REFERENCE.md"
+      - "src/storage/IMPLEMENTATION_SUMMARY.md"
+      - "src/processing/WAVE2_SUMMARY.md"
+      - "src/ui/README.md"
+
+    ui_source:
+      - "src/ui/status_dashboard.js"
+      - "src/ui/search.js"
+
+    total_project_files: 32
+    excluded_files: "~200 files in .context-kit/_ref/packages/ (third-party documentation)"
 
   metadata:
     analysis_tool: "port-consistency agent"
-    analysis_date: "2025-10-06"
+    analysis_date: "2025-10-07"
+    analyzer: "Claude Code (Sonnet 4.5)"
     project: "tkr-docusearch"
-    toolkit_version: "3.6.1"
-    port_scheme: "42xxx"
+    project_version: "0.9.0"
+    port_scheme: "8000-8002 (Standard Development Ports)"
+    infrastructure_port_scheme: "42000-42999 (.context-kit infrastructure - separate)"
