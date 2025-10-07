@@ -118,36 +118,21 @@ class DocumentUploadHandler(FileSystemEventHandler):
 
             logger.info(f"Processing document: {file_path.name} (ID: {doc_id})")
 
-            # Parse document
-            processing_status[doc_id]["status"] = "parsing"
+            # Process document (parsing, embedding, and storage)
+            processing_status[doc_id]["status"] = "processing"
             processing_status[doc_id]["progress"] = 0.1
 
-            result = self.parser.parse_document(str(file_path))
-
-            if not result:
-                raise ValueError("Document parsing failed - no content extracted")
-
-            logger.info(f"Parsed {file_path.name}: {len(result.pages)} pages, {len(result.text_chunks)} text chunks")
-
-            # Update status
-            processing_status[doc_id]["status"] = "embedding"
-            processing_status[doc_id]["progress"] = 0.3
-            processing_status[doc_id]["total_pages"] = len(result.pages)
-
-            # Process document
-            self.processor.process_document(
-                doc_id=doc_id,
-                pages=result.pages,
-                text_chunks=result.text_chunks,
-                metadata={
-                    "filename": file_path.name,
-                    "file_path": str(file_path),
-                    "file_size_bytes": file_path.stat().st_size,
-                    "upload_date": datetime.now().isoformat(),
-                    "total_pages": len(result.pages),
-                    "total_text_chunks": len(result.text_chunks)
-                }
+            # DocumentProcessor handles parsing, embedding, and storage
+            result = self.processor.process_document(
+                file_path=str(file_path),
+                status_callback=lambda status: self._update_processing_status(doc_id, status)
             )
+
+            if not result or result.status.lower() != "completed":
+                error_msg = result.error if result else "Unknown error"
+                raise ValueError(f"Document processing failed: {error_msg}")
+
+            logger.info(f"Processed {file_path.name}: {result.pages_processed} pages, {result.text_chunks_processed} text chunks")
 
             # Update status to completed
             processing_status[doc_id]["status"] = "completed"
@@ -168,6 +153,17 @@ class DocumentUploadHandler(FileSystemEventHandler):
             # Remove from queue
             if file_path in self.processing_queue:
                 self.processing_queue.remove(file_path)
+
+    def _update_processing_status(self, doc_id: str, status):
+        """Update processing status from DocumentProcessor callback.
+
+        Args:
+            doc_id: Document ID
+            status: ProcessingStatus object from DocumentProcessor
+        """
+        if doc_id in processing_status:
+            processing_status[doc_id]["status"] = status.status
+            processing_status[doc_id]["progress"] = status.progress
 
 
 # ============================================================================
