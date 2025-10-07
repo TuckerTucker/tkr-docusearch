@@ -90,6 +90,21 @@ class ProcessResponse(BaseModel):
     status: str
 
 
+class DeleteRequest(BaseModel):
+    """Request to delete a document from ChromaDB."""
+    file_path: str
+    filename: str
+
+
+class DeleteResponse(BaseModel):
+    """Response from delete request."""
+    message: str
+    doc_id: Optional[str] = None
+    visual_deleted: int
+    text_deleted: int
+    status: str
+
+
 class StatusResponse(BaseModel):
     """Worker status response."""
     status: str
@@ -216,6 +231,67 @@ async def process_document(request: ProcessRequest, background_tasks: Background
         message=f"Processing queued for {request.filename}",
         status="queued"
     )
+
+
+@app.post("/delete", response_model=DeleteResponse)
+async def delete_document(request: DeleteRequest):
+    """
+    Delete a document from ChromaDB.
+
+    Called by copyparty webhook when a file is deleted.
+    """
+    logger.info(f"Received deletion request for: {request.filename}")
+
+    try:
+        # Initialize ChromaDB client
+        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+
+        # Find doc_id by filename in visual collection
+        visual_results = storage_client._visual_collection.get(
+            where={"filename": request.filename},
+            limit=1,
+            include=["metadatas"]
+        )
+
+        # Try text collection if not found in visual
+        if not visual_results['ids']:
+            text_results = storage_client._text_collection.get(
+                where={"filename": request.filename},
+                limit=1,
+                include=["metadatas"]
+            )
+            if text_results['ids'] and text_results['metadatas']:
+                doc_id = text_results['metadatas'][0].get('doc_id')
+            else:
+                logger.warning(f"No embeddings found for filename: {request.filename}")
+                return DeleteResponse(
+                    message=f"No embeddings found for {request.filename}",
+                    doc_id=None,
+                    visual_deleted=0,
+                    text_deleted=0,
+                    status="not_found"
+                )
+        else:
+            doc_id = visual_results['metadatas'][0].get('doc_id')
+
+        # Delete from ChromaDB using doc_id
+        visual_count, text_count = storage_client.delete_document(doc_id)
+
+        logger.info(
+            f"Deleted document {doc_id}: {visual_count} visual, {text_count} text embeddings"
+        )
+
+        return DeleteResponse(
+            message=f"Deleted {request.filename} from ChromaDB",
+            doc_id=doc_id,
+            visual_deleted=visual_count,
+            text_deleted=text_count,
+            status="success"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to delete document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/status", response_model=StatusResponse)

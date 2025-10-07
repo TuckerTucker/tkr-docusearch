@@ -72,6 +72,7 @@ CMD ["copyparty", \
     "-e2dsa", \
     "-a", "admin:admin", \
     "--xau", "/hooks/on_upload.py", \
+    "--xad", "/hooks/on_delete.py", \
     "-v", "/uploads::r:rwmd,admin"]
 
 # ============================================================================
