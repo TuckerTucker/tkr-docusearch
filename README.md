@@ -38,16 +38,36 @@ DocuSearch MVP is a **production-ready** local semantic search system for docume
 
 ---
 
-## Quick Start (Current State - Wave 3+4)
+## Quick Start (Updated - Wave 5: Production Deployment)
+
+### 🚀 Automated Start/Stop Scripts (New!)
+
+**Start everything with one command:**
+
+```bash
+# GPU mode (10-20x faster with Metal on M1/M2/M3)
+./scripts/start-all.sh
+
+# CPU mode (simpler, no setup)
+./scripts/start-all.sh --cpu
+
+# Check status
+./scripts/status.sh
+
+# Stop all services
+./scripts/stop-all.sh
+```
+
+**📖 See [QUICK_START.md](QUICK_START.md) for complete guide**
 
 ### Prerequisites
 
-- **Python 3.11+** with venv
+- **Python 3.10+** with venv
 - **Docker** (for ChromaDB)
 - **16GB+ RAM** (for ColPali FP16)
 - **M1/M2/M3 Mac** (for MPS acceleration, or use CPU)
 
-### Setup & Run
+### Setup & Run (Manual - Legacy)
 
 ```bash
 # 1. Activate Python environment
@@ -333,9 +353,10 @@ tkr-docusearch/
 │   ├── logs/                      # Application logs
 │   └── copyparty/                 # Copyparty config & hooks
 ├── scripts/
-│   ├── setup.sh                   # Initial setup
-│   ├── start.sh                   # Start services
-│   └── stop.sh                    # Stop services
+│   ├── start-all.sh               # Start all services (GPU/CPU)
+│   ├── stop-all.sh                # Stop all services
+│   ├── status.sh                  # Check service status
+│   └── run-worker-native.sh       # Native worker setup/run
 └── .context-kit/
     └── orchestration/docusearch-mvp/
         ├── orchestration-plan.md  # Master execution plan
