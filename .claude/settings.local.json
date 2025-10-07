@@ -103,7 +103,10 @@
       "Bash(break)",
       "Bash(fi)",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(./scripts/query-chromadb.sh:*)",
+      "Bash(. ./.venv-native/bin/activate)",
+      "Bash(pip3 list:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
