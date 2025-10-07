@@ -103,8 +103,11 @@ def search_documents(client: ChromaClient, query: str, top_k: int = 5):
         matches = []
         if results['metadatas']:
             for idx, metadata in enumerate(results['metadatas']):
-                doc_text = results['documents'][idx] if results['documents'] else ""
-                
+                doc_text = results['documents'][idx] if results['documents'] and idx < len(results['documents']) else ""
+                # Handle None values
+                if doc_text is None:
+                    doc_text = ""
+
                 # Simple text matching
                 if query.lower() in doc_text.lower():
                     matches.append({
