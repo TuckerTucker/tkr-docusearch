@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 from dataclasses import dataclass
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -353,8 +353,6 @@ class DoclingParser:
         Returns:
             PIL Image with text
         """
-        from PIL import ImageDraw, ImageFont
-
         img = Image.new('RGB', (width, height), color='white')
         draw = ImageDraw.Draw(img)
 
@@ -384,7 +382,6 @@ class DoclingParser:
         img = Image.new('RGB', (1024, 1024), color='lightgray')
         draw = ImageDraw.Draw(img)
 
-        from PIL import ImageFont
         try:
             font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
         except Exception:
