@@ -122,7 +122,7 @@ class DocumentUploadHandler(FileSystemEventHandler):
             processing_status[doc_id]["status"] = "parsing"
             processing_status[doc_id]["progress"] = 0.1
 
-            result = self.parser.parse(str(file_path))
+            result = self.parser.parse_document(str(file_path))
 
             if not result:
                 raise ValueError("Document parsing failed - no content extracted")
