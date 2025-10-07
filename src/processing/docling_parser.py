@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 from dataclasses import dataclass
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,141 @@ class ParsingError(Exception):
     pass
 
 
+def docling_to_pages(result) -> List[Page]:
+    """Convert Docling ConversionResult to Page objects.
+
+    This adapter function bridges Docling's output format with our internal
+    Page representation. It handles PDFs with full image rendering and provides
+    text extraction for all formats.
+
+    Args:
+        result: Docling ConversionResult from DocumentConverter.convert()
+
+    Returns:
+        List of Page objects with images and text
+
+    Notes:
+        - For PDFs: Uses result.pages[i].get_image() for PIL images
+        - For DOCX/PPTX: Falls back to text-only (images will be None)
+        - Text is extracted from result.document for each page
+    """
+    from docling.datamodel.document import ConversionResult
+
+    pages = []
+    doc = result.document
+
+    # Check if we have physical pages with images (PDFs)
+    if result.pages and len(result.pages) > 0:
+        logger.info(f"Processing {len(result.pages)} pages from Docling result")
+
+        # PDF format - has result.pages with images
+        for idx, page in enumerate(result.pages):
+            try:
+                # Get PIL image
+                img = page.get_image()
+
+                if img is None:
+                    logger.warning(f"Page {idx+1} has no image, skipping")
+                    continue
+
+                # result.pages is 0-indexed, but we want 1-indexed page numbers
+                page_num = idx + 1
+
+                # Extract text for this specific page
+                page_text = _extract_page_text(doc, page_num)
+
+                pages.append(Page(
+                    page_num=page_num,
+                    image=img,
+                    width=img.size[0],
+                    height=img.size[1],
+                    text=page_text
+                ))
+
+                logger.debug(f"Converted page {page_num}: {img.size[0]}x{img.size[1]}, {len(page_text)} chars")
+
+            except Exception as e:
+                logger.error(f"Failed to convert page {idx+1}: {e}")
+                continue
+
+    elif doc.pages and len(doc.pages) > 0:
+        # PPTX format - has doc.pages but no images
+        logger.info(f"Processing {len(doc.pages)} pages from document (no images)")
+
+        for page_num in sorted(doc.pages.keys()):
+            try:
+                page_text = _extract_page_text(doc, page_num)
+
+                # Create blank image as placeholder
+                # Note: This will be replaced by proper rendering in future enhancement
+                img = Image.new('RGB', (1024, 1024), color='white')
+
+                pages.append(Page(
+                    page_num=page_num,
+                    image=img,
+                    width=1024,
+                    height=1024,
+                    text=page_text
+                ))
+
+                logger.debug(f"Converted page {page_num} (text-only): {len(page_text)} chars")
+
+            except Exception as e:
+                logger.error(f"Failed to convert page {page_num}: {e}")
+                continue
+
+    else:
+        # DOCX format - no page concept, treat as single page
+        logger.info("Processing document without pages (DOCX)")
+
+        # Get all text
+        text = doc.export_to_text() if hasattr(doc, 'export_to_text') else ""
+
+        # Create single page
+        img = Image.new('RGB', (1024, 1024), color='white')
+
+        pages.append(Page(
+            page_num=1,
+            image=img,
+            width=1024,
+            height=1024,
+            text=text
+        ))
+
+        logger.debug(f"Converted document as single page: {len(text)} chars")
+
+    logger.info(f"Converted {len(pages)} pages total")
+    return pages
+
+
+def _extract_page_text(doc, page_num: int) -> str:
+    """Extract text from a specific page in DoclingDocument.
+
+    Args:
+        doc: DoclingDocument
+        page_num: Page number (1-indexed)
+
+    Returns:
+        Concatenated text from all elements on the page
+    """
+    text_parts = []
+
+    # Iterate through all text items
+    if hasattr(doc, 'texts') and doc.texts:
+        for text_item in doc.texts:
+            # Check if this text belongs to the page
+            if hasattr(text_item, 'prov') and text_item.prov:
+                # prov is a list of ProvenanceItem objects
+                for prov in text_item.prov:
+                    if hasattr(prov, 'page_no') and prov.page_no == page_num:
+                        # Add the text
+                        if hasattr(text_item, 'text') and text_item.text:
+                            text_parts.append(text_item.text)
+                        break  # Found it on this page, no need to check other provs
+
+    return "\n".join(text_parts)
+
+
 class DoclingParser:
     """Basic document parser for Wave 2.
 
@@ -130,15 +265,8 @@ class DoclingParser:
         logger.info(f"Parsing document: {filename} (id={doc_id})")
 
         try:
-            # Parse based on file type
-            if ext == '.pdf':
-                pages, metadata = self._parse_pdf(file_path)
-            elif ext == '.docx':
-                pages, metadata = self._parse_docx(file_path)
-            elif ext == '.pptx':
-                pages, metadata = self._parse_pptx(file_path)
-            else:
-                raise ParsingError(f"Unsupported file format: {ext}")
+            # Parse with Docling (supports PDF, DOCX, PPTX)
+            pages, metadata = self._parse_with_docling(file_path)
 
             # Generate text chunks
             text_chunks = self._chunk_text(
@@ -168,245 +296,70 @@ class DoclingParser:
             logger.error(f"Failed to parse {filename}: {e}")
             raise ParsingError(f"Parsing failed: {e}") from e
 
-    def _parse_pdf(self, file_path: str) -> tuple:
-        """Parse PDF document.
+    def _parse_with_docling(self, file_path: str) -> tuple:
+        """Parse document using Docling.
 
         Args:
-            file_path: Path to PDF file
+            file_path: Path to document file (PDF, DOCX, or PPTX)
 
         Returns:
             Tuple of (pages, metadata)
 
-        Note:
-            This is a simplified implementation for Wave 2.
-            Future versions can integrate PyMuPDF or Docling for full parsing.
+        Raises:
+            ParsingError: If Docling parsing fails
         """
         try:
-            import fitz  # PyMuPDF
+            from docling.document_converter import DocumentConverter, PdfFormatOption
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import PdfPipelineOptions
 
-            doc = fitz.open(file_path)
-            pages = []
+            # Configure PDF rendering with images
+            pipeline_options = PdfPipelineOptions()
+            pipeline_options.generate_page_images = True
+            pipeline_options.generate_picture_images = True
+
+            converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                }
+            )
+
+            logger.info(f"Converting document with Docling: {file_path}")
+            result = converter.convert(file_path)
+
+            # Use adapter to convert to Page objects
+            pages = docling_to_pages(result)
+
+            # Extract metadata from DoclingDocument
+            doc = result.document
             metadata = {
-                "title": doc.metadata.get("title", ""),
-                "author": doc.metadata.get("author", ""),
-                "created": doc.metadata.get("creationDate", ""),
-                "format": "pdf"
+                "title": doc.name if hasattr(doc, 'name') else "",
+                "author": "",  # Docling doesn't expose author in current version
+                "created": "",
+                "format": Path(file_path).suffix.lower()[1:],  # Remove leading dot
+                "num_pages": len(pages)
             }
 
-            for page_num, page in enumerate(doc, start=1):
-                # Extract text
-                text = page.get_text()
+            # Try to extract origin metadata if available
+            if hasattr(doc, 'origin') and doc.origin:
+                origin = doc.origin
+                if hasattr(origin, 'filename'):
+                    metadata["original_filename"] = origin.filename
+                if hasattr(origin, 'mimetype'):
+                    metadata["mimetype"] = origin.mimetype
 
-                # Render page to image at specified DPI
-                zoom = self.render_dpi / 72.0  # Default is 72 DPI
-                mat = fitz.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
-
-                # Convert to PIL Image
-                img = Image.frombytes(
-                    "RGB",
-                    (pix.width, pix.height),
-                    pix.samples
-                )
-
-                pages.append(Page(
-                    page_num=page_num,
-                    image=img,
-                    width=img.width,
-                    height=img.height,
-                    text=text
-                ))
-
-            doc.close()
+            logger.info(f"Docling conversion complete: {len(pages)} pages")
             return pages, metadata
 
-        except ImportError:
-            # Fallback if PyMuPDF not installed
-            logger.warning(
-                "PyMuPDF not installed. Using mock PDF parser. "
-                "Install with: pip install PyMuPDF"
-            )
-            return self._mock_parse(file_path, "pdf")
+        except ImportError as e:
+            logger.error(f"Docling not installed: {e}")
+            raise ParsingError(
+                "Docling library not available. Install with: pip install docling"
+            ) from e
 
         except Exception as e:
-            raise ParsingError(f"PDF parsing failed: {e}") from e
-
-    def _parse_docx(self, file_path: str) -> tuple:
-        """Parse DOCX document.
-
-        Args:
-            file_path: Path to DOCX file
-
-        Returns:
-            Tuple of (pages, metadata)
-
-        Note:
-            This is a simplified implementation for Wave 2.
-            DOCX files are treated as single-page documents.
-        """
-        try:
-            from docx import Document
-
-            doc = Document(file_path)
-
-            # Extract all text
-            text = "\n".join([para.text for para in doc.paragraphs])
-
-            # Get metadata
-            metadata = {
-                "title": doc.core_properties.title or "",
-                "author": doc.core_properties.author or "",
-                "created": str(doc.core_properties.created) if doc.core_properties.created else "",
-                "format": "docx"
-            }
-
-            # Create mock image (DOCX doesn't have page images)
-            img = self._create_text_image(text)
-
-            pages = [Page(
-                page_num=1,
-                image=img,
-                width=img.width,
-                height=img.height,
-                text=text
-            )]
-
-            return pages, metadata
-
-        except ImportError:
-            logger.warning(
-                "python-docx not installed. Using mock DOCX parser. "
-                "Install with: pip install python-docx"
-            )
-            return self._mock_parse(file_path, "docx")
-
-        except Exception as e:
-            raise ParsingError(f"DOCX parsing failed: {e}") from e
-
-    def _parse_pptx(self, file_path: str) -> tuple:
-        """Parse PPTX document.
-
-        Args:
-            file_path: Path to PPTX file
-
-        Returns:
-            Tuple of (pages, metadata)
-
-        Note:
-            This is a simplified implementation for Wave 2.
-            Each slide is treated as a page.
-        """
-        try:
-            from pptx import Presentation
-
-            prs = Presentation(file_path)
-
-            # Get metadata
-            metadata = {
-                "title": prs.core_properties.title or "",
-                "author": prs.core_properties.author or "",
-                "created": str(prs.core_properties.created) if prs.core_properties.created else "",
-                "format": "pptx"
-            }
-
-            pages = []
-            for page_num, slide in enumerate(prs.slides, start=1):
-                # Extract text from all shapes
-                text_parts = []
-                for shape in slide.shapes:
-                    if hasattr(shape, "text"):
-                        text_parts.append(shape.text)
-
-                text = "\n".join(text_parts)
-
-                # Create mock image
-                img = self._create_text_image(text or f"Slide {page_num}")
-
-                pages.append(Page(
-                    page_num=page_num,
-                    image=img,
-                    width=img.width,
-                    height=img.height,
-                    text=text
-                ))
-
-            return pages, metadata
-
-        except ImportError:
-            logger.warning(
-                "python-pptx not installed. Using mock PPTX parser. "
-                "Install with: pip install python-pptx"
-            )
-            return self._mock_parse(file_path, "pptx")
-
-        except Exception as e:
-            raise ParsingError(f"PPTX parsing failed: {e}") from e
-
-    def _create_text_image(self, text: str, width: int = 1024, height: int = 1024) -> Image.Image:
-        """Create a simple text image for non-PDF formats.
-
-        Args:
-            text: Text to render
-            width: Image width
-            height: Image height
-
-        Returns:
-            PIL Image with text
-        """
-        img = Image.new('RGB', (width, height), color='white')
-        draw = ImageDraw.Draw(img)
-
-        # Use default font
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-        except Exception:
-            font = ImageFont.load_default()
-
-        # Draw text (truncated if too long)
-        preview_text = text[:500] if text else "No text"
-        draw.text((10, 10), preview_text, fill='black', font=font)
-
-        return img
-
-    def _mock_parse(self, file_path: str, format: str) -> tuple:
-        """Create mock parsed pages when libraries unavailable.
-
-        Args:
-            file_path: Path to file
-            format: File format (pdf, docx, pptx)
-
-        Returns:
-            Tuple of (pages, metadata)
-        """
-        # Create a simple mock page
-        img = Image.new('RGB', (1024, 1024), color='lightgray')
-        draw = ImageDraw.Draw(img)
-
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
-        except Exception:
-            font = ImageFont.load_default()
-
-        text = f"Mock {format.upper()} Document\n\nThis is a placeholder for Wave 2 testing."
-        draw.text((50, 50), text, fill='black', font=font)
-
-        pages = [Page(
-            page_num=1,
-            image=img,
-            width=img.width,
-            height=img.height,
-            text=text
-        )]
-
-        metadata = {
-            "title": f"Mock {format.upper()} Document",
-            "author": "Mock Parser",
-            "created": "",
-            "format": format,
-            "mock": True
-        }
-
-        return pages, metadata
+            logger.error(f"Docling parsing failed: {e}")
+            raise ParsingError(f"Docling parsing failed: {e}") from e
 
     def _chunk_text(
         self,
