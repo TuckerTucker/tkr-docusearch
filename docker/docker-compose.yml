@@ -20,8 +20,12 @@ services:
       - CPP_UPLOAD_DIR=/uploads
       - CPP_HOOK_ON_UPLOAD=/hooks/on_upload.py
       - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
+      - WORKER_HOST=processing-worker
+      - WORKER_PORT=8002
     networks:
       - docusearch
+    depends_on:
+      - processing-worker
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
