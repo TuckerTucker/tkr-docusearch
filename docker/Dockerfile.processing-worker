@@ -98,7 +98,8 @@ RUN pip install --no-cache-dir \
     pydantic \
     python-dotenv \
     tqdm \
-    structlog
+    structlog \
+    watchdog
 
 # Install ColPali from GitHub (not on PyPI)
 # Skip for now - will install manually in Wave 2 component implementation
