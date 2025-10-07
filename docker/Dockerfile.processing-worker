@@ -102,8 +102,7 @@ RUN pip install --no-cache-dir \
     watchdog
 
 # Install ColPali from GitHub (not on PyPI)
-# Skip for now - will install manually in Wave 2 component implementation
-# RUN pip install --no-cache-dir git+https://github.com/illuin-tech/colpali.git
+RUN pip install --no-cache-dir git+https://github.com/illuin-tech/colpali.git
 
 # ============================================================================
 # Copy Application Source Code

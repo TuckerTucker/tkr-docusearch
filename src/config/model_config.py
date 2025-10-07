@@ -25,7 +25,7 @@ class ModelConfig:
     """
 
     # Model selection
-    name: str = os.getenv('MODEL_NAME', 'vidore/colqwen2-v0.1')
+    name: str = os.getenv('MODEL_NAME', 'vidore/colpali-v1.2')
     precision: Literal['fp16', 'int8'] = os.getenv('MODEL_PRECISION', 'fp16')  # type: ignore
 
     # Device selection
