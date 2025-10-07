@@ -3,6 +3,11 @@
 # Wave 3+4 Production State
 #
 # This script starts the current production-ready state of DocuSearch MVP
+#
+# Usage:
+#   ./quick-start.sh           # Start core components only
+#   ./quick-start.sh --ui      # Start with Copyparty UI
+#   ./quick-start.sh --full    # Start everything (UI + worker)
 
 set -e
 
@@ -17,6 +22,29 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Parse arguments
+START_UI=false
+START_FULL=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --ui)
+            START_UI=true
+            shift
+            ;;
+        --full)
+            START_FULL=true
+            START_UI=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: ./quick-start.sh [--ui] [--full]"
+            exit 1
+            ;;
+    esac
+done
 
 # Step 1: Check Python environment
 echo -e "${BLUE}[1/4] Checking Python environment...${NC}"
@@ -42,22 +70,41 @@ fi
 echo "✓ Docker available"
 echo ""
 
-# Step 3: Start ChromaDB
-echo -e "${BLUE}[3/4] Starting ChromaDB container...${NC}"
+# Step 3: Start Docker Services
+echo -e "${BLUE}[3/4] Starting Docker services...${NC}"
 cd docker
 
-# Check if ChromaDB is already running
-if docker ps | grep -q chromadb; then
-    echo "✓ ChromaDB already running"
+# Determine which services to start
+if [ "$START_FULL" = true ]; then
+    echo "  Starting all services (ChromaDB + Copyparty + Worker)..."
+    docker-compose up -d
+    SERVICES="chromadb copyparty processing-worker"
+elif [ "$START_UI" = true ]; then
+    echo "  Starting ChromaDB + Copyparty UI..."
+    docker-compose up -d chromadb copyparty
+    SERVICES="chromadb copyparty"
 else
+    echo "  Starting ChromaDB only..."
     docker-compose up -d chromadb
-    echo "✓ ChromaDB started at localhost:8001"
+    SERVICES="chromadb"
+fi
 
-    # Wait for ChromaDB to be ready
-    echo "  Waiting for ChromaDB to be ready..."
+# Wait for ChromaDB to be ready
+echo "  Waiting for ChromaDB to be ready..."
+for i in {1..10}; do
+    if curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
+        echo "  ✓ ChromaDB is ready at localhost:8001"
+        break
+    fi
+    sleep 1
+done
+
+# Check Copyparty if started
+if [ "$START_UI" = true ]; then
+    echo "  Waiting for Copyparty UI to be ready..."
     for i in {1..10}; do
-        if curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
-            echo "  ✓ ChromaDB is ready"
+        if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+            echo "  ✓ Copyparty UI is ready at localhost:8000"
             break
         fi
         sleep 1
@@ -82,6 +129,12 @@ if python3 src/test_end_to_end.py 2>&1 | grep -q "END-TO-END INTEGRATION TEST PA
     echo "  ✓ Real ColPali (vidore/colpali-v1.2, MPS, 5.5GB)"
     echo "  ✓ ChromaDB (localhost:8001)"
     echo "  ✓ Two-stage Search Engine"
+    if [ "$START_UI" = true ]; then
+        echo "  ✓ Copyparty UI (localhost:8000)"
+    fi
+    if [ "$START_FULL" = true ]; then
+        echo "  ✓ Processing Worker (background)"
+    fi
     echo ""
     echo "Performance:"
     echo "  • Search: ~239ms average"
@@ -89,13 +142,39 @@ if python3 src/test_end_to_end.py 2>&1 | grep -q "END-TO-END INTEGRATION TEST PA
     echo "  • Text embedding: ~0.24s per chunk"
     echo "  • Accuracy: 100%"
     echo ""
-    echo "Next Steps:"
-    echo "  1. Process documents: python3 -c 'from src.processing import DocumentProcessor; ...'"
-    echo "  2. Search documents: python3 -c 'from src.search import SearchEngine; ...'"
-    echo "  3. Or use the Python API directly (see src/embeddings/example_usage.py)"
-    echo ""
-    echo "To stop ChromaDB:"
-    echo "  cd docker && docker-compose down chromadb"
+
+    if [ "$START_UI" = true ]; then
+        echo "Access Points:"
+        echo "  • Copyparty UI: http://localhost:8000"
+        echo "  • Search Page: http://localhost:8000/search.html"
+        echo "  • Status Dashboard: http://localhost:8000/status_dashboard.html"
+        echo ""
+        echo "Quick Actions:"
+        echo "  1. Upload documents via web UI (localhost:8000)"
+        if [ "$START_FULL" = true ]; then
+            echo "  2. Documents auto-process in background"
+            echo "  3. Search via UI (localhost:8000/search.html)"
+        else
+            echo "  2. Process documents: python3 -c 'from src.processing import DocumentProcessor; ...'"
+            echo "  3. Search via Python API or UI"
+        fi
+        echo ""
+    else
+        echo "Next Steps:"
+        echo "  1. Process documents: python3 -c 'from src.processing import DocumentProcessor; ...'"
+        echo "  2. Search documents: python3 -c 'from src.search import SearchEngine; ...'"
+        echo "  3. Or start UI: ./quick-start.sh --ui"
+        echo ""
+    fi
+
+    echo "To stop services:"
+    if [ "$START_FULL" = true ]; then
+        echo "  cd docker && docker-compose down"
+    elif [ "$START_UI" = true ]; then
+        echo "  cd docker && docker-compose down chromadb copyparty"
+    else
+        echo "  cd docker && docker-compose down chromadb"
+    fi
     echo ""
 else
     echo ""
