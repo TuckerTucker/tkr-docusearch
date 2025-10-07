@@ -69,7 +69,9 @@ CMD ["copyparty", \
     "-i", "0.0.0.0", \
     "--no-robots", \
     "--no-readme", \
-    "-v", "/uploads:u:rwmd"]
+    "-e2dsa", \
+    "-v", "/uploads:u:rwmd", \
+    "--xau", "up,/hooks/on_upload.py"]
 
 # ============================================================================
 # Usage

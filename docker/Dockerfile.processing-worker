@@ -100,7 +100,8 @@ RUN pip install --no-cache-dir \
     python-dotenv \
     tqdm \
     structlog \
-    watchdog
+    fastapi \
+    uvicorn[standard]
 
 # Install ColPali from GitHub (not on PyPI)
 RUN pip install --no-cache-dir git+https://github.com/illuin-tech/colpali.git
@@ -151,9 +152,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
 # ============================================================================
 # Default Command
 # ============================================================================
-# Run processing worker daemon
+# Run processing worker HTTP server (webhook mode)
 # Note: Will be overridden by docker-compose or docker run command
-CMD ["python3", "-m", "src.processing.worker"]
+CMD ["python3", "-m", "src.processing.worker_webhook"]
 
 # ============================================================================
 # Usage
