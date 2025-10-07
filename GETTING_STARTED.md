@@ -57,18 +57,33 @@ All targets **exceeded**:
 
 ## Quick Start Options
 
-### Option 1: Automated Setup (Recommended)
+### Option 1: Web UI (Easiest)
 
 ```bash
 # Clone repository
 git clone <repository-url>
 cd tkr-docusearch
 
-# Run automated setup
-./quick-start.sh
+# Start web UI
+./start-ui.sh
+
+# Opens http://localhost:8000 automatically
 ```
 
-### Option 2: Manual Setup
+### Option 2: Core Components Only
+
+```bash
+# Run automated setup (no UI)
+./quick-start.sh
+
+# Or with UI
+./quick-start.sh --ui
+
+# Or everything
+./quick-start.sh --full
+```
+
+### Option 3: Manual Setup
 
 ```bash
 # 1. Activate environment
@@ -83,12 +98,14 @@ cd ..
 python3 src/test_end_to_end.py
 ```
 
-### Option 3: Docker Only (Future)
+### Option 4: Full Stack with UI
 
 ```bash
-# Full stack (when Wave 4 complete)
+# Start everything
 cd docker
 docker-compose up -d
+
+# Access UI
 open http://localhost:8000
 ```
 
