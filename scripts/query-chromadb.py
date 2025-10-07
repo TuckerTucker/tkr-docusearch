@@ -123,9 +123,11 @@ def search_documents(client: ChromaClient, query: str, top_k: int = 5, mode: str
         for idx, result in enumerate(results, 1):
             print(f"{idx}. {result['filename']}")
             print(f"   Doc ID: {result['doc_id']}")
-            print(f"   Page: {result.get('page_num', 'N/A')}")
+            print(f"   Page: {result.get('page', 'N/A')}")
             print(f"   Score: {result['score']:.4f}")
-            print(f"   Type: {result.get('result_type', 'N/A')}")
+            print(f"   Type: {result.get('type', 'N/A')}")
+            if result.get('source_path'):
+                print(f"   Path: {result['source_path']}")
             print()
 
         if not results:
