@@ -70,8 +70,8 @@ CMD ["copyparty", \
     "--no-robots", \
     "--no-readme", \
     "-e2dsa", \
-    "-v", "/uploads:u:rwmd", \
-    "--xau", "up,/hooks/on_upload.py"]
+    "-a", "xau=/hooks/on_upload.py::", \
+    "-v", "/uploads:u:rwmd,xau=/hooks/on_upload.py"]
 
 # ============================================================================
 # Usage

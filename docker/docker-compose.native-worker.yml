@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ============================================================================
 # Docker Compose Override for Native Worker
 # ============================================================================
@@ -9,18 +7,18 @@ version: '3.8'
 #   docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml up -d
 #
 # This configuration:
-# - Disables the containerized processing-worker
+# - Scales processing-worker to 0 (disabled)
 # - Keeps ChromaDB and Copyparty running in Docker
 # - Expects worker to run natively on host at http://host.docker.internal:8002
 # ============================================================================
 
 services:
-  # Disable the containerized worker
+  # Scale worker to 0 to disable it (but keep service definition)
   processing-worker:
-    profiles:
-      - disabled
+    deploy:
+      replicas: 0
 
-  # Update Copyparty to connect to native worker
+  # Update Copyparty to connect to native worker on host
   copyparty:
     environment:
       # Point to native worker on host
@@ -30,9 +28,7 @@ services:
       # Allow container to reach host
       - "host.docker.internal:host-gateway"
 
-  # ChromaDB remains the same but needs to be accessible from host
+  # ChromaDB - ensure accessible from both copyparty and native worker
   chromadb:
-    # Expose to host network for native worker
-    network_mode: bridge
     ports:
-      - "8001:8000"  # Keep same port mapping
+      - "8001:8000"  # Accessible from host for native worker

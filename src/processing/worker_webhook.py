@@ -26,12 +26,15 @@ from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
 
 # Configure logging
+LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/data/logs/worker.log')
+        logging.FileHandler(LOG_FILE)
     ]
 )
 
@@ -145,26 +148,25 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
             status_callback=lambda status: _update_processing_status(doc_id, status)
         )
 
-        if not result or result.status.lower() != "completed":
-            error_msg = result.error if result else "Unknown error"
-            raise ValueError(f"Document processing failed: {error_msg}")
+        if not result or not result.doc_id:
+            raise ValueError(f"Document processing failed: No result returned")
 
-        logger.info(f"Processed {filename}: {result.pages_processed} pages, {result.text_chunks_processed} text chunks")
+        logger.info(f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}")
 
         # Update status to completed
         processing_status[doc_id]["status"] = "completed"
         processing_status[doc_id]["progress"] = 1.0
         processing_status[doc_id]["completed_at"] = datetime.now().isoformat()
-        processing_status[doc_id]["pages"] = result.pages_processed
-        processing_status[doc_id]["chunks"] = result.text_chunks_processed
+        processing_status[doc_id]["visual_embeddings"] = len(result.visual_ids)
+        processing_status[doc_id]["text_embeddings"] = len(result.text_ids)
 
-        logger.info(f"✓ Successfully processed {filename} (ID: {doc_id})")
+        logger.info(f"✓ Successfully processed {filename} (ID: {result.doc_id})")
 
         return {
             "status": "completed",
-            "doc_id": doc_id,
-            "pages": result.pages_processed,
-            "chunks": result.text_chunks_processed
+            "doc_id": result.doc_id,
+            "visual_embeddings": len(result.visual_ids),
+            "text_embeddings": len(result.text_ids)
         }
 
     except Exception as e:
