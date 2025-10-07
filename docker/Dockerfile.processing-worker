@@ -81,16 +81,12 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     transformers \
     sentence-transformers \
-    Pillow \
-    opencv-python-headless \
-    pdf2image
+    Pillow
 
-# Document parsing libraries
+# Document parsing - unified with Docling
+# Docling handles PDF, DOCX, PPTX, and other formats
 RUN pip install --no-cache-dir \
-    pypdf \
-    python-docx \
-    python-pptx \
-    PyMuPDF
+    docling>=2.55.0
 
 # Vector database and utilities
 RUN pip install --no-cache-dir \
