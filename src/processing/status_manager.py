@@ -13,6 +13,7 @@ import threading
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
+from pydantic import ValidationError
 
 from .status_models import (
     ProcessingStatus,
@@ -197,10 +198,18 @@ class StatusManager:
             List of ProcessingStatus objects (most recent first)
         """
         with self._lock:
-            all_statuses = [
-                ProcessingStatus(**status_dict)
-                for status_dict in self._status_dict.values()
-            ]
+            all_statuses = []
+
+            for doc_id, status_dict in self._status_dict.items():
+                try:
+                    status = ProcessingStatus(**status_dict)
+                    all_statuses.append(status)
+                except ValidationError as e:
+                    # Skip invalid entries (likely stale data from previous runs)
+                    logger.warning(
+                        f"Skipping invalid status entry for {doc_id}: {e.error_count()} validation error(s)"
+                    )
+                    continue
 
             # Sort by updated_at (most recent first)
             all_statuses.sort(key=lambda s: s.updated_at, reverse=True)
