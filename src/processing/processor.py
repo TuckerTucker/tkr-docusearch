@@ -182,29 +182,38 @@ class DocumentProcessor:
                 f"{len(parsed_doc.text_chunks)} chunks"
             )
 
-            # Stage 2: Visual Embedding
-            status = ProcessingStatus(
-                doc_id=doc_id,
-                filename=filename,
-                status="embedding_visual",
-                progress=0.3,
-                stage=f"Generating visual embeddings for {total_pages} pages",
-                total_pages=total_pages,
-                elapsed_seconds=int(time.time() - start_time)
-            )
-            self._update_status(status, status_callback)
+            # Stage 2: Visual Embedding (skip for text-only formats)
+            visual_results = []
+            has_visual_content = any(page.image is not None for page in parsed_doc.pages)
 
-            visual_results = self.visual_processor.process_pages(
-                pages=parsed_doc.pages,
-                doc_id=doc_id
-            )
+            if has_visual_content:
+                status = ProcessingStatus(
+                    doc_id=doc_id,
+                    filename=filename,
+                    status="embedding_visual",
+                    progress=0.3,
+                    stage=f"Generating visual embeddings for {total_pages} pages",
+                    total_pages=total_pages,
+                    elapsed_seconds=int(time.time() - start_time)
+                )
+                self._update_status(status, status_callback)
 
-            visual_stats = self.visual_processor.get_processing_stats(visual_results)
-            logger.info(
-                f"Visual processing complete: "
-                f"{visual_stats['num_pages']} pages in "
-                f"{visual_stats['total_time_ms']:.0f}ms"
-            )
+                visual_results = self.visual_processor.process_pages(
+                    pages=parsed_doc.pages,
+                    doc_id=doc_id
+                )
+
+                visual_stats = self.visual_processor.get_processing_stats(visual_results)
+                logger.info(
+                    f"Visual processing complete: "
+                    f"{visual_stats['num_pages']} pages in "
+                    f"{visual_stats['total_time_ms']:.0f}ms"
+                )
+            else:
+                logger.info(
+                    f"Skipping visual embeddings for {filename} - "
+                    "text-only format (MD, HTML, CSV, audio transcript, etc.)"
+                )
 
             # Stage 3: Text Embedding (skip if no text extracted)
             text_results = []

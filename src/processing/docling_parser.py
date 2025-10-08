@@ -1,15 +1,15 @@
 """
 Document parsing using Docling.
 
-This module provides basic document parsing functionality.
-For Wave 2, this is a simplified implementation that can be enhanced
-with full Docling integration in future waves.
+This module provides document parsing functionality for 21+ formats.
+Supports both visual formats (PDF, images) and text-only formats (MD, HTML, CSV).
 """
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import uuid
+from enum import Enum
 
 from src.config.processing_config import EnhancedModeConfig, create_pipeline_options
 from src.storage.metadata_schema import ChunkContext, DocumentStructure
@@ -22,34 +22,184 @@ from src.processing.types import Page, TextChunk, ParsedDocument
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# Format Categories
+# ============================================================================
+
+class FormatType(Enum):
+    """Document format processing type."""
+    VISUAL = "visual"      # Full visual + text processing (PDF, images)
+    TEXT_ONLY = "text"     # Text extraction only, skip visual embeddings
+    AUDIO = "audio"        # Audio transcription processing
+
+
+# Visual formats with page images
+VISUAL_FORMATS: Set[str] = {
+    '.pdf',     # Portable Document Format
+}
+
+# Image formats (treated as single-page visual documents)
+IMAGE_FORMATS: Set[str] = {
+    '.png',     # Portable Network Graphics
+    '.jpg',     # JPEG Image
+    '.jpeg',    # JPEG Image
+    '.tiff',    # Tagged Image File Format
+    '.bmp',     # Bitmap Image
+    '.webp',    # WebP Image
+}
+
+# Office formats (visual for PPTX, text-only for others)
+OFFICE_FORMATS: Set[str] = {
+    '.docx',    # Microsoft Word
+    '.xlsx',    # Microsoft Excel
+    '.pptx',    # Microsoft PowerPoint
+}
+
+# Text-only formats (no visual embeddings)
+TEXT_ONLY_FORMATS: Set[str] = {
+    '.md',       # Markdown
+    '.html',     # HTML
+    '.htm',      # HTML (alternate extension)
+    '.xhtml',    # XHTML
+    '.asciidoc', # AsciiDoc
+    '.csv',      # Comma-Separated Values
+}
+
+# Audio/transcript formats
+AUDIO_FORMATS: Set[str] = {
+    '.vtt',     # Web Video Text Tracks
+    '.wav',     # Waveform Audio
+    '.mp3',     # MPEG Audio
+}
+
+# Specialized formats
+SPECIALIZED_FORMATS: Set[str] = {
+    '.xml',     # XML (USPTO/JATS)
+    '.json',    # JSON (Docling native)
+}
+
+
+def get_format_type(file_path: str) -> FormatType:
+    """Determine processing type for a document.
+
+    Args:
+        file_path: Path to document file
+
+    Returns:
+        FormatType indicating how to process the document
+    """
+    ext = Path(file_path).suffix.lower()
+
+    if ext in VISUAL_FORMATS or ext in IMAGE_FORMATS:
+        return FormatType.VISUAL
+    elif ext in AUDIO_FORMATS:
+        return FormatType.AUDIO
+    else:
+        # All other formats are text-only (OFFICE, TEXT_ONLY, SPECIALIZED)
+        return FormatType.TEXT_ONLY
+
+
+# ============================================================================
+# Parsing Functions
+# ============================================================================
+
 class ParsingError(Exception):
     """Document parsing error."""
 
     pass
 
 
-def docling_to_pages(result) -> List[Page]:
+def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
     """Convert Docling ConversionResult to Page objects.
 
     This adapter function bridges Docling's output format with our internal
-    Page representation. It handles PDFs with full image rendering and provides
-    text extraction for all formats.
+    Page representation. Handles all supported formats:
+    - Visual formats (PDF, images): Full image + text processing
+    - Text-only formats (DOCX, MD, HTML, CSV): Text extraction only, no images
+    - Audio formats (VTT, WAV, MP3): Transcript text, no images
 
     Args:
         result: Docling ConversionResult from DocumentConverter.convert()
+        file_path: Optional path to determine format type
 
     Returns:
-        List of Page objects with images and text
+        List of Page objects with images (visual) or None images (text-only)
 
     Notes:
-        - For PDFs: Uses result.pages[i].get_image() for PIL images
-        - For DOCX/PPTX: Falls back to text-only (images will be None)
-        - Text is extracted from result.document for each page
+        - Visual formats: Real page images from Docling
+        - Text-only formats: Pages with image=None (skips visual embeddings)
+        - Images: Treated as single-page documents with the image itself
+        - Audio: Transcript as single text-only page
     """
     from docling.datamodel.document import ConversionResult
+    from PIL import Image
 
     pages = []
     doc = result.document
+
+    # Determine format type if file_path provided
+    format_type = get_format_type(file_path) if file_path else None
+    ext = Path(file_path).suffix.lower() if file_path else None
+
+    # Handle image formats specially (single image = single page)
+    if ext and ext in IMAGE_FORMATS and result.pages and len(result.pages) > 0:
+        logger.info(f"Processing image file as single-page document")
+        try:
+            img = result.pages[0].get_image()
+            if img:
+                # Extract text (OCR if available)
+                text = doc.export_to_text() if hasattr(doc, 'export_to_text') else ""
+
+                pages.append(Page(
+                    page_num=1,
+                    image=img,
+                    width=img.size[0],
+                    height=img.size[1],
+                    text=text
+                ))
+                logger.debug(f"Converted image: {img.size[0]}x{img.size[1]}, {len(text)} chars")
+        except Exception as e:
+            logger.error(f"Failed to convert image: {e}")
+
+        return pages
+
+    # Handle audio formats (transcript only, no images)
+    if ext and ext in AUDIO_FORMATS:
+        logger.info(f"Processing audio file as text-only transcript")
+        try:
+            text = doc.export_to_text() if hasattr(doc, 'export_to_text') else ""
+
+            pages.append(Page(
+                page_num=1,
+                image=None,  # No image for audio
+                width=0,
+                height=0,
+                text=text
+            ))
+            logger.debug(f"Converted audio transcript: {len(text)} chars")
+        except Exception as e:
+            logger.error(f"Failed to convert audio: {e}")
+
+        return pages
+
+    # Handle text-only formats (MD, HTML, CSV, etc.)
+    if format_type == FormatType.TEXT_ONLY:
+        logger.info(f"Processing text-only format: {ext}")
+        try:
+            text = doc.export_to_text() if hasattr(doc, 'export_to_text') else ""
+
+            pages.append(Page(
+                page_num=1,
+                image=None,  # No image for text-only
+                width=0,
+                height=0,
+                text=text
+            ))
+            logger.debug(f"Converted text-only document: {len(text)} chars")
+        except Exception as e:
+            logger.error(f"Failed to convert text-only document: {e}")
+
+        return pages
 
     # Check if we have physical pages with images (PDFs)
     if result.pages and len(result.pages) > 0:
@@ -278,9 +428,18 @@ class DoclingParser:
             ParsingError: If Docling parsing fails
         """
         try:
-            from docling.document_converter import DocumentConverter, PdfFormatOption
+            from docling.document_converter import (
+                DocumentConverter,
+                PdfFormatOption,
+                WordFormatOption,
+                ImageFormatOption,
+            )
             from docling.datamodel.base_models import InputFormat
             from docling.datamodel.pipeline_options import PdfPipelineOptions
+
+            # Determine file format
+            ext = Path(file_path).suffix.lower()
+            format_type = get_format_type(file_path)
 
             # Create pipeline options based on config
             if config:
@@ -292,26 +451,52 @@ class DoclingParser:
                 pipeline_options.generate_page_images = True
                 pipeline_options.generate_picture_images = True
 
-            converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                }
-            )
+            # Build format-specific options
+            format_options = {}
+
+            if ext in VISUAL_FORMATS:
+                # PDF with full pipeline
+                format_options[InputFormat.PDF] = PdfFormatOption(
+                    pipeline_options=pipeline_options
+                )
+            elif ext in IMAGE_FORMATS:
+                # Images (PNG, JPG, etc.) - use image backend
+                format_options[InputFormat.IMAGE] = ImageFormatOption(
+                    pipeline_options=pipeline_options
+                )
+            elif ext in OFFICE_FORMATS:
+                # Office formats (DOCX, PPTX, XLSX)
+                if ext == '.docx':
+                    format_options[InputFormat.DOCX] = WordFormatOption()
+                elif ext == '.pptx':
+                    # PPTX uses default options
+                    pass  # DocumentConverter auto-handles PPTX
+                elif ext == '.xlsx':
+                    # Excel uses default options
+                    pass  # DocumentConverter auto-handles XLSX
+            # All other formats (MD, HTML, CSV, audio, etc.) use default handling
+
+            converter = DocumentConverter(format_options=format_options if format_options else None)
 
             logger.info(f"Converting document with Docling: {file_path}")
             result = converter.convert(file_path)
 
-            # Use adapter to convert to Page objects
-            pages = docling_to_pages(result)
+            # Use adapter to convert to Page objects (pass file_path for format detection)
+            pages = docling_to_pages(result, file_path)
 
             # Extract metadata from DoclingDocument
             doc = result.document
+            ext = Path(file_path).suffix.lower()
+            format_type_enum = get_format_type(file_path)
+
             metadata = {
                 "title": doc.name if hasattr(doc, 'name') else "",
                 "author": "",  # Docling doesn't expose author in current version
                 "created": "",
-                "format": Path(file_path).suffix.lower()[1:],  # Remove leading dot
-                "num_pages": len(pages)
+                "format": ext[1:],  # Remove leading dot
+                "num_pages": len(pages),
+                "format_type": format_type_enum.value,  # visual, text, or audio
+                "has_images": any(p.image is not None for p in pages),
             }
 
             # Try to extract origin metadata if available

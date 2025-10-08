@@ -49,8 +49,11 @@ CHROMA_HOST = os.getenv("CHROMA_HOST", "chromadb")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
+
+# Load supported formats from environment
+_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Processing status tracking
 processing_status: Dict[str, Dict[str, Any]] = {}
