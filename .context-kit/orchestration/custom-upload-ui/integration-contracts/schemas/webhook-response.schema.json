@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://docusearch.local/schemas/webhook-response.json",
+  "title": "WebhookResponse",
+  "description": "Response from POST /webhook endpoint",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Response status",
+      "enum": ["accepted", "rejected"]
+    },
+    "doc_id": {
+      "type": "string",
+      "description": "SHA-256 document hash (required when status is 'accepted')",
+      "pattern": "^[a-f0-9]{64}$",
+      "examples": ["abc123def456..."]
+    },
+    "filename": {
+      "type": "string",
+      "description": "Original filename",
+      "minLength": 1,
+      "maxLength": 255,
+      "examples": ["report.pdf", "notes.md"]
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable message",
+      "examples": [
+        "Document queued for processing",
+        "File accepted for processing",
+        "Document upload successful"
+      ]
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message (required when status is 'rejected')",
+      "examples": [
+        "Unsupported format",
+        "File too large",
+        "Invalid file type"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "accepted" } }
+      },
+      "then": {
+        "required": ["doc_id", "filename"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "rejected" } }
+      },
+      "then": {
+        "required": ["error"]
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "status": "accepted",
+      "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+      "filename": "report.pdf",
+      "message": "Document queued for processing"
+    },
+    {
+      "status": "rejected",
+      "error": "Unsupported format",
+      "filename": "document.exe"
+    }
+  ]
+}

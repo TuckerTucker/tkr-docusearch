@@ -107,7 +107,12 @@
       "Bash(./scripts/query-chromadb.sh:*)",
       "Bash(. ./.venv-native/bin/activate)",
       "Bash(pip3 list:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(for class in \"drop-zone--active\" \"drop-zone--error\" \"queue-item--processing\" \"queue-item--completed\" \"queue-item--failed\" \"toast--success\" \"toast--error\" \"toast--warning\" \"toast--hiding\")",
+      "Bash(do)",
+      "Bash(if grep -q \"\\.$class\" /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/ui/styles.css)",
+      "Bash(then)",
+      "Bash(else)"
     ],
     "deny": [
       "Bash(rm -rf /)",

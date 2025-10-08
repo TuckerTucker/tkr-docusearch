@@ -1,0 +1,283 @@
+{
+  "description": "Test data fixtures for integration contract validation",
+  "version": "1.0.0",
+  "fixtures": {
+    "processing_status": {
+      "visual_in_progress": {
+        "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+        "filename": "report.pdf",
+        "status": "embedding_visual",
+        "progress": 0.65,
+        "stage": "Generating visual embeddings",
+        "page": 13,
+        "total_pages": 20,
+        "started_at": "2025-10-07T19:00:00Z",
+        "updated_at": "2025-10-07T19:01:30Z",
+        "completed_at": null,
+        "elapsed_time": 90.0,
+        "estimated_remaining": 48.5,
+        "metadata": {
+          "format": "pdf",
+          "format_type": "visual",
+          "file_size": 2458624
+        },
+        "error": null
+      },
+      "text_completed": {
+        "doc_id": "def456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+        "filename": "notes.md",
+        "status": "completed",
+        "progress": 1.0,
+        "stage": "Completed successfully",
+        "page": null,
+        "total_pages": null,
+        "started_at": "2025-10-07T19:20:00Z",
+        "updated_at": "2025-10-07T19:20:12Z",
+        "completed_at": "2025-10-07T19:20:12Z",
+        "elapsed_time": 12.5,
+        "estimated_remaining": null,
+        "metadata": {
+          "format": "md",
+          "format_type": "text",
+          "file_size": 8192,
+          "num_chunks": 15
+        },
+        "error": null
+      },
+      "failed_parsing": {
+        "doc_id": "789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456",
+        "filename": "corrupted.pdf",
+        "status": "failed",
+        "progress": 0.1,
+        "stage": "Processing failed",
+        "page": null,
+        "total_pages": null,
+        "started_at": "2025-10-07T19:30:00Z",
+        "updated_at": "2025-10-07T19:30:05Z",
+        "completed_at": "2025-10-07T19:30:05Z",
+        "elapsed_time": 5.2,
+        "estimated_remaining": null,
+        "metadata": {
+          "format": "pdf",
+          "format_type": "visual",
+          "file_size": 1048576
+        },
+        "error": "Document parsing failed: corrupted PDF structure"
+      },
+      "queued": {
+        "doc_id": "123abc456def789abc012345678901234567890123456789012345678901234567",
+        "filename": "presentation.pptx",
+        "status": "queued",
+        "progress": 0.0,
+        "stage": "Queued for processing",
+        "page": null,
+        "total_pages": null,
+        "started_at": "2025-10-07T19:35:00Z",
+        "updated_at": "2025-10-07T19:35:00Z",
+        "completed_at": null,
+        "elapsed_time": 0.0,
+        "estimated_remaining": null,
+        "metadata": {
+          "format": "pptx",
+          "format_type": "visual",
+          "file_size": 5242880
+        },
+        "error": null
+      },
+      "embedding_text": {
+        "doc_id": "456def789abc012345678901234567890123456789012345678901234567890abc",
+        "filename": "data.csv",
+        "status": "embedding_text",
+        "progress": 0.75,
+        "stage": "Generating text embeddings",
+        "page": null,
+        "total_pages": null,
+        "started_at": "2025-10-07T19:40:00Z",
+        "updated_at": "2025-10-07T19:40:18Z",
+        "completed_at": null,
+        "elapsed_time": 18.0,
+        "estimated_remaining": 6.0,
+        "metadata": {
+          "format": "csv",
+          "format_type": "text",
+          "file_size": 65536,
+          "num_chunks": 30
+        },
+        "error": null
+      }
+    },
+    "webhook_responses": {
+      "accepted_pdf": {
+        "status": "accepted",
+        "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+        "filename": "report.pdf",
+        "message": "Document queued for processing"
+      },
+      "accepted_markdown": {
+        "status": "accepted",
+        "doc_id": "def456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+        "filename": "notes.md",
+        "message": "Document queued for processing"
+      },
+      "rejected_unsupported": {
+        "status": "rejected",
+        "error": "Unsupported format",
+        "filename": "document.exe"
+      },
+      "rejected_too_large": {
+        "status": "rejected",
+        "error": "File size exceeds maximum limit",
+        "filename": "huge_file.pdf"
+      }
+    },
+    "queue_responses": {
+      "mixed_queue": {
+        "queue": [
+          {
+            "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+            "filename": "report.pdf",
+            "status": "embedding_visual",
+            "progress": 0.65,
+            "elapsed_time": 45.2,
+            "timestamp": "2025-10-07T19:30:00Z"
+          },
+          {
+            "doc_id": "def456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+            "filename": "notes.md",
+            "status": "completed",
+            "progress": 1.0,
+            "elapsed_time": 12.5,
+            "timestamp": "2025-10-07T19:25:00Z"
+          },
+          {
+            "doc_id": "123abc456def789abc012345678901234567890123456789012345678901234567",
+            "filename": "presentation.pptx",
+            "status": "queued",
+            "progress": 0.0,
+            "elapsed_time": 2.0,
+            "timestamp": "2025-10-07T19:35:00Z"
+          }
+        ],
+        "total": 3,
+        "active": 2,
+        "completed": 1,
+        "failed": 0
+      },
+      "empty_queue": {
+        "queue": [],
+        "total": 0,
+        "active": 0,
+        "completed": 0,
+        "failed": 0
+      },
+      "large_queue": {
+        "queue": [
+          {
+            "doc_id": "doc001doc001doc001doc001doc001doc001doc001doc001doc001doc001doc001",
+            "filename": "file001.pdf",
+            "status": "embedding_visual",
+            "progress": 0.45,
+            "elapsed_time": 30.0,
+            "timestamp": "2025-10-07T19:00:00Z"
+          },
+          {
+            "doc_id": "doc002doc002doc002doc002doc002doc002doc002doc002doc002doc002doc002",
+            "filename": "file002.md",
+            "status": "completed",
+            "progress": 1.0,
+            "elapsed_time": 8.5,
+            "timestamp": "2025-10-07T18:58:00Z"
+          },
+          {
+            "doc_id": "doc003doc003doc003doc003doc003doc003doc003doc003doc003doc003doc003",
+            "filename": "file003.docx",
+            "status": "embedding_text",
+            "progress": 0.8,
+            "elapsed_time": 15.2,
+            "timestamp": "2025-10-07T19:02:00Z"
+          }
+        ],
+        "total": 3,
+        "active": 2,
+        "completed": 1,
+        "failed": 0
+      }
+    },
+    "error_responses": {
+      "not_found": {
+        "error": "Document not found",
+        "code": "DOCUMENT_NOT_FOUND",
+        "details": {
+          "doc_id": "nonexistent0000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "invalid_request": {
+        "error": "Invalid request: missing required field",
+        "code": "INVALID_REQUEST",
+        "details": {
+          "missing_field": "filename"
+        }
+      },
+      "unsupported_format": {
+        "error": "Unsupported file format: .exe",
+        "code": "UNSUPPORTED_FORMAT",
+        "details": {
+          "provided_format": "exe",
+          "supported_formats": [
+            "pdf", "docx", "pptx", "xlsx", "md", "html", "csv",
+            "png", "jpg", "jpeg", "tiff", "bmp", "webp",
+            "vtt", "wav", "mp3", "xml", "json"
+          ]
+        }
+      },
+      "file_too_large": {
+        "error": "File size exceeds maximum limit",
+        "code": "FILE_TOO_LARGE",
+        "details": {
+          "file_size": 104857600,
+          "max_size": 52428800,
+          "file_size_human": "100 MB",
+          "max_size_human": "50 MB"
+        }
+      },
+      "server_error": {
+        "error": "Internal server error",
+        "code": "SERVER_ERROR",
+        "details": {
+          "message": "Unexpected error during processing"
+        }
+      }
+    },
+    "supported_formats": {
+      "all_formats": [
+        "pdf", "docx", "pptx", "xlsx", "md", "html", "htm", "xhtml",
+        "asciidoc", "csv", "png", "jpg", "jpeg", "tiff", "bmp", "webp",
+        "vtt", "wav", "mp3", "xml", "json"
+      ],
+      "visual_formats": [
+        "pdf", "png", "jpg", "jpeg", "tiff", "bmp", "webp"
+      ],
+      "text_formats": [
+        "docx", "pptx", "xlsx", "md", "html", "htm", "xhtml",
+        "asciidoc", "csv", "xml", "json"
+      ],
+      "audio_formats": [
+        "vtt", "wav", "mp3"
+      ]
+    }
+  },
+  "usage_examples": {
+    "unit_tests": {
+      "description": "Use these fixtures in unit tests to validate data structures",
+      "example": "assert validate_schema(fixtures['processing_status']['visual_in_progress'], ProcessingStatusSchema)"
+    },
+    "integration_tests": {
+      "description": "Use these fixtures to mock API responses",
+      "example": "mock_response = fixtures['webhook_responses']['accepted_pdf']"
+    },
+    "ui_development": {
+      "description": "Use these fixtures to develop UI without backend",
+      "example": "const mockStatus = fixtures.processing_status.visual_in_progress"
+    }
+  }
+}

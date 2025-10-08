@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://docusearch.local/schemas/processing-status.json",
+  "title": "ProcessingStatus",
+  "description": "Document processing status object",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "filename",
+    "status",
+    "progress",
+    "stage",
+    "started_at",
+    "updated_at",
+    "elapsed_time"
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "description": "SHA-256 document hash",
+      "pattern": "^[a-f0-9]{64}$",
+      "examples": ["abc123def456..."]
+    },
+    "filename": {
+      "type": "string",
+      "description": "Original filename",
+      "minLength": 1,
+      "maxLength": 255,
+      "examples": ["report.pdf", "notes.md"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current processing status",
+      "enum": [
+        "queued",
+        "parsing",
+        "embedding_visual",
+        "embedding_text",
+        "storing",
+        "completed",
+        "failed"
+      ]
+    },
+    "progress": {
+      "type": "number",
+      "description": "Progress value between 0.0 and 1.0",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "examples": [0.0, 0.5, 0.65, 1.0]
+    },
+    "stage": {
+      "type": "string",
+      "description": "Human-readable current stage",
+      "examples": [
+        "Queued for processing",
+        "Parsing document",
+        "Generating visual embeddings",
+        "Generating text embeddings",
+        "Storing in database",
+        "Completed successfully",
+        "Processing failed"
+      ]
+    },
+    "page": {
+      "type": ["integer", "null"],
+      "description": "Current page being processed (null if not applicable)",
+      "minimum": 1,
+      "examples": [1, 5, 13, null]
+    },
+    "total_pages": {
+      "type": ["integer", "null"],
+      "description": "Total pages in document (null if not applicable)",
+      "minimum": 1,
+      "examples": [20, 50, 100, null]
+    },
+    "started_at": {
+      "type": "string",
+      "description": "Processing start time in ISO 8601 format (UTC)",
+      "format": "date-time",
+      "examples": ["2025-10-07T19:00:00Z"]
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "Last update time in ISO 8601 format (UTC)",
+      "format": "date-time",
+      "examples": ["2025-10-07T19:01:30Z"]
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "description": "Completion time in ISO 8601 format (UTC), null if not completed",
+      "format": "date-time",
+      "examples": ["2025-10-07T19:02:00Z", null]
+    },
+    "elapsed_time": {
+      "type": "number",
+      "description": "Seconds elapsed since processing started",
+      "minimum": 0,
+      "examples": [45.2, 120.5, 300.0]
+    },
+    "estimated_remaining": {
+      "type": ["number", "null"],
+      "description": "Estimated seconds remaining (null if unavailable)",
+      "minimum": 0,
+      "examples": [25.1, 60.0, null]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Document metadata",
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "File extension",
+          "examples": ["pdf", "md", "docx", "png"]
+        },
+        "format_type": {
+          "type": "string",
+          "description": "Format category",
+          "enum": ["visual", "text", "audio"]
+        },
+        "file_size": {
+          "type": "integer",
+          "description": "File size in bytes",
+          "minimum": 0,
+          "examples": [2458624, 1024000]
+        },
+        "num_chunks": {
+          "type": ["integer", "null"],
+          "description": "Number of text chunks (available after processing)",
+          "minimum": 0,
+          "examples": [42, 150, null]
+        }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Error message if status is 'failed', null otherwise",
+      "examples": [
+        "Unsupported file format",
+        "Document parsing failed: corrupted PDF",
+        "ChromaDB connection timeout",
+        null
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+      "filename": "report.pdf",
+      "status": "embedding_visual",
+      "progress": 0.65,
+      "stage": "Generating visual embeddings",
+      "page": 13,
+      "total_pages": 20,
+      "started_at": "2025-10-07T19:00:00Z",
+      "updated_at": "2025-10-07T19:01:30Z",
+      "completed_at": null,
+      "elapsed_time": 90.0,
+      "estimated_remaining": 48.5,
+      "metadata": {
+        "format": "pdf",
+        "format_type": "visual",
+        "file_size": 2458624
+      },
+      "error": null
+    },
+    {
+      "doc_id": "def456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+      "filename": "notes.md",
+      "status": "completed",
+      "progress": 1.0,
+      "stage": "Completed successfully",
+      "page": null,
+      "total_pages": null,
+      "started_at": "2025-10-07T19:20:00Z",
+      "updated_at": "2025-10-07T19:20:12Z",
+      "completed_at": "2025-10-07T19:20:12Z",
+      "elapsed_time": 12.5,
+      "estimated_remaining": null,
+      "metadata": {
+        "format": "md",
+        "format_type": "text",
+        "file_size": 8192,
+        "num_chunks": 15
+      },
+      "error": null
+    },
+    {
+      "doc_id": "789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456",
+      "filename": "corrupted.pdf",
+      "status": "failed",
+      "progress": 0.1,
+      "stage": "Processing failed",
+      "page": null,
+      "total_pages": null,
+      "started_at": "2025-10-07T19:30:00Z",
+      "updated_at": "2025-10-07T19:30:05Z",
+      "completed_at": "2025-10-07T19:30:05Z",
+      "elapsed_time": 5.2,
+      "estimated_remaining": null,
+      "metadata": {
+        "format": "pdf",
+        "format_type": "visual",
+        "file_size": 1048576
+      },
+      "error": "Document parsing failed: corrupted PDF structure"
+    }
+  ]
+}

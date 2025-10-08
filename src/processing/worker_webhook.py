@@ -16,6 +16,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
@@ -24,6 +26,10 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+
+# Import status management components
+from .status_manager import StatusManager, get_status_manager
+from .status_api import router as status_router, set_status_manager
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -61,6 +67,7 @@ processing_status: Dict[str, Dict[str, Any]] = {}
 # Global components (initialized at startup)
 document_processor: Optional[DocumentProcessor] = None
 parser: Optional[DoclingParser] = None
+status_manager: Optional[StatusManager] = None
 
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
@@ -74,6 +81,26 @@ app = FastAPI(
     description="Webhook-based document processing service",
     version="1.0.0"
 )
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount status API router
+app.include_router(status_router)
+
+# Mount static files for UI
+UI_DIR = Path(__file__).parent.parent / "ui"
+if UI_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+    logger.info(f"Mounted UI at /ui (directory: {UI_DIR})")
+else:
+    logger.warning(f"UI directory not found: {UI_DIR}")
 
 
 # ============================================================================
@@ -226,12 +253,33 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
 
+    # Generate doc_id from file content hash (SHA-256)
+    try:
+        with open(file_path, 'rb') as f:
+            content = f.read()
+            doc_id = hashlib.sha256(content).hexdigest()
+    except Exception as e:
+        logger.error(f"Failed to generate doc_id for {request.filename}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+
+    # Create status entry via StatusManager
+    try:
+        metadata = {
+            "format": file_path.suffix.lstrip('.').lower(),
+            "file_size": file_path.stat().st_size,
+        }
+        status_manager.create_status(doc_id, request.filename, metadata)
+    except ValueError as e:
+        # Document already exists
+        logger.warning(f"Document {doc_id} already in status tracker")
+
     # Queue for background processing
     future = executor.submit(process_document_sync, request.file_path, request.filename)
 
-    # Return immediately (processing continues in background)
+    # Return immediately with doc_id (processing continues in background)
     return ProcessResponse(
-        message=f"Processing queued for {request.filename}",
+        message=f"Document queued for processing",
+        doc_id=doc_id,
         status="queued"
     )
 
@@ -323,11 +371,16 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser
+    global document_processor, parser, status_manager
 
     logger.info("=" * 70)
     logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")
     logger.info("=" * 70)
+
+    # Initialize StatusManager with global processing_status dict
+    status_manager = get_status_manager(processing_status)
+    set_status_manager(status_manager)
+    logger.info("StatusManager initialized")
 
     # Log configuration
     logger.info(f"Configuration:")

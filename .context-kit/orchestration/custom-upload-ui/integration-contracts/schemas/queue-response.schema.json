@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://docusearch.local/schemas/queue-response.json",
+  "title": "QueueResponse",
+  "description": "Response from GET /status/queue endpoint",
+  "type": "object",
+  "required": ["queue", "total", "active", "completed", "failed"],
+  "properties": {
+    "queue": {
+      "type": "array",
+      "description": "Array of status objects (simplified)",
+      "items": {
+        "type": "object",
+        "required": [
+          "doc_id",
+          "filename",
+          "status",
+          "progress",
+          "elapsed_time",
+          "timestamp"
+        ],
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "description": "SHA-256 document hash",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "status": {
+            "type": "string",
+            "description": "Current processing status",
+            "enum": [
+              "queued",
+              "parsing",
+              "embedding_visual",
+              "embedding_text",
+              "storing",
+              "completed",
+              "failed"
+            ]
+          },
+          "progress": {
+            "type": "number",
+            "description": "Progress value between 0.0 and 1.0",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "elapsed_time": {
+            "type": "number",
+            "description": "Seconds elapsed since processing started",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Last update time in ISO 8601 format (UTC)",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "integer",
+      "description": "Total documents in response",
+      "minimum": 0,
+      "examples": [0, 5, 100]
+    },
+    "active": {
+      "type": "integer",
+      "description": "Count of documents with status != completed/failed",
+      "minimum": 0,
+      "examples": [0, 2, 10]
+    },
+    "completed": {
+      "type": "integer",
+      "description": "Count of completed documents",
+      "minimum": 0,
+      "examples": [0, 3, 50]
+    },
+    "failed": {
+      "type": "integer",
+      "description": "Count of failed documents",
+      "minimum": 0,
+      "examples": [0, 1, 5]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "queue": [
+        {
+          "doc_id": "abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+          "filename": "report.pdf",
+          "status": "embedding_visual",
+          "progress": 0.65,
+          "elapsed_time": 45.2,
+          "timestamp": "2025-10-07T19:30:00Z"
+        },
+        {
+          "doc_id": "def456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef012",
+          "filename": "notes.md",
+          "status": "completed",
+          "progress": 1.0,
+          "elapsed_time": 12.5,
+          "timestamp": "2025-10-07T19:25:00Z"
+        }
+      ],
+      "total": 2,
+      "active": 1,
+      "completed": 1,
+      "failed": 0
+    },
+    {
+      "queue": [],
+      "total": 0,
+      "active": 0,
+      "completed": 0,
+      "failed": 0
+    }
+  ]
+}
