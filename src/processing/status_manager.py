@@ -86,8 +86,8 @@ class StatusManager:
                 error=None,
             )
 
-            # Store as dict in global status tracker
-            self._status_dict[doc_id] = status.model_dump()
+            # Store as dict in global status tracker (serialize datetimes to strings)
+            self._status_dict[doc_id] = status.model_dump(mode='json')
 
             logger.info(
                 f"Created status for document {doc_id} (filename: {filename})"
@@ -145,9 +145,10 @@ class StatusManager:
             status_dict["updated_at"] = datetime.utcnow().isoformat()
 
             # Calculate elapsed time
-            started_at = datetime.fromisoformat(
-                status_dict["started_at"].replace("Z", "+00:00")
-            )
+            started_at = status_dict["started_at"]
+            # Handle both datetime objects and ISO strings
+            if isinstance(started_at, str):
+                started_at = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
             elapsed = (datetime.utcnow() - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 

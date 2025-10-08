@@ -20,7 +20,7 @@ services:
       - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
       - WORKER_HOST=host.docker.internal
       - WORKER_PORT=8002
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json}
     networks:
       - docusearch
     depends_on:

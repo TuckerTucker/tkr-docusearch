@@ -7,19 +7,22 @@
  * Contract: ui-html.contract.md
  */
 
-// Supported formats from MULTI_FORMAT_SUPPORT.md
-const SUPPORTED_FORMATS = new Set([
-    // Documents
+// Dynamic supported formats (loaded from worker /config endpoint)
+let SUPPORTED_FORMATS = new Set([
+    // Fallback formats (if fetch fails)
     'pdf', 'docx', 'pptx', 'xlsx', 'md', 'html', 'htm', 'xhtml', 'asciidoc',
-    // Images
     'png', 'jpg', 'jpeg', 'tiff', 'bmp', 'webp',
-    // Data
     'csv', 'json',
-    // Audio
     'vtt', 'wav', 'mp3',
-    // Specialized
     'xml'
 ]);
+
+// Dynamic config from worker
+let workerConfig = {
+    maxFileSizeMB: 100,
+    device: 'unknown',
+    modelPrecision: 'unknown'
+};
 
 // Format types for processing estimation
 const FORMAT_TYPES = {
@@ -28,9 +31,71 @@ const FORMAT_TYPES = {
     AUDIO: new Set(['vtt', 'wav', 'mp3'])
 };
 
-// File size limits (in bytes)
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+// File size limits (in bytes) - will be updated from worker config
+let MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB (default)
 const WARN_FILE_SIZE = 10 * 1024 * 1024;  // 10 MB
+
+/**
+ * Initialize file validator by fetching config from worker.
+ * Should be called on page load.
+ *
+ * @param {string} workerUrl - Worker base URL (default: http://localhost:8002)
+ * @returns {Promise<Object>} Worker configuration
+ */
+export async function initializeValidator(workerUrl = 'http://localhost:8002') {
+    try {
+        const response = await fetch(`${workerUrl}/config`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch config: ${response.status}`);
+        }
+
+        const config = await response.json();
+
+        // Update supported formats (remove leading dots from extensions)
+        SUPPORTED_FORMATS = new Set(
+            config.supported_formats.map(ext => ext.startsWith('.') ? ext.substring(1) : ext)
+        );
+
+        // Update max file size
+        MAX_FILE_SIZE = config.max_file_size_mb * 1024 * 1024;
+
+        // Store worker config
+        workerConfig = {
+            maxFileSizeMB: config.max_file_size_mb,
+            device: config.device,
+            modelPrecision: config.model_precision
+        };
+
+        console.log('File validator initialized with worker config:', {
+            supportedFormats: Array.from(SUPPORTED_FORMATS).sort(),
+            maxFileSizeMB: workerConfig.maxFileSizeMB,
+            device: workerConfig.device
+        });
+
+        return workerConfig;
+    } catch (error) {
+        console.error('Failed to load worker config, using fallback:', error);
+        return workerConfig;
+    }
+}
+
+/**
+ * Get current worker configuration.
+ *
+ * @returns {Object} Worker config {maxFileSizeMB, device, modelPrecision}
+ */
+export function getWorkerConfig() {
+    return { ...workerConfig };
+}
+
+/**
+ * Get current supported formats.
+ *
+ * @returns {Array<string>} Array of supported extensions
+ */
+export function getSupportedFormats() {
+    return Array.from(SUPPORTED_FORMATS).sort();
+}
 
 /**
  * Validate a file before upload.

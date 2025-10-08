@@ -184,8 +184,9 @@ show_summary() {
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} Upload UI:     ${BLUE}http://localhost:8000${NC}"
+    echo -e "  ${GREEN}→${NC} Upload UI:     ${BLUE}http://localhost:8002/ui/${NC}"
     echo -e "  ${GREEN}→${NC} ChromaDB:      ${BLUE}http://localhost:8001${NC}"
+    echo -e "  ${GREEN}→${NC} Copyparty:     ${BLUE}http://localhost:8000${NC}"
     echo -e "  ${GREEN}→${NC} Worker API:    ${BLUE}http://localhost:8002${NC}"
     echo -e "  ${GREEN}→${NC} Worker Status: ${BLUE}http://localhost:8002/status${NC}"
 

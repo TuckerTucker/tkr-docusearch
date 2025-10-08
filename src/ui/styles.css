@@ -449,6 +449,28 @@ h3 {
     letter-spacing: 0.05em;
 }
 
+.clear-queue-btn {
+    margin-left: auto;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-error);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-queue-btn:hover {
+    background: #dc2626;
+    box-shadow: var(--shadow-sm);
+}
+
+.clear-queue-btn:active {
+    transform: scale(0.98);
+}
+
 /* Queue Items */
 .queue-items {
     display: flex;

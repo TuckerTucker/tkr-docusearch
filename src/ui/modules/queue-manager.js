@@ -42,11 +42,20 @@ export class QueueManager {
         // Track queue items: Map<doc_id, HTMLElement>
         this.items = new Map();
 
+        // Track queue data for persistence: Map<doc_id, statusData>
+        this.queueData = new Map();
+
         // Stats
         this.stats = {
             active: 0,
             completed: 0
         };
+
+        // LocalStorage key
+        this.storageKey = 'docusearch_queue';
+
+        // Load persisted queue on init
+        this.loadFromStorage();
     }
 
     /**
@@ -56,7 +65,31 @@ export class QueueManager {
      * @param {Object} statusData - Status data from API
      */
     handleStatusUpdate(docId, statusData) {
-        const item = this.items.get(docId);
+        let item = this.items.get(docId);
+
+        // If not found by doc_id, try to find by filename (for temp doc_id resolution)
+        if (!item && statusData.filename) {
+            // Search for item with matching filename
+            for (const [tempDocId, existingItem] of this.items.entries()) {
+                const itemFilename = existingItem.querySelector('.queue-item-filename')?.textContent;
+                if (itemFilename === statusData.filename) {
+                    console.log(`Queue manager: Resolved ${tempDocId} to ${docId} via filename match`);
+
+                    // Remove old mapping
+                    this.items.delete(tempDocId);
+                    this.queueData.delete(tempDocId);
+
+                    // Update item's data-doc-id attribute
+                    existingItem.setAttribute('data-doc-id', docId);
+
+                    // Add new mapping
+                    this.items.set(docId, existingItem);
+                    item = existingItem;
+
+                    break;
+                }
+            }
+        }
 
         if (item) {
             // Update existing item
@@ -65,6 +98,10 @@ export class QueueManager {
             // Create new item (shouldn't happen often - upload.js creates items)
             this.addQueueItem(docId, statusData);
         }
+
+        // Save data for persistence
+        this.queueData.set(docId, statusData);
+        this.saveToStorage();
 
         // Update stats
         this.updateStats();
@@ -377,6 +414,72 @@ export class QueueManager {
             console.error('Failed to load queue from API:', error);
             throw error;
         }
+    }
+
+    /**
+     * Save queue state to localStorage.
+     *
+     * @private
+     */
+    saveToStorage() {
+        try {
+            const data = Array.from(this.queueData.entries()).map(([docId, statusData]) => ({
+                docId,
+                statusData,
+                timestamp: Date.now()
+            }));
+
+            localStorage.setItem(this.storageKey, JSON.stringify(data));
+        } catch (error) {
+            console.warn('Failed to save queue to localStorage:', error);
+        }
+    }
+
+    /**
+     * Load queue state from localStorage.
+     *
+     * Restores queue items from previous session.
+     *
+     * @private
+     */
+    loadFromStorage() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (!stored) return;
+
+            const data = JSON.parse(stored);
+            const now = Date.now();
+            const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+            // Restore queue items
+            for (const item of data) {
+                // Skip old items (>24 hours)
+                if (now - item.timestamp > maxAge) {
+                    continue;
+                }
+
+                // Add to queue
+                this.queueData.set(item.docId, item.statusData);
+                this.addQueueItem(item.docId, item.statusData);
+            }
+
+            // Update stats
+            this.updateStats();
+
+            console.log(`Restored ${data.length} queue items from localStorage`);
+        } catch (error) {
+            console.warn('Failed to load queue from localStorage:', error);
+            // Clear corrupted data
+            localStorage.removeItem(this.storageKey);
+        }
+    }
+
+    /**
+     * Clear persisted queue data.
+     */
+    clearStorage() {
+        localStorage.removeItem(this.storageKey);
+        this.queueData.clear();
     }
 }
 

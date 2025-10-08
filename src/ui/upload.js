@@ -8,14 +8,15 @@
  * Contract: ui-html.contract.md
  */
 
-import { validateFile, getFormatType, estimateProcessingTime, formatFileSize, getFormatName } from './modules/file-validator.js';
+import { validateFile, getFormatType, estimateProcessingTime, formatFileSize, getFormatName, initializeValidator, getSupportedFormats } from './modules/file-validator.js';
 import { uploadToCopyparty, uploadMultipleFiles, isTempDocId, resolveDocId } from './modules/copyparty-client.js';
 import { initializeHealthMonitoring } from './modules/worker-health.js';
+import { startMonitoring } from './monitor.js';
 
 /**
  * Initialize upload functionality.
  */
-export function initializeUpload() {
+export async function initializeUpload() {
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
 
@@ -23,6 +24,12 @@ export function initializeUpload() {
         console.error('Upload UI elements not found');
         return;
     }
+
+    // Initialize file validator with worker config
+    await initializeValidator();
+
+    // Update HTML accept attribute with dynamic formats
+    updateFileInputAccept(fileInput);
 
     // Initialize drag-and-drop
     setupDragAndDrop(dropZone, fileInput);
@@ -34,6 +41,18 @@ export function initializeUpload() {
     initializeHealthMonitoring();
 
     console.log('Upload module initialized');
+}
+
+/**
+ * Update file input accept attribute with supported formats from worker config.
+ *
+ * @param {HTMLInputElement} fileInput - File input element
+ */
+function updateFileInputAccept(fileInput) {
+    const formats = getSupportedFormats();
+    const acceptString = formats.map(ext => `.${ext}`).join(',');
+    fileInput.setAttribute('accept', acceptString);
+    console.log(`Updated file input accept attribute with ${formats.length} formats`);
 }
 
 /**
@@ -226,7 +245,8 @@ async function handleUploadSuccess(file, docId) {
             filename: file.name
         });
 
-        // The monitoring system will poll and resolve the real doc_id
+        // Start monitoring - will timeout after 30s if not found
+        startMonitoring(docId, file.name);
     } else {
         // Real doc_id received
         updateQueueItemProgress(queueItem, {
@@ -236,6 +256,9 @@ async function handleUploadSuccess(file, docId) {
             doc_id: docId,
             filename: file.name
         });
+
+        // Start monitoring for status updates
+        startMonitoring(docId, file.name);
     }
 
     showToast('success', `${file.name} uploaded successfully`);

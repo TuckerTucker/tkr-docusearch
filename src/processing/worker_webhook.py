@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 from pydantic import BaseModel
 import uvicorn
 
@@ -94,11 +95,23 @@ app.add_middleware(
 # Mount status API router
 app.include_router(status_router)
 
+# Custom StaticFiles class with no-cache headers for development
+class NoCacheStaticFiles(StaticFiles):
+    """StaticFiles subclass that adds no-cache headers to prevent browser caching during development."""
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        # Add no-cache headers to prevent browser caching
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
 # Mount static files for UI
 UI_DIR = Path(__file__).parent.parent / "ui"
 if UI_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
-    logger.info(f"Mounted UI at /ui (directory: {UI_DIR})")
+    app.mount("/ui", NoCacheStaticFiles(directory=str(UI_DIR), html=True), name="ui")
+    logger.info(f"Mounted UI at /ui (directory: {UI_DIR}) with no-cache headers")
 else:
     logger.warning(f"UI directory not found: {UI_DIR}")
 
@@ -159,6 +172,8 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
     """
     doc_id = None
     try:
+        print(f">>> PROCESS_DOCUMENT_SYNC STARTED: {filename}", flush=True)
+
         # Verify file exists
         path = Path(file_path)
         if not path.exists():
@@ -166,26 +181,32 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
 
         # Check extension
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            print(f">>> SKIPPING unsupported file type: {path.suffix}", flush=True)
             return {
                 "status": "skipped",
                 "error": f"Unsupported file type: {path.suffix}"
             }
 
-        # Generate doc ID from file hash
+        # Generate doc ID from file hash (SHA-256 to match /process endpoint)
         with open(file_path, 'rb') as f:
             content = f.read()
-            doc_id = hashlib.md5(content).hexdigest()[:12]
+            doc_id = hashlib.sha256(content).hexdigest()
 
-        # Update status
-        processing_status[doc_id] = {
-            "filename": filename,
-            "status": "processing",
-            "progress": 0.0,
-            "started_at": datetime.now().isoformat(),
-            "error": None
-        }
-
+        print(f">>> PROCESSING DOCUMENT: {filename} (ID: {doc_id})", flush=True)
         logger.info(f"Processing document: {filename} (ID: {doc_id})")
+
+        # Update status to parsing
+        try:
+            status_manager.update_status(doc_id, "parsing", 0.1, stage="Parsing document")
+        except KeyError:
+            # Status doesn't exist yet - this shouldn't happen but create it just in case
+            logger.warning(f"Status for {doc_id} not found, creating...")
+            metadata = {
+                "format": path.suffix.lstrip('.').lower(),
+                "file_size": path.stat().st_size,
+            }
+            status_manager.create_status(doc_id, filename, metadata)
+            status_manager.update_status(doc_id, "parsing", 0.1, stage="Parsing document")
 
         # Process document
         result = document_processor.process_document(
@@ -198,12 +219,12 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
 
         logger.info(f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}")
 
-        # Update status to completed
-        processing_status[doc_id]["status"] = "completed"
-        processing_status[doc_id]["progress"] = 1.0
-        processing_status[doc_id]["completed_at"] = datetime.now().isoformat()
-        processing_status[doc_id]["visual_embeddings"] = len(result.visual_ids)
-        processing_status[doc_id]["text_embeddings"] = len(result.text_ids)
+        # Mark as completed
+        status_manager.mark_completed(
+            doc_id,
+            visual_embeddings=len(result.visual_ids),
+            text_embeddings=len(result.text_ids)
+        )
 
         logger.info(f"✓ Successfully processed {filename} (ID: {result.doc_id})")
 
@@ -218,9 +239,10 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
         logger.error(f"Failed to process {filename}: {e}", exc_info=True)
 
         if doc_id:
-            processing_status[doc_id]["status"] = "failed"
-            processing_status[doc_id]["error"] = str(e)
-            processing_status[doc_id]["completed_at"] = datetime.now().isoformat()
+            try:
+                status_manager.mark_failed(doc_id, str(e))
+            except KeyError:
+                logger.warning(f"Could not mark {doc_id} as failed - not in status tracker")
 
         return {
             "status": "failed",
@@ -230,9 +252,25 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
 
 def _update_processing_status(doc_id: str, status):
     """Update processing status from DocumentProcessor callback."""
-    if doc_id in processing_status:
-        processing_status[doc_id]["status"] = status.status
-        processing_status[doc_id]["progress"] = status.progress
+    try:
+        # Map DocumentProcessor status to ProcessingStatusEnum values
+        status_value = status.status  # e.g., "embedding_visual", "embedding_text", etc.
+        progress = status.progress  # 0.0-1.0
+
+        # Build kwargs for additional fields
+        kwargs = {}
+        if hasattr(status, 'stage'):
+            kwargs['stage'] = status.stage
+        if hasattr(status, 'page'):
+            kwargs['page'] = status.page
+        if hasattr(status, 'total_pages'):
+            kwargs['total_pages'] = status.total_pages
+
+        status_manager.update_status(doc_id, status_value, progress, **kwargs)
+    except KeyError:
+        logger.warning(f"Could not update status for {doc_id} - not in status tracker")
+    except Exception as e:
+        logger.error(f"Failed to update status for {doc_id}: {e}")
 
 
 # ============================================================================
@@ -246,6 +284,7 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 
     Called by copyparty webhook when a file is uploaded.
     """
+    print(f">>> PROCESS ENDPOINT CALLED: {request.filename}", flush=True)
     logger.info(f"Received processing request for: {request.filename}")
 
     # Validate path
@@ -274,9 +313,24 @@ async def process_document(request: ProcessRequest, background_tasks: Background
         logger.warning(f"Document {doc_id} already in status tracker")
 
     # Queue for background processing
+    print(f">>> SUBMITTING TO THREADPOOL: {request.filename}", flush=True)
     future = executor.submit(process_document_sync, request.file_path, request.filename)
 
+    # Add callback to log completion or errors
+    def log_completion(fut):
+        try:
+            result = fut.result()
+            print(f">>> BACKGROUND TASK COMPLETED: {result}", flush=True)
+            logger.info(f"Background task completed: {result}")
+        except Exception as e:
+            print(f">>> BACKGROUND TASK FAILED: {e}", flush=True)
+            logger.error(f"Background task failed: {e}", exc_info=True)
+
+    future.add_done_callback(log_completion)
+
     # Return immediately with doc_id (processing continues in background)
+    print(f">>> QUEUED FOR BACKGROUND: {request.filename} (doc_id: {doc_id})", flush=True)
+    logger.info(f"Queued {request.filename} for background processing (doc_id: {doc_id})")
     return ProcessResponse(
         message=f"Document queued for processing",
         doc_id=doc_id,
@@ -364,6 +418,17 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
+@app.get("/config")
+async def get_config():
+    """Get worker configuration including supported formats."""
+    return {
+        "supported_formats": list(SUPPORTED_EXTENSIONS),
+        "max_file_size_mb": int(os.getenv("MAX_FILE_SIZE_MB", "100")),
+        "device": DEVICE,
+        "model_precision": PRECISION
+    }
+
+
 # ============================================================================
 # Startup/Shutdown
 # ============================================================================
@@ -373,6 +438,9 @@ async def startup_event():
     """Initialize components on startup."""
     global document_processor, parser, status_manager
 
+    print("=" * 70, flush=True)
+    print("DocuSearch Processing Worker Starting (Webhook Mode)...", flush=True)
+    print("=" * 70, flush=True)
     logger.info("=" * 70)
     logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")
     logger.info("=" * 70)

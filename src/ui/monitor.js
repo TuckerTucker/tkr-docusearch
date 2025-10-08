@@ -34,7 +34,8 @@ export function initializeMonitoring() {
         apiBaseUrl: 'http://localhost:8002',
         pollInterval: 2000, // Poll every 2 seconds
         onStatusUpdate: handleStatusUpdate,
-        onError: handleMonitorError
+        onError: handleMonitorError,
+        queueManager: queueManager
     });
 
     // Check if we're on status.html (load existing queue)
@@ -45,7 +46,26 @@ export function initializeMonitoring() {
     // Start monitoring any items that already have doc_ids
     startMonitoringExistingItems();
 
+    // Setup clear queue button
+    setupClearQueueButton();
+
     console.log('Monitor module initialized');
+}
+
+/**
+ * Setup clear queue button event listener.
+ */
+function setupClearQueueButton() {
+    const clearBtn = document.getElementById('clear-queue-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            // Confirm before clearing
+            if (confirm('Are you sure you want to clear the entire queue? This will remove all items and reset localStorage.')) {
+                clearQueue();
+            }
+        });
+        console.log('Clear queue button initialized');
+    }
 }
 
 /**
@@ -208,7 +228,7 @@ export function startMonitoring(docId, filename) {
     }
 
     console.log(`Starting monitoring for ${docId} (${filename})`);
-    monitor.startMonitoring(docId);
+    monitor.startMonitoring(docId, filename);
 }
 
 /**
@@ -304,6 +324,33 @@ export function getQueueStats() {
     }
 
     return queueManager.getStats();
+}
+
+/**
+ * Clear all queue items and localStorage.
+ */
+export function clearQueue() {
+    if (!queueManager) {
+        console.warn('Queue manager not initialized');
+        return;
+    }
+
+    // Stop monitoring all documents
+    if (monitor) {
+        const trackedDocs = monitor.getAllTracked();
+        for (const [docId, _] of trackedDocs.entries()) {
+            monitor.stopMonitoring(docId);
+        }
+    }
+
+    // Clear queue items
+    queueManager.clearAll();
+
+    // Clear localStorage
+    queueManager.clearStorage();
+
+    console.log('Queue cleared');
+    showNotification('success', 'Queue cleared successfully');
 }
 
 /**

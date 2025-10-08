@@ -21,15 +21,20 @@ export class ProcessingMonitor {
      * @param {number} options.pollInterval - Polling interval in ms (default: 2000)
      * @param {Function} options.onStatusUpdate - Callback for status updates (doc_id, status)
      * @param {Function} options.onError - Callback for errors (error)
+     * @param {Object} options.queueManager - QueueManager instance for UI updates
      */
     constructor(options = {}) {
         this.apiBaseUrl = options.apiBaseUrl || 'http://localhost:8002';
         this.pollInterval = options.pollInterval || 2000; // 2 seconds
         this.onStatusUpdate = options.onStatusUpdate || (() => {});
         this.onError = options.onError || ((error) => console.error('Monitor error:', error));
+        this.queueManager = options.queueManager || null;
 
-        // Tracked documents: Map<doc_id, {status, lastUpdate}>
+        // Tracked documents: Map<doc_id, {status, lastUpdate, startTime}>
         this.trackedDocs = new Map();
+
+        // Timeout for temp doc_id resolution (30 seconds)
+        this.tempDocIdTimeout = 30000;
 
         // Polling state
         this.isPolling = false;
@@ -41,8 +46,9 @@ export class ProcessingMonitor {
      * Start monitoring a document.
      *
      * @param {string} docId - Document ID to monitor
+     * @param {string} [filename] - Optional filename for temp doc_id resolution
      */
-    startMonitoring(docId) {
+    startMonitoring(docId, filename = null) {
         if (!docId) {
             console.warn('Cannot monitor document without doc_id');
             return;
@@ -51,7 +57,9 @@ export class ProcessingMonitor {
         // Add to tracked documents
         this.trackedDocs.set(docId, {
             status: 'unknown',
-            lastUpdate: Date.now()
+            lastUpdate: Date.now(),
+            startTime: Date.now(),
+            filename: filename
         });
 
         // Start polling if not already running
@@ -130,6 +138,9 @@ export class ProcessingMonitor {
         }
 
         try {
+            // Check for timed out temp doc_ids
+            this.checkTimeouts();
+
             // Fetch queue status
             const queueData = await this.fetchQueueStatus();
 
@@ -143,6 +154,42 @@ export class ProcessingMonitor {
             // Only report errors that aren't from abort
             if (error.name !== 'AbortError') {
                 this.onError(error);
+            }
+        }
+    }
+
+    /**
+     * Check for timed out temp doc_ids.
+     *
+     * If a temp doc_id hasn't been resolved within the timeout period,
+     * mark it as failed (likely rejected by webhook).
+     */
+    checkTimeouts() {
+        const now = Date.now();
+
+        for (const [docId, tracking] of this.trackedDocs.entries()) {
+            // Check if this is a temp doc_id
+            if (docId.startsWith('temp-')) {
+                const elapsed = now - tracking.startTime;
+
+                // If timeout exceeded and still unknown/queued
+                if (elapsed > this.tempDocIdTimeout &&
+                    (tracking.status === 'unknown' || tracking.status === 'queued')) {
+
+                    console.warn(`Temp doc_id timeout: ${docId} (${elapsed}ms)`);
+
+                    // Mark as failed - likely unsupported file type
+                    this.onStatusUpdate(docId, {
+                        status: 'failed',
+                        progress: 0,
+                        stage: 'Upload rejected',
+                        error: 'File type not supported or upload rejected by worker',
+                        elapsed_time: elapsed / 1000
+                    });
+
+                    // Stop tracking this document
+                    this.stopMonitoring(docId);
+                }
             }
         }
     }
@@ -200,15 +247,81 @@ export class ProcessingMonitor {
     /**
      * Update tracked documents from queue data.
      *
-     * @param {Object} queueData - Queue data {active: [], completed: []}
+     * @param {Object} queueData - Queue data {queue: [], total: number, active: number, completed: number, failed: number}
      */
     updateFromQueue(queueData) {
-        const { active = [], completed = [] } = queueData;
-        const allItems = [...active, ...completed];
+        const { queue = [] } = queueData;
+
+        console.log(`[DEBUG] Queue has ${queue.length} items, tracking ${this.trackedDocs.size} docs`);
 
         // Update each tracked document if found in queue
         for (const [docId, trackedData] of this.trackedDocs.entries()) {
-            const queueItem = allItems.find(item => item.doc_id === docId);
+            let queueItem = queue.find(item => item.doc_id === docId);
+
+            // If not found by doc_id and this is a temp doc_id, try matching by filename
+            if (!queueItem && docId.startsWith('temp-') && trackedData.filename) {
+                console.log(`[DEBUG] Looking for temp doc_id ${docId} with filename: ${trackedData.filename}`);
+                console.log(`[DEBUG] Queue filenames:`, queue.map(item => item.filename));
+
+                // Try exact match first
+                queueItem = queue.find(item => item.filename === trackedData.filename);
+
+                // If no exact match, try prefix match (Copyparty appends timestamp suffix)
+                if (!queueItem) {
+                    queueItem = queue.find(item => item.filename.startsWith(trackedData.filename));
+                    if (queueItem) {
+                        console.log(`Resolved temp doc_id ${docId} to real doc_id ${queueItem.doc_id} via prefix match (Copyparty renamed file)`);
+                    }
+                } else {
+                    console.log(`Resolved temp doc_id ${docId} to real doc_id ${queueItem.doc_id} via exact filename match`);
+                }
+
+                if (queueItem) {
+                    // Remove temp doc_id from queue UI
+                    // Note: Upload.js creates queue items with direct DOM manipulation,
+                    // so they're not in queueManager.items. We need to find and remove manually.
+                    console.log(`[DEBUG] Removing temp doc_id entry from UI: ${docId}`);
+
+                    // Find the queue item by looking for the filename in the DOM
+                    const queueItemsContainer = document.getElementById('queue-items');
+                    if (queueItemsContainer) {
+                        const items = Array.from(queueItemsContainer.children);
+                        // Find item with matching filename and "Queued for processing" status
+                        const tempItem = items.find(item => {
+                            const filenameEl = item.querySelector('.queue-item-filename');
+                            const statusEl = item.querySelector('.queue-item-status');
+                            return filenameEl &&
+                                   filenameEl.textContent === trackedData.filename &&
+                                   statusEl &&
+                                   statusEl.textContent.includes('Queued for processing');
+                        });
+
+                        if (tempItem) {
+                            console.log(`[DEBUG] Found and removing temp queue item for: ${trackedData.filename}`);
+                            tempItem.remove();
+                        } else {
+                            console.log(`[DEBUG] Could not find temp queue item in DOM for: ${trackedData.filename}`);
+                        }
+                    }
+
+                    // Switch to tracking the real doc_id
+                    this.trackedDocs.delete(docId);
+                    this.trackedDocs.set(queueItem.doc_id, {
+                        status: 'resolving', // Different status to force UI update
+                        lastUpdate: Date.now(),
+                        startTime: trackedData.startTime,
+                        filename: trackedData.filename
+                    });
+
+                    // Update UI with real doc_id (will trigger because status differs)
+                    this.updateDocStatus(queueItem.doc_id, queueItem);
+
+                    // Continue with this doc_id for the rest of the loop
+                    continue;
+                } else {
+                    console.log(`[DEBUG] No filename match found for ${trackedData.filename}`);
+                }
+            }
 
             if (queueItem) {
                 this.updateDocStatus(docId, queueItem);
