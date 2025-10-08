@@ -23,7 +23,10 @@ from pathlib import Path
 # Configuration
 WORKER_HOST = os.getenv("WORKER_HOST", "processing-worker")
 WORKER_PORT = os.getenv("WORKER_PORT", "8002")
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
+
+# Load supported formats from environment
+_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 
 def trigger_processing(file_path: str, filename: str) -> bool:
