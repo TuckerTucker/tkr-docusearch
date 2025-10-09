@@ -447,13 +447,27 @@ async def search_query(request: SearchRequest):
         # Convert to API response format
         results = []
         for result in response.get("results", []):
+            # Extract metadata for easier access
+            metadata = result.get("metadata", {})
+
+            # Enrich metadata with highlights
+            enriched_metadata = {
+                **metadata,
+                "highlights": result.get("highlights", []),
+            }
+
             results.append(SearchResult(
                 doc_id=result.get("doc_id", ""),
-                chunk_id=result.get("chunk_id"),
-                page_num=result.get("page_num"),
+                chunk_id=metadata.get("chunk_id"),  # chunk_id is in metadata
+                page_num=result.get("page"),  # search engine returns 'page' not 'page_num'
                 score=result.get("score", 0.0),
-                text_preview=result.get("text", "")[:200] if result.get("text") else None,
-                metadata=result.get("metadata", {})
+                text_preview=result.get("text_preview"),
+                metadata=enriched_metadata,
+                # Top-level fields for frontend display
+                type=result.get("type", "unknown"),
+                filename=result.get("filename", ""),
+                thumbnail=result.get("thumbnail_url", ""),
+                snippet=result.get("text_preview", "")
             ))
 
         # Filter by minimum score if specified

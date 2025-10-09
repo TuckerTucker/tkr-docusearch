@@ -60,6 +60,12 @@ class SearchResult(BaseModel):
     text_preview: Optional[str] = Field(None, description="Text preview snippet")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Document metadata")
 
+    # Additional fields for frontend display
+    type: Optional[str] = Field(None, description="Result type: visual or text")
+    filename: Optional[str] = Field(None, description="Document filename")
+    thumbnail: Optional[str] = Field(None, description="Thumbnail URL for visual results")
+    snippet: Optional[str] = Field(None, description="Text snippet for text results")
+
     class Config:
         json_schema_extra = {
             "example": {
