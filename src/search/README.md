@@ -166,7 +166,6 @@ response = engine.search(
             "filename": "Q3-2023-Earnings.pdf",
             "page": 3,
             "source_path": "/data/uploads/finance/Q3-2023-Earnings.pdf",
-            "thumbnail_url": "/api/thumbnail/doc1-page003",  # visual only
             "text_preview": "Product category revenue growth...",  # text only
             "highlights": ["revenue", "growth", "product"],
             "metadata": {

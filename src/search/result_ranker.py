@@ -260,7 +260,6 @@ class ResultRanker:
             "filename": metadata.get("filename", ""),
             "page": metadata.get("page", 0),
             "source_path": metadata.get("source_path", ""),
-            "thumbnail_url": self._generate_thumbnail_url(candidate["id"], metadata),
             "text_preview": metadata.get("text_preview"),
             "highlights": self._extract_highlights(metadata) if include_highlights else [],
             "metadata": {
@@ -274,16 +273,6 @@ class ResultRanker:
         }
 
         return result
-
-    def _generate_thumbnail_url(
-        self,
-        embedding_id: str,
-        metadata: Dict[str, Any]
-    ) -> Optional[str]:
-        """Generate thumbnail URL for visual results."""
-        if metadata.get("type") == "visual":
-            return f"/api/thumbnail/{embedding_id}"
-        return None
 
     def _extract_highlights(self, metadata: Dict[str, Any]) -> List[str]:
         """

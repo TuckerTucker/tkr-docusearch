@@ -466,7 +466,7 @@ async def search_query(request: SearchRequest):
                 # Top-level fields for frontend display
                 type=result.get("type", "unknown"),
                 filename=result.get("filename", ""),
-                thumbnail=result.get("thumbnail_url", ""),
+                thumbnail=None,  # Thumbnail feature disabled for now
                 snippet=result.get("text_preview", "")
             ))
 
