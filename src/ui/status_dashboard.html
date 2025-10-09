@@ -3,26 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DocuSearch - Processing Status Dashboard">
   <title>DocuSearch - Processing Status</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="container">
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
       <div class="header-content">
-        <h1 class="logo">DocuSearch</h1>
-        <nav class="nav" role="navigation" aria-label="Main navigation">
-          <a href="index.html" class="nav-link">Home</a>
-          <a href="search.html" class="nav-link">Search</a>
-          <a href="status_dashboard.html" class="nav-link active" aria-current="page">Status</a>
-        </nav>
+        <div class="header-left">
+          <h1 class="app-title">DocuSearch</h1>
+          <p class="app-subtitle">Monitor document processing status</p>
+        </div>
+        <div class="header-right">
+          <nav class="app-nav" role="navigation" aria-label="Main navigation">
+            <a href="index.html" class="nav-link">Upload</a>
+            <a href="search.html" class="nav-link">Search</a>
+            <a href="status_dashboard.html" class="nav-link nav-link--active" aria-current="page">Status</a>
+          </nav>
+          <div id="worker-status" class="worker-status">
+            <span class="status-indicator status-indicator--checking"></span>
+            <span class="status-text">Checking worker...</span>
+          </div>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <!-- Main content -->
-  <main class="main container" role="main">
+    <!-- Main Content -->
+    <main class="app-main" role="main">
     <h2>Processing Status Dashboard</h2>
 
     <!-- Queue statistics -->
@@ -126,15 +135,23 @@
       <span id="refresh-status">Auto-refresh: Active (every 5s)</span>
       <button id="toggle-refresh" class="btn btn-sm btn-outline">Pause</button>
     </div>
-  </main>
+    </main>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <p>&copy; 2025 DocuSearch MVP - Wave 2 (Mock Data)</p>
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p class="footer-text">
+        DocuSearch - AI-powered document search with ColPali
+      </p>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true">
+      <!-- Toast messages inserted here by JavaScript -->
     </div>
-  </footer>
+  </div>
 
+  <!-- Scripts -->
+  <script type="module" src="worker-status.js"></script>
   <script src="status_dashboard.js"></script>
 </body>
 </html>

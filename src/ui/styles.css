@@ -188,6 +188,19 @@ h3 {
     align-items: center;
     max-width: 1200px;
     margin: 0 auto;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+}
+
+.header-left {
+    flex: 1;
+    min-width: 200px;
+}
+
+.header-right {
+    display: flex;
+    gap: var(--space-6);
+    align-items: center;
 }
 
 .app-title {
@@ -199,6 +212,33 @@ h3 {
     margin-top: var(--space-2);
     color: var(--color-text-secondary);
     font-size: var(--text-lg);
+}
+
+/* Navigation */
+.app-nav {
+    display: flex;
+    gap: var(--space-6);
+    align-items: center;
+}
+
+.nav-link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.nav-link--active {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
 }
 
 /* Worker Status Indicator */
@@ -697,6 +737,28 @@ h3 {
     .app-header,
     .app-footer {
         padding: var(--space-4);
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-right {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .app-nav {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        gap: var(--space-2);
+    }
+
+    .worker-status {
+        width: 100%;
     }
 
     .drop-zone {

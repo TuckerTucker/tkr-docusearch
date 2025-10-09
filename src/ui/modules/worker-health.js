@@ -32,6 +32,12 @@ let statusText = null;
  * Sets up periodic health checks and updates the UI indicator.
  */
 export function initializeHealthMonitoring() {
+    // Prevent double initialization
+    if (healthCheckTimer) {
+        console.log('Worker health monitoring already initialized');
+        return;
+    }
+
     // Get DOM elements
     statusIndicator = document.querySelector('.status-indicator');
     statusText = document.querySelector('.status-text');
