@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from PIL import Image
 
-from ..storage import ChromaClient
+try:
+    from ..storage import ChromaClient
+except ImportError:
+    # Handle import error during testing
+    from src.storage import ChromaClient
 from .docling_parser import DoclingParser
 
 logger = logging.getLogger(__name__)

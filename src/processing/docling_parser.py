@@ -403,7 +403,8 @@ class DoclingParser:
                 num_pages=len(pages),
                 pages=pages,
                 text_chunks=text_chunks,
-                metadata=metadata
+                metadata=metadata,
+                docling_doc=doc  # Store Docling document for markdown export
             )
 
             logger.info(

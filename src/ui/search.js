@@ -55,7 +55,8 @@ function generateMockResults(query, searchMode, nResults) {
       metadata: {
         upload_date: doc.uploadDate,
         file_size_mb: parseFloat((Math.random() * 5 + 0.5).toFixed(2)),
-        total_pages: doc.pages
+        total_pages: doc.pages,
+        has_markdown: i % 2 === 0 // Alternate between true and false for testing
       }
     };
 
@@ -298,6 +299,40 @@ function showAlert(message, type = 'info') {
 }
 
 /**
+ * Show toast notification
+ * @param {string} message - Toast message
+ * @param {string} type - Toast type ('success', 'error', 'warning')
+ */
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) {
+    console.warn('Toast container not found');
+    return;
+  }
+
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${type}`;
+
+  const messageEl = document.createElement('div');
+  messageEl.className = 'toast-message';
+  messageEl.textContent = message;
+
+  toast.appendChild(messageEl);
+  container.appendChild(toast);
+
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    toast.classList.add('toast--hiding');
+    setTimeout(() => {
+      if (container.contains(toast)) {
+        container.removeChild(toast);
+      }
+    }, 300); // Match CSS transition duration
+  }, 5000);
+}
+
+/**
  * Show/hide loading indicator
  */
 function setLoading(isLoading) {
@@ -482,12 +517,31 @@ function createResultCard(result, query) {
   `;
   footer.appendChild(meta);
 
+  // Create actions container
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+
+  // Preview button
   const previewBtn = document.createElement('button');
   previewBtn.className = 'btn btn-sm btn-primary preview-btn';
   previewBtn.textContent = 'Preview';
   previewBtn.setAttribute('aria-label', `Preview ${result.filename}${result.page_num ? ` page ${result.page_num}` : ''}`);
   previewBtn.addEventListener('click', () => openPreview(result.doc_id, result.page_num || 1));
-  footer.appendChild(previewBtn);
+  actions.appendChild(previewBtn);
+
+  // Download button (only show if markdown available)
+  const hasMarkdown = result.metadata && result.metadata.has_markdown;
+  if (hasMarkdown) {
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'btn btn-sm btn-download';
+    downloadBtn.innerHTML = '<span aria-hidden="true">⬇</span> Download MD';
+    downloadBtn.setAttribute('data-doc-id', result.doc_id);
+    downloadBtn.setAttribute('aria-label', `Download ${result.filename} as markdown`);
+    downloadBtn.addEventListener('click', () => downloadMarkdown(result.doc_id));
+    actions.appendChild(downloadBtn);
+  }
+
+  footer.appendChild(actions);
 
   card.appendChild(footer);
 
@@ -552,6 +606,62 @@ async function navigatePage(delta) {
   if (newPage < 1 || newPage > state.currentPreview.totalPages) return;
 
   await openPreview(state.currentPreview.docId, newPage);
+}
+
+// ============================================================================
+// Markdown Download
+// ============================================================================
+
+/**
+ * Download document as markdown file
+ * @param {string} docId - Document ID (SHA-256 hash)
+ */
+async function downloadMarkdown(docId) {
+  try {
+    const response = await fetch(`http://localhost:8002/api/document/${docId}/markdown`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        const errorData = await response.json();
+        const detail = errorData.detail || '';
+        if (detail.toLowerCase().includes('not found')) {
+          showToast('Document not found.', 'error');
+        } else if (detail.toLowerCase().includes('not available')) {
+          showToast('Markdown not available for this document.', 'error');
+        } else if (detail.toLowerCase().includes('missing')) {
+          showToast('Markdown file missing.', 'error');
+        } else {
+          showToast('Markdown not available.', 'error');
+        }
+      } else if (response.status === 400) {
+        showToast('Invalid document ID.', 'error');
+      } else {
+        showToast('Download failed. Please try again.', 'error');
+      }
+      return;
+    }
+
+    // Get filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : 'document.md';
+
+    // Download as blob
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    showToast(`Downloaded ${filename}`, 'success');
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('Download failed. Please try again.', 'error');
+  }
 }
 
 // ============================================================================

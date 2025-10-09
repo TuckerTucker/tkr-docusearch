@@ -23,6 +23,10 @@ data/logs/
 # Copyparty web UI
 data/copyparty/
 
+# Markdown exports (track directory structure, not content)
+data/markdown/*.md
+!data/markdown/.gitkeep
+
 # ============================================================================
 # Python
 # ============================================================================

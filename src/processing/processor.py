@@ -184,6 +184,20 @@ class DocumentProcessor:
                 f"{len(parsed_doc.text_chunks)} chunks"
             )
 
+            # Stage 1.5: Markdown Export
+            markdown_path = self._save_markdown(parsed_doc, doc_id)
+
+            # Add markdown metadata
+            if markdown_path:
+                parsed_doc.metadata["markdown_path"] = markdown_path
+                parsed_doc.metadata["has_markdown"] = True
+                parsed_doc.metadata["markdown_size_kb"] = round(
+                    Path(markdown_path).stat().st_size / 1024,
+                    1
+                )
+            else:
+                parsed_doc.metadata["has_markdown"] = False
+
             # Stage 2: Visual Embedding (skip for text-only formats)
             visual_results = []
             has_visual_content = any(page.image is not None for page in parsed_doc.pages)
@@ -334,6 +348,86 @@ class DocumentProcessor:
                 int(time.time() - start_time)
             )
             raise ProcessingError(f"Processing failed: {e}") from e
+
+    def _save_markdown(
+        self,
+        parsed_doc: 'ParsedDocument',
+        doc_id: str
+    ) -> Optional[str]:
+        """Save full document as markdown.
+
+        Args:
+            parsed_doc: Parsed document from Docling
+            doc_id: Document identifier (SHA-256 hash)
+
+        Returns:
+            Absolute path to saved markdown file, or None if export failed
+
+        Raises:
+            IOError: If file write fails
+            PermissionError: If directory not writable
+        """
+        try:
+            # Generate markdown from Docling document
+            full_markdown = parsed_doc.docling_doc.export_to_markdown()
+
+            if not full_markdown:
+                logger.debug(f"Markdown export returned empty content for doc_id={doc_id}")
+                return None
+
+        except AttributeError:
+            # export_to_markdown() not available
+            logger.warning(
+                f"Markdown export not available for {parsed_doc.filename} "
+                f"(doc_id={doc_id})"
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                f"Markdown export failed for {parsed_doc.filename} "
+                f"(doc_id={doc_id}): {e}"
+            )
+            return None
+
+        try:
+            # Create markdown directory (idempotent)
+            # Use absolute path from project root
+            project_root = Path(__file__).parent.parent.parent
+            markdown_dir = project_root / "data" / "markdown"
+            markdown_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save to disk
+            markdown_path = markdown_dir / f"{doc_id}.md"
+            markdown_path.write_text(full_markdown, encoding='utf-8')
+
+            # Verify file size for logging
+            file_size_kb = markdown_path.stat().st_size / 1024
+            if file_size_kb > 5000:  # 5 MB
+                logger.warning(
+                    f"Large markdown file: {file_size_kb:.1f}KB for "
+                    f"{parsed_doc.filename} (doc_id={doc_id})"
+                )
+            else:
+                logger.info(
+                    f"Saved markdown: {file_size_kb:.1f}KB for "
+                    f"{parsed_doc.filename} (doc_id={doc_id})"
+                )
+
+            # Return absolute path
+            return str(markdown_path.absolute())
+
+        except (IOError, PermissionError) as e:
+            logger.error(
+                f"Failed to write markdown file for {parsed_doc.filename} "
+                f"(doc_id={doc_id}): {e}"
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error saving markdown for {parsed_doc.filename} "
+                f"(doc_id={doc_id}): {e}"
+            )
+            raise IOError(f"Markdown save failed: {e}") from e
 
     def _store_embeddings(
         self,
