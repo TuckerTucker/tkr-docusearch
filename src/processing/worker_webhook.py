@@ -479,17 +479,29 @@ async def search_query(request: SearchRequest):
         )
 
 
-@app.get("/status", response_model=StatusResponse)
+@app.get("/status")
 async def get_status():
-    """Get worker status."""
-    processing_count = sum(1 for s in processing_status.values() if s["status"] == "processing")
-    total_processed = len(processing_status)
+    """
+    Get comprehensive worker status with dashboard statistics.
 
-    return StatusResponse(
-        status="healthy",
-        processing_count=processing_count,
-        total_processed=total_processed
-    )
+    Wave 2, Agent 5: Enhanced with dashboard stats for UI.
+    """
+    if not status_manager:
+        # Fallback if status_manager not initialized
+        return {
+            "queue_size": 0,
+            "processing_count": 0,
+            "completed_today": 0,
+            "failed_today": 0,
+            "avg_processing_time_seconds": 0.0,
+            "estimated_wait_time_seconds": 0.0,
+            "current_processing": None,
+            "recent_documents": []
+        }
+
+    # Get dashboard stats from StatusManager
+    dashboard_stats = status_manager.get_dashboard_stats()
+    return dashboard_stats
 
 
 @app.get("/health")

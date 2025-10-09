@@ -318,6 +318,182 @@ class StatusManager:
 
             return len(doc_ids_to_remove)
 
+    # ====================================================================
+    # Wave 2, Agent 5: Dashboard Enhancement Methods
+    # ====================================================================
+
+    def get_dashboard_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive dashboard statistics.
+
+        Returns:
+            Dictionary with dashboard stats including:
+            - queue_size: Documents queued
+            - processing_count: Documents currently processing
+            - completed_today: Completed since midnight
+            - failed_today: Failed since midnight
+            - avg_processing_time_seconds: Average time for completed docs
+            - estimated_wait_time_seconds: Estimated wait time
+            - current_processing: Currently processing document details
+            - recent_documents: Last 5 documents
+        """
+        with self._lock:
+            # Get today's start (midnight local time)
+            today_start = datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
+            queue_size = 0
+            processing_count = 0
+            completed_today = 0
+            failed_today = 0
+            processing_times = []
+            current_processing = None
+            recent_documents = []
+
+            # Collect all documents sorted by updated_at (newest first)
+            all_docs = []
+            for doc_id, status_dict in self._status_dict.items():
+                all_docs.append((doc_id, status_dict))
+
+            # Sort by updated_at descending
+            all_docs.sort(
+                key=lambda x: x[1].get("updated_at", ""),
+                reverse=True
+            )
+
+            # Process documents
+            for doc_id, status_dict in all_docs:
+                status = status_dict.get("status")
+
+                # Count queued/processing
+                if status == ProcessingStatusEnum.QUEUED.value:
+                    queue_size += 1
+                elif status in [
+                    ProcessingStatusEnum.PARSING.value,
+                    ProcessingStatusEnum.EMBEDDING_VISUAL.value,
+                    ProcessingStatusEnum.EMBEDDING_TEXT.value,
+                    ProcessingStatusEnum.STORING.value,
+                ]:
+                    processing_count += 1
+                    # Get first processing document details
+                    if current_processing is None:
+                        current_processing = self._build_current_processing(
+                            doc_id, status_dict
+                        )
+
+                # Count completed/failed today
+                completed_at_str = status_dict.get("completed_at")
+                if completed_at_str:
+                    try:
+                        completed_at = datetime.fromisoformat(
+                            completed_at_str.replace("Z", "+00:00")
+                        )
+                        if completed_at >= today_start:
+                            if status == ProcessingStatusEnum.COMPLETED.value:
+                                completed_today += 1
+                            elif status == ProcessingStatusEnum.FAILED.value:
+                                failed_today += 1
+                    except (ValueError, AttributeError):
+                        pass
+
+                # Collect processing times for completed docs
+                if status == ProcessingStatusEnum.COMPLETED.value:
+                    elapsed = status_dict.get("elapsed_time")
+                    if elapsed:
+                        processing_times.append(elapsed)
+
+                # Build recent documents list (max 5)
+                if len(recent_documents) < 5:
+                    recent_doc = self._build_recent_document(doc_id, status_dict)
+                    if recent_doc:
+                        recent_documents.append(recent_doc)
+
+            # Calculate average processing time
+            avg_processing_time = (
+                sum(processing_times) / len(processing_times)
+                if processing_times
+                else 0.0
+            )
+
+            # Estimate wait time
+            estimated_wait = queue_size * avg_processing_time if avg_processing_time > 0 else 0.0
+
+            return {
+                "queue_size": queue_size,
+                "processing_count": processing_count,
+                "completed_today": completed_today,
+                "failed_today": failed_today,
+                "avg_processing_time_seconds": round(avg_processing_time, 1),
+                "estimated_wait_time_seconds": round(estimated_wait, 1),
+                "current_processing": current_processing,
+                "recent_documents": recent_documents,
+            }
+
+    def _build_current_processing(
+        self, doc_id: str, status_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build current processing details from status dict."""
+        started_at_str = status_dict.get("started_at")
+        elapsed = 0
+        eta = 0
+
+        if started_at_str:
+            try:
+                started_at = datetime.fromisoformat(
+                    started_at_str.replace("Z", "+00:00")
+                )
+                elapsed = int((datetime.utcnow() - started_at).total_seconds())
+            except (ValueError, AttributeError):
+                pass
+
+        # Estimate ETA based on progress
+        progress = status_dict.get("progress", 0.0)
+        if progress > 0.1:  # Avoid division by zero
+            total_estimated = elapsed / progress
+            eta = int(total_estimated - elapsed)
+
+        return {
+            "doc_id": doc_id,
+            "filename": status_dict.get("filename", "unknown"),
+            "status": status_dict.get("status", "unknown"),
+            "progress": status_dict.get("progress", 0.0),
+            "stage": status_dict.get("stage", ""),
+            "page": status_dict.get("page"),
+            "total_pages": status_dict.get("total_pages"),
+            "elapsed_seconds": elapsed,
+            "eta_seconds": max(0, eta),
+        }
+
+    def _build_recent_document(
+        self, doc_id: str, status_dict: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Build recent document entry from status dict."""
+        status = status_dict.get("status")
+        if not status:
+            return None
+
+        doc = {
+            "doc_id": doc_id,
+            "filename": status_dict.get("filename", "unknown"),
+            "status": status.replace("_", " "),  # Human-readable
+            "created_at": status_dict.get("started_at", ""),
+        }
+
+        # Add completion info
+        if status in [
+            ProcessingStatusEnum.COMPLETED.value,
+            ProcessingStatusEnum.FAILED.value,
+        ]:
+            doc["completed_at"] = status_dict.get("completed_at", "")
+            doc["processing_time_seconds"] = status_dict.get("elapsed_time")
+
+        # Add error if failed
+        if status == ProcessingStatusEnum.FAILED.value:
+            doc["error_message"] = status_dict.get("error", "Unknown error")
+
+        return doc
+
     def mark_completed(self, doc_id: str, **kwargs) -> None:
         """
         Mark document as completed.
