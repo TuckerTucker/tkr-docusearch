@@ -27,6 +27,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from .path_utils import normalize_path, PathLike
 
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
@@ -159,12 +160,12 @@ class StatusResponse(BaseModel):
 # Processing Function
 # ============================================================================
 
-def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
+def process_document_sync(file_path: PathLike, filename: str) -> Dict[str, Any]:
     """
     Process a document (runs in thread pool).
 
     Args:
-        file_path: Absolute path to document
+        file_path: Path to document (str or Path object)
         filename: Original filename
 
     Returns:
@@ -174,10 +175,8 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
     try:
         print(f">>> PROCESS_DOCUMENT_SYNC STARTED: {filename}", flush=True)
 
-        # Verify file exists
-        path = Path(file_path)
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+        # Normalize path once (convert to absolute Path, validate existence)
+        path = normalize_path(file_path)
 
         # Check extension
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
@@ -287,10 +286,11 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     print(f">>> PROCESS ENDPOINT CALLED: {request.filename}", flush=True)
     logger.info(f"Received processing request for: {request.filename}")
 
-    # Validate path
-    file_path = Path(request.file_path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+    # Normalize and validate path once
+    try:
+        file_path = normalize_path(request.file_path)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     # Generate doc_id from file content hash (SHA-256)
     try:
@@ -314,7 +314,7 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 
     # Queue for background processing
     print(f">>> SUBMITTING TO THREADPOOL: {request.filename}", flush=True)
-    future = executor.submit(process_document_sync, request.file_path, request.filename)
+    future = executor.submit(process_document_sync, file_path, request.filename)
 
     # Add callback to log completion or errors
     def log_completion(fut):

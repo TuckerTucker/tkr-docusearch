@@ -15,6 +15,7 @@ from src.config.processing_config import EnhancedModeConfig, create_pipeline_opt
 from src.storage.metadata_schema import ChunkContext, DocumentStructure
 from src.processing.structure_extractor import extract_document_structure
 from src.processing.smart_chunker import create_chunker, SmartChunker
+from .path_utils import safe_cwd_context, is_audio_file
 
 # Import shared types (re-exported for backward compatibility)
 from src.processing.types import Page, TextChunk, ParsedDocument
@@ -79,16 +80,18 @@ SPECIALIZED_FORMATS: Set[str] = {
 }
 
 
-def get_format_type(file_path: str) -> FormatType:
+def get_format_type(file_path) -> FormatType:
     """Determine processing type for a document.
 
     Args:
-        file_path: Path to document file
+        file_path: Path to document file (str or Path object)
 
     Returns:
         FormatType indicating how to process the document
     """
-    ext = Path(file_path).suffix.lower()
+    # Handle both str and Path inputs
+    path_obj = Path(file_path) if isinstance(file_path, str) else file_path
+    ext = path_obj.suffix.lower()
 
     if ext in VISUAL_FORMATS or ext in IMAGE_FORMATS:
         return FormatType.VISUAL
@@ -109,7 +112,7 @@ class ParsingError(Exception):
     pass
 
 
-def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
+def docling_to_pages(result, file_path = None) -> List[Page]:
     """Convert Docling ConversionResult to Page objects.
 
     This adapter function bridges Docling's output format with our internal
@@ -120,7 +123,7 @@ def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
 
     Args:
         result: Docling ConversionResult from DocumentConverter.convert()
-        file_path: Optional path to determine format type
+        file_path: Optional path to determine format type (str or Path object)
 
     Returns:
         List of Page objects with images (visual) or None images (text-only)
@@ -137,9 +140,13 @@ def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
     pages = []
     doc = result.document
 
-    # Determine format type if file_path provided
+    # Determine format type if file_path provided (handle both str and Path)
     format_type = get_format_type(file_path) if file_path else None
-    ext = Path(file_path).suffix.lower() if file_path else None
+    if file_path:
+        path_obj = Path(file_path) if isinstance(file_path, str) else file_path
+        ext = path_obj.suffix.lower()
+    else:
+        ext = None
 
     # Handle image formats specially (single image = single page)
     if ext and ext in IMAGE_FORMATS and result.pages and len(result.pages) > 0:
@@ -331,7 +338,7 @@ class DoclingParser:
 
     def parse_document(
         self,
-        file_path: str,
+        file_path,
         chunk_size_words: int = 250,
         chunk_overlap_words: int = 50,
         config: Optional[EnhancedModeConfig] = None
@@ -339,7 +346,7 @@ class DoclingParser:
         """Parse document and extract pages and text.
 
         Args:
-            file_path: Path to document file
+            file_path: Path to document file (str or Path object)
             chunk_size_words: Average words per chunk (legacy mode)
             chunk_overlap_words: Word overlap between chunks (legacy mode)
             config: Enhanced mode configuration (overrides legacy params)
@@ -351,10 +358,10 @@ class DoclingParser:
             ParsingError: If parsing fails
             FileNotFoundError: If file doesn't exist
         """
-        path = Path(file_path)
+        # Handle both str and Path inputs (normalize to Path)
+        path = Path(file_path) if isinstance(file_path, str) else file_path
         if not path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-
+            raise FileNotFoundError(f"File not found: {path}")
         filename = path.name
         doc_id = str(uuid.uuid4())
         ext = path.suffix.lower()
@@ -412,13 +419,13 @@ class DoclingParser:
 
     def _parse_with_docling(
         self,
-        file_path: str,
+        file_path,
         config: Optional[EnhancedModeConfig] = None
     ) -> tuple:
         """Parse document using Docling.
 
         Args:
-            file_path: Path to document file (PDF, DOCX, or PPTX)
+            file_path: Path to document file (str or Path object)
             config: Enhanced mode configuration (optional)
 
         Returns:
@@ -427,6 +434,8 @@ class DoclingParser:
         Raises:
             ParsingError: If Docling parsing fails
         """
+        # Handle both str and Path inputs
+        file_path = Path(file_path) if isinstance(file_path, str) else file_path
         try:
             from docling.document_converter import (
                 DocumentConverter,
@@ -437,8 +446,8 @@ class DoclingParser:
             from docling.datamodel.base_models import InputFormat
             from docling.datamodel.pipeline_options import PdfPipelineOptions
 
-            # Determine file format
-            ext = Path(file_path).suffix.lower()
+            # Determine file format (file_path is already a Path object)
+            ext = file_path.suffix.lower()
             format_type = get_format_type(file_path)
 
             # Create pipeline options based on config
@@ -480,25 +489,13 @@ class DoclingParser:
 
             logger.info(f"Converting document with Docling: {file_path}")
 
-            # WORKAROUND for Docling audio bug: Docling's audio transcription pipeline
-            # has a bug where it changes CWD internally, breaking absolute paths.
-            # Solution: Temporarily change to the file's directory for audio files.
-            import os
-            file_path_obj = Path(file_path)
-            ext = file_path_obj.suffix.lower()
-            is_audio = ext in {'.mp3', '.wav', '.m4a', '.flac', '.ogg'}
-
-            if is_audio:
-                logger.info(f"Audio file detected ({ext}), using CWD workaround for Docling bug")
-                original_cwd = os.getcwd()
-                try:
-                    # Change to the file's directory
-                    os.chdir(file_path_obj.parent)
-                    # Use just the filename
-                    result = converter.convert(file_path_obj.name)
-                finally:
-                    # Always restore original CWD
-                    os.chdir(original_cwd)
+            # WORKAROUND for Docling 2.55.1 audio bug: Audio transcription changes CWD
+            # internally, breaking absolute paths. Use safe_cwd_context() to handle this.
+            if is_audio_file(file_path):
+                logger.info(f"Audio file detected, using CWD workaround for Docling bug")
+                with safe_cwd_context(file_path.parent):
+                    # Convert with filename only (CWD is file's directory)
+                    result = converter.convert(file_path.name)
             else:
                 result = converter.convert(file_path)
 

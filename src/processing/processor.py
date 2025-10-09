@@ -18,6 +18,7 @@ from datetime import datetime
 from .docling_parser import DoclingParser, ParsingError
 from .visual_processor import VisualProcessor
 from .text_processor import TextProcessor
+from .path_utils import normalize_path, PathLike
 from src.config.processing_config import EnhancedModeConfig
 from src.storage.metadata_schema import DocumentStructure
 
@@ -127,7 +128,7 @@ class DocumentProcessor:
 
     def process_document(
         self,
-        file_path: str,
+        file_path: PathLike,
         chunk_size_words: int = 250,
         chunk_overlap_words: int = 50,
         status_callback=None
@@ -135,7 +136,7 @@ class DocumentProcessor:
         """Process a document through the complete pipeline.
 
         Args:
-            file_path: Path to document file
+            file_path: Path to document file (str or Path object)
             chunk_size_words: Target words per chunk
             chunk_overlap_words: Word overlap between chunks
             status_callback: Optional callback(status: ProcessingStatus)
@@ -150,7 +151,8 @@ class DocumentProcessor:
             StorageError: If storage fails
         """
         start_time = time.time()
-        path = Path(file_path)
+        # Normalize path once (convert to absolute Path, validate existence)
+        path = normalize_path(file_path)
         filename = path.name
         doc_id = None
 
@@ -168,7 +170,7 @@ class DocumentProcessor:
             logger.info(f"Starting document processing: {filename}")
 
             parsed_doc = self.parser.parse_document(
-                file_path=file_path,
+                file_path=path,
                 chunk_size_words=chunk_size_words,
                 chunk_overlap_words=chunk_overlap_words,
                 config=self.enhanced_mode_config
@@ -265,7 +267,7 @@ class DocumentProcessor:
                 text_chunks=parsed_doc.text_chunks,
                 doc_metadata=parsed_doc.metadata,
                 filename=filename,
-                file_path=file_path
+                file_path=path
             )
 
             # Stage 5: Completed
@@ -341,7 +343,7 @@ class DocumentProcessor:
         text_chunks,
         doc_metadata: Dict[str, Any],
         filename: str,
-        file_path: str
+        file_path: Path
     ) -> StorageConfirmation:
         """Store embeddings in ChromaDB with enhanced metadata.
 
@@ -352,7 +354,7 @@ class DocumentProcessor:
             text_chunks: List of TextChunk (with context)
             doc_metadata: Document metadata
             filename: Original filename
-            file_path: Source file path
+            file_path: Source file path (Path object)
 
         Returns:
             StorageConfirmation
