@@ -430,7 +430,20 @@ function createResultCard(result, query) {
 
   if (result.type === 'visual') {
     const img = document.createElement('img');
-    img.src = `data:image/svg+xml;base64,${result.thumbnail}`;
+    // Handle both URL paths and base64 data
+    if (result.thumbnail && result.thumbnail.startsWith('/')) {
+      // URL path - use directly
+      img.src = result.thumbnail;
+    } else if (result.thumbnail && result.thumbnail.startsWith('data:')) {
+      // Already a data URI - use directly
+      img.src = result.thumbnail;
+    } else if (result.thumbnail) {
+      // Base64 data - wrap in data URI
+      img.src = `data:image/svg+xml;base64,${result.thumbnail}`;
+    } else {
+      // No thumbnail - use placeholder
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIFByZXZpZXc8L3RleHQ+PC9zdmc+';
+    }
     img.alt = `${result.filename} - Page ${result.page_num}`;
     img.className = 'result-thumbnail';
     content.appendChild(img);
