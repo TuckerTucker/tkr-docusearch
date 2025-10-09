@@ -39,6 +39,10 @@ from .mocks import (
     MockStorageClient,
     BatchEmbeddingOutput
 )
+from .preview_generator import (
+    PreviewGenerator,
+    PreviewResponse
+)
 
 __all__ = [
     # Main processor
@@ -64,4 +68,7 @@ __all__ = [
     "MockEmbeddingEngine",
     "MockStorageClient",
     "BatchEmbeddingOutput",
+    # Preview generation (Wave 2, Agent 3)
+    "PreviewGenerator",
+    "PreviewResponse",
 ]
