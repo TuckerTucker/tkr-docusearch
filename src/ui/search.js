@@ -462,10 +462,15 @@ function createResultCard(result, query) {
 
   const meta = document.createElement('div');
   meta.className = 'result-meta';
+
+  // Handle missing or different date field names
+  const dateStr = result.metadata.upload_date || result.metadata.timestamp;
+  const dateDisplay = dateStr ? formatDate(dateStr) : '';
+
   meta.innerHTML = `
     <strong>${result.filename}</strong>
     ${result.page_num ? `<span class="page-num">Page ${result.page_num}</span>` : ''}
-    <span class="upload-date">${formatDate(result.metadata.upload_date)}</span>
+    ${dateDisplay ? `<span class="upload-date">${dateDisplay}</span>` : ''}
   `;
   footer.appendChild(meta);
 
