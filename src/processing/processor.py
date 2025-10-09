@@ -379,6 +379,9 @@ class DocumentProcessor:
                     "filename": filename,
                     "page": result.page_num,
                     "source_path": file_path,
+                    # Wave 2, Agent 4: Add file_path and original_filename for preview system
+                    "file_path": str(path.absolute()),
+                    "original_filename": filename,
                     **doc_metadata
                 }
 
@@ -415,6 +418,9 @@ class DocumentProcessor:
                     "text_preview": result.text[:200],
                     "word_count": len(result.text.split()),
                     "source_path": file_path,
+                    # Wave 2, Agent 4: Add file_path and original_filename for preview system
+                    "file_path": str(path.absolute()),
+                    "original_filename": filename,
                     **doc_metadata
                 }
 
