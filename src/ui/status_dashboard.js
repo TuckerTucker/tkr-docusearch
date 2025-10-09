@@ -115,8 +115,8 @@ class StatusAPIClient {
   }
 }
 
-// Initialize API client (Wave 2: mock data enabled)
-const statusAPI = new StatusAPIClient('http://localhost:8000', true);
+// Initialize API client (Wave 3: real API connected)
+const statusAPI = new StatusAPIClient('http://localhost:8002', false);
 
 // ============================================================================
 // Utility Functions

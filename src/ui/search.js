@@ -227,8 +227,8 @@ class SearchAPIClient {
   }
 }
 
-// Initialize API client (Wave 2: mock data enabled)
-const searchAPI = new SearchAPIClient('http://localhost:8000', true);
+// Initialize API client (Wave 3: real API connected)
+const searchAPI = new SearchAPIClient('http://localhost:8002', false);
 
 // ============================================================================
 // UI State Management
