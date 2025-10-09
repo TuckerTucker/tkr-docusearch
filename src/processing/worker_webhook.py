@@ -27,11 +27,15 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from ..search import SearchEngine
 from .path_utils import normalize_path, PathLike
 
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
 from .status_api import router as status_router, set_status_manager
+
+# Import API models
+from ..api.models import SearchRequest, SearchResponse, SearchResult
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -70,6 +74,9 @@ processing_status: Dict[str, Dict[str, Any]] = {}
 document_processor: Optional[DocumentProcessor] = None
 parser: Optional[DoclingParser] = None
 status_manager: Optional[StatusManager] = None
+search_engine: Optional[SearchEngine] = None
+embedding_engine: Optional[ColPaliEngine] = None
+storage_client: Optional[ChromaClient] = None
 
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
@@ -399,6 +406,79 @@ async def delete_document(request: DeleteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/search/query", response_model=SearchResponse)
+async def search_query(request: SearchRequest):
+    """
+    Execute semantic search across documents.
+
+    Performs two-stage search:
+    1. Fast retrieval with HNSW
+    2. Late interaction re-ranking with MaxSim
+    """
+    if not search_engine:
+        raise HTTPException(
+            status_code=503,
+            detail="Search engine not initialized"
+        )
+
+    try:
+        start_time = time.time()
+
+        # Map API search modes to SearchEngine modes
+        search_mode_mapping = {
+            "visual": "visual_only",
+            "text": "text_only",
+            "hybrid": "hybrid"
+        }
+        engine_search_mode = search_mode_mapping.get(request.search_mode, "hybrid")
+
+        # Execute search
+        response = search_engine.search(
+            query=request.query,
+            n_results=request.n_results,
+            search_mode=engine_search_mode,
+            enable_reranking=True
+        )
+
+        search_time_ms = (time.time() - start_time) * 1000
+
+        # Convert to API response format
+        results = []
+        for result in response.get("results", []):
+            results.append(SearchResult(
+                doc_id=result.get("doc_id", ""),
+                chunk_id=result.get("chunk_id"),
+                page_num=result.get("page_num"),
+                score=result.get("score", 0.0),
+                text_preview=result.get("text", "")[:200] if result.get("text") else None,
+                metadata=result.get("metadata", {})
+            ))
+
+        # Filter by minimum score if specified
+        if request.min_score is not None:
+            results = [r for r in results if r.score >= request.min_score]
+
+        logger.info(
+            f"Search completed: query='{request.query}', mode={request.search_mode}, "
+            f"results={len(results)}, time={search_time_ms:.0f}ms"
+        )
+
+        return SearchResponse(
+            query=request.query,
+            results=results,
+            total_results=len(results),
+            search_time_ms=search_time_ms,
+            search_mode=request.search_mode
+        )
+
+    except Exception as e:
+        logger.error(f"Search error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search failed: {str(e)}"
+        )
+
+
 @app.get("/status", response_model=StatusResponse)
 async def get_status():
     """Get worker status."""
@@ -436,7 +516,7 @@ async def get_config():
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager
+    global document_processor, parser, status_manager, search_engine, embedding_engine, storage_client
 
     print("=" * 70, flush=True)
     print("DocuSearch Processing Worker Starting (Webhook Mode)...", flush=True)
@@ -489,6 +569,13 @@ async def startup_event():
         # Initialize document parser
         parser = DoclingParser()
         logger.info("✓ Document parser initialized")
+
+        # Initialize search engine
+        search_engine = SearchEngine(
+            storage_client=storage_client,
+            embedding_engine=embedding_engine
+        )
+        logger.info("✓ Search engine initialized")
 
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}", exc_info=True)
