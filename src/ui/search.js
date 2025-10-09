@@ -161,11 +161,7 @@ class SearchAPIClient {
         total_results: results.length + Math.floor(Math.random() * 20),
         results,
         search_mode: options.search_mode || 'hybrid',
-        timing: {
-          stage1_ms: Math.floor(Math.random() * 100) + 100,
-          stage2_ms: Math.floor(Math.random() * 50) + 50,
-          total_ms: Math.floor(Math.random() * 150) + 150
-        }
+        search_time_ms: Math.floor(Math.random() * 150) + 150
       };
     }
 
@@ -387,7 +383,7 @@ function displayResults(response) {
   // Update stats
   document.getElementById('stat-query').textContent = response.query;
   document.getElementById('stat-count').textContent = response.total_results;
-  document.getElementById('stat-time').textContent = `${response.timing.total_ms}ms`;
+  document.getElementById('stat-time').textContent = `${Math.round(response.search_time_ms)}ms`;
   document.getElementById('stat-mode').textContent = response.search_mode;
   searchStats.hidden = false;
 
