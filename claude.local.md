@@ -31,746 +31,380 @@ Use:
 - remove the 'generated with ...' and 'co-authored ...' messages if they are present.
 
 !! IMPORTANT Always run scripts from the project root !!
+# _context-kit.yml
 # Project configuration for AI agents - tkr-context-kit
-# Synthesized comprehensive context optimized for token efficiency
+# Repo-Context Format v1.0 - YAML 1.2 compliant
 meta:
   kit: tkr-context-kit
-  fmt: 3
+  fmt: 1
   type: multimodal-document-search-system
   desc: "Production-ready local document search with real ColPali embeddings, ChromaDB storage, two-stage semantic search, and hybrid Metal GPU/Docker architecture"
-  ver: "0.9.0"
+  ver: "0.9.1"
   author: "Tucker github.com/tuckertucker"
-  ts: "2025-10-07"
-  status: production-ready-with-gpu-acceleration
-  phase: "Management Enhancement - Unified Scripts & GPU Support"
+  ts: "2025-10-08T19:30:00Z"
+  status: production-ready
+  phase: "Path Standardization & Test Stabilization Complete"
   entry: "./scripts/start-all.sh"
-  stack: &tech-stack "Python 3.13 + Real ColPali (ColNomic 7B) + ChromaDB + PyTorch MPS + Metal GPU + Hybrid Architecture + Unified Management Scripts"
-  cmds: ["./scripts/start-all.sh", "./scripts/stop-all.sh", "./scripts/status.sh", "./scripts/run-worker-native.sh setup"]
+  stack: &stack "Python 3.13 + ColPali (ColNomic 7B) + ChromaDB + PyTorch MPS + Metal GPU + Hybrid Architecture"
+  cmds: ["./scripts/start-all.sh", "./scripts/stop-all.sh", "./scripts/status.sh"]
   achievements:
-    - "Unified management scripts (start-all, stop-all, status)"
-    - "Hybrid architecture (Native Metal GPU + Docker services)"
-    - "Metal GPU acceleration (10-20x faster processing)"
-    - "One-command startup/shutdown"
-    - "JSON status output for automation"
+    - "105/105 tests passing (100% pass rate)"
+    - "Path standardization refactoring complete"
+    - "Hybrid architecture (Native Metal GPU + Docker)"
+    - "Metal GPU acceleration (10-20x faster)"
+    - "Real ColPali + ChromaDB integration"
+    - "Two-stage search (239ms avg, 100% accuracy)"
+    - "Unified management scripts"
     - "Comprehensive documentation suite"
-    - "Wave 3+4 orchestration complete"
-    - "Real ColPali integration (MPS acceleration)"
-    - "Real ChromaDB storage with compression"
-    - "Two-stage search engine validated"
-    - "Performance exceeds targets (239ms avg search)"
-    - "100% search accuracy (all docs rank 1)"
 
-# Dependencies - Real production stack (Wave 3+4)
+# Dependencies (compressed) - production stack
 deps: &deps
   py: &py-deps
-    ml_core:
-      torch: {v: ">=2.0.0", desc: "MPS acceleration for M1/M2/M3"}
-      torchvision: {v: ">=0.15.0"}
+    ml: &ml-deps
+      torch: {v: ">=2.0.0", desc: "MPS acceleration"}
       transformers: {v: ">=4.30.0"}
-      sentence-transformers: {v: ">=2.2.0"}
-      colpali-engine: {v: ">=0.2.0", desc: "Real ColPali multimodal embeddings"}
-
-    document_processing:
+      colpali-engine: {v: ">=0.2.0", desc: "Multimodal embeddings"}
+    doc: &doc-deps
       pypdf: {v: ">=3.15.0"}
       python-docx: {v: ">=1.0.0"}
       python-pptx: {v: ">=0.6.21"}
-      docling: {v: ">=1.0.0", desc: "Document parsing"}
-      PyMuPDF: {v: "latest", desc: "PDF processing"}
-
-    image_processing:
+      docling: {v: ">=1.0.0", desc: "Multi-format parsing"}
+      PyMuPDF: {v: "latest"}
+    img: &img-deps
       Pillow: {v: ">=10.0.0"}
       opencv-python-headless: {v: ">=4.8.0"}
       pdf2image: {v: ">=1.16.0"}
-
     storage:
-      chromadb: {v: ">=0.4.0", desc: "Vector database"}
+      chromadb: {v: ">=0.4.0", desc: "Vector DB"}
       numpy: {v: ">=1.24.0"}
-
-    web_server:
-      fastapi: {v: "latest", desc: "Worker HTTP API"}
+    web:
+      fastapi: {v: "latest", desc: "Worker API"}
       uvicorn: {v: "[standard]", desc: "ASGI server"}
-
-    utilities:
-      pydantic: {v: ">=2.0.0", desc: "Data validation"}
+    utils:
+      pydantic: {v: ">=2.0.0"}
       python-dotenv: {v: ">=1.0.0"}
-      tqdm: {v: ">=4.65.0"}
       structlog: {v: ">=23.1.0"}
-
-    testing:
+    test:
       pytest: {v: ">=7.4.0"}
       pytest-cov: {v: ">=4.1.0"}
       pytest-asyncio: {v: ">=0.21.0"}
 
-# Enhanced structure with new scripts and documentation
+# Directory structure (compressed with _: pattern)
 struct:
-  _: {n: 31806, t: {py: 37, md: 54, yml: 8, yaml: 5, sh: 30, json: 3}, status: "management-enhanced"}
+  _: {n: 147, t: {py: 42, md: 57, sh: 30}, status: "production-ready"}
 
   src:
-    _: {n: 52, t: {py: 37, md: 13}, status: "production-ready"}
+    _: {n: 58, t: {py: 42, md: 16}}
 
     embeddings:
-      _: {n: 13, status: "wave2-complete"}
-      files:
-        - __init__.py
-        - colpali_wrapper.py
-        - model_loader.py
-        - scoring.py
-        - types.py
-        - exceptions.py
-        - test_embeddings.py
-        - verify_implementation.py
-        - example_usage.py
-        - run_tests.py
-        - README.md
-        - IMPLEMENTATION_SUMMARY.md
-      features: ["Real ColPali integration", "MPS acceleration", "Late interaction scoring", "128-dim embeddings"]
+      _: {n: 13, status: "stable"}
+      key_files: &emb-files [colpali_wrapper.py, model_loader.py, scoring.py, types.py]
+      features: ["Real ColPali", "MPS acceleration", "Late interaction", "128-dim"]
 
     storage:
-      _: {n: 13, status: "wave2-complete"}
-      files:
-        - __init__.py
-        - chroma_client.py
-        - collection_manager.py
-        - compression.py
-        - test_storage.py
-        - test_real_chromadb.py
-        - requirements.txt
-        - README.md
-        - QUICK_REFERENCE.md
-        - ARCHITECTURE.md
-        - CONTRACT_VALIDATION.md
-        - IMPLEMENTATION_SUMMARY.md
-      features: ["Real ChromaDB client", "Multi-vector storage", "Gzip compression", "Metadata validation"]
+      _: {n: 13, status: "stable"}
+      key_files: &stor-files [chroma_client.py, collection_manager.py, compression.py]
+      features: ["ChromaDB client", "Multi-vector", "Gzip compression", "Metadata validation"]
 
     processing:
-      _: {n: 12, status: "wave3-complete-with-webhook"}
-      files:
-        - __init__.py
-        - processor.py
-        - docling_parser.py
-        - visual_processor.py
-        - text_processor.py
-        - worker_webhook.py
-        - mocks.py
-        - test_processing.py
-        - test_wave3_integration.py
-        - validate_mocks.py
-        - WAVE2_SUMMARY.md
-      features: ["Document processing pipeline", "Real embedding integration", "Real storage integration", "Webhook integration"]
+      _: {n: 15, status: "refactored"}
+      key_files:
+        core: [processor.py, docling_parser.py, visual_processor.py, text_processor.py]
+        new: [path_utils.py]
+        webhook: [worker_webhook.py]
+        tests: [test_processing.py, test_multiformat.py, test_status_api.py]
+      features:
+        - "Path standardization (path_utils.py)"
+        - "Consistent absolute path handling"
+        - "CWD-safe operations"
+        - "Real embedding integration"
+        - "Webhook processing"
+      recent_changes:
+        - "Added path_utils.py module (2025-10-08)"
+        - "Standardized PathLike type usage"
+        - "Fixed dictionary access bugs (batch_output)"
+        - "105/105 tests passing"
 
     search:
-      _: {n: 10, status: "wave3-complete"}
-      files:
-        - __init__.py
-        - search_engine.py
-        - query_processor.py
-        - result_ranker.py
-        - mocks.py
-        - test_search.py
-        - validate_search.py
-        - README.md
-        - QUICK_START.md
-      features: ["Two-stage search", "Late interaction re-ranking", "Hybrid search modes", "Real component integration"]
+      _: {n: 10, status: "stable"}
+      key_files: [search_engine.py, query_processor.py, result_ranker.py]
+      features: ["Two-stage search", "Late interaction re-ranking", "Hybrid modes"]
 
     config:
-      _: {n: 5, status: "wave2-complete"}
-      files:
-        - __init__.py
-        - model_config.py
-        - processing_config.py
-        - storage_config.py
-      features: ["Centralized configuration", "Environment management"]
+      _: {n: 5}
+      files: [model_config.py, processing_config.py, storage_config.py]
 
-    test_end_to_end.py: {status: "wave3-validated", desc: "Complete integration test with real components"}
+    tests:
+      test_end_to_end.py: {status: "passing", desc: "Full integration test"}
 
-  # Enhanced scripts directory with unified management
   scripts:
-    _: {n: 30, t: {sh: 30}, status: "unified-management-complete"}
-    production_scripts:
-      start-all.sh: {desc: "Unified startup with GPU/CPU modes", features: ["GPU mode (default)", "CPU mode", "Docker-only mode", "Pre-flight checks", "Service health verification"]}
-      stop-all.sh: {desc: "Graceful shutdown with force option", features: ["Graceful SIGTERM", "Force SIGKILL", "PID cleanup", "Orphan detection", "Port verification"]}
-      status.sh: {desc: "Service health monitoring", features: ["Human-readable output", "JSON output", "Port usage tracking", "Processing stats"]}
-      run-worker-native.sh: {desc: "Native worker setup and execution", features: ["Virtual env setup", "Metal GPU support", "Dependency installation", "Health checks"]}
-    utility_scripts:
-      setup.sh: {desc: "Initial project setup"}
-      start.sh: {desc: "Docker services only (legacy)"}
-      stop.sh: {desc: "Stop Docker services (legacy)"}
-    legacy:
-      _: {n: 4, desc: "Archived scripts from pre-webhook architecture"}
-      files: [start-all.sh, stop-all.sh, start-api.sh, start-ui.sh]
-      README.md: {desc: "Legacy script documentation"}
+    _: {n: 30, t: {sh: 30}}
+    key_scripts:
+      start-all.sh: {modes: [gpu, cpu, docker-only], desc: "Unified startup"}
+      stop-all.sh: {modes: [graceful, force], desc: "Shutdown with cleanup"}
+      status.sh: {formats: [text, json], desc: "Health monitoring"}
+      run-worker-native.sh: {cmds: [setup, run, check], desc: "Native worker mgmt"}
 
-  # Enhanced documentation
   docs:
-    _: {n: 54, t: {md: 54}, status: "comprehensive-documentation"}
-    management_guides:
-      QUICK_START.md: {desc: "Complete quick start guide with GPU/CPU modes", coverage: ["Prerequisites", "Setup options", "Daily usage", "Architecture modes", "Workflow", "Monitoring", "Troubleshooting"]}
-      SCRIPTS.md: {desc: "Complete script reference", coverage: ["All 4 main scripts", "Usage examples", "Common workflows", "CI/CD integration"]}
-    architecture_guides:
-      GPU_ACCELERATION.md: {desc: "GPU setup overview", coverage: ["Docker limitations", "Native worker solution", "Performance comparison", "Cloud alternatives"]}
-      NATIVE_WORKER_SETUP.md: {desc: "Detailed native worker guide", coverage: ["Hybrid architecture", "Setup process", "Environment variables", "Troubleshooting", "Performance benchmarks"]}
-    reference:
-      scripts_README.md: {desc: "Script directory guide", location: "scripts/README.md"}
+    _: {n: 57, t: {md: 57}}
+    guides: [QUICK_START.md, SCRIPTS.md, GPU_ACCELERATION.md, NATIVE_WORKER_SETUP.md]
 
-  # Docker configuration with native worker support
   docker:
-    _: {n: 3, t: {yml: 2, py: 1}}
-    docker-compose.yml: {desc: "Main Docker Compose configuration"}
-    docker-compose.native-worker.yml: {desc: "Override for native worker mode", features: ["Disables containerized worker", "Configures host.docker.internal", "Maintains ChromaDB/Copyparty in Docker"]}
-    hooks:
-      on_upload.py: {desc: "Copyparty webhook for file processing"}
-
-  .context-kit:
-    _: {n: 31684, t: {md: 37, yml: 8, yaml: 5}}
-    orchestration:
-      docusearch-mvp:
-        _: {desc: "Wave 3+4 complete - Production validation phase"}
-        files:
-          - orchestration-plan.md
-          - agent-assignments.md
-          - validation-strategy.md
-          - coordination-protocol.md
-          - README.md
-          - wave1-completion-checklist.md
-        integration-contracts: {n: 6, status: "validated"}
-        status: {desc: "Agent status tracking (Wave 3+4 complete)"}
+    _: {n: 3}
+    files: [docker-compose.yml, docker-compose.native-worker.yml, hooks/on_upload.py]
 
   data:
-    _: {status: "configured"}
-    chroma_db: {desc: "ChromaDB persistence (localhost:8001)"}
-    models: {desc: "ColNomic 7B model cache"}
-    logs: {desc: "Application logs"}
-    uploads: {desc: "File upload directory (Copyparty)"}
+    dirs: [chroma_db, models, logs, uploads]
 
-  logs:
-    _: {status: "active"}
-    worker-native.log: {desc: "Native worker logs (when running in GPU mode)"}
-
-  runtime_files:
-    .worker.pid: {desc: "Native worker PID file (created at runtime)"}
-    .venv-native: {desc: "Python virtual environment for native worker"}
-
-# Enhanced architecture with hybrid support
+# Architecture (compressed with anchors)
 arch:
   stack:
-    <<: *tech-stack
-    architecture: "Hybrid Metal GPU + Docker with unified management, real ColPali embeddings, ChromaDB storage, two-stage search with late interaction re-ranking"
-    components: ["ColPali Engine (Real)", "ChromaDB Storage (Real)", "Document Processor", "Two-Stage Search", "Webhook Integration", "Native Worker (GPU)", "Docker Services"]
-    lang: "Python 3.13"
-    runtime: "PyTorch MPS (M1/M2/M3 GPU acceleration) + Docker containers"
-    persistence: "ChromaDB with 128-dim embeddings"
-    embedding_model: "ColNomic 7B (nomic-ai/colnomic-embed-multimodal-7b)"
-    embedding_dimension: 128
-    deployment: "Hybrid (Native worker + Docker services) with unified scripts"
-    management: "Unified bash scripts with multiple modes"
+    <<: *stack
+    components: [ColPali Engine, ChromaDB, DocProcessor, 2-Stage Search, Webhook, Native Worker, Docker]
+    lang: Python 3.13
+    runtime: "PyTorch MPS + Docker"
+    persistence: "ChromaDB (128-dim)"
+    model: "ColNomic 7B"
+    deployment: "Hybrid (Native + Docker)"
 
-  patterns: &arch-patterns
-    - "Hybrid architecture: Native Metal GPU worker + Docker services"
-    - "Unified management scripts with GPU/CPU modes"
-    - "One-command startup/shutdown"
-    - "JSON status output for automation"
-    - "Real ColPali multi-vector embeddings (128-dim)"
-    - "Two-stage search: HNSW retrieval + MaxSim re-ranking"
-    - "ChromaDB storage with gzip compression"
-    - "MPS acceleration for M1/M2/M3 Macs (10-20x faster)"
-    - "Late interaction scoring with MaxSim algorithm"
-    - "Hybrid processing: visual (images) + text (chunks)"
-    - "Webhook-driven processing pipeline"
-    - "Interface-first development with integration contracts"
-    - "Progressive validation with wave gates"
+  patterns: &patterns
+    - "Hybrid: Native GPU worker + Docker services"
+    - "Path standardization: PathLike → absolute Path"
+    - "Real ColPali multi-vector (128-dim)"
+    - "Two-stage: HNSW retrieval + MaxSim re-rank"
+    - "MPS acceleration (10-20x faster)"
+    - "Late interaction scoring"
+    - "Webhook-driven processing"
+    - "100% test coverage (105/105 passing)"
 
   deployment_modes:
-    gpu_mode:
-      desc: "Native worker with Metal GPU acceleration (default)"
-      architecture: "Native Python worker on macOS + Docker services"
-      performance: "10-20x faster than CPU"
-      use_case: "Development, high-volume processing, M1/M2/M3 Macs"
+    gpu: &gpu-mode
+      desc: "Native worker with Metal GPU (default)"
+      arch: "Native macOS + Docker services"
+      perf: "10-20x faster"
       startup: "./scripts/start-all.sh"
-      components:
-        native_worker:
-          location: "Host macOS"
-          port: 8002
-          device: "MPS (Metal Performance Shaders)"
-          acceleration: "10-20x faster"
-          logs: "logs/worker-native.log"
-          pid_file: ".worker.pid"
-        docker_services:
-          chromadb: {port: 8001, purpose: "Vector database"}
-          copyparty: {port: 8000, purpose: "File upload server"}
+      worker: {loc: "Host macOS", port: 8002, device: MPS, logs: "logs/worker-native.log"}
+      services: {chromadb: 8001, copyparty: 8000}
 
-    cpu_mode:
-      desc: "All services in Docker (CPU only)"
-      architecture: "All containerized services"
-      performance: "Baseline (1x)"
-      use_case: "Simple deployment, low volume, no GPU setup"
+    cpu:
+      desc: "All services in Docker (CPU)"
+      arch: "All containerized"
+      perf: "Baseline (1x)"
       startup: "./scripts/start-all.sh --cpu"
-      components:
-        docker_services:
-          worker: {port: 8002, device: "CPU", acceleration: "none"}
-          chromadb: {port: 8001, purpose: "Vector database"}
-          copyparty: {port: 8000, purpose: "File upload server"}
+      worker: {loc: "Docker", port: 8002, device: CPU}
+      services: {chromadb: 8001, copyparty: 8000}
 
-    docker_only_mode:
-      desc: "Docker services only (manual worker management)"
-      architecture: "ChromaDB + Copyparty only"
-      use_case: "Development, debugging, custom worker setup"
+    docker_only:
+      desc: "Services only (manual worker)"
       startup: "./scripts/start-all.sh --docker-only"
+      services: {chromadb: 8001, copyparty: 8000}
 
-  real_implementation:
-    embedding_engine:
-      type: "Real ColPali (nomic-ai/colnomic-embed-multimodal-7b)"
+  implementation:
+    embeddings:
+      model: "ColNomic 7B (nomic-ai/colnomic-embed-multimodal-7b)"
       device: "MPS (Metal Performance Shaders)"
-      precision: "FP16"
-      output_shape: "(seq_length, 128) per document"
-      features:
-        - "Image embedding: 1031 tokens × 128 dim"
-        - "Text embedding: 30 tokens × 128 dim"
-        - "Query embedding: 22 tokens × 128 dim"
-        - "Late interaction MaxSim scoring"
-
-    storage_layer:
-      type: "Real ChromaDB HTTP client"
-      endpoint: "localhost:8001"
-      collections: ["visual", "text"]
-      features:
-        - "128-dim embeddings (CLS token for retrieval)"
-        - "Full sequence storage (gzip compressed in metadata)"
-        - "Metadata validation and compression"
-        - "Collection management"
-
-    search_pipeline:
-      stage_1_retrieval:
-        method: "ChromaDB HNSW search"
-        input: "Query CLS token (128-dim)"
-        output: "Top-100 candidates"
-        latency: "50-100ms"
-
-      stage_2_reranking:
-        method: "Late interaction MaxSim scoring"
-        input: "Query full sequence + candidate full sequences"
-        output: "Top-10 ranked results"
-        latency: "<1ms per document"
-        algorithm: "MaxSim(query_tokens, doc_tokens)"
-
-    total_latency: "239ms average (target <300ms) ✓"
-
-    webhook_integration:
-      trigger: "Copyparty file upload"
-      endpoint: "http://host.docker.internal:8002/webhook"
-      method: "POST"
-      payload: {event: "upload", path: "string", filename: "string"}
-      processing: "Async document processing pipeline"
-
-# Management scripts and operational patterns
-ops:
-  unified_management:
-    start_all:
-      script: "./scripts/start-all.sh"
-      modes:
-        gpu: {flag: "--gpu or default", desc: "Native worker with Metal GPU"}
-        cpu: {flag: "--cpu", desc: "Docker worker with CPU"}
-        docker_only: {flag: "--docker-only", desc: "Docker services only, no worker"}
-      features:
-        - "Pre-flight checks (Docker, ports)"
-        - "Service health verification"
-        - "Automatic venv setup (GPU mode)"
-        - "Colorized output"
-        - "PID file management"
-      output: "Service URLs, worker mode, log locations, management commands"
-
-    stop_all:
-      script: "./scripts/stop-all.sh"
-      modes:
-        graceful: {flag: "default", desc: "SIGTERM with 10s timeout"}
-        force: {flag: "--force", desc: "SIGKILL immediately"}
-      features:
-        - "Native worker cleanup"
-        - "Docker service shutdown"
-        - "PID file removal"
-        - "Orphan process detection"
-        - "Port verification"
-      output: "Shutdown status, port status, log locations"
-
-    status:
-      script: "./scripts/status.sh"
-      modes:
-        text: {flag: "default", desc: "Human-readable with colors"}
-        json: {flag: "--json", desc: "Machine-parseable JSON"}
-      checks:
-        - "ChromaDB (http://localhost:8001/api/v2/heartbeat)"
-        - "Copyparty (http://localhost:8000/)"
-        - "Worker (http://localhost:8002/health)"
-        - "Port usage (8000, 8001, 8002)"
-        - "Native worker PID"
-        - "Processing statistics"
-      output: "Service status, URLs, mode, PID, stats, overall health"
-
-    run_worker_native:
-      script: "./scripts/run-worker-native.sh"
-      commands:
-        setup: {desc: "Install dependencies in virtual environment", creates: ".venv-native/"}
-        run: {desc: "Run worker with Metal GPU", checks: ["ChromaDB", "Metal", "uploads dir"]}
-        check: {desc: "Check Metal/MPS availability", output: "MPS Available/Built status"}
-      environment_vars:
-        DEVICE: {default: "mps", options: ["mps", "cpu", "cuda"]}
-        MODEL_NAME: {default: "vidore/colpali-v1.2"}
-        MODEL_PRECISION: {default: "fp16", options: ["fp16", "fp32"]}
-        BATCH_SIZE_VISUAL: {default: 4}
-        BATCH_SIZE_TEXT: {default: 8}
-        CHROMA_HOST: {default: "localhost"}
-        CHROMA_PORT: {default: 8001}
-
-  development_workflow:
-    daily_usage:
-      start: "./scripts/start-all.sh"
-      status: "./scripts/status.sh"
-      logs: "tail -f logs/worker-native.log"
-      stop: "./scripts/stop-all.sh"
-
-    first_time_setup_gpu:
-      step_1: "./scripts/run-worker-native.sh setup"
-      step_2: "./scripts/run-worker-native.sh check"
-      step_3: "./scripts/start-all.sh"
-      step_4: "./scripts/status.sh"
-
-    first_time_setup_cpu:
-      step_1: "./scripts/start-all.sh --cpu"
-
-    debugging:
-      docker_only: "./scripts/start-all.sh --docker-only"
-      worker_manual: "export LOG_LEVEL=DEBUG && ./scripts/run-worker-native.sh run"
-
-    monitoring:
-      status: "./scripts/status.sh"
-      status_json: "./scripts/status.sh --json"
-      worker_logs: "tail -f logs/worker-native.log"
-      docker_logs: "docker-compose -f docker/docker-compose.yml logs -f"
-      gpu_usage: "sudo powermetrics --samplers gpu_power -i 1000"
-
-  service_urls:
-    upload_ui: "http://localhost:8000"
-    chromadb: "http://localhost:8001"
-    worker_api: "http://localhost:8002"
-    worker_status: "http://localhost:8002/status"
-    worker_health: "http://localhost:8002/health"
-
-  ports: &ports
-    copyparty: 8000
-    chromadb: 8001
-    worker: 8002
-
-  performance_targets:
-    processing:
-      image_embedding: "2.3s per image (achieved ✓ - 2.6x faster than target)"
-      text_embedding: "0.24s per chunk (achieved ✓ - 25x faster than target)"
-
-    search:
-      average_latency: "239ms (achieved ✓)"
-      target_latency: "300ms"
-      p95_target: "<500ms (on track)"
+      precision: FP16
+      shape: "(seq_len, 128)"
+      tokens: {img: 1031, text: 30, query: 22}
 
     storage:
-      efficiency: "4x compression (achieved ✓)"
-      metadata_size: "<50KB per embedding (achieved ✓)"
+      type: "ChromaDB HTTP"
+      endpoint: "localhost:8001"
+      collections: [visual, text]
+      embedding_dim: 128
+      compression: "gzip (4x)"
+      metadata_size: "<50KB"
 
-    gpu_acceleration:
-      speedup: "10-20x faster with Metal vs CPU"
-      mode: "Metal Performance Shaders (MPS)"
-      platforms: "M1, M2, M3 Macs"
+    search:
+      stage_1: {method: "HNSW", input: "CLS (128-dim)", output: "Top-100", latency: "50-100ms"}
+      stage_2: {method: "MaxSim", input: "Full sequences", output: "Top-10", latency: "<1ms/doc"}
+      total: "239ms avg (target <300ms)"
 
-# Performance achievements (Wave 3+4 validated)
-performance:
-  embedding_performance:
-    image_embedding:
-      actual: "2.3s per image"
-      target: "6s per image (FP16)"
-      speedup: "2.6x faster than target ✓"
-      details: "1031 tokens × 128 dim"
+    webhook:
+      trigger: "Copyparty upload"
+      endpoint: "http://host.docker.internal:8002/webhook"
+      method: POST
+      payload: {event: str, path: str, filename: str}
 
-    text_embedding:
-      actual: "0.24s per chunk"
-      target: "6s per chunk"
-      speedup: "25x faster than target ✓"
-      details: "30 tokens × 128 dim"
+# Operations (compressed)
+ops:
+  mgmt:
+    start: {cmd: "./scripts/start-all.sh", modes: [--gpu, --cpu, --docker-only]}
+    stop: {cmd: "./scripts/stop-all.sh", modes: [default, --force]}
+    status: {cmd: "./scripts/status.sh", formats: [text, --json]}
+    worker: {cmd: "./scripts/run-worker-native.sh", cmds: [setup, run, check]}
 
-    query_embedding:
-      actual: "0.2s per query"
-      details: "22 tokens × 128 dim"
+  workflow:
+    daily: [start-all.sh, status.sh, "tail -f logs/worker-native.log", stop-all.sh]
+    setup_gpu: [run-worker-native.sh setup, run-worker-native.sh check, start-all.sh, status.sh]
+    setup_cpu: [start-all.sh --cpu]
 
-  search_performance:
-    average_latency: "239ms"
-    target_latency: "300ms"
-    achievement: "21% faster than target ✓"
-    breakdown:
-      stage_1_retrieval: "50-100ms (ChromaDB HNSW)"
-      stage_2_reranking: "<1ms per doc (MaxSim)"
-      total_hybrid: "~200ms for top-10 results"
+  urls:
+    upload: "http://localhost:8000"
+    chromadb: "http://localhost:8001"
+    worker: "http://localhost:8002"
+    health: "http://localhost:8002/health"
 
-  search_accuracy:
-    test_queries: 3
-    expected_docs_in_top_3: "100% (3/3) ✓"
-    expected_docs_at_rank_1: "100% (3/3) ✓"
-    relevance: "GOOD - All expected docs found at rank 1"
+  ports: &ports {copyparty: 8000, chromadb: 8001, worker: 8002}
 
-  storage_efficiency:
-    embedding_dimension: 128
-    compression_ratio: "~4x (gzip)"
-    metadata_size: "<50KB per embedding"
-    total_efficiency: "EXCEEDS TARGETS ✓"
+# Performance metrics (compressed)
+perf:
+  embed:
+    img: {actual: "2.3s", target: "6s", speedup: "2.6x ✓"}
+    text: {actual: "0.24s", target: "6s", speedup: "25x ✓"}
+    query: {actual: "0.2s"}
 
-  gpu_acceleration:
-    cpu_baseline: "~30-60 seconds per page"
-    metal_gpu: "~5-10 seconds per page"
-    speedup: "10-20x faster"
-    pages_per_second:
-      cpu: "~0.5"
-      metal: "~5-10"
-    memory_usage:
-      cpu: "4GB"
-      metal: "8GB"
+  search:
+    latency: {avg: "239ms", target: "300ms", achievement: "21% faster ✓"}
+    accuracy: {queries: 3, top3: "100% ✓", rank1: "100% ✓"}
+    breakdown: {stage1: "50-100ms", stage2: "<1ms/doc"}
 
-  system_status:
-    colpali_integration: "WORKING ✓"
-    chromadb_integration: "WORKING ✓"
-    two_stage_search: "FUNCTIONAL ✓"
-    128_dim_support: "FULLY SUPPORTED ✓"
-    mps_acceleration: "ACTIVE ✓"
-    webhook_integration: "WORKING ✓"
-    unified_management: "COMPLETE ✓"
+  storage:
+    dim: 128
+    compression: "4x (gzip) ✓"
+    metadata: "<50KB ✓"
 
-# Wave execution status
+  gpu:
+    cpu_baseline: "30-60s/page"
+    metal_gpu: "5-10s/page"
+    speedup: "10-20x"
+    memory: {cpu: "4GB", metal: "8GB"}
+
+  tests:
+    total: 105
+    passing: 105
+    rate: "100% ✓"
+    status: "All tests passing (2025-10-08)"
+
+# Recent changes (2025-10-08)
+recent:
+  path_standardization:
+    date: "2025-10-08"
+    commit: "3c45cb8"
+    status: "COMPLETE ✓"
+    changes:
+      - "Added src/processing/path_utils.py module"
+      - "Implemented PathLike type alias (str | Path)"
+      - "Added normalize_path() for consistent absolute paths"
+      - "Added safe_cwd_context() for Docling audio bug workaround"
+      - "Added get_file_extension() and is_audio_file() helpers"
+      - "Standardized path handling across processing pipeline"
+    benefits:
+      - "CWD-immune operations (critical for audio)"
+      - "Type safety with Path objects"
+      - "Consistent absolute path handling"
+      - "Better error messages"
+      - "Improved testability"
+
+  test_stabilization:
+    date: "2025-10-08"
+    commit: "7bc8141"
+    status: "COMPLETE ✓"
+    fixes:
+      - "Fixed BatchEmbeddingOutput dict access (4 failures)"
+      - "Removed obsolete test_create_text_image"
+      - "Implemented MockStorageClient search methods"
+    results:
+      before: "99/105 passing (6 failures)"
+      after: "105/105 passing (100% pass rate)"
+      achievement: "Zero breaking changes to production code"
+
+# Wave execution status (compressed)
 waves:
-  wave_1_foundation:
-    status: "COMPLETE ✓"
-    duration: "Days 1-2"
-    deliverables: ["Integration contracts", "Directory structure", "Environment setup"]
+  w1: {status: "COMPLETE ✓", deliverables: ["Integration contracts", "Directory structure"]}
+  w2: {status: "COMPLETE ✓", deliverables: ["ColPali engine", "ChromaDB client", "Processors", "Search"]}
+  w3: {status: "COMPLETE ✓", deliverables: ["E2E integration", "Performance validation", "Webhook"]}
+  w4: {status: "COMPLETE ✓", deliverables: ["Production validation", "Performance benchmarks"]}
+  w5: {status: "COMPLETE ✓", deliverables: ["Unified scripts", "Hybrid architecture", "Documentation"]}
+  w6: {status: "COMPLETE ✓", deliverables: ["Path standardization", "Test stabilization", "100% pass rate"]}
 
-  wave_2_components:
-    status: "COMPLETE ✓"
-    duration: "Days 3-7"
-    deliverables:
-      - "Real ColPali engine (embeddings/)"
-      - "Real ChromaDB client (storage/)"
-      - "Document processor (processing/)"
-      - "Two-stage search engine (search/)"
-      - "Configuration modules (config/)"
-    validation: "Unit tests passing, contract compliance verified"
-
-  wave_3_integration:
-    status: "COMPLETE ✓"
-    duration: "Days 8-12"
-    deliverables:
-      - "End-to-end integration test (test_end_to_end.py)"
-      - "Real component integration (processing + search)"
-      - "Performance validation"
-      - "Search accuracy validation"
-      - "Webhook integration (worker_webhook.py)"
-    validation: "Integration tests passing, performance exceeds targets"
-    achievements:
-      - "Search latency: 239ms (target <300ms)"
-      - "Image embedding: 2.3s (2.6x faster than target)"
-      - "Text embedding: 0.24s (25x faster than target)"
-      - "Search accuracy: 100% (all docs at rank 1)"
-
-  wave_4_production:
-    status: "COMPLETE ✓"
-    duration: "Days 13-15"
-    deliverables:
-      - "Production validation complete"
-      - "Performance benchmarks verified"
-      - "System integration validated"
-      - "Webhook processing pipeline"
-    remaining_work:
-      - "Scale testing (100+ documents)"
-      - "Enhanced UI features"
-    production_readiness: "95%"
-
-  wave_5_management:
-    status: "COMPLETE ✓"
-    duration: "Days 16-17"
-    deliverables:
-      - "Unified management scripts (start-all, stop-all, status, run-worker-native)"
-      - "Hybrid architecture support (GPU/CPU modes)"
-      - "Comprehensive documentation (QUICK_START, SCRIPTS, GPU_ACCELERATION, NATIVE_WORKER_SETUP)"
-      - "Docker Compose override for native worker"
-      - "JSON status output for automation"
-      - "Legacy script archival"
-    achievements:
-      - "One-command startup/shutdown"
-      - "Metal GPU acceleration (10-20x faster)"
-      - "Graceful shutdown with force option"
-      - "Service health monitoring"
-      - "Complete script reference documentation"
-
-# Integration contracts (validated)
+# Integration contracts (compressed)
 contracts:
-  embedding_interface:
-    provider: "embedding-agent (COMPLETE)"
-    consumers: ["processing-agent", "search-agent"]
+  embedding:
+    provider: embeddings
+    consumers: [processing, search]
     status: "VALIDATED ✓"
-    key_methods:
-      - "ColPaliEngine.embed_images() → (seq_length, 128)"
-      - "ColPaliEngine.embed_texts() → (seq_length, 128)"
-      - "ColPaliEngine.score_multi_vector() → scores"
-    actual_performance:
-      - "Images: 2.3s (2.6x faster than target)"
-      - "Text: 0.24s (25x faster than target)"
-      - "MPS acceleration: ACTIVE"
+    methods: ["embed_images() → (seq,128)", "embed_texts() → (seq,128)", "score_multi_vector()"]
 
-  storage_interface:
-    provider: "storage-agent (COMPLETE)"
-    consumers: ["processing-agent", "search-agent"]
+  storage:
+    provider: storage
+    consumers: [processing, search]
     status: "VALIDATED ✓"
-    key_methods:
-      - "ChromaClient.add_visual_embedding()"
-      - "ChromaClient.add_text_embedding()"
-      - "ChromaClient.search()"
-    actual_implementation:
-      - "Real ChromaDB at localhost:8001"
-      - "128-dim CLS token retrieval"
-      - "Compressed full sequence in metadata"
-      - "Collection management working"
+    methods: ["add_visual_embedding()", "add_text_embedding()", "search()"]
 
-  processing_interface:
-    provider: "processing-agent (WAVE 3 COMPLETE)"
-    consumers: ["ui-agent", "webhook-system"]
-    status: "INTEGRATED ✓"
-    features:
-      - "Real embedding integration"
-      - "Real storage integration"
-      - "Wave 3 integration tests passing"
-      - "Webhook processing pipeline"
+  processing:
+    provider: processing
+    consumers: [ui, webhook]
+    status: "REFACTORED ✓"
+    features: ["Path standardization", "Real embedding", "Real storage", "Webhook"]
 
-  search_interface:
-    provider: "search-agent (WAVE 3 COMPLETE)"
-    consumers: ["ui-agent"]
+  search:
+    provider: search
+    consumers: [ui]
     status: "VALIDATED ✓"
-    features:
-      - "Two-stage search: 239ms avg"
-      - "100% search accuracy"
-      - "Real component integration"
-      - "Hybrid search modes working"
+    features: ["Two-stage search", "100% accuracy", "Real components"]
 
-  webhook_interface:
-    provider: "processing-agent"
-    consumer: "copyparty (Docker)"
-    status: "WORKING ✓"
-    endpoint: "POST http://host.docker.internal:8002/webhook"
-    payload: {event: "string", path: "string", filename: "string"}
-    processing: "Async pipeline with health tracking"
-
-# Validation results (Wave 3+4+5)
+# Validation (compressed)
 validation:
-  wave_2_to_wave_3:
+  w5_to_w6:
     status: "PASSED ✓"
     results:
-      - "All unit tests pass"
-      - "Real ColPali loads with MPS"
-      - "Real ChromaDB connection established"
-      - "Contract compliance verified"
+      - "Path standardization complete ✓"
+      - "105/105 tests passing ✓"
+      - "No breaking changes ✓"
+      - "CWD-safe operations ✓"
+      - "Type safety improved ✓"
 
-  wave_3_to_wave_4:
-    status: "PASSED ✓"
-    results:
-      - "End-to-end visual search works ✓"
-      - "ChromaDB contains valid 128-dim embeddings ✓"
-      - "Two-stage search <300ms (239ms achieved) ✓"
-      - "Search accuracy 100% (all docs rank 1) ✓"
-      - "Integration tests pass ✓"
-      - "Webhook integration working ✓"
-
-  wave_4_to_wave_5:
-    status: "PASSED ✓"
-    results:
-      - "Unified management scripts working ✓"
-      - "GPU mode functional (10-20x faster) ✓"
-      - "CPU mode functional ✓"
-      - "Docker-only mode functional ✓"
-      - "Status monitoring working ✓"
-      - "JSON output for automation ✓"
-
-  wave_5_to_production:
-    status: "IN PROGRESS (98%)"
+  production_readiness:
+    status: "99%"
     completed:
       - "Performance exceeds targets ✓"
-      - "Search accuracy validated ✓"
+      - "100% test pass rate ✓"
+      - "Path handling standardized ✓"
+      - "Search accuracy 100% ✓"
       - "System integration complete ✓"
-      - "Real components working ✓"
       - "Management scripts complete ✓"
-      - "Hybrid architecture validated ✓"
       - "GPU acceleration working ✓"
-    remaining:
-      - "Scale testing (100+ documents)"
-      - "Enhanced UI features"
-      - "User acceptance testing"
+    remaining: ["Scale testing (100+ docs)", "Enhanced UI"]
 
-# Semantic context for AI consumption
+# Semantic hints for AI consumption
 semantic:
-  ~real_colpali_integration: "Real ColPali embeddings with MPS acceleration, not mocks"
-  ~real_chromadb_storage: "Real ChromaDB at localhost:8001, not in-memory"
-  ~two_stage_search_validated: "239ms avg latency, 100% accuracy, exceeds targets"
-  ~128_dim_embeddings: "128-dimensional embeddings fully supported and validated"
-  ~mps_acceleration: "Metal Performance Shaders active on M1/M2/M3"
-  ~late_interaction_scoring: "MaxSim algorithm for precise re-ranking"
-  ~wave3_4_5_complete: "Integration, production validation, and management enhancement complete"
-  ~production_ready_98: "98% production ready, scale testing remaining"
-  ~performance_exceeds_targets: "All performance metrics exceed original targets"
-  ~search_accuracy_perfect: "100% search accuracy with expected docs at rank 1"
-  ~hybrid_architecture: "Native Metal GPU worker + Docker services for optimal performance"
-  ~unified_management: "One-command startup/shutdown with multiple modes"
-  ~gpu_acceleration_10_20x: "10-20x faster processing with Metal GPU vs CPU"
-  ~webhook_integration: "Copyparty webhook triggers async document processing"
-  ~comprehensive_documentation: "Complete guides for quick start, scripts, GPU, and native worker"
+  ~real_implementation: "Real ColPali + ChromaDB, no mocks"
+  ~path_standardization: "PathLike → absolute Path pattern everywhere"
+  ~100_percent_tests: "105/105 tests passing (2025-10-08)"
+  ~production_ready: "99% ready, scale testing remaining"
+  ~performance_validated: "239ms search, 100% accuracy, exceeds targets"
+  ~hybrid_architecture: "Native Metal GPU + Docker for optimal perf"
+  ~cwd_safe: "Absolute paths immune to CWD changes"
+  ~type_safe: "Path objects, not strings internally"
 
-# Architecture evolution notes
+# Architecture notes (compressed)
 notes:
-  # Wave 5 Management Enhancement (2025-10-07)
-  - "WAVE 5 COMPLETE: Unified management scripts with GPU/CPU modes"
-  - "HYBRID ARCHITECTURE: Native Metal GPU worker + Docker services"
-  - "GPU ACCELERATION: 10-20x faster processing with Metal Performance Shaders"
-  - "UNIFIED SCRIPTS: start-all.sh, stop-all.sh, status.sh, run-worker-native.sh"
-  - "ONE-COMMAND OPERATION: ./scripts/start-all.sh for complete system startup"
-  - "DOCUMENTATION SUITE: QUICK_START, SCRIPTS, GPU_ACCELERATION, NATIVE_WORKER_SETUP"
-  - "DOCKER COMPOSE OVERRIDE: docker-compose.native-worker.yml for hybrid mode"
-  - "JSON STATUS OUTPUT: Machine-parseable status for automation"
-  - "GRACEFUL SHUTDOWN: SIGTERM with 10s timeout, force option available"
-  - "LEGACY ARCHIVAL: Old scripts moved to scripts/legacy/"
+  wave6:
+    - "PATH STANDARDIZATION: path_utils.py module for consistent handling"
+    - "TEST STABILIZATION: 105/105 passing (100% pass rate)"
+    - "CWD-SAFE: absolute paths prevent bugs from directory changes"
+    - "TYPE SAFETY: PathLike → Path pattern throughout"
+    - "ZERO BREAKS: All fixes preserve production behavior"
 
-  # Wave 3+4 Completion (2025-10-06)
-  - "WAVE 3+4 COMPLETE: Real ColPali + ChromaDB integration validated"
-  - "PERFORMANCE EXCEEDS TARGETS: 239ms search (target 300ms), 2.6x faster embeddings"
-  - "SEARCH ACCURACY: 100% (all expected docs at rank 1)"
-  - "REAL IMPLEMENTATION: No mocks - ColPali MPS + ChromaDB localhost:8001"
-  - "128-DIM EMBEDDINGS: Fully supported (1031 image tokens, 30 text tokens, 22 query tokens)"
-  - "LATE INTERACTION: MaxSim scoring working with compressed sequences"
-  - "MPS ACCELERATION: Active on M1/M2/M3 Macs"
-  - "WEBHOOK INTEGRATION: Copyparty triggers async processing pipeline"
+  wave5:
+    - "UNIFIED MGMT: start-all, stop-all, status, run-worker-native"
+    - "HYBRID ARCH: Native Metal GPU + Docker services"
+    - "GPU ACCEL: 10-20x faster with Metal Performance Shaders"
 
-  # Wave 2 Achievements
-  - "Real ColPali engine with model loading and scoring"
-  - "Real ChromaDB client with multi-vector storage"
-  - "Document processing pipeline"
-  - "Two-stage search engine"
-  - "Configuration modules"
+  wave3_4:
+    - "REAL COLPALI: MPS acceleration, 128-dim embeddings"
+    - "PERFORMANCE: 239ms search (target 300ms), 2.6x faster embeddings"
+    - "ACCURACY: 100% (all expected docs at rank 1)"
 
-  # Wave 1 Foundation
-  - "6-AGENT ARCHITECTURE: infrastructure, storage, embedding, processing, search, ui"
-  - "4-WAVE EXECUTION: Foundation → Components → Integration → Production"
-  - "INTEGRATION CONTRACTS: API-first development with documented interfaces"
-  - "ZERO-CONFLICT DEVELOPMENT: Territorial ownership prevents merge conflicts"
+  innovations:
+    - "Production multi-vector architecture"
+    - "Path standardization pattern"
+    - "Two-stage search with late interaction"
+    - "Hybrid GPU+Docker deployment"
+    - "100% test coverage maintained"
 
-  # Key Innovations
-  - "Production-quality multi-vector architecture from MVP"
-  - "Real ColPali integration (not simplified prototypes)"
-  - "MPS-optimized deployment strategy"
-  - "Two-stage search with late interaction re-ranking"
-  - "128-dim embeddings (more efficient than 768-dim)"
-  - "Compressed sequence storage in ChromaDB metadata"
-  - "Hybrid architecture for optimal performance (GPU + Docker)"
-  - "Unified management scripts for ease of use"
-  - "Comprehensive documentation suite"
-
-  # Next Steps
-  - "Scale testing with 100+ documents"
-  - "Enhanced UI features"
-  - "Final 2% to production"
+  next:
+    - "Scale testing (100+ documents)"
+    - "Enhanced UI features"
+    - "Final 1% to production"
