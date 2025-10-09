@@ -27,6 +27,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from ..processing.preview_generator import PreviewGenerator  # Wave 3, Agent 6
 from ..search import SearchEngine
 from .path_utils import normalize_path, PathLike
 
@@ -77,6 +78,7 @@ status_manager: Optional[StatusManager] = None
 search_engine: Optional[SearchEngine] = None
 embedding_engine: Optional[ColPaliEngine] = None
 storage_client: Optional[ChromaClient] = None
+preview_generator: Optional[PreviewGenerator] = None  # Wave 3, Agent 6
 
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
@@ -504,6 +506,65 @@ async def get_status():
     return dashboard_stats
 
 
+@app.get("/api/preview/{doc_id}/{page_num}")
+async def get_preview(doc_id: str, page_num: int):
+    """
+    Get page preview with image and text.
+
+    Wave 3, Agent 6: Preview endpoint for document preview modal.
+
+    Args:
+        doc_id: Document SHA-256 hash
+        page_num: Page number (1-indexed)
+
+    Returns:
+        PreviewResponse with base64 image, text, and metadata
+    """
+    if not preview_generator:
+        raise HTTPException(
+            status_code=503,
+            detail="Preview generator not initialized"
+        )
+
+    if page_num < 1:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid page_num={page_num}. Must be >= 1"
+        )
+
+    try:
+        # Generate preview
+        preview = preview_generator.get_page_preview(doc_id, page_num)
+
+        if not preview:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Preview not found for doc_id={doc_id}, page={page_num}"
+            )
+
+        # Return preview as dictionary
+        return preview.to_dict()
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found for preview: {e}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Original file not found for document {doc_id}"
+        )
+    except ValueError as e:
+        logger.error(f"Invalid page number: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Preview generation error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate preview: {str(e)}"
+        )
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
@@ -528,7 +589,7 @@ async def get_config():
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager, search_engine, embedding_engine, storage_client
+    global document_processor, parser, status_manager, search_engine, embedding_engine, storage_client, preview_generator
 
     print("=" * 70, flush=True)
     print("DocuSearch Processing Worker Starting (Webhook Mode)...", flush=True)
@@ -588,6 +649,13 @@ async def startup_event():
             embedding_engine=embedding_engine
         )
         logger.info("✓ Search engine initialized")
+
+        # Initialize preview generator (Wave 3, Agent 6)
+        preview_generator = PreviewGenerator(
+            storage_client=storage_client,
+            parser=parser
+        )
+        logger.info("✓ Preview generator initialized")
 
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}", exc_info=True)
