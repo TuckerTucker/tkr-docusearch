@@ -259,6 +259,7 @@ class DocumentProcessor:
             self._update_status(status, status_callback)
 
             confirmation = self._store_embeddings(
+                doc_id=doc_id,
                 visual_results=visual_results,
                 text_results=text_results,
                 text_chunks=parsed_doc.text_chunks,
@@ -334,6 +335,7 @@ class DocumentProcessor:
 
     def _store_embeddings(
         self,
+        doc_id: str,
         visual_results,
         text_results,
         text_chunks,
@@ -344,6 +346,7 @@ class DocumentProcessor:
         """Store embeddings in ChromaDB with enhanced metadata.
 
         Args:
+            doc_id: Document ID
             visual_results: List of VisualEmbeddingResult
             text_results: List of TextEmbeddingResult
             text_chunks: List of TextChunk (with context)
@@ -440,8 +443,16 @@ class DocumentProcessor:
 
             logger.debug(f"Stored {len(text_ids)} text embeddings")
 
+            # Check if we have any embeddings to store
+            if not visual_ids and not text_ids:
+                raise StorageError(
+                    f"No embeddings generated for {filename}. "
+                    "This may indicate the document has no processable content, "
+                    "or processing failed to extract text/images."
+                )
+
             confirmation = StorageConfirmation(
-                doc_id=visual_results[0].doc_id if visual_results else text_results[0].doc_id,
+                doc_id=doc_id,
                 visual_ids=visual_ids,
                 text_ids=text_ids,
                 total_size_bytes=total_size_bytes,

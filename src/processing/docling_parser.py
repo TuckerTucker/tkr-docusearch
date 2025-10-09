@@ -479,7 +479,28 @@ class DoclingParser:
             converter = DocumentConverter(format_options=format_options if format_options else None)
 
             logger.info(f"Converting document with Docling: {file_path}")
-            result = converter.convert(file_path)
+
+            # WORKAROUND for Docling audio bug: Docling's audio transcription pipeline
+            # has a bug where it changes CWD internally, breaking absolute paths.
+            # Solution: Temporarily change to the file's directory for audio files.
+            import os
+            file_path_obj = Path(file_path)
+            ext = file_path_obj.suffix.lower()
+            is_audio = ext in {'.mp3', '.wav', '.m4a', '.flac', '.ogg'}
+
+            if is_audio:
+                logger.info(f"Audio file detected ({ext}), using CWD workaround for Docling bug")
+                original_cwd = os.getcwd()
+                try:
+                    # Change to the file's directory
+                    os.chdir(file_path_obj.parent)
+                    # Use just the filename
+                    result = converter.convert(file_path_obj.name)
+                finally:
+                    # Always restore original CWD
+                    os.chdir(original_cwd)
+            else:
+                result = converter.convert(file_path)
 
             # Use adapter to convert to Page objects (pass file_path for format detection)
             pages = docling_to_pages(result, file_path)

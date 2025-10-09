@@ -239,6 +239,7 @@ class StatusManager:
                     progress=status.progress,
                     elapsed_time=status.elapsed_time,
                     timestamp=status.updated_at,
+                    error=status.error,
                 )
             )
 
