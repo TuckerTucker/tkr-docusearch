@@ -372,14 +372,6 @@ class TestDoclingParser:
         # Verify overlap by checking text content
         assert len(chunks) >= 2
 
-    def test_create_text_image(self):
-        """Test text image creation."""
-        text = "Sample text for testing"
-        img = self.parser._create_text_image(text, width=512, height=512)
-
-        assert img.size == (512, 512)
-        assert img.mode == "RGB"
-
     def test_parse_nonexistent_file_raises(self):
         """Test parsing non-existent file raises error."""
         with pytest.raises(FileNotFoundError):

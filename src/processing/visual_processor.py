@@ -114,9 +114,9 @@ class VisualProcessor:
                 result = VisualEmbeddingResult(
                     doc_id=doc_id,
                     page_num=page.page_num,
-                    embedding=batch_output['embeddings'][idx],
-                    cls_token=batch_output['cls_tokens'][idx],
-                    seq_length=batch_output['seq_lengths'][idx],
+                    embedding=batch_output.embeddings[idx],
+                    cls_token=batch_output.cls_tokens[idx],
+                    seq_length=batch_output.seq_lengths[idx],
                     processing_time_ms=elapsed_ms / len(images)
                 )
                 all_results.append(result)

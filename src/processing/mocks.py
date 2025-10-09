@@ -388,13 +388,28 @@ class MockStorageClient:
         n_results: int = 100,
         filters: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
-        """Mock visual search (not implemented for Wave 2).
+        """Mock visual search - returns stored embeddings with random distances.
 
-        This will be implemented in Wave 3 for search-agent.
+        Args:
+            query_embedding: Query embedding vector
+            n_results: Number of results to return
+            filters: Optional metadata filters (ignored in mock)
+
+        Returns:
+            List of dicts with 'id' and 'distance' keys
         """
-        raise NotImplementedError(
-            "Search functionality will be implemented in Wave 3"
-        )
+        # Return stored embeddings with mock distances
+        results = []
+        for emb_id in list(self._visual_store.keys())[:n_results]:
+            results.append({
+                'id': emb_id,
+                'distance': float(np.random.random()),  # Random distance for mock
+                'metadata': self._visual_store[emb_id]['metadata']
+            })
+
+        # Sort by distance
+        results.sort(key=lambda x: x['distance'])
+        return results
 
     def search_text(
         self,
@@ -402,24 +417,39 @@ class MockStorageClient:
         n_results: int = 100,
         filters: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
-        """Mock text search (not implemented for Wave 2).
+        """Mock text search - returns stored embeddings with random distances.
 
-        This will be implemented in Wave 3 for search-agent.
+        Args:
+            query_embedding: Query embedding vector
+            n_results: Number of results to return
+            filters: Optional metadata filters (ignored in mock)
+
+        Returns:
+            List of dicts with 'id' and 'distance' keys
         """
-        raise NotImplementedError(
-            "Search functionality will be implemented in Wave 3"
-        )
+        # Return stored embeddings with mock distances
+        results = []
+        for emb_id in list(self._text_store.keys())[:n_results]:
+            results.append({
+                'id': emb_id,
+                'distance': float(np.random.random()),  # Random distance for mock
+                'metadata': self._text_store[emb_id]['metadata']
+            })
+
+        # Sort by distance
+        results.sort(key=lambda x: x['distance'])
+        return results
 
     def get_full_embeddings(
         self,
         embedding_id: str,
-        collection: str = "visual"
+        collection: str = None
     ) -> np.ndarray:
         """Retrieve mock full embeddings.
 
         Args:
             embedding_id: ID of the embedding
-            collection: "visual" or "text"
+            collection: "visual" or "text" (auto-detects if None)
 
         Returns:
             Full multi-vector embedding
@@ -427,9 +457,17 @@ class MockStorageClient:
         Raises:
             ValueError: If embedding_id not found
         """
-        store = self._visual_store if collection == "visual" else self._text_store
-
-        if embedding_id not in store:
-            raise ValueError(f"Embedding not found: {embedding_id}")
+        # Auto-detect collection if not specified
+        if collection is None:
+            if embedding_id in self._visual_store:
+                store = self._visual_store
+            elif embedding_id in self._text_store:
+                store = self._text_store
+            else:
+                raise ValueError(f"Embedding not found: {embedding_id}")
+        else:
+            store = self._visual_store if collection == "visual" else self._text_store
+            if embedding_id not in store:
+                raise ValueError(f"Embedding not found: {embedding_id}")
 
         return store[embedding_id]["full_embeddings"]
