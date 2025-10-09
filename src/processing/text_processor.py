@@ -119,9 +119,9 @@ class TextProcessor:
                     doc_id=doc_id,
                     chunk_id=chunk.chunk_id,
                     page_num=chunk.page_num,
-                    embedding=batch_output.embeddings[idx],
-                    cls_token=batch_output.cls_tokens[idx],
-                    seq_length=batch_output.seq_lengths[idx],
+                    embedding=batch_output['embeddings'][idx],
+                    cls_token=batch_output['cls_tokens'][idx],
+                    seq_length=batch_output['seq_lengths'][idx],
                     text=chunk.text,
                     processing_time_ms=elapsed_ms / len(texts)
                 )
