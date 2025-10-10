@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import theme after Tailwind directives */
+@import url(../theme.css);
