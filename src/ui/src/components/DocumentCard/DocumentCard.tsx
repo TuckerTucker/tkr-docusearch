@@ -12,6 +12,7 @@ import { ProcessingStages } from '../ProcessingStages/ProcessingStages';
 import { DocumentMetadata } from '../DocumentMetadata/DocumentMetadata';
 import { cn } from '../../lib/utils';
 import { useToggle } from '../../hooks/useToggle';
+import { useProcessingTimeout } from '../../hooks/useProcessingTimeout';
 
 /**
  * Action button icons
@@ -149,6 +150,8 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
     onProcessAgain,
     onDownload,
     onExpand,
+    onProcessingTimeout,
+    started_at,
   } = props;
 
   // Expand/collapse state for completed documents
@@ -169,6 +172,18 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
       );
     }
   }, [title]);
+
+  // Track processing timeout
+  useProcessingTimeout({
+    documentId: id,
+    status,
+    startedAt: started_at,
+    onTimeout: () => {
+      if (onProcessingTimeout) {
+        onProcessingTimeout();
+      }
+    },
+  });
 
   // Handle expand/collapse
   const handleToggleExpand = () => {

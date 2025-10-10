@@ -403,6 +403,38 @@ function App() {
     }
   }, [documents, info, error]);
 
+  const handleProcessingTimeout = useCallback((id: string) => {
+    const doc = documents.find((d) => d.id === id);
+    if (!doc) return;
+
+    // Update document status to error
+    setDocuments((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              status: 'error' as DocumentStatus,
+              errorMessage: 'Processing timeout (5 minutes). The worker may be overloaded or the document is too complex.',
+              stages: d.stages?.map((stage) =>
+                stage.status === 'in-progress'
+                  ? { ...stage, status: 'error' }
+                  : stage
+              ),
+            }
+          : d
+      )
+    );
+
+    // Show error toast with retry action
+    error(`Processing timeout: "${doc.title}"`, {
+      duration: 10000, // Longer duration for errors
+      action: {
+        label: 'Retry',
+        onClick: () => handleRetry(id),
+      },
+    });
+  }, [documents, error, handleRetry]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Toast notifications */}
@@ -642,6 +674,7 @@ function App() {
                 onDelete={() => handleDelete(doc.id)}
                 onProcessAgain={() => handleRetry(doc.id)}
                 onDownload={(format) => handleDownload(doc.id, format)}
+                onProcessingTimeout={() => handleProcessingTimeout(doc.id)}
               />
             ))}
           </div>
