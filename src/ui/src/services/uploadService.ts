@@ -114,11 +114,9 @@ export function uploadFile(
       reject(new Error('Upload cancelled'));
     });
 
-    // Send to Copyparty
-    xhr.open('POST', `${COPYPARTY_URL}/`);
-
-    // Copyparty uses Cookie auth: cppwd=password
-    xhr.setRequestHeader('Cookie', 'cppwd=admin');
+    // Send to Copyparty with password parameter
+    // Copyparty accepts auth via URL param: ?pw=password
+    xhr.open('POST', `${COPYPARTY_URL}/?pw=admin`);
 
     xhr.send(formData);
   });
