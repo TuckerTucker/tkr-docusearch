@@ -114,8 +114,13 @@ export function uploadFile(
       reject(new Error('Upload cancelled'));
     });
 
-    // Send to Copyparty
+    // Send to Copyparty with Basic Auth
     xhr.open('POST', `${COPYPARTY_URL}/`);
+
+    // Add Basic Auth credentials (admin:admin from Copyparty config)
+    const auth = btoa('admin:admin');
+    xhr.setRequestHeader('Authorization', `Basic ${auth}`);
+
     xhr.send(formData);
   });
 

@@ -112,13 +112,7 @@ class NoCacheStaticFiles(StaticFiles):
         response.headers["Expires"] = "0"
         return response
 
-# Mount static files for UI
-UI_DIR = Path(__file__).parent.parent / "ui" / "dist"
-if UI_DIR.exists():
-    app.mount("/ui", NoCacheStaticFiles(directory=str(UI_DIR), html=True), name="ui")
-    logger.info(f"Mounted UI at /ui (directory: {UI_DIR}) with no-cache headers")
-else:
-    logger.warning(f"UI directory not found: {UI_DIR}")
+# UI will be mounted after all routes are defined (see bottom of file)
 
 
 # ============================================================================
@@ -407,6 +401,18 @@ async def health_check():
 
 
 # ============================================================================
+# UI Static Files (mounted last so API routes take precedence)
+# ============================================================================
+
+UI_DIR = Path(__file__).parent.parent / "ui" / "dist"
+if UI_DIR.exists():
+    app.mount("/", NoCacheStaticFiles(directory=str(UI_DIR), html=True), name="ui")
+    logger.info(f"Mounted UI at root (directory: {UI_DIR}) with no-cache headers")
+else:
+    logger.warning(f"UI directory not found: {UI_DIR}")
+
+
+# ============================================================================
 # Startup/Shutdown
 # ============================================================================
 
@@ -480,7 +486,7 @@ async def startup_event():
     logger.info("=" * 70)
     logger.info("✓ Worker started successfully")
     logger.info(f"  Listening on port: {WORKER_PORT}")
-    logger.info(f"  UI available at: http://localhost:{WORKER_PORT}/ui/")
+    logger.info(f"  UI available at: http://localhost:{WORKER_PORT}/")
     logger.info(f"  API docs at: http://localhost:{WORKER_PORT}/docs")
     logger.info("=" * 70)
 
