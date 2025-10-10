@@ -15,33 +15,66 @@ import type { UploadResponse } from '../lib/types';
 export type UploadProgressCallback = (progress: number) => void;
 
 /**
+ * Upload cancellation function
+ */
+export type CancelUploadFn = () => void;
+
+/**
+ * Upload result with cancellation function
+ */
+export interface UploadResult {
+  promise: Promise<UploadResponse>;
+  cancel: CancelUploadFn;
+}
+
+/**
  * Copyparty upload URL
  */
 const COPYPARTY_URL = 'http://localhost:8000';
+
+/**
+ * Active XHR instances tracked by temporary upload ID
+ */
+const activeUploads = new Map<string, XMLHttpRequest>();
 
 /**
  * Upload a file to the server
  *
  * @param file - File to upload
  * @param onProgress - Optional progress callback (0-100)
- * @returns Promise resolving to upload response
+ * @returns UploadResult with promise and cancel function
  *
  * @example
- * const response = await uploadService.uploadFile(
+ * const { promise, cancel } = uploadFile(
  *   file,
  *   (progress) => console.log(`Upload: ${progress}%`)
  * );
- * console.log('Document ID:', response.document_id);
+ *
+ * // Cancel if needed
+ * setTimeout(() => cancel(), 5000);
+ *
+ * try {
+ *   const response = await promise;
+ *   console.log('Document ID:', response.document_id);
+ * } catch (error) {
+ *   console.error('Upload failed or cancelled:', error);
+ * }
  */
-export async function uploadFile(
+export function uploadFile(
   file: File,
   onProgress?: UploadProgressCallback
-): Promise<UploadResponse> {
-  return new Promise((resolve, reject) => {
+): UploadResult {
+  // Generate temporary upload ID
+  const uploadId = `${file.name}-${Date.now()}`;
+
+  const promise = new Promise<UploadResponse>((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
 
     const xhr = new XMLHttpRequest();
+
+    // Track this upload
+    activeUploads.set(uploadId, xhr);
 
     // Track upload progress
     xhr.upload.addEventListener('progress', (e) => {
@@ -53,6 +86,9 @@ export async function uploadFile(
 
     // Handle completion
     xhr.addEventListener('load', () => {
+      // Remove from active uploads
+      activeUploads.delete(uploadId);
+
       if (xhr.status >= 200 && xhr.status < 300) {
         // Copyparty uploads successfully
         // The webhook will trigger worker processing
@@ -69,10 +105,12 @@ export async function uploadFile(
 
     // Handle errors
     xhr.addEventListener('error', () => {
+      activeUploads.delete(uploadId);
       reject(new Error('Upload failed: Network error'));
     });
 
     xhr.addEventListener('abort', () => {
+      activeUploads.delete(uploadId);
       reject(new Error('Upload cancelled'));
     });
 
@@ -80,25 +118,37 @@ export async function uploadFile(
     xhr.open('POST', `${COPYPARTY_URL}/`);
     xhr.send(formData);
   });
+
+  // Return promise and cancel function
+  return {
+    promise,
+    cancel: () => {
+      const xhr = activeUploads.get(uploadId);
+      if (xhr) {
+        xhr.abort();
+        activeUploads.delete(uploadId);
+      }
+    },
+  };
 }
 
 /**
- * Cancel an ongoing upload
+ * Cancel an ongoing upload by document ID
  *
- * Note: Actual cancellation requires tracking XHR instances.
- * For now, this is a placeholder that would need to be implemented
- * with proper upload tracking state management.
- *
- * @param documentId - Document ID to cancel
- * @returns Promise resolving to success boolean
+ * @param uploadId - Upload ID to cancel
+ * @returns Success boolean
  *
  * @example
- * const success = await uploadService.cancelUpload('doc-123');
+ * const success = cancelUpload('doc-123-1234567890');
  */
-export async function cancelUpload(documentId: string): Promise<boolean> {
-  console.log(`Cancel upload requested for: ${documentId}`);
-  // TODO: Implement XHR cancellation with upload tracking
-  return true;
+export function cancelUpload(uploadId: string): boolean {
+  const xhr = activeUploads.get(uploadId);
+  if (xhr) {
+    xhr.abort();
+    activeUploads.delete(uploadId);
+    return true;
+  }
+  return false;
 }
 
 /**

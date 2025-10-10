@@ -23,6 +23,9 @@ function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toasts, dismissToast, success, error, warning, info } = useToast();
 
+  // Track active upload cancel functions by temporary document ID
+  const uploadCancelFunctions = useRef<Map<string, () => void>>(new Map());
+
   // Load documents on mount
   useEffect(() => {
     const loadDocuments = async () => {
@@ -123,15 +126,77 @@ function App() {
         continue;
       }
 
+      // Generate temporary document ID for this upload
+      const tempId = `upload-${file.name}-${Date.now()}`;
+
+      // Create temporary document entry in state
+      const tempDocument: DocumentCardProps = {
+        id: tempId,
+        title: file.name,
+        status: 'uploading' as DocumentStatus,
+        fileType: file.name.split('.').pop()?.toUpperCase() || 'UNKNOWN',
+        progress: 0,
+        stages: [
+          { label: 'Upload', status: 'in-progress' },
+          { label: 'Processing', status: 'pending' },
+          { label: 'Embeddings', status: 'pending' },
+          { label: 'Complete', status: 'pending' },
+        ],
+      };
+
+      setDocuments((prev) => [tempDocument, ...prev]);
+
       try {
-        // Upload to Copyparty with progress tracking
-        await uploadFileService(file, (progress) => {
-          // Progress tracking handled by upload service
-          console.log(`Upload progress for ${file.name}: ${progress}%`);
+        // Upload to Copyparty with progress tracking and cancel function
+        const { promise, cancel } = uploadFileService(file, (progress) => {
+          // Update progress in document state
+          setDocuments((prev) =>
+            prev.map((doc) =>
+              doc.id === tempId ? { ...doc, progress } : doc
+            )
+          );
         });
+
+        // Store cancel function
+        uploadCancelFunctions.current.set(tempId, cancel);
+
+        // Await upload completion
+        await promise;
+
+        // Remove cancel function (upload complete)
+        uploadCancelFunctions.current.delete(tempId);
+
+        // Remove temporary document (backend will add the real one)
+        setDocuments((prev) => prev.filter((doc) => doc.id !== tempId));
 
         successCount++;
       } catch (err) {
+        // Remove cancel function
+        uploadCancelFunctions.current.delete(tempId);
+
+        // Check if it was a cancellation
+        const errorMessage = (err as Error).message;
+        if (errorMessage === 'Upload cancelled') {
+          // Remove from document list (already handled by cancel handler)
+          return;
+        }
+
+        // Show error state in document
+        setDocuments((prev) =>
+          prev.map((doc) =>
+            doc.id === tempId
+              ? {
+                  ...doc,
+                  status: 'error' as DocumentStatus,
+                  errorMessage: `Upload failed: ${errorMessage}`,
+                  stages: doc.stages?.map((stage, idx) =>
+                    idx === 0 ? { ...stage, status: 'error' } : stage
+                  ),
+                }
+              : doc
+          )
+        );
+
         console.error(`Failed to upload ${file.name}:`, err);
         error(`Failed to upload ${file.name}`);
       }
@@ -228,7 +293,17 @@ function App() {
 
   const handleCancel = useCallback((id: string) => {
     const doc = documents.find((d) => d.id === id);
+
+    // Call the cancel function if it exists
+    const cancelFn = uploadCancelFunctions.current.get(id);
+    if (cancelFn) {
+      cancelFn();
+      uploadCancelFunctions.current.delete(id);
+    }
+
+    // Remove from document list
     setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+
     if (doc) {
       warning(`Upload cancelled: "${doc.title}"`);
     }

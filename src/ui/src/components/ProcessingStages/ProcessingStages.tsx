@@ -127,12 +127,25 @@ export function ProcessingStages({
   stages,
   className,
 }: ProcessingStagesProps): React.ReactElement {
+  // Find current stage for screen reader announcement
+  const currentStage = stages.find(s => s.status === 'in-progress');
+  const completedCount = stages.filter(s => s.status === 'completed').length;
+  const hasError = stages.some(s => s.status === 'error');
+
   return (
     <div
       className={cn('relative', className)}
       data-component="processing-stages"
-      role="list"
-      aria-label="Processing stages"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={
+        hasError
+          ? `Processing error at ${stages.find(s => s.status === 'error')?.label}`
+          : currentStage
+          ? `Processing: ${currentStage.label}, ${completedCount} of ${stages.length} stages complete`
+          : `Processing complete, all ${stages.length} stages finished`
+      }
     >
       <div className="flex items-center gap-1">
         {stages.map((stage, index) => {

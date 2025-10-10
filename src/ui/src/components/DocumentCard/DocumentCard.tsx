@@ -120,6 +120,18 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
 
   const canExpand = status === 'completed' && view === 'list';
 
+  // ARIA labels
+  const statusText = {
+    uploading: 'uploading',
+    processing: 'processing',
+    completed: 'completed',
+    error: 'failed to process',
+  }[status];
+
+  const ariaLabel = `${title}, ${fileType} document, ${statusText}`;
+  const metadataId = `doc-meta-${id}`;
+  const contentId = `doc-content-${id}`;
+
   return (
     <article
       className={cn(
@@ -136,6 +148,9 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         status === 'uploading' && 'border-blue-300',
         status === 'processing' && 'border-blue-300'
       )}
+      role="article"
+      aria-label={ariaLabel}
+      aria-describedby={status === 'completed' ? metadataId : undefined}
       data-component="document-card"
       data-status={status}
       data-view={view}
@@ -213,8 +228,9 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                   'hover:bg-accent text-muted-foreground hover:text-foreground',
                   'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
                 )}
-                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                aria-label={isExpanded ? 'Collapse document details' : 'Expand document details'}
                 aria-expanded={isExpanded}
+                aria-controls={contentId}
               >
                 {isExpanded ? ActionIcons.collapse : ActionIcons.expand}
               </button>
@@ -275,6 +291,8 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                     aria-valuenow={progress}
                     aria-valuemin={0}
                     aria-valuemax={100}
+                    aria-valuetext={`${progress}% ${status === 'uploading' ? 'uploaded' : 'processed'}`}
+                    aria-label={`${status === 'uploading' ? 'Upload' : 'Processing'} progress`}
                   />
                 </div>
               </div>
@@ -287,16 +305,19 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
 
         {/* Completed state */}
         {status === 'completed' && (
-          <div className="space-y-3">
-            <DocumentMetadata
-              document={props}
-              mode={isExpanded ? 'full' : 'compact'}
-            />
+          <div id={contentId} className="space-y-3">
+            <div id={metadataId}>
+              <DocumentMetadata
+                document={props}
+                mode={isExpanded ? 'full' : 'compact'}
+              />
+            </div>
 
             {/* Download buttons */}
             {onDownload && (isExpanded || view !== 'list') && (
               <div className="pt-3 border-t border-border">
-                <div className="flex flex-wrap gap-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Download as:</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Download options">
                   {downloadFormats.map((format) => (
                     <button
                       key={format.value}
@@ -309,6 +330,7 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                         'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
                         'transition-colors'
                       )}
+                      aria-label={`Download as ${format.label}`}
                     >
                       {ActionIcons.download}
                       {format.label}
