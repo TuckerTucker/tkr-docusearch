@@ -4,17 +4,20 @@
  * Consumers: Agent 5 (App)
  * Contract: integration-contracts/api-services-contract.md
  *
- * Wave 1-3: Mock implementation with simulated progress
- * Wave 4: Replace with real upload API
+ * Wave 4: Real upload implementation via Copyparty
  */
 
 import type { UploadResponse } from '../lib/types';
-import { delay } from '../lib/utils';
 
 /**
  * Upload progress callback
  */
 export type UploadProgressCallback = (progress: number) => void;
+
+/**
+ * Copyparty upload URL
+ */
+const COPYPARTY_URL = 'http://localhost:8000';
 
 /**
  * Upload a file to the server
@@ -34,52 +37,57 @@ export async function uploadFile(
   file: File,
   onProgress?: UploadProgressCallback
 ): Promise<UploadResponse> {
-  // Mock implementation - simulate upload progress
-  const totalSteps = 10;
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  for (let i = 1; i <= totalSteps; i++) {
-    await delay(200); // Simulate chunk upload
+    const xhr = new XMLHttpRequest();
 
-    const progress = Math.round((i / totalSteps) * 100);
-    if (onProgress) {
-      onProgress(progress);
-    }
-  }
+    // Track upload progress
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        const progress = Math.round((e.loaded / e.total) * 100);
+        onProgress(progress);
+      }
+    });
 
-  // Mock successful response
-  const mockDocumentId = `doc-${Date.now()}`;
+    // Handle completion
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        // Copyparty uploads successfully
+        // The webhook will trigger worker processing
+        // Document ID will be assigned by the backend
+        resolve({
+          success: true,
+          document_id: file.name, // Temporary - will be updated by backend
+          message: 'Upload successful',
+        });
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+      }
+    });
 
-  console.log(`[Mock] Uploaded file: ${file.name} (${file.size} bytes)`);
-  console.log(`[Mock] Assigned document ID: ${mockDocumentId}`);
+    // Handle errors
+    xhr.addEventListener('error', () => {
+      reject(new Error('Upload failed: Network error'));
+    });
 
-  // In Wave 4, this will be:
-  // const formData = new FormData();
-  // formData.append('file', file);
-  //
-  // const xhr = new XMLHttpRequest();
-  // xhr.upload.addEventListener('progress', (e) => {
-  //   if (e.lengthComputable && onProgress) {
-  //     const progress = Math.round((e.loaded / e.total) * 100);
-  //     onProgress(progress);
-  //   }
-  // });
-  //
-  // const response = await fetch('/api/upload', {
-  //   method: 'POST',
-  //   body: formData,
-  // });
-  //
-  // return await response.json();
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload cancelled'));
+    });
 
-  return {
-    success: true,
-    document_id: mockDocumentId,
-    message: 'Upload successful',
-  };
+    // Send to Copyparty
+    xhr.open('POST', `${COPYPARTY_URL}/`);
+    xhr.send(formData);
+  });
 }
 
 /**
  * Cancel an ongoing upload
+ *
+ * Note: Actual cancellation requires tracking XHR instances.
+ * For now, this is a placeholder that would need to be implemented
+ * with proper upload tracking state management.
  *
  * @param documentId - Document ID to cancel
  * @returns Promise resolving to success boolean
@@ -88,14 +96,8 @@ export async function uploadFile(
  * const success = await uploadService.cancelUpload('doc-123');
  */
 export async function cancelUpload(documentId: string): Promise<boolean> {
-  // Simulate network delay
-  await delay(100);
-
-  // Mock implementation
-  console.log(`[Mock] Cancelling upload: ${documentId}`);
-
-  // In Wave 4, this will use AbortController to cancel the fetch request
-
+  console.log(`Cancel upload requested for: ${documentId}`);
+  // TODO: Implement XHR cancellation with upload tracking
   return true;
 }
 

@@ -1,24 +1,21 @@
 """
-Document Processing Worker for DocuSearch MVP - Webhook Version.
+Document Processing Worker for DocuSearch.
 
 HTTP server that processes documents when triggered by copyparty webhook.
-Extracts text, generates embeddings, and stores in ChromaDB.
+Provides RESTful API for document management.
 """
 
 import logging
-import time
 import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 import hashlib
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import Response
 from pydantic import BaseModel
 import uvicorn
 
@@ -27,16 +24,15 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
-from ..processing.preview_generator import PreviewGenerator  # Wave 3, Agent 6
-from ..search import SearchEngine
 from .path_utils import normalize_path, PathLike
 
-# Import status management components
+# Import status management
 from .status_manager import StatusManager, get_status_manager
-from .status_api import router as status_router, set_status_manager
 
-# Import API models
-from ..api.models import SearchRequest, SearchResponse, SearchResult
+# Import API routers
+from ..api.routes import documents_router, markdown_router
+from ..api.routes.documents import set_dependencies as set_document_dependencies
+from ..api.routes.markdown import set_storage_client
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -65,7 +61,7 @@ PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
 
 # Load supported formats from environment
-_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx,md,txt,html,json,csv,xlsx")
 SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Processing status tracking
@@ -75,10 +71,8 @@ processing_status: Dict[str, Dict[str, Any]] = {}
 document_processor: Optional[DocumentProcessor] = None
 parser: Optional[DoclingParser] = None
 status_manager: Optional[StatusManager] = None
-search_engine: Optional[SearchEngine] = None
 embedding_engine: Optional[ColPaliEngine] = None
 storage_client: Optional[ChromaClient] = None
-preview_generator: Optional[PreviewGenerator] = None  # Wave 3, Agent 6
 
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
@@ -88,8 +82,8 @@ executor = ThreadPoolExecutor(max_workers=2)
 # ============================================================================
 
 app = FastAPI(
-    title="DocuSearch Processing Worker",
-    description="Webhook-based document processing service",
+    title="DocuSearch API",
+    description="Document processing and management API",
     version="1.0.0"
 )
 
@@ -102,8 +96,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount status API router
-app.include_router(status_router)
+# Mount API routers
+app.include_router(documents_router)
+app.include_router(markdown_router)
 
 # Custom StaticFiles class with no-cache headers for development
 class NoCacheStaticFiles(StaticFiles):
@@ -118,7 +113,7 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 # Mount static files for UI
-UI_DIR = Path(__file__).parent.parent / "ui"
+UI_DIR = Path(__file__).parent.parent / "ui" / "dist"
 if UI_DIR.exists():
     app.mount("/ui", NoCacheStaticFiles(directory=str(UI_DIR), html=True), name="ui")
     logger.info(f"Mounted UI at /ui (directory: {UI_DIR}) with no-cache headers")
@@ -158,13 +153,6 @@ class DeleteResponse(BaseModel):
     status: str
 
 
-class StatusResponse(BaseModel):
-    """Worker status response."""
-    status: str
-    processing_count: int
-    total_processed: int
-
-
 # ============================================================================
 # Processing Function
 # ============================================================================
@@ -195,7 +183,7 @@ def process_document_sync(file_path: PathLike, filename: str) -> Dict[str, Any]:
                 "error": f"Unsupported file type: {path.suffix}"
             }
 
-        # Generate doc ID from file hash (SHA-256 to match /process endpoint)
+        # Generate doc ID from file hash (SHA-256)
         with open(file_path, 'rb') as f:
             content = f.read()
             doc_id = hashlib.sha256(content).hexdigest()
@@ -207,7 +195,7 @@ def process_document_sync(file_path: PathLike, filename: str) -> Dict[str, Any]:
         try:
             status_manager.update_status(doc_id, "parsing", 0.1, stage="Parsing document")
         except KeyError:
-            # Status doesn't exist yet - this shouldn't happen but create it just in case
+            # Status doesn't exist yet - create it
             logger.warning(f"Status for {doc_id} not found, creating...")
             metadata = {
                 "format": path.suffix.lstrip('.').lower(),
@@ -262,8 +250,8 @@ def _update_processing_status(doc_id: str, status):
     """Update processing status from DocumentProcessor callback."""
     try:
         # Map DocumentProcessor status to ProcessingStatusEnum values
-        status_value = status.status  # e.g., "embedding_visual", "embedding_text", etc.
-        progress = status.progress  # 0.0-1.0
+        status_value = status.status
+        progress = status.progress
 
         # Build kwargs for additional fields
         kwargs = {}
@@ -282,11 +270,11 @@ def _update_processing_status(doc_id: str, status):
 
 
 # ============================================================================
-# API Endpoints
+# Webhook Endpoints (Copyparty Integration)
 # ============================================================================
 
 @app.post("/process", response_model=ProcessResponse)
-async def process_document(request: ProcessRequest, background_tasks: BackgroundTasks):
+async def process_document(request: ProcessRequest):
     """
     Queue a document for processing.
 
@@ -358,10 +346,10 @@ async def delete_document(request: DeleteRequest):
 
     try:
         # Initialize ChromaDB client
-        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        storage_client_local = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
 
         # Find doc_id by filename in visual collection
-        visual_results = storage_client._visual_collection.get(
+        visual_results = storage_client_local._visual_collection.get(
             where={"filename": request.filename},
             limit=1,
             include=["metadatas"]
@@ -369,7 +357,7 @@ async def delete_document(request: DeleteRequest):
 
         # Try text collection if not found in visual
         if not visual_results['ids']:
-            text_results = storage_client._text_collection.get(
+            text_results = storage_client_local._text_collection.get(
                 where={"filename": request.filename},
                 limit=1,
                 include=["metadatas"]
@@ -389,7 +377,7 @@ async def delete_document(request: DeleteRequest):
             doc_id = visual_results['metadatas'][0].get('doc_id')
 
         # Delete from ChromaDB using doc_id
-        visual_count, text_count = storage_client.delete_document(doc_id)
+        visual_count, text_count = storage_client_local.delete_document(doc_id)
 
         logger.info(
             f"Deleted document {doc_id}: {visual_count} visual, {text_count} text embeddings"
@@ -408,192 +396,14 @@ async def delete_document(request: DeleteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/search/query", response_model=SearchResponse)
-async def search_query(request: SearchRequest):
-    """
-    Execute semantic search across documents.
-
-    Performs two-stage search:
-    1. Fast retrieval with HNSW
-    2. Late interaction re-ranking with MaxSim
-    """
-    if not search_engine:
-        raise HTTPException(
-            status_code=503,
-            detail="Search engine not initialized"
-        )
-
-    try:
-        start_time = time.time()
-
-        # Map API search modes to SearchEngine modes
-        search_mode_mapping = {
-            "visual": "visual_only",
-            "text": "text_only",
-            "hybrid": "hybrid"
-        }
-        engine_search_mode = search_mode_mapping.get(request.search_mode, "hybrid")
-
-        # Execute search
-        response = search_engine.search(
-            query=request.query,
-            n_results=request.n_results,
-            search_mode=engine_search_mode,
-            enable_reranking=True
-        )
-
-        search_time_ms = (time.time() - start_time) * 1000
-
-        # Convert to API response format
-        results = []
-        for result in response.get("results", []):
-            # Extract metadata for easier access
-            metadata = result.get("metadata", {})
-
-            # Enrich metadata with highlights
-            enriched_metadata = {
-                **metadata,
-                "highlights": result.get("highlights", []),
-            }
-
-            results.append(SearchResult(
-                doc_id=result.get("doc_id", ""),
-                chunk_id=metadata.get("chunk_id"),  # chunk_id is in metadata
-                page_num=result.get("page"),  # search engine returns 'page' not 'page_num'
-                score=result.get("score", 0.0),
-                text_preview=result.get("text_preview"),
-                metadata=enriched_metadata,
-                # Top-level fields for frontend display
-                type=result.get("type", "unknown"),
-                filename=result.get("filename", ""),
-                thumbnail=None,  # Thumbnail feature disabled for now
-                snippet=result.get("text_preview", "")
-            ))
-
-        # Filter by minimum score if specified
-        if request.min_score is not None:
-            results = [r for r in results if r.score >= request.min_score]
-
-        logger.info(
-            f"Search completed: query='{request.query}', mode={request.search_mode}, "
-            f"results={len(results)}, time={search_time_ms:.0f}ms"
-        )
-
-        return SearchResponse(
-            query=request.query,
-            results=results,
-            total_results=len(results),
-            search_time_ms=search_time_ms,
-            search_mode=request.search_mode
-        )
-
-    except Exception as e:
-        logger.error(f"Search error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Search failed: {str(e)}"
-        )
-
-
-@app.get("/status")
-async def get_status():
-    """
-    Get comprehensive worker status with dashboard statistics.
-
-    Wave 2, Agent 5: Enhanced with dashboard stats for UI.
-    """
-    if not status_manager:
-        # Fallback if status_manager not initialized
-        return {
-            "queue_size": 0,
-            "processing_count": 0,
-            "completed_today": 0,
-            "failed_today": 0,
-            "avg_processing_time_seconds": 0.0,
-            "estimated_wait_time_seconds": 0.0,
-            "current_processing": None,
-            "recent_documents": []
-        }
-
-    # Get dashboard stats from StatusManager
-    dashboard_stats = status_manager.get_dashboard_stats()
-    return dashboard_stats
-
-
-@app.get("/api/preview/{doc_id}/{page_num}")
-async def get_preview(doc_id: str, page_num: int):
-    """
-    Get page preview with image and text.
-
-    Wave 3, Agent 6: Preview endpoint for document preview modal.
-
-    Args:
-        doc_id: Document SHA-256 hash
-        page_num: Page number (1-indexed)
-
-    Returns:
-        PreviewResponse with base64 image, text, and metadata
-    """
-    if not preview_generator:
-        raise HTTPException(
-            status_code=503,
-            detail="Preview generator not initialized"
-        )
-
-    if page_num < 1:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid page_num={page_num}. Must be >= 1"
-        )
-
-    try:
-        # Generate preview
-        preview = preview_generator.get_page_preview(doc_id, page_num)
-
-        if not preview:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Preview not found for doc_id={doc_id}, page={page_num}"
-            )
-
-        # Return preview as dictionary
-        return preview.to_dict()
-
-    except FileNotFoundError as e:
-        logger.error(f"File not found for preview: {e}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Original file not found for document {doc_id}"
-        )
-    except ValueError as e:
-        logger.error(f"Invalid page number: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Preview generation error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate preview: {str(e)}"
-        )
-
+# ============================================================================
+# Health Check
+# ============================================================================
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
-
-@app.get("/config")
-async def get_config():
-    """Get worker configuration including supported formats."""
-    return {
-        "supported_formats": list(SUPPORTED_EXTENSIONS),
-        "max_file_size_mb": int(os.getenv("MAX_FILE_SIZE_MB", "100")),
-        "device": DEVICE,
-        "model_precision": PRECISION
-    }
 
 
 # ============================================================================
@@ -603,18 +413,17 @@ async def get_config():
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager, search_engine, embedding_engine, storage_client, preview_generator
+    global document_processor, parser, status_manager, embedding_engine, storage_client
 
     print("=" * 70, flush=True)
-    print("DocuSearch Processing Worker Starting (Webhook Mode)...", flush=True)
+    print("DocuSearch Processing Worker Starting...", flush=True)
     print("=" * 70, flush=True)
     logger.info("=" * 70)
-    logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")
+    logger.info("DocuSearch Processing Worker Starting...")
     logger.info("=" * 70)
 
     # Initialize StatusManager with global processing_status dict
     status_manager = get_status_manager(processing_status)
-    set_status_manager(status_manager)
     logger.info("StatusManager initialized")
 
     # Log configuration
@@ -657,28 +466,22 @@ async def startup_event():
         parser = DoclingParser()
         logger.info("✓ Document parser initialized")
 
-        # Initialize search engine
-        search_engine = SearchEngine(
-            storage_client=storage_client,
-            embedding_engine=embedding_engine
-        )
-        logger.info("✓ Search engine initialized")
+        # Set dependencies for API routers
+        set_document_dependencies(status_manager, storage_client)
+        logger.info("✓ Document API router initialized")
 
-        # Initialize preview generator (Wave 3, Agent 6)
-        preview_generator = PreviewGenerator(
-            storage_client=storage_client,
-            parser=parser
-        )
-        logger.info("✓ Preview generator initialized")
+        set_storage_client(storage_client)
+        logger.info("✓ Markdown API router initialized")
 
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}", exc_info=True)
         raise
 
     logger.info("=" * 70)
-    logger.info("✓ Worker started successfully (Webhook Mode)")
+    logger.info("✓ Worker started successfully")
     logger.info(f"  Listening on port: {WORKER_PORT}")
-    logger.info(f"  Waiting for webhook requests...")
+    logger.info(f"  UI available at: http://localhost:{WORKER_PORT}/ui/")
+    logger.info(f"  API docs at: http://localhost:{WORKER_PORT}/docs")
     logger.info("=" * 70)
 
 

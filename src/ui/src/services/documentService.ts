@@ -4,13 +4,37 @@
  * Consumers: Agent 5 (App), Agent 4 (DocumentCard)
  * Contract: integration-contracts/api-services-contract.md
  *
- * Wave 1-3: Mock implementation with delays
- * Wave 4: Replace with real API calls
+ * Wave 4: Real API implementation
  */
 
-import type { DocumentCardProps, DocumentFilters } from '../lib/types';
-import { getMockDocuments, getMockDocument } from '../lib/mockData';
-import { delay } from '../lib/utils';
+import type { DocumentCardProps, DocumentFilters, DocumentAPIResponse } from '../lib/types';
+import { API_CONFIG } from '../lib/constants';
+import { formatBytes } from '../lib/utils';
+
+/**
+ * Transform backend API response to frontend DocumentCardProps
+ */
+function transformDocument(apiDoc: DocumentAPIResponse): DocumentCardProps {
+  return {
+    id: apiDoc.id,
+    title: apiDoc.title,
+    status: apiDoc.status,
+    fileType: apiDoc.file_type,
+    thumbnail: apiDoc.thumbnail_url,
+    progress: apiDoc.processing?.progress,
+    errorMessage: apiDoc.processing?.error_message,
+    author: apiDoc.metadata?.author,
+    published: apiDoc.metadata?.published,
+    pages: apiDoc.metadata?.pages,
+    size: apiDoc.metadata?.size_bytes
+      ? formatBytes(apiDoc.metadata.size_bytes)
+      : undefined,
+    visualEmbeddings: apiDoc.embeddings?.visual_count,
+    textEmbeddings: apiDoc.embeddings?.text_count,
+    textChunks: apiDoc.embeddings?.chunk_count,
+    dateProcessed: apiDoc.processed_at,
+  };
+}
 
 /**
  * Fetch all documents with optional filters
@@ -24,50 +48,49 @@ import { delay } from '../lib/utils';
 export async function listDocuments(
   filters?: DocumentFilters
 ): Promise<DocumentCardProps[]> {
-  // Simulate network delay
-  await delay(300);
-
-  let documents = getMockDocuments();
-
-  // Apply filters
-  if (filters) {
-    if (filters.status) {
-      documents = documents.filter(doc =>
-        filters.status!.includes(doc.status)
-      );
+  try {
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (filters?.status) {
+      params.append('status', filters.status.join(','));
+    }
+    if (filters?.fileType) {
+      params.append('file_type', filters.fileType.join(','));
+    }
+    if (filters?.sortBy) {
+      params.append('sort_by', filters.sortBy);
+    }
+    if (filters?.sortOrder) {
+      params.append('sort_order', filters.sortOrder);
+    }
+    if (filters?.limit) {
+      params.append('limit', filters.limit.toString());
+    }
+    if (filters?.offset) {
+      params.append('offset', filters.offset.toString());
     }
 
-    if (filters.fileType) {
-      documents = documents.filter(doc =>
-        filters.fileType!.includes(doc.fileType)
-      );
+    const url = `${API_CONFIG.baseURL}/api/documents${params.toString() ? `?${params}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch documents: ${response.status}`);
     }
 
-    if (filters.sortBy === 'name') {
-      documents = documents.sort((a, b) => {
-        const order = filters.sortOrder === 'desc' ? -1 : 1;
-        return a.title.localeCompare(b.title) * order;
-      });
-    }
-
-    if (filters.sortBy === 'date' && documents[0].dateProcessed) {
-      documents = documents.sort((a, b) => {
-        const order = filters.sortOrder === 'desc' ? -1 : 1;
-        const dateA = new Date(a.dateProcessed || 0).getTime();
-        const dateB = new Date(b.dateProcessed || 0).getTime();
-        return (dateA - dateB) * order;
-      });
-    }
-
-    // Pagination
-    if (filters.offset !== undefined || filters.limit !== undefined) {
-      const offset = filters.offset || 0;
-      const limit = filters.limit || documents.length;
-      documents = documents.slice(offset, offset + limit);
-    }
+    const data: DocumentAPIResponse[] = await response.json();
+    return data.map(transformDocument);
+  } catch (error) {
+    console.error('Failed to fetch documents:', error);
+    // Return empty array on error rather than crashing
+    return [];
   }
-
-  return documents;
 }
 
 /**
@@ -82,10 +105,28 @@ export async function listDocuments(
 export async function getDocument(
   documentId: string
 ): Promise<DocumentCardProps | undefined> {
-  // Simulate network delay
-  await delay(200);
+  try {
+    const response = await fetch(`${API_CONFIG.baseURL}/api/document/${documentId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
 
-  return getMockDocument(documentId);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return undefined;
+      }
+      throw new Error(`Failed to fetch document: ${response.status}`);
+    }
+
+    const data: DocumentAPIResponse = await response.json();
+    return transformDocument(data);
+  } catch (error) {
+    console.error(`Failed to fetch document ${documentId}:`, error);
+    return undefined;
+  }
 }
 
 /**
@@ -98,12 +139,20 @@ export async function getDocument(
  * const success = await documentService.deleteDocument('doc-123');
  */
 export async function deleteDocument(documentId: string): Promise<boolean> {
-  // Simulate network delay
-  await delay(500);
+  try {
+    const response = await fetch(`${API_CONFIG.baseURL}/api/document/${documentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
 
-  // Mock implementation - always succeeds
-  console.log(`[Mock] Deleting document: ${documentId}`);
-  return true;
+    return response.ok;
+  } catch (error) {
+    console.error(`Failed to delete document ${documentId}:`, error);
+    return false;
+  }
 }
 
 /**
@@ -116,12 +165,20 @@ export async function deleteDocument(documentId: string): Promise<boolean> {
  * const success = await documentService.reprocessDocument('doc-123');
  */
 export async function reprocessDocument(documentId: string): Promise<boolean> {
-  // Simulate network delay
-  await delay(400);
+  try {
+    const response = await fetch(`${API_CONFIG.baseURL}/api/document/${documentId}/reprocess`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
 
-  // Mock implementation - always succeeds
-  console.log(`[Mock] Re-processing document: ${documentId}`);
-  return true;
+    return response.ok;
+  } catch (error) {
+    console.error(`Failed to reprocess document ${documentId}:`, error);
+    return false;
+  }
 }
 
 /**
@@ -139,16 +196,24 @@ export async function downloadDocument(
   documentId: string,
   format: 'original' | 'markdown' | 'vtt' | 'srt'
 ): Promise<string> {
-  // Simulate network delay
-  await delay(300);
+  try {
+    const endpoint = format === 'markdown'
+      ? `${API_CONFIG.baseURL}/api/document/${documentId}/markdown`
+      : `${API_CONFIG.baseURL}/api/document/${documentId}/download?format=${format}`;
 
-  // Mock implementation - return fake blob URL
-  console.log(`[Mock] Downloading document ${documentId} as ${format}`);
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
 
-  // In Wave 4, this will be:
-  // const response = await fetch(`/api/document/${documentId}/download?format=${format}`);
-  // const blob = await response.blob();
-  // return URL.createObjectURL(blob);
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
 
-  return `blob:mock-${documentId}-${format}`;
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error(`Failed to download document ${documentId} as ${format}:`, error);
+    throw error;
+  }
 }

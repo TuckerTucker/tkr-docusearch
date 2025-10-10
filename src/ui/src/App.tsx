@@ -1,17 +1,19 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { DocumentCard } from './components/DocumentCard/DocumentCard';
+import { DocumentListSkeleton } from './components/Skeleton/Skeleton';
 import { ToastContainer } from './components/Toast/ToastContainer';
 import { WorkerStatus } from './components/WorkerStatus/WorkerStatus';
-import { getMockDocuments } from './lib/mockData';
 import type { DocumentCardProps, ViewMode, DocumentStatus, DownloadFormat } from './lib/types';
 import { cn } from './lib/utils';
-import { validateFile } from './services/uploadService';
+import { validateFile, uploadFile as uploadFileService } from './services/uploadService';
+import { listDocuments, downloadDocument as downloadDocumentService, deleteDocument as deleteDocumentService, reprocessDocument } from './services/documentService';
 import { useToast } from './hooks/useToast';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcut';
 
 function App() {
   // State
-  const [documents, setDocuments] = useState<DocumentCardProps[]>(getMockDocuments());
+  const [documents, setDocuments] = useState<DocumentCardProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +22,28 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toasts, dismissToast, success, error, warning, info } = useToast();
+
+  // Load documents on mount
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setIsLoading(true);
+        const docs = await listDocuments();
+        setDocuments(docs);
+      } catch (err) {
+        console.error('Failed to load documents:', err);
+        error('Failed to load documents');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDocuments();
+
+    // Refresh documents every 5 seconds
+    const interval = setInterval(loadDocuments, 5000);
+    return () => clearInterval(interval);
+  }, [error]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -86,83 +110,46 @@ function App() {
     });
 
   // Upload handlers
-  const handleFileSelect = useCallback((files: FileList | null) => {
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
     let successCount = 0;
-    let errorCount = 0;
 
-    fileArray.forEach((file) => {
+    for (const file of fileArray) {
       const validation = validateFile(file);
       if (!validation.valid) {
         error(validation.error || 'Invalid file');
-        errorCount++;
-        return;
+        continue;
       }
 
-      successCount++;
+      try {
+        // Upload to Copyparty with progress tracking
+        await uploadFileService(file, (progress) => {
+          // Progress tracking handled by upload service
+          console.log(`Upload progress for ${file.name}: ${progress}%`);
+        });
 
-      // Create mock uploading document
-      const newDoc: DocumentCardProps = {
-        id: `doc-${Date.now()}-${Math.random()}`,
-        title: file.name,
-        status: 'uploading',
-        fileType: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-        progress: 0,
-        stages: [
-          { label: 'Upload', status: 'in-progress' },
-          { label: 'Transcribe Audio', status: 'pending' },
-          { label: 'Embeddings', status: 'pending' },
-          { label: 'Finalizing', status: 'pending' },
-        ],
-      };
-
-      setDocuments((prev) => [newDoc, ...prev]);
-
-      // Simulate upload progress
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        if (progress <= 100) {
-          setDocuments((prev) =>
-            prev.map((doc) =>
-              doc.id === newDoc.id
-                ? { ...doc, progress }
-                : doc
-            )
-          );
-        } else {
-          clearInterval(interval);
-          // Transition to processing
-          setDocuments((prev) =>
-            prev.map((doc) =>
-              doc.id === newDoc.id
-                ? {
-                    ...doc,
-                    status: 'processing',
-                    progress: 25,
-                    stages: [
-                      { label: 'Upload', status: 'completed' },
-                      { label: 'Transcribe Audio', status: 'in-progress' },
-                      { label: 'Embeddings', status: 'pending' },
-                      { label: 'Finalizing', status: 'pending' },
-                    ],
-                  }
-                : doc
-            )
-          );
-        }
-      }, 200);
-    });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to upload ${file.name}:`, err);
+        error(`Failed to upload ${file.name}`);
+      }
+    }
 
     // Show success toast
     if (successCount > 0) {
       success(
         successCount === 1
-          ? 'File uploaded successfully'
-          : `${successCount} files uploaded successfully`
+          ? 'File uploaded successfully. Processing will begin shortly.'
+          : `${successCount} files uploaded successfully. Processing will begin shortly.`
       );
+
+      // Refresh document list after a short delay
+      setTimeout(async () => {
+        const docs = await listDocuments();
+        setDocuments(docs);
+      }, 2000);
     }
   }, [success, error]);
 
@@ -190,21 +177,54 @@ function App() {
   };
 
   // Document handlers
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     const doc = documents.find((d) => d.id === id);
-    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
-    if (doc) {
-      success(`"${doc.title}" deleted`);
-    }
-  }, [documents, success]);
 
-  const handleDownload = useCallback((id: string, format: DownloadFormat) => {
-    const doc = documents.find((d) => d.id === id);
-    console.log(`Downloading document ${id} as ${format}`);
-    if (doc) {
-      info(`Downloading "${doc.title}" as ${format.toUpperCase()}`);
+    try {
+      const result = await deleteDocumentService(id);
+      if (result) {
+        setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+        if (doc) {
+          success(`"${doc.title}" deleted`);
+        }
+      } else {
+        error('Failed to delete document');
+      }
+    } catch (err) {
+      console.error(`Failed to delete document ${id}:`, err);
+      error('Failed to delete document');
     }
-  }, [documents, info]);
+  }, [documents, success, error]);
+
+  const handleDownload = useCallback(async (id: string, format: DownloadFormat) => {
+    const doc = documents.find((d) => d.id === id);
+
+    try {
+      if (doc) {
+        info(`Downloading "${doc.title}" as ${format.toUpperCase()}...`);
+      }
+
+      const blobUrl = await downloadDocumentService(id, format);
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc ? `${doc.title}.${format}` : `document.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up blob URL
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+
+      if (doc) {
+        success(`Downloaded "${doc.title}"`);
+      }
+    } catch (err) {
+      console.error(`Failed to download document ${id}:`, err);
+      error('Failed to download document');
+    }
+  }, [documents, info, success, error]);
 
   const handleCancel = useCallback((id: string) => {
     const doc = documents.find((d) => d.id === id);
@@ -214,30 +234,29 @@ function App() {
     }
   }, [documents, warning]);
 
-  const handleRetry = useCallback((id: string) => {
+  const handleRetry = useCallback(async (id: string) => {
     const doc = documents.find((d) => d.id === id);
-    setDocuments((prev) =>
-      prev.map((doc) =>
-        doc.id === id
-          ? {
-              ...doc,
-              status: 'processing',
-              progress: 0,
-              errorMessage: undefined,
-              stages: [
-                { label: 'Upload', status: 'completed' },
-                { label: 'Transcribe Audio', status: 'in-progress' },
-                { label: 'Embeddings', status: 'pending' },
-                { label: 'Finalizing', status: 'pending' },
-              ],
-            }
-          : doc
-      )
-    );
-    if (doc) {
-      info(`Retrying: "${doc.title}"`);
+
+    try {
+      const result = await reprocessDocument(id);
+      if (result) {
+        if (doc) {
+          info(`Retrying: "${doc.title}"`);
+        }
+
+        // Refresh documents after a short delay
+        setTimeout(async () => {
+          const docs = await listDocuments();
+          setDocuments(docs);
+        }, 1000);
+      } else {
+        error('Failed to reprocess document');
+      }
+    } catch (err) {
+      console.error(`Failed to reprocess document ${id}:`, err);
+      error('Failed to reprocess document');
     }
-  }, [documents, info]);
+  }, [documents, info, error]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -429,7 +448,9 @@ function App() {
         </div>
 
         {/* Document grid/list */}
-        {filteredDocuments.length === 0 ? (
+        {isLoading && documents.length === 0 ? (
+          <DocumentListSkeleton count={3} view={viewMode === 'grid' ? 'grid' : 'list'} />
+        ) : filteredDocuments.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
               {statusFilter === 'all'

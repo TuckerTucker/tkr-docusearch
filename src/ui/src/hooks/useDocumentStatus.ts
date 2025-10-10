@@ -63,40 +63,55 @@ export function useDocumentStatus(options: DocumentStatusOptions) {
     try {
       setIsLoading(true);
 
-      // Mock API call - Will be replaced with real API in Wave 4
-      // const response = await fetch(
-      //   `${API_CONFIG.baseURL}/api/document/${documentId}`
-      // );
-      // const data = await response.json();
+      // Fetch real document status from API
+      const response = await fetch(
+        `${API_CONFIG.baseURL}/api/document/${documentId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(API_CONFIG.timeout),
+        }
+      );
 
-      // For Wave 1-3: Return mock data
-      // This will be replaced by real API service in Wave 4
-      const mockDocument: DocumentCardProps = {
-        id: documentId,
-        title: 'Mock Document',
-        status: 'processing',
-        fileType: 'PDF',
-        progress: 50,
-        stages: [
-          { label: 'Upload', status: 'completed' },
-          { label: 'Transcribe Audio', status: 'in-progress' },
-          { label: 'Embeddings', status: 'pending' },
-          { label: 'Finalizing', status: 'pending' },
-        ],
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Transform API response to DocumentCardProps format
+      const fetchedDocument: DocumentCardProps = {
+        id: data.id,
+        title: data.title,
+        status: data.status,
+        fileType: data.file_type,
+        thumbnail: data.thumbnail_url,
+        progress: data.processing?.progress,
+        errorMessage: data.processing?.error_message,
+        author: data.metadata?.author,
+        published: data.metadata?.published,
+        pages: data.metadata?.pages,
+        size: data.metadata?.size_bytes ? `${(data.metadata.size_bytes / 1024 / 1024).toFixed(1)} MB` : undefined,
+        visualEmbeddings: data.embeddings?.visual_count,
+        textEmbeddings: data.embeddings?.text_count,
+        textChunks: data.embeddings?.chunk_count,
+        dateProcessed: data.processed_at,
       };
 
       const previousStatus = document?.status;
-      setDocument(mockDocument);
+      setDocument(fetchedDocument);
       setError(null);
 
       // Call status change callback
-      if (onStatusChange && previousStatus !== mockDocument.status) {
-        onStatusChange(mockDocument.status);
+      if (onStatusChange && previousStatus !== fetchedDocument.status) {
+        onStatusChange(fetchedDocument.status);
       }
 
       // Call completion callback
-      if (onComplete && mockDocument.status === 'completed') {
-        onComplete(mockDocument);
+      if (onComplete && fetchedDocument.status === 'completed') {
+        onComplete(fetchedDocument);
       }
     } catch (err) {
       const error = err as Error;

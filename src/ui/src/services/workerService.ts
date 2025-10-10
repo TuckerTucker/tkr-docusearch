@@ -4,13 +4,11 @@
  * Consumers: Agent 5 (App)
  * Contract: integration-contracts/api-services-contract.md
  *
- * Wave 1-3: Mock implementation
- * Wave 4: Replace with real worker status API
+ * Wave 4: Real worker status API implementation
  */
 
 import type { WorkerStatus } from '../lib/types';
-import { getMockWorkerStatus } from '../lib/mockData';
-import { delay } from '../lib/utils';
+import { API_CONFIG } from '../lib/constants';
 
 /**
  * Fetch worker health and status
@@ -22,19 +20,31 @@ import { delay } from '../lib/utils';
  * console.log('Worker device:', status.device);
  */
 export async function getWorkerStatus(): Promise<WorkerStatus> {
-  // Simulate network delay
-  await delay(150);
+  try {
+    const response = await fetch(`${API_CONFIG.baseURL}/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(API_CONFIG.timeout),
+    });
 
-  // Mock implementation
-  const status = getMockWorkerStatus();
+    if (!response.ok) {
+      throw new Error(`Worker status failed: ${response.status}`);
+    }
 
-  console.log('[Mock] Worker status:', status);
-
-  // In Wave 4, this will be:
-  // const response = await fetch('/health');
-  // return await response.json();
-
-  return status;
+    const data = await response.json();
+    return data as WorkerStatus;
+  } catch (error) {
+    console.error('Failed to fetch worker status:', error);
+    // Return offline status on error
+    return {
+      healthy: false,
+      status: 'error',
+      device: 'Unknown',
+      last_error: error instanceof Error ? error.message : 'Connection failed',
+    };
+  }
 }
 
 /**
@@ -56,26 +66,4 @@ export async function checkHealth(): Promise<boolean> {
     console.error('Health check failed:', error);
     return false;
   }
-}
-
-/**
- * Restart the worker (admin operation)
- *
- * @returns Promise resolving to success boolean
- *
- * @example
- * const success = await workerService.restartWorker();
- */
-export async function restartWorker(): Promise<boolean> {
-  // Simulate network delay
-  await delay(1000);
-
-  // Mock implementation
-  console.log('[Mock] Restarting worker...');
-
-  // In Wave 4, this will be:
-  // const response = await fetch('/admin/restart', { method: 'POST' });
-  // return response.ok;
-
-  return true;
 }

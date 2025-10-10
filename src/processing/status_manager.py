@@ -530,7 +530,7 @@ class StatusManager:
 
             # Add additional metadata
             for key, value in kwargs.items():
-                if key in ["num_chunks", "storage_ids"]:
+                if key in ["num_chunks", "storage_ids", "visual_embeddings", "text_embeddings", "text_chunks"]:
                     status_dict["metadata"][key] = value
 
             logger.info(
@@ -576,6 +576,27 @@ class StatusManager:
                 f"Marked document {doc_id} as failed: {error} "
                 f"(elapsed: {elapsed:.1f}s)"
             )
+
+    def remove_status(self, doc_id: str) -> bool:
+        """
+        Remove document status from tracker.
+
+        Used when deleting documents from the system.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            True if document was removed, False if not found
+        """
+        with self._lock:
+            if doc_id in self._status_dict:
+                del self._status_dict[doc_id]
+                logger.info(f"Removed document {doc_id} from status tracker")
+                return True
+            else:
+                logger.warning(f"Document {doc_id} not found in status tracker")
+                return False
 
 
 # Singleton instance (will be initialized with worker's global processing_status dict)
