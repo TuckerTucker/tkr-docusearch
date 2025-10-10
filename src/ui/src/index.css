@@ -4,3 +4,111 @@
 
 /* Import theme after Tailwind directives */
 @import url(../theme.css);
+
+/* Custom Animations - Reference Design Specifications */
+@layer utilities {
+  /* Stage completion bounce (400ms) */
+  @keyframes stage-complete {
+    0% {
+      opacity: 0.5;
+      transform: scale(0.8);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Error shake animation (400ms) */
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(4px);
+    }
+  }
+
+  /* Card expand animation (300ms) */
+  @keyframes expand-card {
+    from {
+      max-height: 305px;
+      opacity: 0.95;
+    }
+    to {
+      max-height: 800px;
+      opacity: 1;
+    }
+  }
+
+  /* Card collapse animation (250ms) */
+  @keyframes collapse-card {
+    from {
+      max-height: 800px;
+      opacity: 1;
+    }
+    to {
+      max-height: 305px;
+      opacity: 0.95;
+    }
+  }
+
+  /* Toast slide in (200ms) */
+  @keyframes toast-slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Animation utility classes */
+  .animate-stage-complete {
+    animation: stage-complete 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .animate-shake {
+    animation: shake 400ms cubic-bezier(.36,.07,.19,.97);
+  }
+
+  .animate-expand-card {
+    animation: expand-card 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-collapse-card {
+    animation: collapse-card 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-toast-slide-in {
+    animation: toast-slide-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Smooth transitions */
+  .transition-height {
+    transition: max-height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-progress {
+    transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Icon rotation for expand/collapse */
+  .rotate-expand {
+    transform: rotate(0deg);
+    transition: transform 200ms ease-in-out;
+  }
+
+  .rotate-collapse {
+    transform: rotate(180deg);
+    transition: transform 200ms ease-in-out;
+  }
+}

@@ -110,6 +110,25 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
     onExpand?.(newExpanded);
   };
 
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Only handle keyboard on completed documents that can expand
+    if (!canExpand) return;
+
+    // Enter or Space: Toggle expand/collapse
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleToggleExpand();
+    }
+
+    // Escape: Collapse if expanded
+    if (e.key === 'Escape' && isExpanded) {
+      e.preventDefault();
+      toggleExpanded();
+      onExpand?.(false);
+    }
+  };
+
   // Download format options
   const downloadFormats: { value: DownloadFormat; label: string }[] = [
     { value: 'original', label: 'Original' },
@@ -138,6 +157,8 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         'relative rounded-lg border bg-card overflow-hidden',
         'transition-all duration-300 ease-in-out',
         'hover:shadow-lg hover:border-border/80',
+        // Keyboard focus styling
+        'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
         // View mode dimensions
         view === 'list' && !isExpanded && 'w-full max-w-[610px]',
         view === 'list' && isExpanded && 'w-full max-w-[610px]',
@@ -149,8 +170,10 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         status === 'processing' && 'border-blue-300'
       )}
       role="article"
+      tabIndex={canExpand ? 0 : -1}
       aria-label={ariaLabel}
       aria-describedby={status === 'completed' ? metadataId : undefined}
+      onKeyDown={handleKeyDown}
       data-component="document-card"
       data-status={status}
       data-view={view}
@@ -232,7 +255,9 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                 aria-expanded={isExpanded}
                 aria-controls={contentId}
               >
-                {isExpanded ? ActionIcons.collapse : ActionIcons.expand}
+                <div className={isExpanded ? 'rotate-collapse' : 'rotate-expand'}>
+                  {ActionIcons.expand}
+                </div>
               </button>
             )}
           </div>
@@ -253,7 +278,7 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         {/* Error state */}
         {status === 'error' && errorMessage && (
           <div
-            className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800"
+            className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 animate-shake"
             role="alert"
           >
             <div className="flex gap-2">
@@ -283,7 +308,7 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                 <div className="h-2 bg-secondary rounded-full overflow-hidden">
                   <div
                     className={cn(
-                      'h-full transition-all duration-300 ease-out',
+                      'h-full transition-progress',
                       'bg-gradient-to-r from-blue-500 to-blue-600'
                     )}
                     style={{ width: `${progress}%` }}
