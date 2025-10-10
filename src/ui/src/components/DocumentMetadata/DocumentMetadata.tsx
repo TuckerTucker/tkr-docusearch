@@ -87,6 +87,16 @@ const MetadataIcons = {
       />
     </svg>
   ),
+  warning: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      />
+    </svg>
+  ),
 };
 
 /**
@@ -167,11 +177,15 @@ export function DocumentMetadata({
       <div className="space-y-2">
         {/* Author */}
         {author && (
-          <MetadataRow
-            icon={MetadataIcons.author}
-            label="Author"
-            value={author}
-          />
+          <div className="flex items-center gap-2 text-sm">
+            <div className="text-muted-foreground flex-shrink-0" aria-hidden="true">
+              {MetadataIcons.author}
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="sr-only">Author: </span>
+              <span className="truncate block max-w-[200px]">{author}</span>
+            </div>
+          </div>
         )}
 
         {/* Published date */}
@@ -222,12 +236,23 @@ export function DocumentMetadata({
                   </div>
                   <span>Visual</span>
                 </div>
-                <span className={cn(
-                  'font-medium',
-                  visualEmbeddings === 0 ? 'text-amber-600' : 'text-foreground'
-                )}>
-                  {visualEmbeddings.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={cn(
+                    'font-medium',
+                    visualEmbeddings === 0 ? 'text-amber-600' : 'text-foreground'
+                  )}>
+                    {visualEmbeddings.toLocaleString()}
+                  </span>
+                  {visualEmbeddings === 0 && (
+                    <div
+                      className="text-amber-600"
+                      title="No visual embeddings generated. Document may not appear in visual searches."
+                      aria-label="Warning: No visual embeddings"
+                    >
+                      {MetadataIcons.warning}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -239,9 +264,23 @@ export function DocumentMetadata({
                   </div>
                   <span>Text</span>
                 </div>
-                <span className="font-medium text-foreground">
-                  {textEmbeddings.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={cn(
+                    'font-medium',
+                    textEmbeddings === 0 ? 'text-amber-600' : 'text-foreground'
+                  )}>
+                    {textEmbeddings.toLocaleString()}
+                  </span>
+                  {textEmbeddings === 0 && (
+                    <div
+                      className="text-amber-600"
+                      title="No text embeddings generated. Document may not appear in text searches."
+                      aria-label="Warning: No text embeddings"
+                    >
+                      {MetadataIcons.warning}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -259,13 +298,6 @@ export function DocumentMetadata({
               </div>
             )}
           </div>
-
-          {/* Warning for zero visual embeddings */}
-          {visualEmbeddings === 0 && (
-            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-              No visual embeddings found
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -12,6 +12,43 @@ import { API_CONFIG } from '../lib/constants';
 import { formatBytes } from '../lib/utils';
 
 /**
+ * Retry configuration
+ */
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second base delay
+
+/**
+ * Fetch with exponential backoff retry logic
+ *
+ * @param fn - Async function to retry
+ * @param retries - Number of retries remaining (default: MAX_RETRIES)
+ * @param delay - Current retry delay in ms (default: RETRY_DELAY)
+ * @returns Promise resolving to function result
+ *
+ * @example
+ * const data = await fetchWithRetry(() => fetch(url).then(r => r.json()));
+ */
+async function fetchWithRetry<T>(
+  fn: () => Promise<T>,
+  retries = MAX_RETRIES,
+  delay = RETRY_DELAY
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) {
+      throw error;
+    }
+
+    console.warn(`Retry attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES} after ${delay}ms`);
+
+    // Exponential backoff
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRetry(fn, retries - 1, delay * 2);
+  }
+}
+
+/**
  * Transform backend API response to frontend DocumentCardProps
  */
 function transformDocument(apiDoc: DocumentAPIResponse): DocumentCardProps {
@@ -196,7 +233,7 @@ export async function downloadDocument(
   documentId: string,
   format: 'original' | 'markdown' | 'vtt' | 'srt'
 ): Promise<string> {
-  try {
+  return fetchWithRetry(async () => {
     const endpoint = format === 'markdown'
       ? `${API_CONFIG.baseURL}/api/document/${documentId}/markdown`
       : `${API_CONFIG.baseURL}/api/document/${documentId}/download?format=${format}`;
@@ -212,8 +249,5 @@ export async function downloadDocument(
 
     const blob = await response.blob();
     return URL.createObjectURL(blob);
-  } catch (error) {
-    console.error(`Failed to download document ${documentId} as ${format}:`, error);
-    throw error;
-  }
+  });
 }

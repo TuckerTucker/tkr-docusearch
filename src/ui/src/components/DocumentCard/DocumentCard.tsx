@@ -6,7 +6,7 @@
  * Wave 2: Full implementation with all states and animations
  */
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { DocumentCardProps, DownloadFormat } from '../../lib/types';
 import { ProcessingStages } from '../ProcessingStages/ProcessingStages';
 import { DocumentMetadata } from '../DocumentMetadata/DocumentMetadata';
@@ -47,6 +47,57 @@ const ActionIcons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
     </svg>
   ),
+  spinner: (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  ),
+};
+
+/**
+ * File type placeholder icons
+ */
+const FileTypeIcons = {
+  FileText: (
+    <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  Presentation: (
+    <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+    </svg>
+  ),
+  File: (
+    <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  ),
+};
+
+/**
+ * Thumbnail placeholder component for documents without thumbnails
+ */
+const ThumbnailPlaceholder = ({ fileType }: { fileType: string }) => {
+  const IconComponent = {
+    PDF: FileTypeIcons.FileText,
+    DOCX: FileTypeIcons.FileText,
+    PPTX: FileTypeIcons.Presentation,
+    TXT: FileTypeIcons.FileText,
+    MD: FileTypeIcons.FileText,
+  }[fileType] || FileTypeIcons.File;
+
+  return (
+    <div className="relative aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center">
+      <div className="text-muted-foreground/40">
+        {IconComponent}
+      </div>
+      <span className="absolute bottom-2 right-2 px-2 py-1 bg-background/90 text-xs font-semibold rounded border border-border">
+        {fileType}
+      </span>
+    </div>
+  );
 };
 
 /**
@@ -103,11 +154,39 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
   // Expand/collapse state for completed documents
   const [isExpanded, toggleExpanded] = useToggle(false);
 
+  // Download loading state
+  const [downloadingFormat, setDownloadingFormat] = useState<DownloadFormat | null>(null);
+
+  // Title truncation detection
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [isTitleTruncated, setIsTitleTruncated] = useState(false);
+
+  // Check if title is truncated
+  useEffect(() => {
+    if (titleRef.current) {
+      setIsTitleTruncated(
+        titleRef.current.scrollHeight > titleRef.current.clientHeight
+      );
+    }
+  }, [title]);
+
   // Handle expand/collapse
   const handleToggleExpand = () => {
     const newExpanded = !isExpanded;
     toggleExpanded();
     onExpand?.(newExpanded);
+  };
+
+  // Handle download with loading state
+  const handleDownload = async (format: DownloadFormat) => {
+    if (!onDownload || downloadingFormat) return;
+
+    setDownloadingFormat(format);
+    try {
+      await onDownload(format);
+    } finally {
+      setDownloadingFormat(null);
+    }
   };
 
   // Keyboard navigation
@@ -183,7 +262,11 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base leading-tight truncate" title={title}>
+            <h3
+              ref={titleRef}
+              className="font-semibold text-base leading-tight line-clamp-3"
+              title={isTitleTruncated ? title : undefined}
+            >
               {title}
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
@@ -264,15 +347,19 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
         </div>
 
         {/* Thumbnail */}
-        {thumbnail && view !== 'compact' && (
-          <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
-            <img
-              src={thumbnail}
-              alt={title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          </div>
+        {view !== 'compact' && (
+          thumbnail ? (
+            <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+              <img
+                src={thumbnail}
+                alt={title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            <ThumbnailPlaceholder fileType={fileType} />
+          )
         )}
 
         {/* Error state */}
@@ -346,19 +433,30 @@ export function DocumentCard(props: DocumentCardProps): React.ReactElement {
                   {downloadFormats.map((format) => (
                     <button
                       key={format.value}
-                      onClick={() => onDownload(format.value)}
+                      onClick={() => handleDownload(format.value)}
+                      disabled={downloadingFormat === format.value}
                       className={cn(
                         'inline-flex items-center gap-1.5 px-3 py-1.5',
                         'text-xs font-medium rounded-md',
                         'border border-border',
                         'hover:bg-accent hover:border-accent-foreground/20',
                         'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                        'transition-colors'
+                        'transition-colors',
+                        downloadingFormat === format.value && 'opacity-50 cursor-not-allowed'
                       )}
                       aria-label={`Download as ${format.label}`}
                     >
-                      {ActionIcons.download}
-                      {format.label}
+                      {downloadingFormat === format.value ? (
+                        <>
+                          {ActionIcons.spinner}
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          {ActionIcons.download}
+                          {format.label}
+                        </>
+                      )}
                     </button>
                   ))}
                 </div>
