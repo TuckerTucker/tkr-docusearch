@@ -5,10 +5,17 @@
  * Displays temporary notification messages for user feedback
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastAction {
+  /** Action button label */
+  label: string;
+  /** Callback when action is clicked */
+  onClick: () => void;
+}
 
 export interface ToastProps {
   /** Unique toast ID */
@@ -19,6 +26,8 @@ export interface ToastProps {
   type: ToastType;
   /** Duration in milliseconds (0 = never auto-dismiss) */
   duration?: number;
+  /** Optional action button */
+  action?: ToastAction;
   /** Callback when toast is dismissed */
   onDismiss: (id: string) => void;
 }
@@ -80,23 +89,48 @@ export function Toast({
   message,
   type,
   duration = 5000,
+  action,
   onDismiss,
 }: ToastProps): React.ReactElement {
+  const [progress, setProgress] = useState(100);
+
   useEffect(() => {
     if (duration > 0) {
+      const startTime = Date.now();
       const timer = setTimeout(() => {
         onDismiss(id);
       }, duration);
 
-      return () => clearTimeout(timer);
+      // Update progress bar
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+        setProgress(remaining);
+
+        if (remaining === 0) {
+          clearInterval(interval);
+        }
+      }, 16); // ~60fps
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
     }
   }, [id, duration, onDismiss]);
+
+  const handleActionClick = () => {
+    if (action) {
+      action.onClick();
+      onDismiss(id);
+    }
+  };
 
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg shadow-lg',
-        'border backdrop-blur-sm',
+        'relative flex items-start gap-3 p-4 rounded-lg shadow-lg',
+        'border backdrop-blur-sm overflow-hidden',
         'animate-in slide-in-from-right duration-300',
         'max-w-md w-full',
         // Type-based styling
@@ -112,12 +146,50 @@ export function Toast({
       role="alert"
       aria-live="polite"
     >
+      {/* Progress bar */}
+      {duration > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10 overflow-hidden">
+          <div
+            className={cn(
+              'h-full transition-all duration-100 ease-linear',
+              type === 'success' && 'bg-green-600',
+              type === 'error' && 'bg-red-600',
+              type === 'warning' && 'bg-amber-600',
+              type === 'info' && 'bg-blue-600'
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
       {/* Icon */}
       <div className="flex-shrink-0">{ToastIcons[type]}</div>
 
-      {/* Message */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{message}</p>
+      {/* Message and action */}
+      <div className="flex-1 min-w-0 flex items-center gap-3">
+        <p className="text-sm font-medium flex-1">{message}</p>
+
+        {/* Action button */}
+        {action && (
+          <button
+            onClick={handleActionClick}
+            className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-md',
+              'transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-offset-2',
+              type === 'success' &&
+                'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
+              type === 'error' &&
+                'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+              type === 'warning' &&
+                'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500',
+              type === 'info' &&
+                'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
+            )}
+          >
+            {action.label}
+          </button>
+        )}
       </div>
 
       {/* Dismiss button */}

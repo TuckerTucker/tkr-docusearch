@@ -27,6 +27,15 @@ function App() {
   // Track active upload cancel functions by temporary document ID
   const uploadCancelFunctions = useRef<Map<string, () => void>>(new Map());
 
+  // Track pending deletions for undo functionality
+  interface PendingDeletion {
+    documentId: string;
+    document: DocumentCardProps;
+    deletionTime: number;
+    timeoutId: number;
+  }
+  const pendingDeletions = useRef<Map<string, PendingDeletion>>(new Map());
+
   // Responsive breakpoints
   const isMobile = useMediaQuery('(max-width: 640px)');
 
@@ -82,6 +91,17 @@ function App() {
       },
     },
   ]);
+
+  // Cleanup pending deletions on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel all pending deletion timeouts
+      pendingDeletions.current.forEach((deletion) => {
+        clearTimeout(deletion.timeoutId);
+      });
+      pendingDeletions.current.clear();
+    };
+  }, []);
 
   // Filter and sort documents
   const filteredDocuments = documents
@@ -245,25 +265,71 @@ function App() {
     fileInputRef.current?.click();
   };
 
-  // Document handlers
+  // Undo delete handler
+  const handleUndoDelete = useCallback((id: string) => {
+    const pendingDeletion = pendingDeletions.current.get(id);
+    if (!pendingDeletion) return;
+
+    // 1. Cancel permanent deletion timeout
+    clearTimeout(pendingDeletion.timeoutId);
+
+    // 2. Restore document to UI
+    setDocuments((prev) => [pendingDeletion.document, ...prev]);
+
+    // 3. Remove from pending deletions
+    pendingDeletions.current.delete(id);
+
+    // 4. Show feedback
+    info(`Restored "${pendingDeletion.document.title}"`);
+  }, [info]);
+
+  // Document handlers with soft delete
   const handleDelete = useCallback(async (id: string) => {
     const doc = documents.find((d) => d.id === id);
+    if (!doc) return;
 
-    try {
-      const result = await deleteDocumentService(id);
-      if (result) {
-        setDocuments((prev) => prev.filter((doc) => doc.id !== id));
-        if (doc) {
-          success(`"${doc.title}" deleted`);
+    // 1. Immediately remove from UI (optimistic update)
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+
+    // 2. Set up permanent deletion after 5 seconds
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Permanent deletion
+        const result = await deleteDocumentService(id);
+        if (!result) {
+          throw new Error('Delete failed');
         }
-      } else {
+
+        console.log(`Permanently deleted document: ${id}`);
+
+        // Remove from pending deletions
+        pendingDeletions.current.delete(id);
+      } catch (err) {
+        console.error(`Failed to permanently delete ${id}:`, err);
+
+        // Restore document on deletion failure
+        setDocuments((prev) => [...prev, doc]);
         error('Failed to delete document');
       }
-    } catch (err) {
-      console.error(`Failed to delete document ${id}:`, err);
-      error('Failed to delete document');
-    }
-  }, [documents, success, error]);
+    }, 5000);
+
+    // 3. Track pending deletion
+    pendingDeletions.current.set(id, {
+      documentId: id,
+      document: doc,
+      deletionTime: Date.now(),
+      timeoutId,
+    });
+
+    // 4. Show undo toast
+    success(`"${doc.title}" deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => handleUndoDelete(id),
+      },
+    });
+  }, [documents, success, error, info, handleUndoDelete]);
 
   const handleDownload = useCallback(async (id: string, format: DownloadFormat) => {
     const doc = documents.find((d) => d.id === id);

@@ -6,8 +6,18 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { ToastType } from '../components/Toast/Toast';
+import type { ToastType, ToastAction } from '../components/Toast/Toast';
 import type { ToastData } from '../components/Toast/ToastContainer';
+
+/**
+ * Options for toast notifications
+ */
+export interface ToastOptions {
+  /** Duration in milliseconds (default: 5000) */
+  duration?: number;
+  /** Optional action button */
+  action?: ToastAction;
+}
 
 /**
  * Toast management hook
@@ -29,14 +39,15 @@ export function useToast() {
    * Show a new toast notification
    */
   const showToast = useCallback(
-    (message: string, type: ToastType = 'info', duration = 5000) => {
+    (message: string, type: ToastType = 'info', options?: ToastOptions) => {
       const id = `toast-${Date.now()}-${Math.random()}`;
 
       const newToast: ToastData = {
         id,
         message,
         type,
-        duration,
+        duration: options?.duration ?? 5000,
+        action: options?.action,
       };
 
       setToasts((prev) => [...prev, newToast]);
@@ -62,29 +73,29 @@ export function useToast() {
    * Convenience methods for specific toast types
    */
   const success = useCallback(
-    (message: string, duration?: number) => {
-      showToast(message, 'success', duration);
+    (message: string, options?: ToastOptions) => {
+      showToast(message, 'success', options);
     },
     [showToast]
   );
 
   const error = useCallback(
-    (message: string, duration?: number) => {
-      showToast(message, 'error', duration);
+    (message: string, options?: ToastOptions) => {
+      showToast(message, 'error', options);
     },
     [showToast]
   );
 
   const warning = useCallback(
-    (message: string, duration?: number) => {
-      showToast(message, 'warning', duration);
+    (message: string, options?: ToastOptions) => {
+      showToast(message, 'warning', options);
     },
     [showToast]
   );
 
   const info = useCallback(
-    (message: string, duration?: number) => {
-      showToast(message, 'info', duration);
+    (message: string, options?: ToastOptions) => {
+      showToast(message, 'info', options);
     },
     [showToast]
   );

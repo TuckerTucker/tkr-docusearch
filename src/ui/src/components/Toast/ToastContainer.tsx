@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Toast, type ToastProps } from './Toast';
+import { Toast, type ToastProps, type ToastAction } from './Toast';
 import { Z_INDEX } from '../../lib/constants';
 
 export interface ToastData {
@@ -14,6 +14,7 @@ export interface ToastData {
   message: string;
   type: ToastProps['type'];
   duration?: number;
+  action?: ToastAction;
 }
 
 interface ToastContainerProps {
@@ -46,6 +47,7 @@ export function ToastContainer({
             message={toast.message}
             type={toast.type}
             duration={toast.duration}
+            action={toast.action}
             onDismiss={onDismiss}
           />
         </div>
