@@ -9,6 +9,7 @@ import { validateFile, uploadFile as uploadFileService } from './services/upload
 import { listDocuments, downloadDocument as downloadDocumentService, deleteDocument as deleteDocumentService, reprocessDocument } from './services/documentService';
 import { useToast } from './hooks/useToast';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcut';
+import { useMediaQuery } from './hooks/useMediaQuery';
 
 function App() {
   // State
@@ -25,6 +26,9 @@ function App() {
 
   // Track active upload cancel functions by temporary document ID
   const uploadCancelFunctions = useRef<Map<string, () => void>>(new Map());
+
+  // Responsive breakpoints
+  const isMobile = useMediaQuery('(max-width: 640px)');
 
   // Load documents on mount
   useEffect(() => {
@@ -339,19 +343,29 @@ function App() {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className={cn(
+        'sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
+        'app-header'
+      )}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">DocuSearch</h1>
-              <p className="text-sm text-muted-foreground">
-                Document Library with ColPali Search
-              </p>
+            <div className="flex-1 min-w-0">
+              <h1 className={cn(
+                'font-bold truncate',
+                isMobile ? 'text-lg' : 'text-2xl'
+              )}>
+                DocuSearch
+              </h1>
+              {!isMobile && (
+                <p className="text-sm text-muted-foreground">
+                  Document Library with ColPali Search
+                </p>
+              )}
             </div>
 
             {/* Worker status and view mode toggle */}
-            <div className="flex items-center gap-3">
-              <WorkerStatus />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!isMobile && <WorkerStatus />}
 
               {/* View mode toggle */}
               <div className="flex items-center gap-2 border rounded-lg p-1">
@@ -397,9 +411,11 @@ function App() {
           onDrop={handleDrop}
           onClick={handleClickUpload}
           className={cn(
-            'mb-8 border-2 border-dashed rounded-lg p-12',
+            'mb-8 border-2 border-dashed rounded-lg',
             'transition-all cursor-pointer',
             'hover:border-primary hover:bg-accent/50',
+            'upload-zone',
+            isMobile ? 'p-6' : 'p-12',
             isDragging
               ? 'border-primary bg-accent scale-[1.02]'
               : 'border-border'
@@ -415,7 +431,10 @@ function App() {
           />
           <div className="text-center">
             <svg
-              className="mx-auto h-12 w-12 text-muted-foreground"
+              className={cn(
+                'mx-auto text-muted-foreground',
+                isMobile ? 'h-8 w-8' : 'h-12 w-12'
+              )}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -427,12 +446,17 @@ function App() {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mt-4 text-sm font-medium">
-              Drop files here or click to upload
+            <p className={cn(
+              'mt-4 font-medium',
+              isMobile ? 'text-sm' : 'text-base'
+            )}>
+              {isMobile ? 'Tap to upload' : 'Drop files here or click to upload'}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              PDF, DOCX, PPTX, TXT, or MD files
-            </p>
+            {!isMobile && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                PDF, DOCX, PPTX, TXT, or MD files
+              </p>
+            )}
           </div>
         </div>
 
@@ -456,7 +480,7 @@ function App() {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search documents... (Ctrl+K)"
+              placeholder={isMobile ? 'Search...' : 'Search documents... (Ctrl+K)'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={cn(
@@ -464,7 +488,8 @@ function App() {
                 'bg-background text-foreground',
                 'placeholder:text-muted-foreground',
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                'transition-shadow'
+                'transition-shadow',
+                'search-container'
               )}
             />
             {searchQuery && (
