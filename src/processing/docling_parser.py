@@ -433,9 +433,15 @@ class DoclingParser:
                 PdfFormatOption,
                 WordFormatOption,
                 ImageFormatOption,
+                AudioFormatOption,
             )
             from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.pipeline_options import PdfPipelineOptions
+            from docling.datamodel.pipeline_options import (
+                PdfPipelineOptions,
+                AsrPipelineOptions,
+            )
+            from docling.pipeline.asr_pipeline import AsrPipeline
+            from src.config.processing_config import AsrConfig
 
             # Determine file format
             ext = Path(file_path).suffix.lower()
@@ -474,7 +480,36 @@ class DoclingParser:
                 elif ext == '.xlsx':
                     # Excel uses default options
                     pass  # DocumentConverter auto-handles XLSX
-            # All other formats (MD, HTML, CSV, audio, etc.) use default handling
+            elif ext in ['.mp3', '.wav']:
+                # Audio formats with ASR transcription
+                try:
+                    # Load ASR configuration
+                    asr_config = AsrConfig.from_env()
+
+                    if asr_config.enabled:
+                        logger.info(f"Configuring ASR pipeline for {ext} with model={asr_config.model}")
+
+                        # Create Docling ASR options
+                        asr_pipeline_options = AsrPipelineOptions()
+                        asr_pipeline_options.asr_options = asr_config.to_docling_model_spec()
+
+                        # Add to format options
+                        format_options[InputFormat.AUDIO] = AudioFormatOption(
+                            pipeline_cls=AsrPipeline,
+                            pipeline_options=asr_pipeline_options
+                        )
+
+                        logger.debug(
+                            f"ASR config: model={asr_config.model}, "
+                            f"language={asr_config.language}, device={asr_config.device}"
+                        )
+                    else:
+                        logger.warning(f"ASR disabled, audio file {file_path} will have minimal processing")
+
+                except Exception as e:
+                    logger.error(f"Failed to configure ASR: {e}")
+                    # Continue without ASR (fallback to basic processing)
+            # All other formats (MD, HTML, CSV, VTT, etc.) use default handling
 
             converter = DocumentConverter(format_options=format_options if format_options else None)
 
@@ -506,6 +541,50 @@ class DoclingParser:
                     metadata["original_filename"] = origin.filename
                 if hasattr(origin, 'mimetype'):
                     metadata["mimetype"] = origin.mimetype
+
+            # Add audio-specific metadata for MP3/WAV files
+            if ext in ['.mp3', '.wav'] and format_type_enum == FormatType.AUDIO:
+                # ASR-specific metadata
+                metadata["transcript_method"] = "whisper"
+                metadata["asr_model_used"] = asr_config.model if 'asr_config' in locals() else "unknown"
+                metadata["asr_language"] = asr_config.language if 'asr_config' in locals() else "unknown"
+                metadata["audio_format"] = ext[1:]  # "mp3" or "wav"
+
+                # Try to extract duration from Docling document
+                if hasattr(doc, 'audio_duration'):
+                    metadata["audio_duration_seconds"] = doc.audio_duration
+                elif hasattr(doc.origin, 'duration'):
+                    metadata["audio_duration_seconds"] = doc.origin.duration
+
+                # Extract timestamp information if available
+                if hasattr(doc, 'texts') and doc.texts:
+                    # Check if timestamps are in provenance
+                    has_timestamps = False
+                    for text_item in doc.texts:
+                        if hasattr(text_item, 'prov') and text_item.prov:
+                            for prov in text_item.prov:
+                                if hasattr(prov, 'start_time') and hasattr(prov, 'end_time'):
+                                    has_timestamps = True
+                                    break
+                            if has_timestamps:
+                                break
+
+                    metadata["has_word_timestamps"] = has_timestamps
+
+            # Extract full markdown from document
+            try:
+                markdown = doc.export_to_markdown()
+                metadata["full_markdown"] = markdown
+                metadata["markdown_length"] = len(markdown)
+                metadata["markdown_extracted"] = True
+                metadata["markdown_error"] = None
+                logger.info(f"Extracted markdown: {len(markdown)} chars")
+            except Exception as e:
+                logger.warning(f"Markdown extraction failed: {e}")
+                metadata["full_markdown"] = ""
+                metadata["markdown_length"] = 0
+                metadata["markdown_extracted"] = False
+                metadata["markdown_error"] = str(e)
 
             logger.info(f"Docling conversion complete: {len(pages)} pages")
             return pages, metadata, doc
