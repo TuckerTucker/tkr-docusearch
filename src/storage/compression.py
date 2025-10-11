@@ -12,6 +12,25 @@ import numpy as np
 from typing import Tuple, Dict, Any
 
 
+# ============================================================================
+# Exception Classes
+# ============================================================================
+
+class CompressionError(Exception):
+    """Base exception for compression operations."""
+    pass
+
+
+class MarkdownTooLargeError(CompressionError):
+    """Markdown exceeds size limit."""
+    pass
+
+
+class CorruptedDataError(CompressionError):
+    """Compressed data is corrupted."""
+    pass
+
+
 def compress_embeddings(embeddings: np.ndarray) -> str:
     """Compress embeddings using gzip + base64 encoding.
 
@@ -175,3 +194,105 @@ def decompress_structure_metadata(compressed_str: str) -> Dict[str, Any]:
     metadata_dict = json.loads(json_str)
 
     return metadata_dict
+
+
+# ============================================================================
+# Markdown Compression
+# ============================================================================
+
+def compress_markdown(markdown: str) -> str:
+    """Compress markdown text for efficient storage.
+
+    Uses gzip compression with base64 encoding for storing full document
+    markdown in ChromaDB metadata. Achieves 3-5x compression ratio for
+    typical markdown content.
+
+    Args:
+        markdown: Full markdown text as string
+
+    Returns:
+        Base64-encoded gzip-compressed string
+
+    Raises:
+        MarkdownTooLargeError: If markdown exceeds 10MB size limit
+        CompressionError: If compression fails
+
+    Example:
+        >>> markdown = "# Title\\n\\nContent here..."
+        >>> compressed = compress_markdown(markdown)
+        >>> isinstance(compressed, str)
+        True
+        >>> len(compressed) < len(markdown)  # Typically
+        True
+    """
+    # Check size limit (10MB)
+    markdown_bytes = markdown.encode('utf-8')
+    size_mb = len(markdown_bytes) / (1024 * 1024)
+
+    if size_mb > 10.0:
+        raise MarkdownTooLargeError(
+            f"Markdown size {size_mb:.2f}MB exceeds limit of 10MB"
+        )
+
+    try:
+        # Compress with gzip (level 6 balances speed and compression)
+        compressed_bytes = gzip.compress(markdown_bytes, compresslevel=6)
+
+        # Encode as base64 string
+        encoded = base64.b64encode(compressed_bytes).decode('utf-8')
+
+        return encoded
+
+    except Exception as e:
+        raise CompressionError(f"Failed to compress markdown: {str(e)}") from e
+
+
+def decompress_markdown(compressed: str) -> str:
+    """Decompress markdown text from storage format.
+
+    Args:
+        compressed: Base64-encoded gzip-compressed string
+
+    Returns:
+        Original markdown text
+
+    Raises:
+        CorruptedDataError: If decompression fails or data corrupted
+        MarkdownTooLargeError: If decompressed size exceeds 10MB
+
+    Example:
+        >>> original = "# Test\\nContent"
+        >>> compressed = compress_markdown(original)
+        >>> decompressed = decompress_markdown(compressed)
+        >>> decompressed == original
+        True
+    """
+    try:
+        # Decode from base64
+        compressed_bytes = base64.b64decode(compressed.encode('utf-8'))
+
+        # Decompress with gzip
+        markdown_bytes = gzip.decompress(compressed_bytes)
+
+        # Check decompressed size limit (10MB)
+        size_mb = len(markdown_bytes) / (1024 * 1024)
+        if size_mb > 10.0:
+            raise MarkdownTooLargeError(
+                f"Decompressed markdown size {size_mb:.2f}MB exceeds limit of 10MB"
+            )
+
+        # Decode to string
+        markdown = markdown_bytes.decode('utf-8')
+
+        return markdown
+
+    except gzip.BadGzipFile as e:
+        raise CorruptedDataError(f"Invalid gzip data: {str(e)}") from e
+    except base64.binascii.Error as e:
+        raise CorruptedDataError(f"Invalid base64 encoding: {str(e)}") from e
+    except UnicodeDecodeError as e:
+        raise CorruptedDataError(f"Invalid UTF-8 data: {str(e)}") from e
+    except MarkdownTooLargeError:
+        raise
+    except Exception as e:
+        raise CorruptedDataError(f"Failed to decompress markdown: {str(e)}") from e

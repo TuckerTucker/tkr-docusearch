@@ -337,3 +337,199 @@ def create_pipeline_options(config: EnhancedModeConfig):
     )
 
     return options
+
+
+# ============================================================================
+# ASR (Automatic Speech Recognition) Configuration
+# ============================================================================
+
+@dataclass
+class AsrConfig:
+    """Configuration for Automatic Speech Recognition (Whisper).
+
+    Controls Whisper ASR settings for MP3/WAV audio file transcription.
+    All settings have sensible defaults and can be overridden via environment
+    variables.
+
+    Attributes:
+        enabled: Whether ASR processing is enabled
+        model: Whisper model to use (turbo, base, small, medium, large)
+        language: Language code or "auto" for detection
+        device: Compute device (mps, cpu, cuda)
+        word_timestamps: Enable word-level timestamps
+        temperature: Sampling temperature for generation (0.0 = deterministic)
+        max_time_chunk: Maximum audio chunk duration (seconds)
+    """
+
+    enabled: bool = True
+    model: str = "turbo"  # turbo, base, small, medium, large
+    language: str = "en"  # ISO 639-1 code or "auto"
+    device: str = "mps"  # mps, cpu, cuda
+    word_timestamps: bool = True
+    temperature: float = 0.0  # 0.0-1.0, lower = more deterministic
+    max_time_chunk: float = 30.0  # seconds
+
+    def __post_init__(self):
+        """Validate configuration values."""
+        # Validate model
+        valid_models = ["turbo", "base", "small", "medium", "large"]
+        if self.model not in valid_models:
+            raise ValueError(
+                f"Invalid model: {self.model}. Must be one of {valid_models}"
+            )
+
+        # Validate device
+        valid_devices = ["mps", "cpu", "cuda"]
+        if self.device not in valid_devices:
+            raise ValueError(
+                f"Invalid device: {self.device}. Must be one of {valid_devices}"
+            )
+
+        # Validate temperature
+        if not (0.0 <= self.temperature <= 1.0):
+            raise ValueError(
+                f"Temperature must be 0.0-1.0, got {self.temperature}"
+            )
+
+        # Validate max_time_chunk
+        if self.max_time_chunk <= 0:
+            raise ValueError(
+                f"max_time_chunk must be positive, got {self.max_time_chunk}"
+            )
+
+    def to_docling_model_spec(self):
+        """Convert to Docling ASR model specification.
+
+        Returns:
+            InlineAsrNativeWhisperOptions instance configured for Whisper ASR
+
+        Raises:
+            ImportError: If Docling ASR modules not available
+        """
+        try:
+            from docling.datamodel.pipeline_options_asr_model import (
+                InlineAsrNativeWhisperOptions
+            )
+        except ImportError as e:
+            raise ImportError(
+                "Docling ASR not installed. Install with: pip install docling[asr]"
+            ) from e
+
+        # Map our model names to Docling repo_ids
+        model_map = {
+            "turbo": "openai/whisper-large-v3-turbo",
+            "base": "openai/whisper-base",
+            "small": "openai/whisper-small",
+            "medium": "openai/whisper-medium",
+            "large": "openai/whisper-large-v3"
+        }
+
+        repo_id = model_map[self.model]
+
+        # Build kwargs dynamically - omit language if "auto"
+        kwargs = {
+            "repo_id": repo_id,
+            "word_timestamps": self.word_timestamps,
+            "temperature": self.temperature,
+            "max_time_chunk": self.max_time_chunk
+        }
+
+        # Only include language if not "auto" (for auto-detection, omit the parameter)
+        if self.language != "auto":
+            kwargs["language"] = self.language
+
+        # Create Docling ASR options
+        return InlineAsrNativeWhisperOptions(**kwargs)
+
+    @classmethod
+    def from_env(cls) -> "AsrConfig":
+        """Load configuration from environment variables.
+
+        Environment Variables:
+            ASR_ENABLED: Enable ASR (default: true)
+            ASR_MODEL: Model name (default: turbo)
+            ASR_LANGUAGE: Language code (default: en)
+            ASR_DEVICE: Compute device (default: mps)
+            ASR_WORD_TIMESTAMPS: Enable word timestamps (default: true)
+            ASR_TEMPERATURE: Sampling temperature (default: 0.0)
+            ASR_MAX_TIME_CHUNK: Max chunk duration (default: 30.0)
+
+        Returns:
+            AsrConfig instance loaded from environment
+
+        Example:
+            >>> import os
+            >>> os.environ["ASR_MODEL"] = "base"
+            >>> config = AsrConfig.from_env()
+            >>> config.model
+            'base'
+        """
+        try:
+            enabled = os.getenv("ASR_ENABLED", "true").lower() == "true"
+            model = os.getenv("ASR_MODEL", "turbo")
+            language = os.getenv("ASR_LANGUAGE", "en")
+            device = os.getenv("ASR_DEVICE", "mps")
+            word_timestamps = os.getenv("ASR_WORD_TIMESTAMPS", "true").lower() == "true"
+
+            # Parse numeric values with error handling
+            try:
+                temperature = float(os.getenv("ASR_TEMPERATURE", "0.0"))
+            except ValueError:
+                logger.warning("Invalid ASR_TEMPERATURE, using default 0.0")
+                temperature = 0.0
+
+            try:
+                max_time_chunk = float(os.getenv("ASR_MAX_TIME_CHUNK", "30.0"))
+            except ValueError:
+                logger.warning("Invalid ASR_MAX_TIME_CHUNK, using default 30.0")
+                max_time_chunk = 30.0
+
+            config = cls(
+                enabled=enabled,
+                model=model,
+                language=language,
+                device=device,
+                word_timestamps=word_timestamps,
+                temperature=temperature,
+                max_time_chunk=max_time_chunk
+            )
+
+            logger.info(
+                f"Loaded ASR config: model={model}, language={language}, "
+                f"device={device}, enabled={enabled}"
+            )
+
+            return config
+
+        except ValueError as e:
+            # Validation error from __post_init__
+            logger.error(f"Invalid ASR configuration: {e}")
+            logger.info("Using default ASR configuration")
+            return cls()
+        except Exception as e:
+            logger.error(f"Error loading ASR config from environment: {e}")
+            logger.info("Using default ASR configuration")
+            return cls()
+
+    def to_dict(self) -> dict:
+        """Convert configuration to dictionary.
+
+        Returns:
+            Configuration as dictionary
+        """
+        return {
+            "enabled": self.enabled,
+            "model": self.model,
+            "language": self.language,
+            "device": self.device,
+            "word_timestamps": self.word_timestamps,
+            "temperature": self.temperature,
+            "max_time_chunk": self.max_time_chunk
+        }
+
+    def __repr__(self) -> str:
+        """String representation of configuration."""
+        return (
+            f"AsrConfig(model={self.model}, language={self.language}, "
+            f"device={self.device}, enabled={self.enabled})"
+        )

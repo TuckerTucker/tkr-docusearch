@@ -15,7 +15,14 @@ import chromadb
 from chromadb.config import Settings
 from chromadb.api.models.Collection import Collection
 
-from .compression import compress_embeddings, decompress_embeddings, compress_structure_metadata
+from .compression import (
+    compress_embeddings,
+    decompress_embeddings,
+    compress_structure_metadata,
+    compress_markdown,
+    decompress_markdown,
+    CorruptedDataError,
+)
 from .metadata_schema import DocumentStructure, ChunkContext
 
 # Configure logging
@@ -284,6 +291,26 @@ class ChromaClient:
         # Compress full embeddings for metadata
         compressed_embeddings = self._compress_and_validate(full_embeddings)
 
+        # Compress markdown if present and large
+        if "full_markdown" in metadata and metadata.get("markdown_extracted"):
+            markdown = metadata["full_markdown"]
+
+            if len(markdown) > 1024:  # 1KB threshold
+                try:
+                    # Compress and replace
+                    compressed = compress_markdown(markdown)
+                    metadata["full_markdown_compressed"] = compressed
+                    metadata["markdown_compression"] = "gzip+base64"
+                    del metadata["full_markdown"]  # Remove uncompressed
+                    logger.debug(f"Compressed markdown: {len(markdown)} → {len(compressed)} chars")
+                except Exception as e:
+                    # Compression failed, log warning and store uncompressed
+                    logger.warning(f"Markdown compression failed: {e}, storing uncompressed")
+                    metadata["markdown_compression"] = "none"
+            else:
+                # Small markdown, store uncompressed
+                metadata["markdown_compression"] = "none"
+
         # Build complete metadata
         seq_length, embedding_dim = full_embeddings.shape
         complete_metadata = {
@@ -359,6 +386,26 @@ class ChromaClient:
         # Compress full embeddings for metadata
         compressed_embeddings = self._compress_and_validate(full_embeddings)
 
+        # Compress markdown if present and large
+        if "full_markdown" in metadata and metadata.get("markdown_extracted"):
+            markdown = metadata["full_markdown"]
+
+            if len(markdown) > 1024:  # 1KB threshold
+                try:
+                    # Compress and replace
+                    compressed = compress_markdown(markdown)
+                    metadata["full_markdown_compressed"] = compressed
+                    metadata["markdown_compression"] = "gzip+base64"
+                    del metadata["full_markdown"]  # Remove uncompressed
+                    logger.debug(f"Compressed markdown: {len(markdown)} → {len(compressed)} chars")
+                except Exception as e:
+                    # Compression failed, log warning and store uncompressed
+                    logger.warning(f"Markdown compression failed: {e}, storing uncompressed")
+                    metadata["markdown_compression"] = "none"
+            else:
+                # Small markdown, store uncompressed
+                metadata["markdown_compression"] = "none"
+
         # Build complete metadata
         seq_length, embedding_dim = full_embeddings.shape
         complete_metadata = {
@@ -399,6 +446,62 @@ class ChromaClient:
             error_msg = f"Failed to store text embedding {embedding_id}: {str(e)}"
             logger.error(error_msg)
             raise StorageError(error_msg) from e
+
+    def get_document_markdown(self, doc_id: str) -> Optional[str]:
+        """Retrieve full markdown for a document.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            Full markdown text, or None if not available
+
+        Raises:
+            DocumentNotFoundError: If doc_id doesn't exist
+            CorruptedDataError: If markdown data corrupted
+        """
+        # Query any embedding for this doc_id (visual first)
+        results = self._visual_collection.get(
+            where={"doc_id": doc_id},
+            limit=1,
+            include=["metadatas"]
+        )
+
+        if not results['ids']:
+            # Try text collection
+            results = self._text_collection.get(
+                where={"doc_id": doc_id},
+                limit=1,
+                include=["metadatas"]
+            )
+
+        if not results['ids']:
+            raise DocumentNotFoundError(f"Document {doc_id} not found")
+
+        metadata = results['metadatas'][0]
+
+        # Check if markdown extraction succeeded
+        if not metadata.get("markdown_extracted"):
+            logger.info(f"Markdown not available for {doc_id}")
+            return None
+
+        # Handle compressed markdown
+        if "full_markdown_compressed" in metadata:
+            try:
+                compressed = metadata["full_markdown_compressed"]
+                return decompress_markdown(compressed)
+            except CorruptedDataError:
+                logger.error(f"Corrupted markdown data for {doc_id}")
+                raise
+            except Exception as e:
+                logger.error(f"Failed to decompress markdown for {doc_id}: {e}")
+                return None
+
+        # Handle uncompressed markdown
+        if "full_markdown" in metadata:
+            return metadata["full_markdown"]
+
+        return None
 
     def _prepare_enhanced_visual_metadata(
         self,
