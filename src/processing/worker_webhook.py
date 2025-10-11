@@ -15,7 +15,7 @@ import hashlib
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -30,6 +30,9 @@ from ..processing.docling_parser import DoclingParser
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
 from .status_api import router as status_router, set_status_manager
+
+# Import WebSocket broadcaster
+from .websocket_broadcaster import get_broadcaster
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -72,6 +75,9 @@ status_manager: Optional[StatusManager] = None
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
 
+# Event loop for async operations from sync context
+_loop = None
+
 # ============================================================================
 # FastAPI Application
 # ============================================================================
@@ -94,7 +100,15 @@ app.add_middleware(
 # Mount status API router
 app.include_router(status_router)
 
-# Mount static files for UI
+# Mount static files for monitor UI
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+    logger.info(f"Mounted monitor UI at /static (directory: {STATIC_DIR})")
+else:
+    logger.warning(f"Static directory not found: {STATIC_DIR}")
+
+# Mount legacy UI if exists
 UI_DIR = Path(__file__).parent.parent / "ui"
 if UI_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
@@ -146,18 +160,18 @@ class StatusResponse(BaseModel):
 # Processing Function
 # ============================================================================
 
-def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
+def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> Dict[str, Any]:
     """
     Process a document (runs in thread pool).
 
     Args:
         file_path: Absolute path to document
         filename: Original filename
+        doc_id: Optional pre-generated document ID (SHA-256 hash)
 
     Returns:
         Processing result dict
     """
-    doc_id = None
     try:
         # Verify file exists
         path = Path(file_path)
@@ -171,21 +185,46 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
                 "error": f"Unsupported file type: {path.suffix}"
             }
 
-        # Generate doc ID from file hash
-        with open(file_path, 'rb') as f:
-            content = f.read()
-            doc_id = hashlib.md5(content).hexdigest()[:12]
+        # Generate doc ID from file hash (SHA-256) if not provided
+        if doc_id is None:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+                doc_id = hashlib.sha256(content).hexdigest()
 
-        # Update status
+        # Update status - must include all ProcessingStatus required fields
+        start_time = datetime.now()
         processing_status[doc_id] = {
+            "doc_id": doc_id,
             "filename": filename,
             "status": "processing",
             "progress": 0.0,
-            "started_at": datetime.now().isoformat(),
+            "stage": "started",
+            "started_at": start_time.isoformat(),
+            "updated_at": start_time.isoformat(),
+            "elapsed_time": 0.0,
             "error": None
         }
 
         logger.info(f"Processing document: {filename} (ID: {doc_id})")
+
+        # Broadcast processing start
+        broadcaster = get_broadcaster()
+        _broadcast_from_sync(
+            broadcaster.broadcast_status_update(
+                doc_id=doc_id,
+                status="processing",
+                progress=0.0,
+                filename=filename,
+                stage="started"
+            )
+        )
+        _broadcast_from_sync(
+            broadcaster.broadcast_log_message(
+                level="INFO",
+                message=f"Started processing: {filename}",
+                doc_id=doc_id
+            )
+        )
 
         # Process document
         result = document_processor.process_document(
@@ -199,13 +238,41 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
         logger.info(f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}")
 
         # Update status to completed
+        completion_time = datetime.now()
+        start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
+        elapsed = (completion_time - start_time).total_seconds()
+
         processing_status[doc_id]["status"] = "completed"
+        processing_status[doc_id]["stage"] = "completed"
         processing_status[doc_id]["progress"] = 1.0
-        processing_status[doc_id]["completed_at"] = datetime.now().isoformat()
+        processing_status[doc_id]["updated_at"] = completion_time.isoformat()
+        processing_status[doc_id]["completed_at"] = completion_time.isoformat()
+        processing_status[doc_id]["elapsed_time"] = elapsed
         processing_status[doc_id]["visual_embeddings"] = len(result.visual_ids)
         processing_status[doc_id]["text_embeddings"] = len(result.text_ids)
 
         logger.info(f"✓ Successfully processed {filename} (ID: {result.doc_id})")
+
+        # Broadcast completion
+        _broadcast_from_sync(
+            broadcaster.broadcast_status_update(
+                doc_id=doc_id,
+                status="completed",
+                progress=1.0,
+                filename=filename,
+                stage="completed",
+                visual_embeddings=len(result.visual_ids),
+                text_embeddings=len(result.text_ids)
+            )
+        )
+        _broadcast_from_sync(
+            broadcaster.broadcast_log_message(
+                level="INFO",
+                message=f"Completed processing: {filename} "
+                        f"(visual: {len(result.visual_ids)}, text: {len(result.text_ids)})",
+                doc_id=doc_id
+            )
+        )
 
         return {
             "status": "completed",
@@ -218,9 +285,36 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
         logger.error(f"Failed to process {filename}: {e}", exc_info=True)
 
         if doc_id:
+            failure_time = datetime.now()
+            start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
+            elapsed = (failure_time - start_time).total_seconds()
+
             processing_status[doc_id]["status"] = "failed"
+            processing_status[doc_id]["stage"] = "failed"
             processing_status[doc_id]["error"] = str(e)
-            processing_status[doc_id]["completed_at"] = datetime.now().isoformat()
+            processing_status[doc_id]["updated_at"] = failure_time.isoformat()
+            processing_status[doc_id]["completed_at"] = failure_time.isoformat()
+            processing_status[doc_id]["elapsed_time"] = elapsed
+
+            # Broadcast failure
+            broadcaster = get_broadcaster()
+            _broadcast_from_sync(
+                broadcaster.broadcast_status_update(
+                    doc_id=doc_id,
+                    status="failed",
+                    progress=0.0,
+                    filename=filename,
+                    stage="failed",
+                    error=str(e)
+                )
+            )
+            _broadcast_from_sync(
+                broadcaster.broadcast_log_message(
+                    level="ERROR",
+                    message=f"Failed to process {filename}: {str(e)}",
+                    doc_id=doc_id
+                )
+            )
 
         return {
             "status": "failed",
@@ -231,8 +325,34 @@ def process_document_sync(file_path: str, filename: str) -> Dict[str, Any]:
 def _update_processing_status(doc_id: str, status):
     """Update processing status from DocumentProcessor callback."""
     if doc_id in processing_status:
+        update_time = datetime.now()
+        start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
+        elapsed = (update_time - start_time).total_seconds()
+
         processing_status[doc_id]["status"] = status.status
+        processing_status[doc_id]["stage"] = status.stage if hasattr(status, 'stage') else status.status
         processing_status[doc_id]["progress"] = status.progress
+        processing_status[doc_id]["updated_at"] = update_time.isoformat()
+        processing_status[doc_id]["elapsed_time"] = elapsed
+
+
+def _broadcast_from_sync(coro):
+    """
+    Execute async broadcast from synchronous context.
+
+    Args:
+        coro: Coroutine to execute (e.g., broadcaster.broadcast_status_update(...))
+    """
+    if _loop is None:
+        logger.warning("Event loop not available for broadcasting")
+        return
+
+    try:
+        # Schedule coroutine in event loop from thread
+        future = asyncio.run_coroutine_threadsafe(coro, _loop)
+        # Don't wait for result - fire and forget
+    except Exception as e:
+        logger.error(f"Failed to broadcast from sync context: {e}")
 
 
 # ============================================================================
@@ -273,8 +393,8 @@ async def process_document(request: ProcessRequest, background_tasks: Background
         # Document already exists
         logger.warning(f"Document {doc_id} already in status tracker")
 
-    # Queue for background processing
-    future = executor.submit(process_document_sync, request.file_path, request.filename)
+    # Queue for background processing (pass doc_id to ensure consistency)
+    future = executor.submit(process_document_sync, request.file_path, request.filename, doc_id)
 
     # Return immediately with doc_id (processing continues in background)
     return ProcessResponse(
@@ -364,6 +484,35 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time monitoring.
+
+    Clients can connect to receive live updates about document processing,
+    including status changes, log messages, and statistics.
+    """
+    broadcaster = get_broadcaster()
+    await broadcaster.connect(websocket)
+
+    try:
+        # Keep connection alive and listen for client messages
+        while True:
+            # Receive any client messages (keep-alive, commands, etc.)
+            data = await websocket.receive_text()
+
+            # Handle client commands if needed
+            # For now, just acknowledge receipt
+            logger.debug(f"Received WebSocket message: {data}")
+
+    except WebSocketDisconnect:
+        await broadcaster.disconnect(websocket)
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        await broadcaster.disconnect(websocket)
+
+
 # ============================================================================
 # Startup/Shutdown
 # ============================================================================
@@ -371,7 +520,10 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager
+    global document_processor, parser, status_manager, _loop
+
+    # Capture event loop for async broadcasts from sync context
+    _loop = asyncio.get_event_loop()
 
     logger.info("=" * 70)
     logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")

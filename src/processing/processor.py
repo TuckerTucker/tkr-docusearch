@@ -368,13 +368,31 @@ class DocumentProcessor:
                 # Structure metadata is already in doc_metadata from parser
                 logger.debug("Enhanced mode: Document structure available")
 
+            # Filter doc_metadata to remove large/problematic fields before spreading
+            # ChromaDB metadata values must be simple types and not too large
+            filtered_keys = []
+            safe_doc_metadata = {}
+            for k, v in doc_metadata.items():
+                # Always exclude these known large fields
+                if k in ['full_markdown', 'structure', 'full_markdown_compressed']:
+                    filtered_keys.append(f"{k} (excluded field)")
+                    continue
+                # Skip very large string values
+                if isinstance(v, str) and len(v) > 1000:
+                    filtered_keys.append(f"{k} ({len(v)} chars, too large)")
+                    continue
+                safe_doc_metadata[k] = v
+
+            if filtered_keys:
+                logger.info(f"Filtered metadata fields: {', '.join(filtered_keys)}")
+
             # Store visual embeddings
             for result in visual_results:
                 base_metadata = {
                     "filename": filename,
                     "page": result.page_num,
                     "source_path": file_path,
-                    **doc_metadata
+                    **safe_doc_metadata
                 }
 
                 # Prepare enhanced metadata if available
@@ -410,7 +428,7 @@ class DocumentProcessor:
                     "text_preview": result.text[:200],
                     "word_count": len(result.text.split()),
                     "source_path": file_path,
-                    **doc_metadata
+                    **safe_doc_metadata  # Use filtered metadata (already defined above)
                 }
 
                 # Get chunk context if available
