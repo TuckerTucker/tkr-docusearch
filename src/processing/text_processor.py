@@ -61,13 +61,15 @@ class TextProcessor:
     def process_chunks(
         self,
         chunks: List[TextChunk],
-        doc_id: str
+        doc_id: str,
+        progress_callback=None
     ) -> List[TextEmbeddingResult]:
         """Process text chunks and generate embeddings.
 
         Args:
             chunks: List of TextChunk objects
             doc_id: Document identifier
+            progress_callback: Optional callback(chunks_completed, total_chunks)
 
         Returns:
             List of TextEmbeddingResult objects
@@ -92,8 +94,11 @@ class TextProcessor:
             batch_end = min(batch_start + self.batch_size, total_chunks)
             batch_chunks = chunks[batch_start:batch_end]
 
+            batch_num = batch_start // self.batch_size + 1
+            total_batches = (total_chunks + self.batch_size - 1) // self.batch_size
+
             logger.debug(
-                f"Processing batch {batch_start//self.batch_size + 1}: "
+                f"Processing batch {batch_num}/{total_batches}: "
                 f"chunks {batch_start+1}-{batch_end}"
             )
 
@@ -126,6 +131,13 @@ class TextProcessor:
                     processing_time_ms=elapsed_ms / len(texts)
                 )
                 all_results.append(result)
+
+            # Report progress after each batch
+            if progress_callback:
+                try:
+                    progress_callback(len(all_results), total_chunks)
+                except Exception as e:
+                    logger.warning(f"Progress callback failed: {e}")
 
         logger.info(
             f"Completed text processing: {len(all_results)} chunks"

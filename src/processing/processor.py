@@ -198,9 +198,29 @@ class DocumentProcessor:
                 )
                 self._update_status(status, status_callback)
 
+                # Create progress callback for visual processing
+                def visual_progress_callback(pages_completed, total):
+                    # Progress ranges from 0.3 to 0.6 (30% of total)
+                    granular_progress = 0.3 + (pages_completed / total * 0.3)
+                    batch_num = (pages_completed - 1) // self.visual_processor.batch_size + 1
+                    total_batches = (total + self.visual_processor.batch_size - 1) // self.visual_processor.batch_size
+
+                    status = ProcessingStatus(
+                        doc_id=doc_id,
+                        filename=filename,
+                        status="embedding_visual",
+                        progress=granular_progress,
+                        stage=f"Visual embeddings: {pages_completed}/{total} pages (batch {batch_num}/{total_batches})",
+                        current_page=pages_completed,
+                        total_pages=total,
+                        elapsed_seconds=int(time.time() - start_time)
+                    )
+                    self._update_status(status, status_callback)
+
                 visual_results = self.visual_processor.process_pages(
                     pages=parsed_doc.pages,
-                    doc_id=doc_id
+                    doc_id=doc_id,
+                    progress_callback=visual_progress_callback
                 )
 
                 visual_stats = self.visual_processor.get_processing_stats(visual_results)
@@ -218,20 +238,40 @@ class DocumentProcessor:
             # Stage 3: Text Embedding (skip if no text extracted)
             text_results = []
             if parsed_doc.text_chunks:
+                total_chunks = len(parsed_doc.text_chunks)
                 status = ProcessingStatus(
                     doc_id=doc_id,
                     filename=filename,
                     status="embedding_text",
                     progress=0.6,
-                    stage=f"Generating text embeddings for {len(parsed_doc.text_chunks)} chunks",
+                    stage=f"Generating text embeddings for {total_chunks} chunks",
                     total_pages=total_pages,
                     elapsed_seconds=int(time.time() - start_time)
                 )
                 self._update_status(status, status_callback)
 
+                # Create progress callback for text processing
+                def text_progress_callback(chunks_completed, total):
+                    # Progress ranges from 0.6 to 0.9 (30% of total)
+                    granular_progress = 0.6 + (chunks_completed / total * 0.3)
+                    batch_num = (chunks_completed - 1) // self.text_processor.batch_size + 1
+                    total_batches = (total + self.text_processor.batch_size - 1) // self.text_processor.batch_size
+
+                    status = ProcessingStatus(
+                        doc_id=doc_id,
+                        filename=filename,
+                        status="embedding_text",
+                        progress=granular_progress,
+                        stage=f"Text embeddings: {chunks_completed}/{total} chunks (batch {batch_num}/{total_batches})",
+                        total_pages=total_pages,
+                        elapsed_seconds=int(time.time() - start_time)
+                    )
+                    self._update_status(status, status_callback)
+
                 text_results = self.text_processor.process_chunks(
                     chunks=parsed_doc.text_chunks,
-                    doc_id=doc_id
+                    doc_id=doc_id,
+                    progress_callback=text_progress_callback
                 )
 
                 text_stats = self.text_processor.get_processing_stats(text_results)

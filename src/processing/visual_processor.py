@@ -57,13 +57,15 @@ class VisualProcessor:
     def process_pages(
         self,
         pages: List[Page],
-        doc_id: str
+        doc_id: str,
+        progress_callback=None
     ) -> List[VisualEmbeddingResult]:
         """Process pages and generate visual embeddings.
 
         Args:
             pages: List of Page objects
             doc_id: Document identifier
+            progress_callback: Optional callback(pages_completed, total_pages)
 
         Returns:
             List of VisualEmbeddingResult objects
@@ -88,8 +90,11 @@ class VisualProcessor:
             batch_end = min(batch_start + self.batch_size, total_pages)
             batch_pages = pages[batch_start:batch_end]
 
+            batch_num = batch_start // self.batch_size + 1
+            total_batches = (total_pages + self.batch_size - 1) // self.batch_size
+
             logger.debug(
-                f"Processing batch {batch_start//self.batch_size + 1}: "
+                f"Processing batch {batch_num}/{total_batches}: "
                 f"pages {batch_start+1}-{batch_end}"
             )
 
@@ -120,6 +125,13 @@ class VisualProcessor:
                     processing_time_ms=elapsed_ms / len(images)
                 )
                 all_results.append(result)
+
+            # Report progress after each batch
+            if progress_callback:
+                try:
+                    progress_callback(len(all_results), total_pages)
+                except Exception as e:
+                    logger.warning(f"Progress callback failed: {e}")
 
         logger.info(
             f"Completed visual processing: {len(all_results)} pages"
