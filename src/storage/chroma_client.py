@@ -332,6 +332,19 @@ class ChromaClient:
                 f"Missing required metadata fields: {missing_fields}"
             )
 
+        # Debug: Log metadata size to catch large fields
+        import json
+        try:
+            metadata_json = json.dumps(complete_metadata)
+            metadata_size_kb = len(metadata_json) / 1024
+            if metadata_size_kb > 50:
+                logger.warning(
+                    f"Large metadata detected ({metadata_size_kb:.1f}KB) for {embedding_id}. "
+                    f"Fields: {', '.join(f'{k}: {len(str(v))} chars' for k, v in complete_metadata.items() if len(str(v)) > 1000)}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to serialize metadata for debugging: {e}")
+
         # Store in ChromaDB
         try:
             self._visual_collection.add(
