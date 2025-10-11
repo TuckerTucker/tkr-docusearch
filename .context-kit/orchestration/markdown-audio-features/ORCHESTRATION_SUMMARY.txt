@@ -1,0 +1,223 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║  MARKDOWN STORAGE + AUDIO PROCESSING ORCHESTRATION                  ║
+║                                                                      ║
+║  Status: READY FOR EXECUTION                                        ║
+║  Created: 2025-10-11                                                ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ORCHESTRATION OVERVIEW                                              │
+└─────────────────────────────────────────────────────────────────────┘
+
+Features:
+  1. Full markdown storage in ChromaDB metadata with compression
+  2. MP3/WAV audio processing with Whisper ASR transcription
+
+Agents: 6 (maximum parallelism)
+Waves: 5 (foundation → parser → storage → integration → docs)
+Timeline: 12-17 hours development, 8-10 hours elapsed (40-50% time savings)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ KEY INNOVATION                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+✓ Territorial Ownership: Zero file conflicts through clear boundaries
+✓ Interface-First: Contracts before code guarantees integration
+✓ Progressive Validation: Test after each wave, catch issues early
+✓ Maximum Parallelism: 2-3 agents working simultaneously per wave
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ORCHESTRATION ARTIFACTS                                             │
+└─────────────────────────────────────────────────────────────────────┘
+
+10 documents created:
+  ├── README.md (start here!)
+  ├── orchestration-plan.md (main execution plan)
+  ├── agent-assignments.md (territorial ownership)
+  ├── validation-strategy.md (testing & quality gates)
+  ├── coordination-protocol.md (communication & status)
+  └── integration-contracts/
+      ├── 01-compression-interface.md
+      ├── 02-parser-markdown-interface.md
+      ├── 03-storage-markdown-interface.md
+      ├── 04-asr-config-interface.md
+      └── 05-parser-asr-interface.md
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ AGENT ASSIGNMENTS                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Wave 1 (Foundation Layer) - 2-3 hours:
+  • compression-agent      → src/storage/compression.py
+  • config-asr-agent       → src/config/processing_config.py
+
+Wave 2 (Parser Layer) - 3-4 hours:
+  • parser-markdown-agent  → src/processing/docling_parser.py (markdown)
+  • parser-asr-agent       → src/processing/docling_parser.py (ASR)
+
+Wave 3 (Storage & Testing) - 3-4 hours:
+  • storage-markdown-agent → src/storage/chroma_client.py
+  • testing-integration-agent → src/processing/test_*.py
+
+Wave 4 (Integration) - 2-3 hours:
+  • All agents (coordinated validation)
+
+Wave 5 (Documentation) - 1-2 hours:
+  • Documentation updates
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ QUICK START                                                         │
+└─────────────────────────────────────────────────────────────────────┘
+
+For Orchestrator:
+  1. cd .context-kit/orchestration/markdown-audio-features
+  2. cat README.md
+  3. Review orchestration-plan.md
+  4. Check prerequisites (Wave 0)
+  5. Launch Wave 1 agents in parallel
+
+For Individual Agents:
+  1. Read agent-assignments.md (find your section)
+  2. Read your integration-contracts
+  3. Update status: python scripts/update-agent-status.py
+  4. Work independently within your territory
+  5. Report blockers immediately
+  6. Complete validation checklist
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ VALIDATION GATES                                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+Wave 1 Gate:
+  ✓ compress_markdown() and decompress_markdown() working
+  ✓ AsrConfig validates and converts to Docling spec
+  ✓ All unit tests pass
+  ✓ Performance targets met
+
+Wave 2 Gate:
+  ✓ Markdown extraction in parser
+  ✓ ASR pipeline configuration working
+  ✓ No merge conflicts
+  ✓ All unit tests pass
+
+Wave 3 Gate:
+  ✓ Markdown storage with compression working
+  ✓ Test suites created and passing
+  ✓ Integration tests pass
+
+Wave 4 Gate:
+  ✓ End-to-end PDF → markdown → storage → retrieval works
+  ✓ End-to-end MP3 → transcript → embeddings → search works
+  ✓ Performance benchmarks met
+  ✓ No regressions
+  ✓ Cross-agent code reviews complete
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ SUCCESS METRICS                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+Mandatory:
+  • Markdown extracted and stored for all documents
+  • Markdown retrievable via get_document_markdown()
+  • MP3 and WAV files transcribed with Whisper
+  • Audio transcript searchable
+  • All tests passing (100%)
+  • No regressions in existing features
+  • Performance targets met:
+    - Markdown extraction: <100ms
+    - Markdown compression: <100ms for 1MB
+    - Audio transcription: <5s for 10s audio (MPS)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ARCHITECTURE GUARANTEES                                             │
+└─────────────────────────────────────────────────────────────────────┘
+
+✓ Zero Conflicts: Territorial ownership prevents merge conflicts
+✓ Guaranteed Integration: Interface contracts validated at each wave
+✓ Continuous Quality: Progressive validation catches issues early
+✓ Failure Isolation: Circuit breakers prevent cascade failures
+✓ Maximum Efficiency: 40-50% time savings through parallelism
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ RISK MANAGEMENT                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+High Risks Mitigated:
+  • ffmpeg not installed → Check in Wave 0, document clearly
+  • Whisper model download fails → Pre-download, document
+  • Parser merge conflicts → Clear line ownership, coordination protocol
+
+Medium Risks Mitigated:
+  • Markdown compression insufficient → Test with large docs early
+  • Performance below targets → Benchmark early, optimize if needed
+
+Fallback Options:
+  • Markdown feature can succeed without audio feature
+  • Audio feature can succeed without markdown feature
+  • Either feature can be deferred if critical issues arise
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ NEXT STEPS                                                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+1. Review and approve this orchestration plan
+2. Execute Wave 0 (prerequisites check)
+3. Launch Wave 1 agents in parallel:
+   - compression-agent starts on compression.py
+   - config-asr-agent starts on processing_config.py
+4. Monitor progress via status files
+5. Validate at Wave 1 gate before proceeding
+6. Continue through waves 2-5
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ DOCUMENTATION HIERARCHY                                             │
+└─────────────────────────────────────────────────────────────────────┘
+
+Start Here:
+  → README.md (overview, quick start, troubleshooting)
+
+For Planning:
+  → orchestration-plan.md (full execution plan)
+
+For Implementation:
+  → agent-assignments.md (your territory and responsibilities)
+  → integration-contracts/{your-contract}.md (interface specs)
+
+For Testing:
+  → validation-strategy.md (test specs and quality gates)
+
+For Coordination:
+  → coordination-protocol.md (status updates, blockers, questions)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ ESTIMATED TIMELINE                                                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+Sequential (no parallelism):      ~17 hours
+With parallel agents:             ~10 hours
+Efficiency gain:                  ~40%
+
+Breakdown:
+  Wave 0 (Prerequisites):         0.5 hours
+  Wave 1 (Foundation):            2-3 hours   [2 agents parallel]
+  Wave 2 (Parser):                3-4 hours   [2 agents parallel]
+  Wave 3 (Storage & Testing):     3-4 hours   [2 agents parallel]
+  Wave 4 (Integration):           2-3 hours   [coordinated]
+  Wave 5 (Documentation):         1-2 hours
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ CONTACT & SUPPORT                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Orchestrator: @Tucker
+Documentation: .context-kit/orchestration/markdown-audio-features/
+Issues: Create files in blockers/ or questions/
+Status: Update via scripts/update-agent-status.py
+
+════════════════════════════════════════════════════════════════════════
+
+                    READY TO EXECUTE! 🚀
+
+════════════════════════════════════════════════════════════════════════
