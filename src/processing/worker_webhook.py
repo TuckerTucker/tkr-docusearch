@@ -34,6 +34,9 @@ from .status_api import router as status_router, set_status_manager
 # Import WebSocket broadcaster
 from .websocket_broadcaster import get_broadcaster
 
+# Import documents API router (Wave 3)
+from .documents_api import router as documents_router
+
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -99,6 +102,10 @@ app.add_middleware(
 
 # Mount status API router
 app.include_router(status_router)
+
+# Mount documents API router (Wave 3)
+app.include_router(documents_router)
+logger.info("Mounted documents API: GET /documents, GET /documents/{doc_id}, GET /images/{doc_id}/{filename}")
 
 # Mount static files for monitor UI
 STATIC_DIR = Path(__file__).parent / "static"

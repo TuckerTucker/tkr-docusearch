@@ -19,6 +19,9 @@ from src.processing.smart_chunker import create_chunker, SmartChunker
 # Import shared types (re-exported for backward compatibility)
 from src.processing.types import Page, TextChunk, ParsedDocument
 
+# Import image utilities for page image persistence (Wave 1 integration)
+from src.processing.image_utils import save_page_image, ImageStorageError
+
 logger = logging.getLogger(__name__)
 
 
@@ -364,6 +367,29 @@ class DoclingParser:
         try:
             # Parse with Docling (supports PDF, DOCX, PPTX)
             pages, metadata, doc = self._parse_with_docling(file_path, config)
+
+            # Save page images and thumbnails (Wave 1 integration)
+            for page in pages:
+                if page.image is not None:
+                    try:
+                        img_path, thumb_path = save_page_image(
+                            image=page.image,
+                            doc_id=doc_id,
+                            page_num=page.page_num
+                        )
+                        # Store paths in Page object
+                        page.image_path = img_path
+                        page.thumb_path = thumb_path
+                        logger.debug(
+                            f"Saved page {page.page_num} images: "
+                            f"full={img_path}, thumb={thumb_path}"
+                        )
+                    except ImageStorageError as e:
+                        logger.warning(
+                            f"Failed to save images for page {page.page_num}: {e}. "
+                            f"Processing will continue without images."
+                        )
+                        # Continue processing even if image save fails
 
             # Generate text chunks based on mode
             if config:

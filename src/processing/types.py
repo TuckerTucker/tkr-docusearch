@@ -22,6 +22,8 @@ class Page:
         width: Image width in pixels
         height: Image height in pixels
         text: Extracted page text
+        image_path: Path to saved full-resolution page image (Wave 1)
+        thumb_path: Path to saved thumbnail image (Wave 1)
     """
 
     page_num: int
@@ -29,6 +31,8 @@ class Page:
     width: int
     height: int
     text: str
+    image_path: Optional[str] = None
+    thumb_path: Optional[str] = None
 
 
 @dataclass

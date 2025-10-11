@@ -23,6 +23,12 @@ data/logs/
 # Copyparty web UI
 data/copyparty/
 
+# Page images and thumbnails
+data/page_images/
+
+# Extracted markdown
+data/markdown/
+
 # ============================================================================
 # Python
 # ============================================================================

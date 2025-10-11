@@ -20,7 +20,7 @@ services:
       - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
       - WORKER_HOST=host.docker.internal
       - WORKER_PORT=8002
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,mp3,wav}
     networks:
       - docusearch
     depends_on:
@@ -80,6 +80,8 @@ services:
       - ../data/models:/models
       # Log output
       - ../data/logs:/data/logs
+      # Page images storage (read-write for image persistence)
+      - ../data/page_images:/page_images
       # Source code (development mode - remove for production)
       - ../src:/app/src
     environment:
@@ -96,10 +98,18 @@ services:
       - TEXT_COLLECTION=${TEXT_COLLECTION:-text_collection}
       # Processing configuration
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,mp3,wav}
       - TEXT_CHUNK_SIZE=${TEXT_CHUNK_SIZE:-250}
       - TEXT_CHUNK_OVERLAP=${TEXT_CHUNK_OVERLAP:-50}
       - PAGE_RENDER_DPI=${PAGE_RENDER_DPI:-150}
+      # ASR (Whisper) configuration for audio transcription
+      - ASR_ENABLED=${ASR_ENABLED:-true}
+      - ASR_MODEL=${ASR_MODEL:-turbo}
+      - ASR_LANGUAGE=${ASR_LANGUAGE:-en}
+      - ASR_DEVICE=${ASR_DEVICE:-mps}
+      - ASR_WORD_TIMESTAMPS=${ASR_WORD_TIMESTAMPS:-true}
+      - ASR_TEMPERATURE=${ASR_TEMPERATURE:-0.0}
+      - ASR_MAX_TIME_CHUNK=${ASR_MAX_TIME_CHUNK:-30.0}
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}

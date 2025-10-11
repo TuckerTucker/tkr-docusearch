@@ -262,7 +262,9 @@ class ChromaClient:
         doc_id: str,
         page: int,
         full_embeddings: np.ndarray,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
+        image_path: Optional[str] = None,
+        thumb_path: Optional[str] = None
     ) -> str:
         """Store visual embedding for a document page.
 
@@ -271,6 +273,8 @@ class ChromaClient:
             page: Page number (1-indexed)
             full_embeddings: Multi-vector sequence, shape (seq_length, 768)
             metadata: Additional metadata (filename, source_path, etc.)
+            image_path: Optional path to full-resolution page image
+            thumb_path: Optional path to thumbnail image
 
         Returns:
             Embedding ID: "{doc_id}-page{page:03d}"
@@ -278,6 +282,10 @@ class ChromaClient:
         Raises:
             ValueError: If embedding shape is invalid
             ChromaDBError: If storage fails
+
+        Note:
+            Wave 1 Integration: image_path and thumb_path are optional parameters
+            for backward compatibility. When provided, they are stored in metadata.
         """
         # Validate embeddings
         self._validate_embedding_shape(full_embeddings)
@@ -310,6 +318,12 @@ class ChromaClient:
             else:
                 # Small markdown, store uncompressed
                 metadata["markdown_compression"] = "none"
+
+        # Add image paths to metadata if provided (Wave 1 integration)
+        if image_path is not None:
+            metadata["image_path"] = image_path
+        if thumb_path is not None:
+            metadata["thumb_path"] = thumb_path
 
         # Build complete metadata
         seq_length, embedding_dim = full_embeddings.shape

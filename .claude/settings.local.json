@@ -116,7 +116,10 @@
       "Bash(./scripts/status.sh:*)",
       "Bash(./scripts/start-all.sh:*)",
       "Bash(./scripts/stop-all.sh:*)",
-      "Bash(FULL_PATH=\"/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/advanced_search.docx\")"
+      "Bash(FULL_PATH=\"/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/advanced_search.docx\")",
+      "Bash(if [ -f requirements.txt ])",
+      "Bash(then grep -i \"docling\\|whisper\\|asr\" requirements.txt)",
+      "Bash(else echo \"No requirements.txt\")"
     ],
     "deny": [
       "Bash(rm -rf /)",
