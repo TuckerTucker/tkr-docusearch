@@ -513,11 +513,44 @@ class DoclingParser:
 
             converter = DocumentConverter(format_options=format_options if format_options else None)
 
-            logger.info(f"Converting document with Docling: {file_path}")
+            # Get file size for logging
+            import time
+            file_size_bytes = Path(file_path).stat().st_size
+            file_size_mb = file_size_bytes / (1024 * 1024)
+
+            # Special logging for audio files (Whisper transcription)
+            if ext in ['.mp3', '.wav']:
+                logger.info(
+                    f"Starting Whisper transcription: {file_path} "
+                    f"({file_size_mb:.2f}MB, model={asr_config.model if 'asr_config' in locals() else 'unknown'})"
+                )
+            else:
+                logger.info(
+                    f"Starting Docling conversion: {file_path} "
+                    f"({file_size_mb:.2f}MB, format: {ext})"
+                )
+
+            conversion_start = time.time()
             result = converter.convert(file_path)
+            conversion_duration = time.time() - conversion_start
 
             # Use adapter to convert to Page objects (pass file_path for format detection)
             pages = docling_to_pages(result, file_path)
+
+            # Log completion with throughput metrics
+            if ext in ['.mp3', '.wav']:
+                # For audio, estimate duration and show realtime factor
+                logger.info(
+                    f"Whisper transcription complete in {conversion_duration:.1f}s "
+                    f"(file size: {file_size_mb:.2f}MB, "
+                    f"{file_size_mb/conversion_duration:.2f} MB/sec)"
+                )
+            else:
+                logger.info(
+                    f"Docling conversion complete: {len(pages)} pages in {conversion_duration:.1f}s "
+                    f"({len(pages)/conversion_duration:.2f} pages/sec, "
+                    f"{file_size_mb/conversion_duration:.2f} MB/sec)"
+                )
 
             # Extract metadata from DoclingDocument
             doc = result.document
@@ -571,20 +604,24 @@ class DoclingParser:
 
                     metadata["has_word_timestamps"] = has_timestamps
 
-            # Extract full markdown from document
+            # Extract full markdown from document (metadata only, not full content)
+            # NOTE: We don't store the full markdown in ChromaDB metadata because:
+            # 1. It can be hundreds of KB and exceed ChromaDB metadata limits
+            # 2. We already have page-level text in the database
+            # 3. Full markdown can be regenerated from pages if needed
             try:
                 markdown = doc.export_to_markdown()
-                metadata["full_markdown"] = markdown
                 metadata["markdown_length"] = len(markdown)
                 metadata["markdown_extracted"] = True
                 metadata["markdown_error"] = None
                 logger.info(f"Extracted markdown: {len(markdown)} chars")
             except Exception as e:
                 logger.warning(f"Markdown extraction failed: {e}")
-                metadata["full_markdown"] = ""
                 metadata["markdown_length"] = 0
                 metadata["markdown_extracted"] = False
-                metadata["markdown_error"] = str(e)
+                # Truncate error message to avoid metadata size issues
+                error_msg = str(e)
+                metadata["markdown_error"] = error_msg[:500] if len(error_msg) > 500 else error_msg
 
             logger.info(f"Docling conversion complete: {len(pages)} pages")
             return pages, metadata, doc
