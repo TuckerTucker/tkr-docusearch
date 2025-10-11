@@ -223,6 +223,196 @@
         .full-width {
             grid-column: 1 / -1;
         }
+
+        /* Wave 4: Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #fff;
+            background: #2a2a2a;
+        }
+
+        .tab.active {
+            color: #fff;
+            border-bottom-color: #4caf50;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Wave 4: Documents View */
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .document-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .document-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .document-thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #1a1a1a;
+        }
+
+        .document-info {
+            padding: 15px;
+        }
+
+        .document-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .document-meta {
+            font-size: 13px;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .document-detail-view {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #404040;
+        }
+
+        .back-button {
+            padding: 8px 16px;
+            background: #404040;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .back-button:hover {
+            background: #4caf50;
+        }
+
+        .pages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .page-card {
+            background: #1a1a1a;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .page-card:hover {
+            transform: scale(1.05);
+        }
+
+        .page-thumbnail {
+            width: 100%;
+            height: 250px;
+            object-fit: contain;
+            background: #0a0a0a;
+        }
+
+        .page-number {
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+            background: #1a1a1a;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .spinner {
+            border: 3px solid #404040;
+            border-top: 3px solid #4caf50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -235,6 +425,14 @@
             </div>
         </header>
 
+        <!-- Wave 4: Tab Navigation -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('monitor')">Monitor</button>
+            <button class="tab" onclick="switchTab('documents')">Documents</button>
+        </div>
+
+        <!-- Wave 4: Monitor Tab (existing content) -->
+        <div id="monitorTab" class="tab-content active">
         <div class="grid">
             <!-- Stats Panel -->
             <div class="panel">
@@ -284,6 +482,28 @@
                 <div class="log-container" id="logContainer"></div>
             </div>
         </div>
+        </div>
+        <!-- End Monitor Tab -->
+
+        <!-- Wave 4: Documents Tab -->
+        <div id="documentsTab" class="tab-content">
+            <!-- Search bar -->
+            <div class="search-bar">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search documents..." onkeyup="filterDocuments(this.value)">
+            </div>
+
+            <!-- Document list view -->
+            <div id="documentListView">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading documents...</div>
+                </div>
+            </div>
+
+            <!-- Document detail view (hidden by default) -->
+            <div id="documentDetailView" style="display: none;"></div>
+        </div>
+        <!-- End Documents Tab -->
     </div>
 
     <script>
@@ -481,6 +701,168 @@
 
         // Initialize connection
         connect();
+
+        // ============================================================================
+        // Wave 4: Document Viewing Functions
+        // ============================================================================
+
+        let allDocuments = [];
+        let currentDocId = null;
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            if (tabName === 'monitor') {
+                document.getElementById('monitorTab').classList.add('active');
+            } else if (tabName === 'documents') {
+                document.getElementById('documentsTab').classList.add('active');
+                // Load documents when switching to documents tab
+                if (allDocuments.length === 0) {
+                    loadDocuments();
+                }
+            }
+        }
+
+        // Load documents from API
+        async function loadDocuments() {
+            const listView = document.getElementById('documentListView');
+            listView.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading documents...</div></div>';
+
+            try {
+                const response = await fetch(`http://${window.location.hostname}:8002/documents?limit=100&sort_by=date_added`);
+                const data = await response.json();
+
+                allDocuments = data.documents || [];
+                renderDocumentList(allDocuments);
+            } catch (error) {
+                console.error('Failed to load documents:', error);
+                listView.innerHTML = '<div class="empty-state">Failed to load documents. Please try again.</div>';
+            }
+        }
+
+        // Render document list
+        function renderDocumentList(docs) {
+            const listView = document.getElementById('documentListView');
+
+            if (docs.length === 0) {
+                listView.innerHTML = '<div class="empty-state">No documents found</div>';
+                return;
+            }
+
+            listView.innerHTML = `
+                <div class="documents-grid">
+                    ${docs.map(doc => `
+                        <div class="document-card" onclick="showDocumentDetail('${doc.doc_id}')">
+                            ${doc.first_page_thumb ?
+                                `<img src="http://${window.location.hostname}:8002${doc.first_page_thumb}" alt="${doc.filename}" class="document-thumbnail" onerror="this.style.display='none'">` :
+                                '<div class="document-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">No preview</div>'
+                            }
+                            <div class="document-info">
+                                <div class="document-title" title="${doc.filename}">${doc.filename}</div>
+                                <div class="document-meta">
+                                    <span>${doc.page_count} pages</span>
+                                    <span>${doc.chunk_count} chunks</span>
+                                </div>
+                                <div class="document-meta">
+                                    <span style="font-size: 11px;">${new Date(doc.date_added).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Show document detail view
+        async function showDocumentDetail(docId) {
+            currentDocId = docId;
+            const listView = document.getElementById('documentListView');
+            const detailView = document.getElementById('documentDetailView');
+
+            // Hide list, show detail
+            listView.style.display = 'none';
+            detailView.style.display = 'block';
+            detailView.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading document details...</div></div>';
+
+            try {
+                const response = await fetch(`http://${window.location.hostname}:8002/documents/${docId}`);
+                const doc = await response.json();
+
+                detailView.innerHTML = `
+                    <div class="document-detail-view">
+                        <div class="detail-header">
+                            <div>
+                                <h2 style="margin-bottom: 8px;">${doc.filename}</h2>
+                                <div style="color: #888; font-size: 14px;">
+                                    ${doc.metadata.page_count} pages • ${doc.metadata.chunk_count} chunks • Added ${new Date(doc.date_added).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <button class="back-button" onclick="showDocumentList()">← Back to Documents</button>
+                        </div>
+
+                        <h3 style="margin-bottom: 15px; color: #fff;">Page Previews</h3>
+                        <div class="pages-grid">
+                            ${doc.pages.map(page => `
+                                <div class="page-card">
+                                    ${page.thumb_path ?
+                                        `<img src="http://${window.location.hostname}:8002${page.thumb_path}" alt="Page ${page.page_number}" class="page-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                         <div class="page-thumbnail" style="display: none; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>` :
+                                        `<div class="page-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>`
+                                    }
+                                    <div class="page-number">Page ${page.page_number}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load document details:', error);
+                detailView.innerHTML = `
+                    <div class="document-detail-view">
+                        <div class="detail-header">
+                            <h2>Error</h2>
+                            <button class="back-button" onclick="showDocumentList()">← Back to Documents</button>
+                        </div>
+                        <div class="empty-state">Failed to load document details. Please try again.</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Return to document list
+        function showDocumentList() {
+            const listView = document.getElementById('documentListView');
+            const detailView = document.getElementById('documentDetailView');
+
+            listView.style.display = 'block';
+            detailView.style.display = 'none';
+            currentDocId = null;
+        }
+
+        // Filter documents by search query
+        function filterDocuments(query) {
+            if (!query || query.trim() === '') {
+                renderDocumentList(allDocuments);
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+            const filtered = allDocuments.filter(doc =>
+                doc.filename.toLowerCase().includes(lowerQuery)
+            );
+
+            renderDocumentList(filtered);
+        }
     </script>
 </body>
 </html>

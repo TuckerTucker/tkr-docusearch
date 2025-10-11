@@ -11,7 +11,7 @@ This module orchestrates the complete document processing pipeline:
 import logging
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -304,7 +304,8 @@ class DocumentProcessor:
                 text_chunks=parsed_doc.text_chunks,
                 doc_metadata=parsed_doc.metadata,
                 filename=filename,
-                file_path=file_path
+                file_path=file_path,
+                pages=parsed_doc.pages  # Wave 1: Pass pages for image paths
             )
 
             # Stage 5: Completed
@@ -379,7 +380,8 @@ class DocumentProcessor:
         text_chunks,
         doc_metadata: Dict[str, Any],
         filename: str,
-        file_path: str
+        file_path: str,
+        pages: List = None  # Wave 1: Optional pages for image paths
     ) -> StorageConfirmation:
         """Store embeddings in ChromaDB with enhanced metadata.
 
@@ -390,6 +392,7 @@ class DocumentProcessor:
             doc_metadata: Document metadata
             filename: Original filename
             file_path: Source file path
+            pages: Optional list of Page objects (for image paths - Wave 1)
 
         Returns:
             StorageConfirmation
@@ -427,6 +430,11 @@ class DocumentProcessor:
             if filtered_keys:
                 logger.info(f"Filtered metadata fields: {', '.join(filtered_keys)}")
 
+            # Create page lookup for image paths (Wave 1 integration)
+            page_lookup = {}
+            if pages:
+                page_lookup = {page.page_num: page for page in pages}
+
             # Store visual embeddings
             for result in visual_results:
                 base_metadata = {
@@ -444,11 +452,21 @@ class DocumentProcessor:
                 else:
                     metadata = base_metadata
 
+                # Get image paths from page if available (Wave 1 integration)
+                image_path = None
+                thumb_path = None
+                if result.page_num in page_lookup:
+                    page = page_lookup[result.page_num]
+                    image_path = page.image_path
+                    thumb_path = page.thumb_path
+
                 embedding_id = self.storage_client.add_visual_embedding(
                     doc_id=result.doc_id,
                     page=result.page_num,
                     full_embeddings=result.embedding,
-                    metadata=metadata
+                    metadata=metadata,
+                    image_path=image_path,  # Wave 1: Pass image path
+                    thumb_path=thumb_path   # Wave 1: Pass thumbnail path
                 )
                 visual_ids.append(embedding_id)
 

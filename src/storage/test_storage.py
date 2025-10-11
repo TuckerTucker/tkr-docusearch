@@ -319,6 +319,82 @@ class TestEmbeddingStorage:
         expected_cls = sample_embeddings[0].tolist()
         np.testing.assert_allclose(stored_embedding, expected_cls, rtol=1e-6)
 
+    def test_image_paths_stored_when_provided(
+        self,
+        chroma_client,
+        sample_embeddings,
+        sample_visual_metadata
+    ):
+        """Test that image paths are stored in metadata when provided (Wave 1)."""
+        image_path = "/page_images/test-doc-123/page001.png"
+        thumb_path = "/page_images/test-doc-123/page001_thumb.jpg"
+
+        chroma_client.add_visual_embedding(
+            doc_id="test-doc-123",
+            page=1,
+            full_embeddings=sample_embeddings,
+            metadata=sample_visual_metadata,
+            image_path=image_path,
+            thumb_path=thumb_path
+        )
+
+        # Get the metadata passed to ChromaDB
+        call_args = chroma_client._visual_collection.add.call_args
+        stored_metadata = call_args[1]['metadatas'][0]
+
+        # Verify image paths are in metadata
+        assert stored_metadata['image_path'] == image_path
+        assert stored_metadata['thumb_path'] == thumb_path
+
+    def test_image_paths_optional_backward_compatibility(
+        self,
+        chroma_client,
+        sample_embeddings,
+        sample_visual_metadata
+    ):
+        """Test that image paths are optional for backward compatibility (Wave 1)."""
+        # Call without image paths (old behavior)
+        chroma_client.add_visual_embedding(
+            doc_id="test-doc",
+            page=1,
+            full_embeddings=sample_embeddings,
+            metadata=sample_visual_metadata
+        )
+
+        # Get the metadata passed to ChromaDB
+        call_args = chroma_client._visual_collection.add.call_args
+        stored_metadata = call_args[1]['metadatas'][0]
+
+        # Verify image paths are not present (backward compatibility)
+        assert 'image_path' not in stored_metadata
+        assert 'thumb_path' not in stored_metadata
+
+    def test_image_paths_partial_provision(
+        self,
+        chroma_client,
+        sample_embeddings,
+        sample_visual_metadata
+    ):
+        """Test that only provided image paths are stored (Wave 1)."""
+        # Only provide image_path, not thumb_path
+        image_path = "/page_images/test-doc/page001.png"
+
+        chroma_client.add_visual_embedding(
+            doc_id="test-doc",
+            page=1,
+            full_embeddings=sample_embeddings,
+            metadata=sample_visual_metadata,
+            image_path=image_path
+        )
+
+        # Get the metadata passed to ChromaDB
+        call_args = chroma_client._visual_collection.add.call_args
+        stored_metadata = call_args[1]['metadatas'][0]
+
+        # Verify only image_path is present
+        assert stored_metadata['image_path'] == image_path
+        assert 'thumb_path' not in stored_metadata
+
 
 # ============================================================================
 # Search Tests
