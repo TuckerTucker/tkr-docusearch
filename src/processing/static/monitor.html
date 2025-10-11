@@ -276,7 +276,10 @@
             <div class="panel full-width">
                 <div class="panel-header">
                     <div class="panel-title">Real-time Logs</div>
-                    <button onclick="clearLogs()" style="padding: 6px 12px; background: #f44336; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Clear</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="copyLogs()" style="padding: 6px 12px; background: #2196f3; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Copy Logs</button>
+                        <button onclick="clearLogs()" style="padding: 6px 12px; background: #f44336; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Clear</button>
+                    </div>
                 </div>
                 <div class="log-container" id="logContainer"></div>
             </div>
@@ -414,6 +417,33 @@
         // Clear logs
         function clearLogs() {
             document.getElementById('logContainer').innerHTML = '';
+        }
+
+        // Copy logs to clipboard
+        function copyLogs() {
+            const container = document.getElementById('logContainer');
+            const logEntries = container.querySelectorAll('.log-entry');
+
+            if (logEntries.length === 0) {
+                alert('No logs to copy');
+                return;
+            }
+
+            // Format logs as plain text
+            const logsText = Array.from(logEntries).map(entry => {
+                const time = entry.querySelector('.log-time')?.textContent || '';
+                const level = entry.querySelector('.log-level')?.textContent || '';
+                const message = entry.querySelector('.log-message')?.textContent || '';
+                return `${time} ${level} ${message}`;
+            }).join('\n');
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(logsText).then(() => {
+                alert('Logs copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy logs:', err);
+                alert('Failed to copy logs to clipboard');
+            });
         }
 
         // Update connection status

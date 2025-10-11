@@ -373,8 +373,9 @@ class DocumentProcessor:
             filtered_keys = []
             safe_doc_metadata = {}
             for k, v in doc_metadata.items():
-                # Always exclude these known large fields
-                if k in ['full_markdown', 'structure', 'full_markdown_compressed']:
+                # Always exclude these known large/problematic fields
+                # markdown_error can contain large error messages even after truncation
+                if k in ['full_markdown', 'structure', 'full_markdown_compressed', 'markdown_error']:
                     filtered_keys.append(f"{k} (excluded field)")
                     continue
                 # Skip very large string values
