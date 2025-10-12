@@ -5,11 +5,11 @@ meta:
   fmt: 3
   type: multimodal-document-search-system
   desc: "Production-ready local document search with real ColPali embeddings, ChromaDB storage, two-stage semantic search, and hybrid Metal GPU/Docker architecture"
-  ver: "0.9.0"
+  ver: "0.9.1"
   author: "Tucker github.com/tuckertucker"
-  ts: "2025-10-07"
-  status: production-ready-with-gpu-acceleration
-  phase: "Management Enhancement - Unified Scripts & GPU Support"
+  ts: "2025-10-12"
+  status: production-ready-with-comprehensive-deletion
+  phase: "Cleanup Enhancement - Comprehensive Document Deletion"
   entry: "./scripts/start-all.sh"
   stack: &tech-stack "Python 3.13 + Real ColPali (ColNomic 7B) + ChromaDB + PyTorch MPS + Metal GPU + Hybrid Architecture + Unified Management Scripts"
   cmds: ["./scripts/start-all.sh", "./scripts/stop-all.sh", "./scripts/status.sh", "./scripts/run-worker-native.sh setup"]
@@ -26,6 +26,9 @@ meta:
     - "Two-stage search engine validated"
     - "Performance exceeds targets (239ms avg search)"
     - "100% search accuracy (all docs rank 1)"
+    - "5-stage comprehensive deletion cleanup"
+    - "Multimodal document support (PDF, DOCX, PPTX, MP3, WAV)"
+    - "Complete filesystem artifact cleanup"
 
 # Dependencies - Real production stack (Wave 3+4)
 deps: &deps
@@ -93,24 +96,34 @@ struct:
       features: ["Real ColPali integration", "MPS acceleration", "Late interaction scoring", "128-dim embeddings"]
 
     storage:
-      _: {n: 13, status: "wave2-complete"}
+      _: {n: 16, status: "wave2-complete-with-markdown-storage"}
       files:
         - __init__.py
         - chroma_client.py
         - collection_manager.py
         - compression.py
+        - markdown_utils.py
+        - metadata_schema.py
         - test_storage.py
         - test_real_chromadb.py
+        - test_compression.py
+        - test_markdown_storage.py
         - requirements.txt
         - README.md
         - QUICK_REFERENCE.md
         - ARCHITECTURE.md
         - CONTRACT_VALIDATION.md
         - IMPLEMENTATION_SUMMARY.md
-      features: ["Real ChromaDB client", "Multi-vector storage", "Gzip compression", "Metadata validation"]
+      features:
+        - "Real ChromaDB client"
+        - "Multi-vector storage"
+        - "Gzip compression"
+        - "Metadata validation"
+        - "Markdown file storage and cleanup"
+        - "Document deletion with cleanup utilities"
 
     processing:
-      _: {n: 12, status: "wave3-complete-with-webhook"}
+      _: {n: 31, status: "wave3-complete-with-comprehensive-deletion"}
       files:
         - __init__.py
         - processor.py
@@ -118,12 +131,42 @@ struct:
         - visual_processor.py
         - text_processor.py
         - worker_webhook.py
+        - image_utils.py
+        - cover_art_utils.py
+        - audio_metadata.py
+        - slide_renderer_client.py
+        - status_manager.py
+        - status_api.py
+        - status_models.py
+        - websocket_broadcaster.py
+        - documents_api.py
+        - monitoring_utils.py
+        - structure_extractor.py
+        - smart_chunker.py
+        - types.py
         - mocks.py
         - test_processing.py
         - test_wave3_integration.py
+        - test_wave3_enhanced.py
+        - test_wave2_integration.py
+        - test_multiformat.py
+        - test_status_api.py
+        - test_status_manager.py
+        - test_documents_api.py
         - validate_mocks.py
+        - worker.py
         - WAVE2_SUMMARY.md
-      features: ["Document processing pipeline", "Real embedding integration", "Real storage integration", "Webhook integration"]
+        - AUDIO_METADATA_SCHEMA.md
+      features:
+        - "Document processing pipeline (PDF, DOCX, PPTX, MP3, WAV)"
+        - "Real embedding integration"
+        - "Real storage integration"
+        - "Webhook integration"
+        - "Comprehensive 5-stage deletion cleanup"
+        - "Audio metadata extraction with ID3 support"
+        - "Visual slide rendering with LibreOffice"
+        - "Real-time WebSocket status broadcasting"
+        - "Document REST API with page images"
 
     search:
       _: {n: 10, status: "wave3-complete"}
@@ -208,6 +251,10 @@ struct:
     models: {desc: "ColNomic 7B model cache"}
     logs: {desc: "Application logs"}
     uploads: {desc: "File upload directory (Copyparty)"}
+    page_images: {desc: "Rendered page images for documents"}
+    images: {desc: "Cover art for audio files"}
+    markdown: {desc: "Extracted markdown files"}
+    temp: {desc: "Temporary processing directories (PPTX rendering)"}
 
   logs:
     _: {status: "active"}
@@ -243,6 +290,8 @@ arch:
     - "Late interaction scoring with MaxSim algorithm"
     - "Hybrid processing: visual (images) + text (chunks)"
     - "Webhook-driven processing pipeline"
+    - "5-stage comprehensive deletion cleanup"
+    - "Multimodal document support (PDF, DOCX, PPTX, MP3, WAV)"
     - "Interface-first development with integration contracts"
     - "Progressive validation with wave gates"
 
@@ -327,6 +376,26 @@ arch:
       method: "POST"
       payload: {event: "upload", path: "string", filename: "string"}
       processing: "Async document processing pipeline"
+
+    deletion_pipeline:
+      description: "Comprehensive 5-stage document cleanup"
+      endpoint: "DELETE /documents/delete"
+      method: "POST"
+      payload: {filename: "string"}
+      stages:
+        - "Stage 1: ChromaDB embeddings (CRITICAL)"
+        - "Stage 2: Page images and thumbnails (HIGH)"
+        - "Stage 3: Cover art for audio files (MEDIUM)"
+        - "Stage 4: Markdown extraction files (MEDIUM)"
+        - "Stage 5: Temporary processing directories (LOW)"
+      error_handling: "Non-blocking - continues on non-critical failures"
+      response_fields:
+        - "visual_deleted: count of visual embeddings removed"
+        - "text_deleted: count of text embeddings removed"
+        - "page_images_deleted: count of page image files removed"
+        - "cover_art_deleted: count of cover art files removed"
+        - "markdown_deleted: boolean indicating markdown removal"
+        - "temp_dirs_cleaned: count of temp directories removed"
 
 # Management scripts and operational patterns
 ops:
@@ -504,6 +573,8 @@ performance:
     mps_acceleration: "ACTIVE ✓"
     webhook_integration: "WORKING ✓"
     unified_management: "COMPLETE ✓"
+    comprehensive_deletion: "COMPLETE ✓"
+    multimodal_support: "COMPLETE ✓"
 
 # Wave execution status
 waves:
@@ -607,6 +678,50 @@ contracts:
       - "Real storage integration"
       - "Wave 3 integration tests passing"
       - "Webhook processing pipeline"
+      - "Comprehensive deletion interface"
+
+  deletion_interface:
+    provider: "processing-agent + storage-agent"
+    consumers: ["worker-webhook", "documents-api"]
+    status: "COMPLETE ✓"
+    description: "5-stage comprehensive cleanup process"
+    stages:
+      stage_1:
+        name: "ChromaDB Cleanup"
+        module: "storage.chroma_client"
+        method: "delete_document(doc_id)"
+        scope: "Visual and text embeddings"
+        criticality: "CRITICAL - re-raises exceptions"
+      stage_2:
+        name: "Page Images Cleanup"
+        module: "processing.image_utils"
+        method: "delete_document_images(doc_id)"
+        scope: "Page images and thumbnails (PDF, DOCX, PPTX)"
+        criticality: "HIGH - logs errors, continues cleanup"
+      stage_3:
+        name: "Cover Art Cleanup"
+        module: "processing.cover_art_utils"
+        method: "delete_document_cover_art(doc_id)"
+        scope: "Cover art images (MP3, WAV)"
+        criticality: "MEDIUM - logs errors, continues cleanup"
+      stage_4:
+        name: "Markdown Cleanup"
+        module: "storage.markdown_utils"
+        method: "delete_document_markdown(doc_id)"
+        scope: "Extracted markdown files"
+        criticality: "MEDIUM - logs errors, continues cleanup"
+      stage_5:
+        name: "Temp Directories Cleanup"
+        module: "processing.image_utils"
+        method: "cleanup_temp_directories(doc_id)"
+        scope: "PPTX processing temporary directories"
+        criticality: "LOW - logs errors, continues cleanup"
+    features:
+      - "Consistent deletion across all document types"
+      - "Non-blocking cleanup (continues on errors)"
+      - "Comprehensive logging and error reporting"
+      - "Filesystem artifact cleanup"
+      - "Orphaned file detection and removal"
 
   search_interface:
     provider: "search-agent (WAVE 3 COMPLETE)"
@@ -688,9 +803,22 @@ semantic:
   ~gpu_acceleration_10_20x: "10-20x faster processing with Metal GPU vs CPU"
   ~webhook_integration: "Copyparty webhook triggers async document processing"
   ~comprehensive_documentation: "Complete guides for quick start, scripts, GPU, and native worker"
+  ~comprehensive_deletion: "5-stage cleanup process covering all filesystem artifacts"
+  ~multimodal_document_support: "PDF, DOCX, PPTX, MP3, WAV with specialized metadata extraction"
+  ~filesystem_cleanup: "Page images, cover art, markdown, and temp directories all cleaned up"
 
 # Architecture evolution notes
 notes:
+  # Cleanup Enhancement (2025-10-12)
+  - "COMPREHENSIVE DELETION: 5-stage cleanup process implemented"
+  - "NEW MODULES: cover_art_utils.py, markdown_utils.py for specialized cleanup"
+  - "FILESYSTEM ARTIFACTS: All document artifacts now cleanly removed"
+  - "DELETION STAGES: ChromaDB → Page Images → Cover Art → Markdown → Temp Dirs"
+  - "ERROR RESILIENCE: Non-blocking cleanup continues on non-critical failures"
+  - "MULTIMODAL CONSISTENCY: Same deletion flow for PDF, DOCX, PPTX, MP3, WAV"
+  - "ORPHAN DETECTION: Cleanup utilities detect and remove orphaned files"
+  - "DETAILED REPORTING: Deletion response includes counts for all artifact types"
+
   # Wave 5 Management Enhancement (2025-10-07)
   - "WAVE 5 COMPLETE: Unified management scripts with GPU/CPU modes"
   - "HYBRID ARCHITECTURE: Native Metal GPU worker + Docker services"
@@ -736,6 +864,9 @@ notes:
   - "Hybrid architecture for optimal performance (GPU + Docker)"
   - "Unified management scripts for ease of use"
   - "Comprehensive documentation suite"
+  - "5-stage comprehensive deletion cleanup"
+  - "Multimodal document support (PDF, DOCX, PPTX, MP3, WAV)"
+  - "Complete filesystem artifact cleanup"
 
   # Next Steps
   - "Scale testing with 100+ documents"
