@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DocumentCard Component - Demo</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     .demo-section {
       padding: var(--spacing-2xl) 0;
@@ -225,6 +226,9 @@ renderDocumentCards('#container', [
     // Render cards
     renderDocumentCards('#document-cards', documents);
     renderDocumentCards('#audio-cards', audioFiles);
+
+    // Initialize Lucide icons
+    lucide.createIcons();
   </script>
 </body>
 </html>

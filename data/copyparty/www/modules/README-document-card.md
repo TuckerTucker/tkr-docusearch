@@ -8,7 +8,7 @@ A reusable, accessible document information card component for displaying docume
 ✓ **Auto-detection**: Automatically selects variant based on file extension
 ✓ **Responsive**: Adapts to mobile screens
 ✓ **Accessible**: ARIA labels, keyboard navigation, focus management
-✓ **Icon support**: SVG icons for documents, audio, and video files
+✓ **Lucide icons**: Beautiful, consistent icons for documents, audio, and video files
 ✓ **Graceful degradation**: Placeholder backgrounds for missing thumbnails
 ✓ **Hover effects**: Smooth transitions and interactive states
 
@@ -17,6 +17,13 @@ A reusable, accessible document information card component for displaying docume
 - `document-card.js` - Component module
 - `styles.css` - Component styles (lines 1042-1197)
 - `document-card-demo.html` - Demo page
+
+## Dependencies
+
+- **Lucide Icons** - Icon library for file type badges
+  ```html
+  <script src="https://unpkg.com/lucide@latest"></script>
+  ```
 
 ## Usage
 
@@ -94,12 +101,15 @@ Renders multiple DocumentCards to a container.
 ### Documents (Tall Variant)
 - PDF, DOCX, DOC, PPTX, PPT
 - XLSX, XLS, TXT, MD, HTML
+- Icon: Lucide `file-text`
 
 ### Audio (Square Variant)
 - MP3, WAV, FLAC, AAC, OGG, M4A
+- Icon: Lucide `volume-2`
 
 ### Video (Square Variant)
 - MP4, AVI, MOV, WMV, WebM
+- Icon: Lucide `video`
 
 ## HTML Structure
 
