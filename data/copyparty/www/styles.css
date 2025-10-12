@@ -1040,6 +1040,192 @@ body {
 }
 
 /* ============================================================================
+   Document Card Component
+   ============================================================================ */
+
+.document-card {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  width: 385px;
+  height: 285px;
+  background-color: #F5F5F5;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.document-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.document-card:focus-within {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* Left column - thumbnail and badge */
+.document-card__left {
+  position: relative;
+  width: 200px;
+  height: 285px;
+  background-color: #E9E9E9;
+}
+
+/* Thumbnail image */
+.document-card__thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #E9E9E9;
+}
+
+/* Document variant - tall thumbnail */
+.document-card--document .document-card__thumbnail {
+  height: 262px;
+}
+
+/* Audio variant - square thumbnail */
+.document-card--audio .document-card__thumbnail {
+  height: 200px;
+  width: 200px;
+}
+
+/* Info badge overlay */
+.document-card__badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200px;
+  height: 72px;
+  background-color: rgba(82, 82, 82, 0.85);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0;
+  gap: var(--spacing-md);
+}
+
+.document-card__badge-filetype {
+  width: 45px;
+  margin-left: 15px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.document-card__badge-icon-container {
+  position: relative;
+  width: 45px;
+  height: 50px;
+  background-color: #525252;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+.document-card__badge-date {
+  font-size: var(--font-size-xs);
+  text-align: left;
+  line-height: 1.3;
+  padding-right: var(--spacing-md);
+  word-wrap: break-word;
+  flex: 1;
+}
+
+.document-card__badge-icon {
+  width: 24px;
+  height: 24px;
+  fill: #F5F5F5;
+  stroke: #F5F5F5;
+  stroke-width: 1.5px;
+}
+
+.document-card__badge-extension {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background-color: #EFEFEF;
+  color: #333333;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 4px 0;
+  width: 45px;
+  height: 18px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Right column - title and button */
+.document-card__right {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background-color: #E9E9E9;
+}
+
+.document-card__title {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: #333333;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.document-card__button {
+  width: 100%;
+  max-width: 158px;
+  height: 36px;
+  background-color: #171717;
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-base), transform var(--transition-fast);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-card__button:hover {
+  background-color: #2A2A2A;
+  transform: translateY(-1px);
+}
+
+.document-card__button:active {
+  transform: translateY(0);
+}
+
+.document-card__button:focus {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* Responsive adjustments for DocumentCard */
+@media (max-width: 767px) {
+  .document-card {
+    width: 100%;
+    max-width: 385px;
+  }
+}
+
+/* ============================================================================
    Responsive Design
    ============================================================================ */
 

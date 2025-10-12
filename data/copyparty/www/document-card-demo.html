@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocumentCard Component - Demo</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .demo-section {
+      padding: var(--spacing-2xl) 0;
+    }
+
+    .demo-title {
+      font-size: var(--font-size-2xl);
+      font-weight: 600;
+      margin-bottom: var(--spacing-lg);
+      color: var(--color-text);
+    }
+
+    .demo-subtitle {
+      font-size: var(--font-size-lg);
+      font-weight: 500;
+      margin: var(--spacing-xl) 0 var(--spacing-md) 0;
+      color: var(--color-text);
+    }
+
+    .demo-description {
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-xl);
+      max-width: 800px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(385px, 1fr));
+      gap: var(--spacing-xl);
+      margin-bottom: var(--spacing-2xl);
+    }
+
+    .code-example {
+      background-color: var(--color-bg-tertiary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-lg);
+      margin: var(--spacing-lg) 0;
+      overflow-x: auto;
+    }
+
+    .code-example pre {
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+      margin: 0;
+      color: var(--color-text);
+    }
+
+    @media (max-width: 767px) {
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <h1 class="logo">DocuSearch</h1>
+        <nav class="nav" role="navigation" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="search.html" class="nav-link">Search</a>
+          <a href="status_dashboard.html" class="nav-link">Status</a>
+          <a href="document-card-demo.html" class="nav-link active" aria-current="page">Card Demo</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main container" role="main">
+    <div class="demo-section">
+      <h1 class="demo-title">DocumentCard Component</h1>
+      <p class="demo-description">
+        A responsive card component for displaying document information with thumbnails,
+        metadata badges, and action buttons. Supports both document (tall) and audio (square) layouts.
+      </p>
+
+      <!-- Document Variant Examples -->
+      <section>
+        <h2 class="demo-subtitle">Document Variants (Tall Thumbnail)</h2>
+        <p class="demo-description">
+          For documents like PDFs, DOCX, PPTX - uses a tall rectangular thumbnail (200×262px).
+        </p>
+        <div id="document-cards" class="card-grid"></div>
+      </section>
+
+      <!-- Audio Variant Examples -->
+      <section>
+        <h2 class="demo-subtitle">Audio Variants (Square Thumbnail)</h2>
+        <p class="demo-description">
+          For audio files like MP3, WAV, FLAC - uses a square thumbnail (200×200px) perfect for album art.
+        </p>
+        <div id="audio-cards" class="card-grid"></div>
+      </section>
+
+      <!-- Usage Example -->
+      <section>
+        <h2 class="demo-subtitle">Usage</h2>
+        <p class="demo-description">
+          Import the module and create cards programmatically:
+        </p>
+
+        <div class="code-example">
+          <pre><code>import { createDocumentCard, renderDocumentCards } from './modules/document-card.js';
+
+// Create a single card
+const card = createDocumentCard({
+  filename: 'quarterly-report-q3-2023.pdf',
+  thumbnailUrl: '/uploads/.page_images/report.pdf/page_1.png',
+  dateAdded: new Date('2023-09-26'),
+  detailsUrl: '/document/123'
+});
+
+document.querySelector('#container').appendChild(card);
+
+// Or create multiple cards at once
+renderDocumentCards('#container', [
+  {
+    filename: 'presentation.pptx',
+    thumbnailUrl: '/path/to/thumbnail.png',
+    dateAdded: 'September 26',
+    detailsUrl: '/document/456'
+  },
+  // ... more documents
+]);</code></pre>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section>
+        <h2 class="demo-subtitle">Features</h2>
+        <ul class="demo-description" style="list-style: disc; margin-left: var(--spacing-xl);">
+          <li>Responsive design - adapts to mobile screens</li>
+          <li>Accessible - proper ARIA labels and keyboard navigation</li>
+          <li>Auto-variant detection from file extension</li>
+          <li>Hover effects and transitions</li>
+          <li>Loading states for images</li>
+          <li>SVG icons for different file types</li>
+          <li>Graceful fallback for missing thumbnails</li>
+        </ul>
+      </section>
+
+      <!-- Component API -->
+      <section>
+        <h2 class="demo-subtitle">Component Options</h2>
+        <div class="code-example">
+          <pre><code>createDocumentCard({
+  filename: string,          // Full filename with extension (required)
+  thumbnailUrl: string,      // URL to thumbnail image (required)
+  dateAdded: string|Date,    // Processing date (required)
+  detailsUrl: string,        // Link for details button (required)
+  variant: string,           // 'document' or 'audio' (optional, auto-detected)
+  placeholderColor: string   // Background color for missing images (optional)
+})</code></pre>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 DocuSearch - DocumentCard Component Demo</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { renderDocumentCards } from './modules/document-card.js';
+
+    // Demo document data
+    const documents = [
+      {
+        filename: 'quarterly-report-q3-2023.pdf',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: new Date('2023-09-26'),
+        detailsUrl: '#pdf-example'
+      },
+      {
+        filename: 'sales-presentation-deck.pptx',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: 'October 12',
+        detailsUrl: '#pptx-example'
+      },
+      {
+        filename: 'annual-budget-spreadsheet.xlsx',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: 'September 15',
+        detailsUrl: '#xlsx-example'
+      }
+    ];
+
+    // Demo audio data
+    const audioFiles = [
+      {
+        filename: 'podcast-episode-26.mp3',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: new Date('2023-10-01'),
+        detailsUrl: '#mp3-example'
+      },
+      {
+        filename: 'meeting-recording-q3-review.wav',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: 'September 26',
+        detailsUrl: '#wav-example'
+      },
+      {
+        filename: 'conference-keynote-2023.m4a',
+        thumbnailUrl: '', // Will show placeholder
+        dateAdded: 'October 5',
+        detailsUrl: '#m4a-example'
+      }
+    ];
+
+    // Render cards
+    renderDocumentCards('#document-cards', documents);
+    renderDocumentCards('#audio-cards', audioFiles);
+  </script>
+</body>
+</html>
