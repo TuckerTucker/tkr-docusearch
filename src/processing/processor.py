@@ -299,6 +299,7 @@ class DocumentProcessor:
             self._update_status(status, status_callback)
 
             confirmation = self._store_embeddings(
+                doc_id=doc_id,
                 visual_results=visual_results,
                 text_results=text_results,
                 text_chunks=parsed_doc.text_chunks,
@@ -375,6 +376,7 @@ class DocumentProcessor:
 
     def _store_embeddings(
         self,
+        doc_id: str,
         visual_results,
         text_results,
         text_chunks,
@@ -386,6 +388,7 @@ class DocumentProcessor:
         """Store embeddings in ChromaDB with enhanced metadata.
 
         Args:
+            doc_id: Document ID (for album art storage)
             visual_results: List of VisualEmbeddingResult
             text_results: List of TextEmbeddingResult
             text_chunks: List of TextChunk (with context)
@@ -411,6 +414,29 @@ class DocumentProcessor:
                 # Structure metadata is already in doc_metadata from parser
                 logger.debug("Enhanced mode: Document structure available")
 
+            # Save album art if present (audio files)
+            album_art_saved_path = None
+            if "_album_art_data" in doc_metadata and "_album_art_mime" in doc_metadata:
+                try:
+                    from src.processing.audio_metadata import save_album_art, AudioMetadata
+
+                    # Create temporary AudioMetadata to use save function
+                    temp_metadata = AudioMetadata(
+                        has_album_art=True,
+                        album_art_data=doc_metadata["_album_art_data"],
+                        album_art_mime=doc_metadata["_album_art_mime"],
+                        album_art_description=doc_metadata.get("album_art_description")
+                    )
+
+                    album_art_saved_path = save_album_art(doc_id, temp_metadata)
+
+                    if album_art_saved_path:
+                        logger.info(f"Saved album art to: {album_art_saved_path}")
+                        # Add path to metadata
+                        doc_metadata["album_art_path"] = album_art_saved_path
+                except Exception as e:
+                    logger.error(f"Failed to save album art for {doc_id}: {e}")
+
             # Filter doc_metadata to remove large/problematic fields before spreading
             # ChromaDB metadata values must be simple types and not too large
             filtered_keys = []
@@ -418,12 +444,13 @@ class DocumentProcessor:
             for k, v in doc_metadata.items():
                 # Always exclude these known large/problematic fields
                 # markdown_error can contain large error messages even after truncation
-                if k in ['full_markdown', 'structure', 'full_markdown_compressed', 'markdown_error']:
+                # _album_art_data is temporary and should not be stored in ChromaDB (binary data)
+                if k in ['full_markdown', 'structure', 'full_markdown_compressed', 'markdown_error', '_album_art_data', '_album_art_mime']:
                     filtered_keys.append(f"{k} (excluded field)")
                     continue
-                # Skip very large string values
-                if isinstance(v, str) and len(v) > 1000:
-                    filtered_keys.append(f"{k} ({len(v)} chars, too large)")
+                # Skip very large string values or binary data
+                if isinstance(v, (str, bytes)) and len(v) > 1000:
+                    filtered_keys.append(f"{k} ({len(v)} chars/bytes, too large)")
                     continue
                 safe_doc_metadata[k] = v
 

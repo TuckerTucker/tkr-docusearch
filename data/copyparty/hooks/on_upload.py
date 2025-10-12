@@ -18,7 +18,9 @@ from pathlib import Path
 # ============================================================================
 
 # Supported document types for processing
-SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.pptx'}
+# Load from environment variable to support audio, images, etc.
+_formats_str = os.environ.get('SUPPORTED_FORMATS', 'pdf,docx,pptx')
+SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Worker endpoint
 WORKER_HOST = os.environ.get('WORKER_HOST', 'host.docker.internal')

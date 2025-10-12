@@ -22,6 +22,12 @@ from src.processing.types import Page, TextChunk, ParsedDocument
 # Import image utilities for page image persistence (Wave 1 integration)
 from src.processing.image_utils import save_page_image, ImageStorageError
 
+# Import audio metadata extraction (ID3 tags, album art)
+from src.processing.audio_metadata import extract_audio_metadata, save_album_art
+
+# Import path utilities for consistent path handling (fixes Whisper/FFmpeg path issues)
+from src.utils.paths import ensure_absolute, log_path_info
+
 logger = logging.getLogger(__name__)
 
 
@@ -469,6 +475,11 @@ class DoclingParser:
             from docling.pipeline.asr_pipeline import AsrPipeline
             from src.config.processing_config import AsrConfig
 
+            # Ensure file path is absolute (fixes Whisper/FFmpeg path issues)
+            # Docling's ASR pipeline requires absolute paths for proper file handling
+            file_path = ensure_absolute(file_path, must_exist=True)
+            log_path_info(file_path, context="Docling parsing")
+
             # Determine file format
             ext = Path(file_path).suffix.lower()
             format_type = get_format_type(file_path)
@@ -507,7 +518,7 @@ class DoclingParser:
                     # Excel uses default options
                     pass  # DocumentConverter auto-handles XLSX
             elif ext in ['.mp3', '.wav']:
-                # Audio formats with ASR transcription
+                # Audio formats with ASR transcription and ID3 metadata extraction
                 try:
                     # Load ASR configuration
                     asr_config = AsrConfig.from_env()
@@ -537,6 +548,17 @@ class DoclingParser:
                     # Continue without ASR (fallback to basic processing)
             # All other formats (MD, HTML, CSV, VTT, etc.) use default handling
 
+            # Extract ID3 metadata from audio files (before Docling conversion)
+            audio_id3_metadata = None
+            if ext in ['.mp3', '.wav']:
+                try:
+                    logger.info(f"Extracting ID3 metadata from {file_path}")
+                    audio_id3_metadata = extract_audio_metadata(file_path)
+                    logger.debug(f"ID3 extraction complete: {audio_id3_metadata.to_chromadb_metadata()}")
+                except Exception as e:
+                    logger.warning(f"Failed to extract ID3 metadata from {file_path}: {e}")
+                    # Continue without ID3 metadata
+
             converter = DocumentConverter(format_options=format_options if format_options else None)
 
             # Get file size for logging
@@ -556,9 +578,38 @@ class DoclingParser:
                     f"({file_size_mb:.2f}MB, format: {ext})"
                 )
 
-            conversion_start = time.time()
-            result = converter.convert(file_path)
-            conversion_duration = time.time() - conversion_start
+            # WORKAROUND: Docling ASR pipeline has a bug where it strips the directory
+            # from audio file paths. Create a temporary symlink at project root.
+            temp_symlink = None
+            if ext in ['.mp3', '.wav']:
+                import os
+                from src.utils.paths import PROJECT_ROOT
+
+                filename = Path(file_path).name
+                temp_symlink = PROJECT_ROOT / filename
+
+                # Only create symlink if it doesn't already exist
+                if not temp_symlink.exists():
+                    try:
+                        os.symlink(file_path, temp_symlink)
+                        logger.debug(f"Created temporary symlink: {temp_symlink} -> {file_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create symlink (continuing anyway): {e}")
+                        temp_symlink = None
+
+            # Use try/finally to ensure symlink cleanup even on exceptions
+            try:
+                conversion_start = time.time()
+                result = converter.convert(file_path)
+                conversion_duration = time.time() - conversion_start
+            finally:
+                # Clean up temporary symlink (guaranteed to run even on exception)
+                if temp_symlink and temp_symlink.exists() and temp_symlink.is_symlink():
+                    try:
+                        temp_symlink.unlink()
+                        logger.debug(f"Cleaned up temporary symlink: {temp_symlink}")
+                    except Exception as e:
+                        logger.warning(f"Failed to remove symlink: {e}")
 
             # Use adapter to convert to Page objects (pass file_path for format detection)
             pages = docling_to_pages(result, file_path)
@@ -603,7 +654,7 @@ class DoclingParser:
 
             # Add audio-specific metadata for MP3/WAV files
             if ext in ['.mp3', '.wav'] and format_type_enum == FormatType.AUDIO:
-                # ASR-specific metadata
+                # ASR-specific metadata (transcription)
                 metadata["transcript_method"] = "whisper"
                 metadata["asr_model_used"] = asr_config.model if 'asr_config' in locals() else "unknown"
                 metadata["asr_language"] = asr_config.language if 'asr_config' in locals() else "unknown"
@@ -614,6 +665,21 @@ class DoclingParser:
                     metadata["audio_duration_seconds"] = doc.audio_duration
                 elif hasattr(doc.origin, 'duration'):
                     metadata["audio_duration_seconds"] = doc.origin.duration
+
+                # Merge ID3 metadata (tags, audio properties) if extracted
+                if audio_id3_metadata:
+                    id3_fields = audio_id3_metadata.to_chromadb_metadata()
+                    metadata.update(id3_fields)
+                    logger.debug(f"Merged {len(id3_fields)} ID3 fields into metadata")
+
+                    # Save album art if present (requires doc_id from processor)
+                    # Note: Album art will be saved during document processing
+                    # when doc_id is available. We store the raw data in the metadata object for now.
+                    if audio_id3_metadata.has_album_art:
+                        # Store album art data temporarily in a special metadata field
+                        # It will be saved to disk by the processor
+                        metadata["_album_art_data"] = audio_id3_metadata.album_art_data
+                        metadata["_album_art_mime"] = audio_id3_metadata.album_art_mime
 
                 # Extract timestamp information if available
                 if hasattr(doc, 'texts') and doc.texts:

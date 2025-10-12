@@ -761,24 +761,51 @@
 
             listView.innerHTML = `
                 <div class="documents-grid">
-                    ${docs.map(doc => `
-                        <div class="document-card" onclick="showDocumentDetail('${doc.doc_id}')">
-                            ${doc.first_page_thumb ?
-                                `<img src="http://${window.location.hostname}:8002${doc.first_page_thumb}" alt="${doc.filename}" class="document-thumbnail" onerror="this.style.display='none'">` :
-                                '<div class="document-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">No preview</div>'
-                            }
-                            <div class="document-info">
-                                <div class="document-title" title="${doc.filename}">${doc.filename}</div>
-                                <div class="document-meta">
-                                    <span>${doc.page_count} pages</span>
-                                    <span>${doc.chunk_count} chunks</span>
+                    ${docs.map(doc => {
+                        // Check if audio file
+                        const isAudio = doc.filename.match(/\.(mp3|wav)$/i);
+
+                        // For audio files, try to use album art as thumbnail
+                        let thumbnailHtml;
+                        if (isAudio) {
+                            // Construct album art URL
+                            const albumArtUrl = `http://${window.location.hostname}:8002/images/${doc.doc_id}/cover.jpg`;
+                            thumbnailHtml = `
+                                <div style="position: relative;">
+                                    <img src="${albumArtUrl}"
+                                         alt="${doc.filename}"
+                                         class="document-thumbnail"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="document-thumbnail"
+                                         style="display: none; align-items: center; justify-content: center; color: #666; font-size: 48px;">
+                                        🎵
+                                    </div>
                                 </div>
-                                <div class="document-meta">
-                                    <span style="font-size: 11px;">${new Date(doc.date_added).toLocaleDateString()}</span>
+                            `;
+                        } else if (doc.first_page_thumb) {
+                            thumbnailHtml = `<img src="http://${window.location.hostname}:8002${doc.first_page_thumb}" alt="${doc.filename}" class="document-thumbnail" onerror="this.style.display='none'">`;
+                        } else {
+                            thumbnailHtml = '<div class="document-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">No preview</div>';
+                        }
+
+                        return `
+                            <div class="document-card" onclick="showDocumentDetail('${doc.doc_id}')">
+                                ${thumbnailHtml}
+                                <div class="document-info">
+                                    <div class="document-title" title="${doc.filename}">
+                                        ${isAudio ? '🎵 ' : ''}${doc.filename}
+                                    </div>
+                                    <div class="document-meta">
+                                        <span>${isAudio ? doc.chunk_count + ' chunks' : doc.page_count + ' pages'}</span>
+                                        <span>${doc.chunk_count} chunks</span>
+                                    </div>
+                                    <div class="document-meta">
+                                        <span style="font-size: 11px;">${new Date(doc.date_added).toLocaleDateString()}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
         }
@@ -798,33 +825,17 @@
                 const response = await fetch(`http://${window.location.hostname}:8002/documents/${docId}`);
                 const doc = await response.json();
 
-                detailView.innerHTML = `
-                    <div class="document-detail-view">
-                        <div class="detail-header">
-                            <div>
-                                <h2 style="margin-bottom: 8px;">${doc.filename}</h2>
-                                <div style="color: #888; font-size: 14px;">
-                                    ${doc.metadata.page_count} pages • ${doc.metadata.chunk_count} chunks • Added ${new Date(doc.date_added).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <button class="back-button" onclick="showDocumentList()">← Back to Documents</button>
-                        </div>
+                // Check if this is an audio file
+                const meta = doc.metadata.raw_metadata || {};
+                const isAudio = meta.format_type === 'audio' || doc.filename.match(/\.(mp3|wav)$/i);
 
-                        <h3 style="margin-bottom: 15px; color: #fff;">Page Previews</h3>
-                        <div class="pages-grid">
-                            ${doc.pages.map(page => `
-                                <div class="page-card">
-                                    ${page.thumb_path ?
-                                        `<img src="http://${window.location.hostname}:8002${page.thumb_path}" alt="Page ${page.page_number}" class="page-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                         <div class="page-thumbnail" style="display: none; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>` :
-                                        `<div class="page-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>`
-                                    }
-                                    <div class="page-number">Page ${page.page_number}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                if (isAudio) {
+                    // Render audio document view
+                    detailView.innerHTML = renderAudioDocument(doc);
+                } else {
+                    // Render standard document view
+                    detailView.innerHTML = renderStandardDocument(doc);
+                }
             } catch (error) {
                 console.error('Failed to load document details:', error);
                 detailView.innerHTML = `
@@ -837,6 +848,170 @@
                     </div>
                 `;
             }
+        }
+
+        // Render standard document view (PDF, DOCX, PPTX, etc.)
+        function renderStandardDocument(doc) {
+            return `
+                <div class="document-detail-view">
+                    <div class="detail-header">
+                        <div>
+                            <h2 style="margin-bottom: 8px;">${doc.filename}</h2>
+                            <div style="color: #888; font-size: 14px;">
+                                ${doc.metadata.page_count} pages • ${doc.metadata.chunk_count} chunks • Added ${new Date(doc.date_added).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <button class="back-button" onclick="showDocumentList()">← Back to Documents</button>
+                    </div>
+
+                    <h3 style="margin-bottom: 15px; color: #fff;">Page Previews</h3>
+                    <div class="pages-grid">
+                        ${doc.pages.map(page => `
+                            <div class="page-card">
+                                ${page.thumb_path ?
+                                    `<img src="http://${window.location.hostname}:8002${page.thumb_path}" alt="Page ${page.page_number}" class="page-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                     <div class="page-thumbnail" style="display: none; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>` :
+                                    `<div class="page-thumbnail" style="display: flex; align-items: center; justify-content: center; color: #666;">Page ${page.page_number}</div>`
+                                }
+                                <div class="page-number">Page ${page.page_number}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render audio document view (MP3, WAV, etc.)
+        function renderAudioDocument(doc) {
+            const meta = doc.metadata.raw_metadata || {};
+
+            // Format duration
+            function formatDuration(seconds) {
+                if (!seconds) return 'N/A';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            // Get album art URL
+            const albumArtPath = meta.album_art_path;
+            let albumArtUrl = null;
+            if (albumArtPath && albumArtPath.includes('/')) {
+                const parts = albumArtPath.split('/');
+                if (parts.length >= 2) {
+                    const filename = parts[parts.length - 1];
+                    albumArtUrl = `http://${window.location.hostname}:8002/images/${doc.doc_id}/${filename}`;
+                }
+            }
+
+            return `
+                <div class="document-detail-view">
+                    <div class="detail-header">
+                        <div>
+                            <h2 style="margin-bottom: 8px;">🎵 ${doc.filename}</h2>
+                            <div style="color: #888; font-size: 14px;">
+                                Audio File • ${doc.metadata.chunk_count} text chunks • Added ${new Date(doc.date_added).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <button class="back-button" onclick="showDocumentList()">← Back to Documents</button>
+                    </div>
+
+                    <!-- Audio Info Section -->
+                    <div style="display: grid; grid-template-columns: ${albumArtUrl ? '300px 1fr' : '1fr'}; gap: 30px; margin-top: 20px;">
+                        ${albumArtUrl ? `
+                        <!-- Album Art -->
+                        <div>
+                            <img src="${albumArtUrl}"
+                                 alt="Album Art"
+                                 style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);"
+                                 onerror="this.parentElement.style.display='none';">
+                        </div>
+                        ` : ''}
+
+                        <!-- Audio Metadata -->
+                        <div>
+                            <h3 style="margin-bottom: 15px; color: #fff; border-bottom: 2px solid #404040; padding-bottom: 10px;">Audio Information</h3>
+
+                            <!-- ID3 Tags (if present) -->
+                            ${meta.audio_title || meta.audio_artist || meta.audio_album ? `
+                            <div style="margin-bottom: 20px;">
+                                ${meta.audio_title ? `<div style="font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 8px;">${meta.audio_title}</div>` : ''}
+                                ${meta.audio_artist ? `<div style="font-size: 16px; color: #4caf50; margin-bottom: 4px;">${meta.audio_artist}</div>` : ''}
+                                ${meta.audio_album ? `<div style="font-size: 14px; color: #888; margin-bottom: 4px;">Album: ${meta.audio_album}</div>` : ''}
+                                ${meta.audio_year ? `<div style="font-size: 14px; color: #888; margin-bottom: 4px;">Year: ${meta.audio_year}</div>` : ''}
+                                ${meta.audio_genre ? `<div style="font-size: 14px; color: #888; margin-bottom: 4px;">Genre: ${meta.audio_genre}</div>` : ''}
+                            </div>
+                            ` : ''}
+
+                            <!-- Technical Details -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                                ${meta.audio_duration_seconds ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Duration</div>
+                                    <div style="font-size: 18px; color: #fff; font-weight: 600;">${formatDuration(meta.audio_duration_seconds)}</div>
+                                    <div style="font-size: 11px; color: #666;">${meta.audio_duration_seconds.toFixed(1)}s</div>
+                                </div>
+                                ` : ''}
+
+                                ${meta.audio_bitrate_kbps ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Bitrate</div>
+                                    <div style="font-size: 18px; color: #fff; font-weight: 600;">${meta.audio_bitrate_kbps} kbps</div>
+                                </div>
+                                ` : ''}
+
+                                ${meta.audio_sample_rate_hz ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Sample Rate</div>
+                                    <div style="font-size: 18px; color: #fff; font-weight: 600;">${(meta.audio_sample_rate_hz / 1000).toFixed(1)} kHz</div>
+                                </div>
+                                ` : ''}
+
+                                ${meta.audio_channels ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Channels</div>
+                                    <div style="font-size: 18px; color: #fff; font-weight: 600;">${meta.audio_channels === 2 ? 'Stereo' : meta.audio_channels === 1 ? 'Mono' : meta.audio_channels}</div>
+                                </div>
+                                ` : ''}
+
+                                ${meta.audio_format ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Format</div>
+                                    <div style="font-size: 18px; color: #fff; font-weight: 600; text-transform: uppercase;">${meta.audio_format}</div>
+                                </div>
+                                ` : ''}
+
+                                ${meta.audio_encoder ? `
+                                <div style="background: #1a1a1a; padding: 15px; border-radius: 6px;">
+                                    <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px;">Encoder</div>
+                                    <div style="font-size: 14px; color: #fff;">${meta.audio_encoder}</div>
+                                </div>
+                                ` : ''}
+                            </div>
+
+                            <!-- Transcription Info -->
+                            ${meta.asr_model_used || meta.asr_language ? `
+                            <div style="margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 6px; border-left: 4px solid #2196f3;">
+                                <div style="font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 8px;">Transcription</div>
+                                ${meta.asr_model_used ? `<div style="font-size: 13px; color: #e0e0e0; margin-bottom: 4px;">Model: Whisper ${meta.asr_model_used}</div>` : ''}
+                                ${meta.asr_language ? `<div style="font-size: 13px; color: #e0e0e0;">Language: ${meta.asr_language}</div>` : ''}
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Transcript Preview -->
+                    ${doc.chunks && doc.chunks.length > 0 ? `
+                    <div style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 15px; color: #fff; border-bottom: 2px solid #404040; padding-bottom: 10px;">Transcript Preview</h3>
+                        <div style="background: #1a1a1a; padding: 20px; border-radius: 6px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; color: #e0e0e0;">
+                            ${doc.chunks.slice(0, 3).map(chunk => chunk.text_content).join('\n\n')}
+                            ${doc.chunks.length > 3 ? `\n\n<span style="color: #888; font-style: italic;">... and ${doc.chunks.length - 3} more chunks</span>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
         }
 
         // Return to document list
