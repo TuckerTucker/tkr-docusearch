@@ -1,3 +1,0 @@
-# TEXT Document
-
-Test content.

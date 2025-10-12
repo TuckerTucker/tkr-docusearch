@@ -1,3 +1,0 @@
-# VISUAL Document
-
-Test content.
