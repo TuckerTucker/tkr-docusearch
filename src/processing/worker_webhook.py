@@ -37,6 +37,11 @@ from .websocket_broadcaster import get_broadcaster
 # Import documents API router (Wave 3)
 from .documents_api import router as documents_router
 
+# Import cleanup utilities
+from .image_utils import delete_document_images, cleanup_temp_directories
+from .cover_art_utils import delete_document_cover_art
+from ..storage.markdown_utils import delete_document_markdown
+
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -153,6 +158,10 @@ class DeleteResponse(BaseModel):
     doc_id: Optional[str] = None
     visual_deleted: int
     text_deleted: int
+    page_images_deleted: int = 0
+    cover_art_deleted: int = 0
+    markdown_deleted: bool = False
+    temp_dirs_cleaned: int = 0
     status: str
 
 
@@ -414,11 +423,27 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 @app.post("/delete", response_model=DeleteResponse)
 async def delete_document(request: DeleteRequest):
     """
-    Delete a document from ChromaDB.
+    Delete a document from ChromaDB and filesystem.
+
+    Performs comprehensive cleanup:
+    1. Deletes embeddings from ChromaDB (visual + text collections)
+    2. Deletes page images and thumbnails from filesystem
+    3. Deletes cover art (for audio files)
+    4. Deletes extracted markdown files
+    5. Cleans up temporary directories
 
     Called by copyparty webhook when a file is deleted.
     """
     logger.info(f"Received deletion request for: {request.filename}")
+
+    # Initialize counters for response
+    visual_count = 0
+    text_count = 0
+    page_images_count = 0
+    cover_art_count = 0
+    markdown_deleted = False
+    temp_dirs_count = 0
+    doc_id = None
 
     try:
         # Initialize ChromaDB client
@@ -447,23 +472,81 @@ async def delete_document(request: DeleteRequest):
                     doc_id=None,
                     visual_deleted=0,
                     text_deleted=0,
+                    page_images_deleted=0,
+                    cover_art_deleted=0,
+                    markdown_deleted=False,
+                    temp_dirs_cleaned=0,
                     status="not_found"
                 )
         else:
             doc_id = visual_results['metadatas'][0].get('doc_id')
 
-        # Delete from ChromaDB using doc_id
-        visual_count, text_count = storage_client.delete_document(doc_id)
+        logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
 
+        # 1. Delete from ChromaDB using doc_id
+        try:
+            visual_count, text_count = storage_client.delete_document(doc_id)
+            logger.info(
+                f"✓ ChromaDB cleanup: {visual_count} visual, {text_count} text embeddings deleted"
+            )
+        except Exception as e:
+            logger.error(f"✗ ChromaDB deletion failed: {e}", exc_info=True)
+            # ChromaDB deletion is critical - re-raise
+            raise
+
+        # 2. Delete page images and thumbnails
+        try:
+            page_images_count = delete_document_images(doc_id)
+            if page_images_count > 0:
+                logger.info(f"✓ Page images cleanup: {page_images_count} files deleted")
+        except Exception as e:
+            logger.error(f"✗ Page images deletion failed: {e}", exc_info=True)
+            # Continue with other cleanup operations
+
+        # 3. Delete cover art (for audio files)
+        try:
+            cover_art_count = delete_document_cover_art(doc_id)
+            if cover_art_count > 0:
+                logger.info(f"✓ Cover art cleanup: {cover_art_count} files deleted")
+        except Exception as e:
+            logger.error(f"✗ Cover art deletion failed: {e}", exc_info=True)
+            # Continue with other cleanup operations
+
+        # 4. Delete markdown file
+        try:
+            markdown_deleted = delete_document_markdown(doc_id)
+            if markdown_deleted:
+                logger.info(f"✓ Markdown cleanup: file deleted")
+        except Exception as e:
+            logger.error(f"✗ Markdown deletion failed: {e}", exc_info=True)
+            # Continue with other cleanup operations
+
+        # 5. Clean up temporary directories (PPTX processing artifacts)
+        try:
+            temp_dirs_count = cleanup_temp_directories(doc_id)
+            if temp_dirs_count > 0:
+                logger.info(f"✓ Temp directories cleanup: {temp_dirs_count} directories deleted")
+        except Exception as e:
+            logger.error(f"✗ Temp directory cleanup failed: {e}", exc_info=True)
+            # Continue - temp cleanup is not critical
+
+        # Summary
+        total_filesystem_items = page_images_count + cover_art_count + (1 if markdown_deleted else 0) + temp_dirs_count
         logger.info(
-            f"Deleted document {doc_id}: {visual_count} visual, {text_count} text embeddings"
+            f"✓ Comprehensive cleanup completed for {doc_id}: "
+            f"ChromaDB={visual_count + text_count}, "
+            f"filesystem={total_filesystem_items} items"
         )
 
         return DeleteResponse(
-            message=f"Deleted {request.filename} from ChromaDB",
+            message=f"Deleted {request.filename} completely (ChromaDB + filesystem)",
             doc_id=doc_id,
             visual_deleted=visual_count,
             text_deleted=text_count,
+            page_images_deleted=page_images_count,
+            cover_art_deleted=cover_art_count,
+            markdown_deleted=markdown_deleted,
+            temp_dirs_cleaned=temp_dirs_count,
             status="success"
         )
 

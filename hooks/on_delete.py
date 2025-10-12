@@ -82,9 +82,28 @@ def main():
         with urllib.request.urlopen(req, timeout=5) as response:
             result = json.loads(response.read().decode('utf-8'))
             print(f"✓ Deletion complete: {filename}")
-            print(f"  Visual embeddings deleted: {result.get('visual_deleted', 0)}")
-            print(f"  Text embeddings deleted: {result.get('text_deleted', 0)}")
             print(f"  Doc ID: {result.get('doc_id', 'unknown')}")
+            print(f"")
+            print(f"  ChromaDB Cleanup:")
+            print(f"    • Visual embeddings: {result.get('visual_deleted', 0)}")
+            print(f"    • Text embeddings: {result.get('text_deleted', 0)}")
+            print(f"")
+            print(f"  Filesystem Cleanup:")
+            print(f"    • Page images: {result.get('page_images_deleted', 0)} files")
+            print(f"    • Cover art: {result.get('cover_art_deleted', 0)} files")
+            print(f"    • Markdown: {'yes' if result.get('markdown_deleted', False) else 'no'}")
+            print(f"    • Temp directories: {result.get('temp_dirs_cleaned', 0)}")
+
+            # Calculate totals
+            total_chromadb = result.get('visual_deleted', 0) + result.get('text_deleted', 0)
+            total_filesystem = (
+                result.get('page_images_deleted', 0) +
+                result.get('cover_art_deleted', 0) +
+                (1 if result.get('markdown_deleted', False) else 0) +
+                result.get('temp_dirs_cleaned', 0)
+            )
+            print(f"")
+            print(f"  Total: {total_chromadb} ChromaDB items, {total_filesystem} filesystem items")
             return 0
 
     except urllib.error.HTTPError as e:
