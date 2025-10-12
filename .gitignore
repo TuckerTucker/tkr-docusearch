@@ -8,9 +8,9 @@
 # Data Directories
 # ============================================================================
 # Uploaded documents
-data/uploads/
-data/images/
-data/markdown/
+data/uploads/*
+data/images/*
+data/markdown/*
 
 # Downloaded models (14GB+)
 data/models/

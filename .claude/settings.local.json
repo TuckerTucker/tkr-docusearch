@@ -120,7 +120,8 @@
       "Bash(if [ -f requirements.txt ])",
       "Bash(then grep -i \"docling\\|whisper\\|asr\" requirements.txt)",
       "Bash(else echo \"No requirements.txt\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
