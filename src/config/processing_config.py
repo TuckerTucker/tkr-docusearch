@@ -67,7 +67,7 @@ class ProcessingConfig:
     def __post_init__(self):
         """Initialize supported formats from environment."""
         if self.supported_formats is None:
-            formats_str = os.getenv('SUPPORTED_FORMATS', 'pdf,docx,pptx')
+            formats_str = os.getenv('SUPPORTED_FORMATS', 'pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp')
             self.supported_formats = [fmt.strip().lower() for fmt in formats_str.split(',')]
 
     def validate_file(self, filename: str, size_bytes: int) -> Tuple[bool, str]:

@@ -42,9 +42,10 @@ class FormatType(Enum):
     AUDIO = "audio"        # Audio transcription processing
 
 
-# Visual formats with page images
+# Visual formats with page/slide images
 VISUAL_FORMATS: Set[str] = {
     '.pdf',     # Portable Document Format
+    '.pptx',    # Microsoft PowerPoint (slides rendered via slide-renderer service)
 }
 
 # Image formats (treated as single-page visual documents)
@@ -57,11 +58,10 @@ IMAGE_FORMATS: Set[str] = {
     '.webp',    # WebP Image
 }
 
-# Office formats (visual for PPTX, text-only for others)
+# Office formats (text-only)
 OFFICE_FORMATS: Set[str] = {
     '.docx',    # Microsoft Word
     '.xlsx',    # Microsoft Excel
-    '.pptx',    # Microsoft PowerPoint
 }
 
 # Text-only formats (no visual embeddings)
@@ -118,27 +118,33 @@ class ParsingError(Exception):
     pass
 
 
-def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
+def docling_to_pages(
+    result,
+    file_path: Optional[str] = None,
+    rendered_slide_images: Optional[List] = None
+) -> List[Page]:
     """Convert Docling ConversionResult to Page objects.
 
     This adapter function bridges Docling's output format with our internal
     Page representation. Handles all supported formats:
-    - Visual formats (PDF, images): Full image + text processing
+    - Visual formats (PDF, PPTX, images): Full image + text processing
     - Text-only formats (DOCX, MD, HTML, CSV): Text extraction only, no images
     - Audio formats (VTT, WAV, MP3): Transcript text, no images
 
     Args:
         result: Docling ConversionResult from DocumentConverter.convert()
         file_path: Optional path to determine format type
+        rendered_slide_images: Optional list of PIL Images for PPTX slides
 
     Returns:
         List of Page objects with images (visual) or None images (text-only)
 
     Notes:
-        - Visual formats: Real page images from Docling
+        - Visual formats: Real page images from Docling or slide-renderer
         - Text-only formats: Pages with image=None (skips visual embeddings)
         - Images: Treated as single-page documents with the image itself
         - Audio: Transcript as single text-only page
+        - PPTX: Slides rendered via slide-renderer service
     """
     from docling.datamodel.document import ConversionResult
     from PIL import Image
@@ -245,26 +251,31 @@ def docling_to_pages(result, file_path: Optional[str] = None) -> List[Page]:
                 continue
 
     elif doc.pages and len(doc.pages) > 0:
-        # PPTX format - has doc.pages but no images
-        logger.info(f"Processing {len(doc.pages)} pages from document (no images)")
+        # PPTX format - has doc.pages and potentially rendered slide images
+        logger.info(f"Processing {len(doc.pages)} pages from document")
 
         for page_num in sorted(doc.pages.keys()):
             try:
                 page_text = _extract_page_text(doc, page_num)
 
-                # Create blank image as placeholder
-                # Note: This will be replaced by proper rendering in future enhancement
-                img = Image.new('RGB', (1024, 1024), color='white')
+                # Use rendered slide image if available
+                if rendered_slide_images and (page_num - 1) < len(rendered_slide_images):
+                    img = rendered_slide_images[page_num - 1]  # 0-indexed list, 1-indexed page_num
+                    logger.debug(f"Using rendered slide image for page {page_num}")
+                else:
+                    # Fallback: Create blank image as placeholder
+                    img = Image.new('RGB', (1024, 1024), color='white')
+                    logger.warning(f"No rendered image for page {page_num}, using placeholder")
 
                 pages.append(Page(
                     page_num=page_num,
                     image=img,
-                    width=1024,
-                    height=1024,
+                    width=img.size[0],
+                    height=img.size[1],
                     text=page_text
                 ))
 
-                logger.debug(f"Converted page {page_num} (text-only): {len(page_text)} chars")
+                logger.debug(f"Converted page {page_num}: {img.size[0]}x{img.size[1]}, {len(page_text)} chars")
 
             except Exception as e:
                 logger.error(f"Failed to convert page {page_num}: {e}")
@@ -497,11 +508,15 @@ class DoclingParser:
             # Build format-specific options
             format_options = {}
 
-            if ext in VISUAL_FORMATS:
+            if ext == '.pdf':
                 # PDF with full pipeline
                 format_options[InputFormat.PDF] = PdfFormatOption(
                     pipeline_options=pipeline_options
                 )
+            elif ext == '.pptx':
+                # PPTX: Render slides via slide-renderer service, then process text with Docling
+                # Slides will be rendered to images after Docling text extraction
+                pass  # DocumentConverter handles text extraction, slides rendered separately
             elif ext in IMAGE_FORMATS:
                 # Images (PNG, JPG, etc.) - use image backend
                 format_options[InputFormat.IMAGE] = ImageFormatOption(
@@ -611,8 +626,75 @@ class DoclingParser:
                     except Exception as e:
                         logger.warning(f"Failed to remove symlink: {e}")
 
-            # Use adapter to convert to Page objects (pass file_path for format detection)
-            pages = docling_to_pages(result, file_path)
+            # Render PPTX slides to images if needed (before creating Page objects)
+            rendered_slide_images = None
+            if ext == '.pptx':
+                try:
+                    from src.processing.slide_renderer_client import get_slide_renderer
+                    from PIL import Image as PILImage
+                    import tempfile
+                    import os
+
+                    logger.info(f"Rendering PPTX slides to images via slide-renderer service")
+
+                    # Convert file path from native worker's perspective to Docker container's mount
+                    # Native: /Volumes/.../data/uploads/file.pptx -> Docker: /uploads/file.pptx
+                    pptx_filename = Path(file_path).name
+                    docker_pptx_path = f"/uploads/{pptx_filename}"
+
+                    logger.debug(f"Path translation: {file_path} -> {docker_pptx_path}")
+
+                    # Create temporary output directory in shared volume
+                    # Both Docker and native worker can access /page_images mount
+                    temp_subdir = f"temp-slides-{Path(file_path).stem}"
+                    native_temp_dir = Path("data/page_images").resolve() / temp_subdir
+                    docker_temp_dir = f"/page_images/{temp_subdir}"
+
+                    logger.debug(f"Creating temp directory: {native_temp_dir}")
+                    native_temp_dir.mkdir(parents=True, exist_ok=True)
+
+                    try:
+                        slide_client = get_slide_renderer()
+
+                        # Render slides to shared volume
+                        slide_paths = slide_client.render_slides(
+                            pptx_path=docker_pptx_path,
+                            output_dir=docker_temp_dir,
+                            dpi=self.render_dpi
+                        )
+
+                        logger.info(f"Slides rendered to shared volume: {native_temp_dir}")
+
+                        # Load rendered images from native path
+                        rendered_slide_images = []
+                        for docker_path in slide_paths:
+                            # Convert Docker path back to native path
+                            filename = Path(docker_path).name
+                            native_path = native_temp_dir / filename
+
+                            img = PILImage.open(native_path)
+                            # Convert to RGB if needed (remove alpha channel)
+                            if img.mode != 'RGB':
+                                img = img.convert('RGB')
+                            rendered_slide_images.append(img.copy())
+                            img.close()
+
+                        logger.info(f"Loaded {len(rendered_slide_images)} rendered slide images")
+
+                    finally:
+                        # Clean up temporary directory
+                        import shutil
+                        if native_temp_dir.exists():
+                            shutil.rmtree(native_temp_dir)
+                            logger.debug(f"Cleaned up temp slides directory: {native_temp_dir}")
+
+                except Exception as e:
+                    logger.error(f"Failed to render PPTX slides: {e}")
+                    logger.warning("PPTX will be processed as text-only without slide images")
+                    rendered_slide_images = None
+
+            # Use adapter to convert to Page objects (pass file_path and rendered images)
+            pages = docling_to_pages(result, file_path, rendered_slide_images)
 
             # Log completion with throughput metrics
             if ext in ['.mp3', '.wav']:
