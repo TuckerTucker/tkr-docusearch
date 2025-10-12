@@ -49,7 +49,7 @@ export TEXT_COLLECTION="${TEXT_COLLECTION:-text_collection}"
 # File paths
 export UPLOADS_DIR="${UPLOADS_DIR:-${PROJECT_ROOT}/data/uploads}"
 export MAX_FILE_SIZE_MB="${MAX_FILE_SIZE_MB:-100}"
-export SUPPORTED_FORMATS="${SUPPORTED_FORMATS:-pdf,docx,pptx,mp3,wav}"
+export SUPPORTED_FORMATS="${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp}"
 
 # ASR (Whisper) configuration for audio transcription
 export ASR_ENABLED="${ASR_ENABLED:-true}"
@@ -59,6 +59,10 @@ export ASR_DEVICE="${ASR_DEVICE:-mps}"
 export ASR_WORD_TIMESTAMPS="${ASR_WORD_TIMESTAMPS:-true}"
 export ASR_TEMPERATURE="${ASR_TEMPERATURE:-0.0}"
 export ASR_MAX_TIME_CHUNK="${ASR_MAX_TIME_CHUNK:-30.0}"
+
+# Slide renderer configuration for PPTX visual processing
+export SLIDE_RENDERER_HOST="${SLIDE_RENDERER_HOST:-localhost}"
+export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-8003}"
 
 # Logging
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"

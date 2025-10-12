@@ -20,7 +20,7 @@ services:
       - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
       - WORKER_HOST=host.docker.internal
       - WORKER_PORT=8002
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,mp3,wav}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp}
     networks:
       - docusearch
     depends_on:
@@ -62,6 +62,34 @@ services:
     #   start_period: 30s
 
   # ============================================================================
+  # Slide Renderer - PPTX to Image Conversion
+  # ============================================================================
+  slide-renderer:
+    build:
+      context: .
+      dockerfile: Dockerfile.slide-renderer
+    image: docusearch-slide-renderer:latest
+    container_name: docusearch-slide-renderer
+    ports:
+      - "${SLIDE_RENDERER_PORT:-8003}:8003"
+    volumes:
+      # Read-only access to uploads for PPTX files
+      - ../data/uploads:/uploads:ro
+      # Read-write access to page_images for slide output
+      - ../data/page_images:/page_images
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - docusearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================================
   # Processing Worker - Document Processing and Embedding
   # ============================================================================
   processing-worker:
@@ -98,7 +126,7 @@ services:
       - TEXT_COLLECTION=${TEXT_COLLECTION:-text_collection}
       # Processing configuration
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,mp3,wav}
+      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp}
       - TEXT_CHUNK_SIZE=${TEXT_CHUNK_SIZE:-250}
       - TEXT_CHUNK_OVERLAP=${TEXT_CHUNK_OVERLAP:-50}
       - PAGE_RENDER_DPI=${PAGE_RENDER_DPI:-150}
