@@ -6,32 +6,17 @@
  */
 
 /**
- * SVG Icons for different file types
+ * Lucide icon names for different file types
  */
 const Icons = {
-  // Document icon (bookmark shape)
-  document: `
-    <svg class="document-card__badge-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19 21L12 16L5 21V5C5 4.46957 5.21071 3.96086 5.58579 3.58579C5.96086 3.21071 6.46957 3 7 3H17C17.5304 3 18.0391 3.21071 18.4142 3.58579C18.7893 3.96086 19 4.46957 19 5V21Z"
-            stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `,
+  // Document icon (file-text)
+  document: 'file-text',
 
-  // Audio icon (music note)
-  audio: `
-    <svg class="document-card__badge-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M9 18V5L21 3V16M9 18C9 19.6569 7.65685 21 6 21C4.34315 21 3 19.6569 3 18C3 16.3431 4.34315 15 6 15C7.65685 15 9 16.3431 9 18ZM21 16C21 17.6569 19.6569 19 18 19C16.3431 19 15 17.6569 15 16C15 14.3431 16.3431 13 18 13C19.6569 13 21 14.3431 21 16Z"
-            stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `,
+  // Audio icon (volume-2)
+  audio: 'volume-2',
 
-  // Video icon
-  video: `
-    <svg class="document-card__badge-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15 10L19.5528 7.72361C20.2177 7.39116 21 7.87465 21 8.61803V15.382C21 16.1253 20.2177 16.6088 19.5528 16.2764L15 14M5 18H13C14.1046 18 15 17.1046 15 16V8C15 6.89543 14.1046 6 13 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18Z"
-            stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `
+  // Video icon (video)
+  video: 'video'
 };
 
 /**
@@ -195,14 +180,16 @@ export function createDocumentCard(options) {
   const badgeIconContainer = document.createElement('div');
   badgeIconContainer.className = 'document-card__badge-icon-container';
 
-  const badgeIconSvg = document.createElement('div');
-  badgeIconSvg.innerHTML = Icons[iconType];
+  // Create Lucide icon element
+  const badgeIcon = document.createElement('i');
+  badgeIcon.className = 'document-card__badge-icon';
+  badgeIcon.setAttribute('data-lucide', Icons[iconType]);
 
   const badgeExtension = document.createElement('div');
   badgeExtension.className = 'document-card__badge-extension';
   badgeExtension.textContent = extension.toUpperCase();
 
-  badgeIconContainer.appendChild(badgeIconSvg);
+  badgeIconContainer.appendChild(badgeIcon);
   badgeIconContainer.appendChild(badgeExtension);
 
   badgeFiletype.appendChild(badgeIconContainer);
@@ -276,6 +263,11 @@ export function renderDocumentCards(container, documents) {
 
   const cards = createDocumentCards(documents);
   el.appendChild(cards);
+
+  // Initialize Lucide icons for newly added cards
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
 // Export Icons object for external use
