@@ -105,6 +105,24 @@
         <div id="audio-cards" class="card-grid"></div>
       </section>
 
+      <!-- Loading State Examples -->
+      <section>
+        <h2 class="demo-subtitle">Loading State</h2>
+        <p class="demo-description">
+          Skeleton loaders indicate that a document is being loaded. The thumbnail and badge show animated shimmer effects.
+        </p>
+        <div id="loading-cards" class="card-grid"></div>
+      </section>
+
+      <!-- Processing State Examples -->
+      <section>
+        <h2 class="demo-subtitle">Processing State</h2>
+        <p class="demo-description">
+          Real-time processing status with spinner, progress bar, and stage information. Button is disabled during processing.
+        </p>
+        <div id="processing-cards" class="card-grid"></div>
+      </section>
+
       <!-- Usage Example -->
       <section>
         <h2 class="demo-subtitle">Usage</h2>
@@ -142,11 +160,14 @@ renderDocumentCards('#container', [
       <section>
         <h2 class="demo-subtitle">Features</h2>
         <ul class="demo-description" style="list-style: disc; margin-left: var(--spacing-xl);">
+          <li>Three states: Completed, Loading, and Processing</li>
+          <li>Real-time progress tracking with spinner and progress bar</li>
+          <li>Animated skeleton loaders for loading state</li>
+          <li>WebSocket-ready for live status updates</li>
           <li>Responsive design - adapts to mobile screens</li>
-          <li>Accessible - proper ARIA labels and keyboard navigation</li>
+          <li>Accessible - ARIA labels, progressbar roles, keyboard navigation</li>
           <li>Auto-variant detection from file extension</li>
           <li>Hover effects and transitions</li>
-          <li>Loading states for images</li>
           <li>SVG icons for different file types</li>
           <li>Graceful fallback for missing thumbnails</li>
         </ul>
@@ -162,7 +183,12 @@ renderDocumentCards('#container', [
   dateAdded: string|Date,    // Processing date (required)
   detailsUrl: string,        // Link for details button (required)
   variant: string,           // 'document' or 'audio' (optional, auto-detected)
-  placeholderColor: string   // Background color for missing images (optional)
+  placeholderColor: string,  // Background color for missing images (optional)
+  state: string,             // 'completed', 'loading', or 'processing' (optional, default: 'completed')
+  processingStatus: {        // Processing status (optional, required if state is 'processing')
+    stage: string,           // Current stage (e.g., 'Embedding images')
+    progress: number         // Progress 0.0 to 1.0
+  }
 })</code></pre>
         </div>
       </section>
@@ -223,9 +249,66 @@ renderDocumentCards('#container', [
       }
     ];
 
+    // Demo loading state data
+    const loadingDocs = [
+      {
+        filename: 'loading-document.pdf',
+        thumbnailUrl: '',
+        dateAdded: new Date(),
+        detailsUrl: '#loading-1',
+        state: 'loading'
+      },
+      {
+        filename: 'loading-presentation.pptx',
+        thumbnailUrl: '',
+        dateAdded: new Date(),
+        detailsUrl: '#loading-2',
+        state: 'loading'
+      }
+    ];
+
+    // Demo processing state data
+    const processingDocs = [
+      {
+        filename: 'processing-document.pdf',
+        thumbnailUrl: '',
+        dateAdded: new Date(),
+        detailsUrl: '#processing-1',
+        state: 'processing',
+        processingStatus: {
+          stage: 'Parsing document',
+          progress: 0.15
+        }
+      },
+      {
+        filename: 'embedding-images.pptx',
+        thumbnailUrl: '',
+        dateAdded: new Date(),
+        detailsUrl: '#processing-2',
+        state: 'processing',
+        processingStatus: {
+          stage: 'Embedding images',
+          progress: 0.45
+        }
+      },
+      {
+        filename: 'storing-vectors.docx',
+        thumbnailUrl: '',
+        dateAdded: new Date(),
+        detailsUrl: '#processing-3',
+        state: 'processing',
+        processingStatus: {
+          stage: 'Storing vectors',
+          progress: 0.95
+        }
+      }
+    ];
+
     // Render cards
     renderDocumentCards('#document-cards', documents);
     renderDocumentCards('#audio-cards', audioFiles);
+    renderDocumentCards('#loading-cards', loadingDocs);
+    renderDocumentCards('#processing-cards', processingDocs);
 
     // Initialize Lucide icons
     lucide.createIcons();

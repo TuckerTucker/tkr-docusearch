@@ -124,6 +124,10 @@ function getFilenameWithoutExtension(filename) {
  * @param {string} options.detailsUrl - URL for the details button
  * @param {string} [options.variant] - 'document' or 'audio' (auto-detected from extension if not provided)
  * @param {string} [options.placeholderColor] - Background color for missing thumbnails
+ * @param {string} [options.state] - Card state: 'completed', 'loading', or 'processing'
+ * @param {Object} [options.processingStatus] - Status info for processing state
+ * @param {string} [options.processingStatus.stage] - Current processing stage
+ * @param {number} [options.processingStatus.progress] - Progress 0.0-1.0
  * @returns {HTMLElement} DocumentCard element
  */
 export function createDocumentCard(options) {
@@ -133,7 +137,9 @@ export function createDocumentCard(options) {
     dateAdded,
     detailsUrl,
     variant: providedVariant,
-    placeholderColor = '#E9E9E9'
+    placeholderColor = '#E9E9E9',
+    state = 'completed',
+    processingStatus = null
   } = options;
 
   // Get file extension and determine variant
@@ -145,7 +151,8 @@ export function createDocumentCard(options) {
 
   // Create card container
   const card = document.createElement('article');
-  card.className = `document-card document-card--${variant}`;
+  const stateClass = state === 'completed' ? '' : `document-card--${state}`;
+  card.className = `document-card document-card--${variant} ${stateClass}`.trim();
   card.setAttribute('role', 'article');
   card.setAttribute('aria-label', `Document: ${filename}`);
 
@@ -204,22 +211,116 @@ export function createDocumentCard(options) {
   left.appendChild(thumbnail);
   left.appendChild(badge);
 
-  // Right column (title + button)
+  // Right column (title + button OR processing status)
   const right = document.createElement('div');
   right.className = 'document-card__right';
 
-  const titleEl = document.createElement('h3');
-  titleEl.className = 'document-card__title';
-  titleEl.textContent = title;
+  // Only show title for completed state (not processing or loading)
+  if (state === 'completed') {
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'document-card__title';
+    titleEl.textContent = title;
+    right.appendChild(titleEl);
+  }
 
-  const button = document.createElement('a');
-  button.className = 'document-card__button';
-  button.href = detailsUrl;
-  button.textContent = 'Details';
-  button.setAttribute('aria-label', `View details for ${filename}`);
+  // State-specific content
+  if (state === 'loading') {
+    // Loading state: spinner and loading message
+    const loadingInfo = document.createElement('div');
+    loadingInfo.className = 'document-card__processing-info';
 
-  right.appendChild(titleEl);
-  right.appendChild(button);
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'document-card__status';
+
+    const spinner = document.createElement('div');
+    spinner.className = 'document-card__spinner';
+    spinner.setAttribute('role', 'status');
+    spinner.setAttribute('aria-label', 'Loading');
+
+    const statusLabel = document.createElement('div');
+    statusLabel.className = 'document-card__status-label';
+    statusLabel.textContent = 'Loading document...';
+
+    statusContainer.appendChild(spinner);
+    statusContainer.appendChild(statusLabel);
+    loadingInfo.appendChild(statusContainer);
+
+    right.appendChild(loadingInfo);
+
+    // Disabled button (stays at bottom)
+    const button = document.createElement('button');
+    button.className = 'document-card__button';
+    button.textContent = 'Details';
+    button.disabled = true;
+    button.setAttribute('aria-label', 'Loading document - details unavailable');
+    right.appendChild(button);
+  } else if (state === 'processing' && processingStatus) {
+    // Wrap processing info in container to keep it at top
+    const processingInfo = document.createElement('div');
+    processingInfo.className = 'document-card__processing-info';
+
+    // Processing state: spinner, status label, progress bar
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'document-card__status';
+
+    const spinner = document.createElement('div');
+    spinner.className = 'document-card__spinner';
+    spinner.setAttribute('role', 'status');
+    spinner.setAttribute('aria-label', 'Processing');
+
+    const statusLabel = document.createElement('div');
+    statusLabel.className = 'document-card__status-label';
+    statusLabel.textContent = processingStatus.stage || 'Processing...';
+
+    statusContainer.appendChild(spinner);
+    statusContainer.appendChild(statusLabel);
+    processingInfo.appendChild(statusContainer);
+
+    // Progress bar and percentage container
+    const progressWrapper = document.createElement('div');
+    progressWrapper.className = 'document-card__progress-container';
+
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'document-card__progress';
+    progressContainer.setAttribute('role', 'progressbar');
+    progressContainer.setAttribute('aria-valuenow', Math.round((processingStatus.progress || 0) * 100));
+    progressContainer.setAttribute('aria-valuemin', '0');
+    progressContainer.setAttribute('aria-valuemax', '100');
+
+    const progressBar = document.createElement('div');
+    progressBar.className = 'document-card__progress-bar';
+    progressBar.style.width = `${(processingStatus.progress || 0) * 100}%`;
+
+    progressContainer.appendChild(progressBar);
+
+    // Progress text
+    const progressText = document.createElement('div');
+    progressText.className = 'document-card__progress-text';
+    progressText.textContent = `${Math.round((processingStatus.progress || 0) * 100)}%`;
+
+    progressWrapper.appendChild(progressContainer);
+    progressWrapper.appendChild(progressText);
+    processingInfo.appendChild(progressWrapper);
+
+    right.appendChild(processingInfo);
+
+    // Disabled button (stays at bottom)
+    const button = document.createElement('button');
+    button.className = 'document-card__button';
+    button.textContent = 'Details';
+    button.disabled = true;
+    button.setAttribute('aria-label', 'Processing document - details unavailable');
+    right.appendChild(button);
+  } else {
+    // Completed state: show active button
+    const button = document.createElement('a');
+    button.className = 'document-card__button';
+    button.href = detailsUrl;
+    button.textContent = 'Details';
+    button.setAttribute('aria-label', `View details for ${filename}`);
+
+    right.appendChild(button);
+  }
 
   // Assemble card
   card.appendChild(left);
@@ -267,6 +368,53 @@ export function renderDocumentCards(container, documents) {
   // Initialize Lucide icons for newly added cards
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
+  }
+}
+
+/**
+ * Update an existing card's processing state
+ *
+ * @param {HTMLElement} card - The card element to update
+ * @param {Object} status - Processing status
+ * @param {string} status.state - 'loading', 'processing', or 'completed'
+ * @param {string} [status.stage] - Current processing stage
+ * @param {number} [status.progress] - Progress 0.0-1.0
+ */
+export function updateCardState(card, status) {
+  const { state, stage, progress } = status;
+
+  // Update state classes
+  card.classList.remove('document-card--loading', 'document-card--processing');
+  if (state !== 'completed') {
+    card.classList.add(`document-card--${state}`);
+  }
+
+  // Update processing-specific elements
+  if (state === 'processing') {
+    const statusLabel = card.querySelector('.document-card__status-label');
+    const progressBar = card.querySelector('.document-card__progress-bar');
+    const progressText = card.querySelector('.document-card__progress-text');
+    const progressContainer = card.querySelector('.document-card__progress');
+
+    if (statusLabel && stage) {
+      statusLabel.textContent = stage;
+    }
+
+    if (progressBar && progress !== undefined) {
+      progressBar.style.width = `${progress * 100}%`;
+    }
+
+    if (progressText && progress !== undefined) {
+      progressText.textContent = `${Math.round(progress * 100)}%`;
+    }
+
+    if (progressContainer && progress !== undefined) {
+      progressContainer.setAttribute('aria-valuenow', Math.round(progress * 100));
+    }
+  } else if (state === 'completed') {
+    // Transition to completed state - would need to rebuild right column
+    // For now, just remove processing classes
+    // Full implementation would recreate the right column with proper button
   }
 }
 
