@@ -29,7 +29,7 @@ router = APIRouter(prefix="", tags=["documents"])
 
 # Validation patterns (security)
 DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
-FILENAME_PATTERN = re.compile(r'^page\d{3}(_thumb\.jpg|\.png)$')
+FILENAME_PATTERN = re.compile(r'^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png))$')
 
 
 # ============================================================================
@@ -77,6 +77,7 @@ class DocumentMetadata(BaseModel):
     chunk_count: int
     has_images: bool
     collections: List[str]
+    raw_metadata: Optional[Dict[str, Any]] = Field(None, description="Raw metadata from ChromaDB (includes audio metadata)")
 
 
 class DocumentDetail(BaseModel):
@@ -461,6 +462,13 @@ async def get_document(doc_id: str):
         if text_ids:
             collections.append("text")
 
+        # Get raw metadata from first chunk (includes audio metadata)
+        raw_metadata = None
+        if text_metadatas:
+            raw_metadata = text_metadatas[0]
+        elif visual_metadatas:
+            raw_metadata = visual_metadatas[0]
+
         return DocumentDetail(
             doc_id=doc_id,
             filename=filename,
@@ -471,7 +479,8 @@ async def get_document(doc_id: str):
                 page_count=len(pages),
                 chunk_count=len(chunks),
                 has_images=has_images,
-                collections=collections
+                collections=collections,
+                raw_metadata=raw_metadata
             )
         )
 
@@ -536,39 +545,38 @@ async def get_image(doc_id: str, filename: str):
             }
         )
 
-    # Construct safe file path
-    image_dir = Path(PAGE_IMAGE_DIR) / doc_id
-    image_path = image_dir / filename
+    # Try both image directories: page_images (for PDFs) and images (for album art)
+    search_dirs = [
+        Path(PAGE_IMAGE_DIR) / doc_id,  # data/page_images/{doc_id}/
+        Path("data/images") / doc_id     # data/images/{doc_id}/
+    ]
 
-    # Security: Verify the resolved path is within the expected directory
-    try:
-        image_path = image_path.resolve()
-        image_dir = image_dir.resolve()
+    image_path = None
+    image_dir = None
 
-        if not str(image_path).startswith(str(image_dir)):
-            logger.error(f"Path traversal attempt: {image_path}")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "Path traversal attempt detected",
-                    "code": "INVALID_PATH",
-                    "details": {}
-                }
-            )
-    except Exception as e:
-        logger.error(f"Path resolution error: {e}")
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "Invalid path",
-                "code": "INVALID_PATH",
-                "details": {}
-            }
-        )
+    for search_dir in search_dirs:
+        candidate_path = search_dir / filename
 
-    # Check if file exists
-    if not image_path.exists():
-        logger.info(f"Image not found: {image_path}")
+        # Security: Verify the resolved path is within the expected directory
+        try:
+            resolved_path = candidate_path.resolve()
+            resolved_dir = search_dir.resolve()
+
+            if not str(resolved_path).startswith(str(resolved_dir)):
+                logger.error(f"Path traversal attempt: {resolved_path}")
+                continue
+
+            if resolved_path.exists():
+                image_path = resolved_path
+                image_dir = resolved_dir
+                break
+        except Exception as e:
+            logger.debug(f"Path resolution failed for {search_dir}: {e}")
+            continue
+
+    # If still no valid path found, raise 404
+    if not image_path or not image_dir:
+        logger.info(f"Image not found in any directory: {filename} for doc_id {doc_id}")
         raise HTTPException(
             status_code=404,
             detail={

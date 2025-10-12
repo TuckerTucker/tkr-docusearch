@@ -119,7 +119,8 @@
       "Bash(FULL_PATH=\"/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/advanced_search.docx\")",
       "Bash(if [ -f requirements.txt ])",
       "Bash(then grep -i \"docling\\|whisper\\|asr\" requirements.txt)",
-      "Bash(else echo \"No requirements.txt\")"
+      "Bash(else echo \"No requirements.txt\")",
+      "Bash(rm:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",

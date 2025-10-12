@@ -114,25 +114,15 @@ setup_venv() {
     # Upgrade pip
     pip install --upgrade pip
 
-    # Install PyTorch with MPS support (macOS 12.3+)
-    echo "Installing PyTorch with Metal support..."
-    pip install torch torchvision torchaudio
-
-    # Install transformers and ML libraries
-    echo "Installing transformers and ML libraries..."
-    pip install transformers sentence-transformers Pillow opencv-python-headless pdf2image
-
-    # Install document parsing libraries
-    echo "Installing document parsing libraries..."
-    pip install pypdf python-docx python-pptx PyMuPDF
-
-    # Install vector database and utilities
-    echo "Installing ChromaDB and utilities..."
-    pip install chromadb numpy pydantic python-dotenv tqdm structlog fastapi uvicorn[standard]
-
-    # Install ColPali (if available)
-    echo "Installing ColPali..."
-    pip install git+https://github.com/illuin-tech/colpali.git || echo "Warning: ColPali installation failed, will use mock"
+    # Install all dependencies from requirements.txt
+    # This includes: PyTorch, transformers, ChromaDB, Docling, mutagen, and all other dependencies
+    if [ -f "${PROJECT_ROOT}/requirements.txt" ]; then
+        echo "Installing dependencies from requirements.txt..."
+        pip install -r "${PROJECT_ROOT}/requirements.txt"
+    else
+        echo -e "${RED}Error: requirements.txt not found at ${PROJECT_ROOT}/requirements.txt${NC}"
+        exit 1
+    fi
 
     echo -e "${GREEN}✓ Dependencies installed${NC}"
 

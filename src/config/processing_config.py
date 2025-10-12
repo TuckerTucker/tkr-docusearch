@@ -416,12 +416,13 @@ class AsrConfig:
             ) from e
 
         # Map our model names to Docling repo_ids
+        # Note: For native Whisper, use simple model names, not HuggingFace repo IDs
         model_map = {
-            "turbo": "openai/whisper-large-v3-turbo",
-            "base": "openai/whisper-base",
-            "small": "openai/whisper-small",
-            "medium": "openai/whisper-medium",
-            "large": "openai/whisper-large-v3"
+            "turbo": "turbo",
+            "base": "base",
+            "small": "small",
+            "medium": "medium",
+            "large": "large"
         }
 
         repo_id = model_map[self.model]
