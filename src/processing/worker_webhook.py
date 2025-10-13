@@ -128,6 +128,14 @@ if UI_DIR.exists():
 else:
     logger.warning(f"UI directory not found: {UI_DIR}")
 
+# Mount frontend (Library UI)
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+    logger.info(f"Mounted Library UI at /frontend (directory: {FRONTEND_DIR})")
+else:
+    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
+
 
 # ============================================================================
 # Request/Response Models
