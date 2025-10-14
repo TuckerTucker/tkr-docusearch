@@ -196,6 +196,50 @@ def decompress_structure_metadata(compressed_str: str) -> Dict[str, Any]:
     return metadata_dict
 
 
+def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitize metadata for ChromaDB storage.
+
+    ChromaDB only accepts str, int, float, bool, or None as metadata values.
+    This function converts lists and dicts to JSON strings.
+
+    Args:
+        metadata: Dictionary with potentially complex values
+
+    Returns:
+        Dictionary with only primitive types or JSON strings
+
+    Example:
+        >>> meta = {
+        ...     "name": "test",
+        ...     "count": 5,
+        ...     "tags": ["a", "b"],
+        ...     "config": {"key": "value"}
+        ... }
+        >>> sanitized = sanitize_metadata_for_chroma(meta)
+        >>> isinstance(sanitized["tags"], str)
+        True
+        >>> isinstance(sanitized["config"], str)
+        True
+    """
+    sanitized = {}
+
+    for key, value in metadata.items():
+        # Keep primitives as-is
+        if value is None or isinstance(value, (str, int, float, bool)):
+            sanitized[key] = value
+        # Convert lists to JSON string
+        elif isinstance(value, list):
+            sanitized[key] = json.dumps(value, separators=(',', ':'))
+        # Convert dicts to JSON string
+        elif isinstance(value, dict):
+            sanitized[key] = json.dumps(value, separators=(',', ':'))
+        # Convert other types to string representation
+        else:
+            sanitized[key] = str(value)
+
+    return sanitized
+
+
 # ============================================================================
 # Markdown Compression
 # ============================================================================
