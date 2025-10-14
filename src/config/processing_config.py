@@ -430,14 +430,10 @@ class AsrConfig:
 
         repo_id = model_map[self.model]
 
-        # Map device string to AcceleratorDevice enum
-        device_map = {
-            "auto": AcceleratorDevice.AUTO,
-            "cpu": AcceleratorDevice.CPU,
-            "cuda": AcceleratorDevice.CUDA,
-            "mps": AcceleratorDevice.MPS
-        }
-        accelerator_device = device_map.get(self.device.lower(), AcceleratorDevice.AUTO)
+        # IMPORTANT: Whisper uses sparse tensors which are NOT supported by MPS
+        # Force CPU for Whisper ASR even when MPS is available for other models
+        # See: https://github.com/pytorch/pytorch/issues/87886
+        accelerator_device = AcceleratorDevice.CPU
 
         # Build kwargs dynamically - omit language if "auto"
         kwargs = {
