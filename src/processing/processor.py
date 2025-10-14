@@ -155,13 +155,33 @@ class DocumentProcessor:
         doc_id = None
 
         try:
+            # Determine file type for user-friendly status messages
+            file_ext = os.path.splitext(filename)[1].lower()
+
+            # Create file-type-specific parsing messages
+            parsing_messages = {
+                '.pdf': "Extracting text and images from PDF",
+                '.docx': "Processing Word document",
+                '.pptx': "Processing PowerPoint presentation",
+                '.xlsx': "Processing Excel spreadsheet",
+                '.mp3': "Transcribing audio with Whisper (this may take several minutes)",
+                '.wav': "Transcribing audio with Whisper (this may take several minutes)",
+                '.md': "Parsing Markdown document",
+                '.html': "Parsing HTML document",
+                '.png': "Processing image",
+                '.jpg': "Processing image",
+                '.jpeg': "Processing image",
+            }
+
+            parsing_stage = parsing_messages.get(file_ext, f"Processing {file_ext} file")
+
             # Stage 1: Parsing
             status = ProcessingStatus(
                 doc_id="pending",
                 filename=filename,
                 status="parsing",
                 progress=0.1,
-                stage="Parsing document with Docling"
+                stage=parsing_stage
             )
             self._update_status(status, status_callback)
 
