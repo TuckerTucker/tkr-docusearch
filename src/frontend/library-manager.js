@@ -65,7 +65,7 @@ export class LibraryManager {
 
     this.uploadModal = new UploadModal({
       copypartyUrl: 'http://localhost:8000',
-      uploadPath: '/uploads'
+      uploadPath: '/'
     });
     this.uploadModal.init();
 
@@ -133,6 +133,7 @@ export class LibraryManager {
     // Upload error events
     document.addEventListener('uploadError', (e) => {
       console.error('Upload error:', e.detail);
+      this.handleUploadError(e.detail);
     });
   }
 
@@ -245,6 +246,35 @@ export class LibraryManager {
     this.tempDocs.set(tempId, { filename, card });
 
     console.log(`Upload complete: ${filename} (temp ID: ${tempId})`);
+  }
+
+  /**
+   * Handle upload error
+   * @param {Object} detail - Upload error event detail
+   */
+  handleUploadError(detail) {
+    const { filename, error } = detail;
+
+    // Create error card
+    const card = createDocumentCard({
+      filename,
+      thumbnailUrl: '',
+      dateAdded: new Date(),
+      detailsUrl: '#',
+      state: 'failed',
+      errorMessage: error || 'Upload failed'
+    });
+
+    // Generate temporary ID
+    const tempId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Add to grid (at top)
+    this.grid.prepend(card);
+
+    // Track error card
+    this.tempDocs.set(tempId, { filename, card });
+
+    console.log(`Upload failed: ${filename} - ${error}`);
   }
 
   /**
