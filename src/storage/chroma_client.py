@@ -21,6 +21,7 @@ from .compression import (
     compress_structure_metadata,
     compress_markdown,
     decompress_markdown,
+    sanitize_metadata_for_chroma,
     CorruptedDataError,
 )
 from .metadata_schema import DocumentStructure, ChunkContext
@@ -359,12 +360,15 @@ class ChromaClient:
         except Exception as e:
             logger.error(f"Failed to serialize metadata for debugging: {e}")
 
+        # Sanitize metadata for ChromaDB (convert lists/dicts to JSON strings)
+        sanitized_metadata = sanitize_metadata_for_chroma(complete_metadata)
+
         # Store in ChromaDB
         try:
             self._visual_collection.add(
                 ids=[embedding_id],
                 embeddings=[cls_token],
-                metadatas=[complete_metadata]
+                metadatas=[sanitized_metadata]
             )
 
             logger.info(
@@ -454,12 +458,15 @@ class ChromaClient:
                 f"Missing required metadata fields: {missing_fields}"
             )
 
+        # Sanitize metadata for ChromaDB (convert lists/dicts to JSON strings)
+        sanitized_metadata = sanitize_metadata_for_chroma(complete_metadata)
+
         # Store in ChromaDB
         try:
             self._text_collection.add(
                 ids=[embedding_id],
                 embeddings=[cls_token],
-                metadatas=[complete_metadata]
+                metadatas=[sanitized_metadata]
             )
 
             logger.info(
