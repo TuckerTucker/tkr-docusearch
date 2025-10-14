@@ -44,6 +44,10 @@ export class LibraryManager {
 
     // Loading state flag
     this.isLoading = false;
+
+    // Last load timestamp (for debouncing)
+    this.lastLoadTime = 0;
+    this.loadDebounceMs = 500; // Min time between loads
   }
 
   /**
@@ -144,11 +148,23 @@ export class LibraryManager {
    * Load documents from API
    */
   async loadDocuments() {
+    // Debounce: prevent rapid successive loads
+    const now = Date.now();
+    const timeSinceLastLoad = now - this.lastLoadTime;
+    if (timeSinceLastLoad < this.loadDebounceMs) {
+      console.log(`⏱️ Debouncing loadDocuments() call (${timeSinceLastLoad}ms since last load)`);
+      return;
+    }
+
     // Prevent multiple simultaneous loads
     if (this.isLoading) {
+      console.log('⚠️ Skipping duplicate loadDocuments() call (already loading)');
       return;
     }
     this.isLoading = true;
+    this.lastLoadTime = now;
+
+    console.log('📥 Loading documents...');
 
     try {
       this.showLoadingState();
@@ -193,6 +209,7 @@ export class LibraryManager {
    * @param {Array} documents - Document list from API
    */
   renderDocuments(documents) {
+    console.log(`🎨 Rendering ${documents.length} documents`);
     const fragment = document.createDocumentFragment();
 
     documents.forEach(doc => {
