@@ -14,7 +14,9 @@
       "Bash(open http://localhost:8002/frontend/)",
       "Bash(pgrep:*)",
       "Bash(./scripts/status.sh:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
