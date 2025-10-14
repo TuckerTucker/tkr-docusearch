@@ -434,7 +434,8 @@ class AsrConfig:
             "repo_id": repo_id,
             "word_timestamps": self.word_timestamps,
             "temperature": self.temperature,
-            "max_time_chunk": self.max_time_chunk
+            "max_time_chunk": self.max_time_chunk,
+            "device": self.device  # ADD DEVICE FOR MPS/CUDA/CPU ACCELERATION
         }
 
         # Only include language if not "auto" (for auto-detection, omit the parameter)
