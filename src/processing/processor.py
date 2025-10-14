@@ -8,6 +8,7 @@ This module orchestrates the complete document processing pipeline:
 4. Storage (ChromaDB)
 """
 
+import os
 import logging
 import time
 from pathlib import Path
