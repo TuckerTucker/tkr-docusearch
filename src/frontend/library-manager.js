@@ -41,6 +41,9 @@ export class LibraryManager {
 
     // Temp document tracking (for uploads)
     this.tempDocs = new Map(); // temp_id → {filename, card}
+
+    // Loading state flag
+    this.isLoading = false;
   }
 
   /**
@@ -141,14 +144,21 @@ export class LibraryManager {
    * Load documents from API
    */
   async loadDocuments() {
+    // Prevent multiple simultaneous loads
+    if (this.isLoading) {
+      return;
+    }
+    this.isLoading = true;
+
     try {
       this.showLoadingState();
 
       const response = await this.apiClient.listDocuments(this.currentQuery);
 
-      // Clear grid
+      // Clear grid and all tracking maps
       this.grid.innerHTML = '';
       this.documentCards.clear();
+      this.tempDocs.clear();
 
       // Filter by file type (client-side)
       let documents = response.documents;
@@ -173,6 +183,8 @@ export class LibraryManager {
     } catch (error) {
       console.error('Failed to load documents:', error);
       this.showErrorState(error.message);
+    } finally {
+      this.isLoading = false;
     }
   }
 
