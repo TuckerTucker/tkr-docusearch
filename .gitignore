@@ -243,6 +243,30 @@ test_outputs/
 *.pstats
 
 # ============================================================================
+# Root Directory - Processable Documents
+# ============================================================================
+# Ignore document files in root directory (often symlinks or temp files during processing)
+# Pattern: /<extension> only matches root directory, not subdirectories
+/*.pdf
+/*.docx
+/*.pptx
+/*.xlsx
+/*.html
+/*.xhtml
+/*.md
+/*.asciidoc
+/*.csv
+/*.mp3
+/*.wav
+/*.vtt
+/*.png
+/*.jpg
+/*.jpeg
+/*.tiff
+/*.bmp
+/*.webp
+
+# ============================================================================
 # Keep These Files
 # ============================================================================
 # Explicitly track important config files

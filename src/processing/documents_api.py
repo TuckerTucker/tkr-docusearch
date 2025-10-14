@@ -29,7 +29,7 @@ router = APIRouter(prefix="", tags=["documents"])
 
 # Validation patterns (security)
 DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
-FILENAME_PATTERN = re.compile(r'^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png))$')
+FILENAME_PATTERN = re.compile(r'^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png|svg))$')
 
 
 # ============================================================================
@@ -673,19 +673,19 @@ async def get_vtt(doc_id: str):
 @router.get(
     "/images/{doc_id}/{filename}",
     summary="Serve page image",
-    description="Serve page image or thumbnail file",
+    description="Serve page image, thumbnail, or cover art file (including SVG placeholders)",
     responses={
-        200: {"description": "Image file", "content": {"image/png": {}, "image/jpeg": {}}},
+        200: {"description": "Image file", "content": {"image/png": {}, "image/jpeg": {}, "image/svg+xml": {}}},
         403: {"description": "Invalid filename or path traversal attempt"},
         404: {"description": "Image file not found"}
     }
 )
 async def get_image(doc_id: str, filename: str):
-    """Serve page image or thumbnail files.
+    """Serve page image, thumbnail, or cover art files.
 
     Args:
         doc_id: Document identifier
-        filename: Image filename (e.g., page001.png, page001_thumb.jpg)
+        filename: Image filename (e.g., page001.png, page001_thumb.jpg, cover.svg)
 
     Returns:
         FileResponse with image data
@@ -763,6 +763,8 @@ async def get_image(doc_id: str, filename: str):
         media_type = "image/png"
     elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
         media_type = "image/jpeg"
+    elif filename.endswith('.svg'):
+        media_type = "image/svg+xml"
     else:
         media_type = "application/octet-stream"
 
