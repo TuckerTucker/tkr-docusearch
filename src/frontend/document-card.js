@@ -112,16 +112,28 @@ function getFileExtension(filename) {
 }
 
 /**
- * Get filename without extension
+ * Get formatted filename without extension
  * @param {string} filename - Full filename
- * @returns {string} Filename without extension
+ * @returns {string} Formatted filename without extension
  */
 function getFilenameWithoutExtension(filename) {
+  // Remove file extension
   const parts = filename.split('.');
   if (parts.length > 1) {
     parts.pop();
   }
-  return parts.join('.');
+  let name = parts.join('.');
+
+  // Replace underscores with spaces
+  name = name.replace(/_/g, ' ');
+
+  // Remove timestamp suffixes (e.g., " 1750130928")
+  name = name.replace(/\s+\d{10,}$/, '');
+
+  // Clean up multiple spaces
+  name = name.replace(/\s+/g, ' ').trim();
+
+  return name;
 }
 
 /**
