@@ -497,21 +497,29 @@ class DocumentProcessor:
                 # Structure metadata is already in doc_metadata from parser
                 logger.debug("Enhanced mode: Document structure available")
 
-            # Save album art if present (audio files)
+            # Save album art for audio files (use placeholder if no embedded art)
             album_art_saved_path = None
-            if "_album_art_data" in doc_metadata and "_album_art_mime" in doc_metadata:
+            if "audio_duration_seconds" in doc_metadata:  # This is an audio file
                 try:
                     from src.processing.audio_metadata import save_album_art, AudioMetadata
 
-                    # Create temporary AudioMetadata to use save function
+                    # Check if album art exists
+                    has_album_art = "_album_art_data" in doc_metadata and "_album_art_mime" in doc_metadata
+
+                    # Create temporary AudioMetadata
                     temp_metadata = AudioMetadata(
-                        has_album_art=True,
-                        album_art_data=doc_metadata["_album_art_data"],
-                        album_art_mime=doc_metadata["_album_art_mime"],
+                        has_album_art=has_album_art,
+                        album_art_data=doc_metadata.get("_album_art_data"),
+                        album_art_mime=doc_metadata.get("_album_art_mime"),
                         album_art_description=doc_metadata.get("album_art_description")
                     )
 
-                    album_art_saved_path = save_album_art(doc_id, temp_metadata)
+                    # Always save (will use placeholder if no album art)
+                    album_art_saved_path = save_album_art(
+                        doc_id,
+                        temp_metadata,
+                        use_placeholder=True  # Use placeholder for audio files without album art
+                    )
 
                     if album_art_saved_path:
                         logger.info(f"Saved album art to: {album_art_saved_path}")
