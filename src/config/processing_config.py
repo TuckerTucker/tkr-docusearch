@@ -6,7 +6,7 @@ and visual processing parameters, including enhanced Docling features.
 """
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Set
 from enum import Enum
 import os
 import logging
@@ -80,17 +80,19 @@ class ProcessingConfig:
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # Check extension
-        ext = filename.lower().split('.')[-1] if '.' in filename else ''
-        if ext not in self.supported_formats:
-            return False, f"Unsupported format: {ext}. Supported: {', '.join(self.supported_formats)}"
+        # Delegate to file_validator module for consistency
+        from ..processing.file_validator import validate_file as validator
+        return validator(filename, size_bytes, self.max_file_size_mb)
 
-        # Check size
-        size_mb = size_bytes / (1024 * 1024)
-        if size_mb > self.max_file_size_mb:
-            return False, f"File too large: {size_mb:.1f}MB > {self.max_file_size_mb}MB"
+    @property
+    def supported_extensions_set(self) -> Set[str]:
+        """Get supported file extensions as set with dot prefix.
 
-        return True, ""
+        Returns:
+            Set of extensions like {'.pdf', '.docx', ...}
+        """
+        from ..processing.file_validator import get_supported_extensions
+        return get_supported_extensions()
 
     @property
     def max_file_size_bytes(self) -> int:

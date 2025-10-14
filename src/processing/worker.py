@@ -21,6 +21,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from ..config.processing_config import ProcessingConfig
 from .file_validator import validate_file_type
 
 # Configure logging
@@ -200,13 +201,17 @@ def main():
     logger.info("DocuSearch Processing Worker Starting...")
     logger.info("=" * 70)
 
+    # Initialize ProcessingConfig
+    config = ProcessingConfig()
+    logger.info("ProcessingConfig initialized")
+
     # Log configuration
     logger.info(f"Configuration:")
     logger.info(f"  Uploads Directory: {UPLOADS_DIR}")
     logger.info(f"  ChromaDB: {CHROMA_HOST}:{CHROMA_PORT}")
     logger.info(f"  Device: {DEVICE}")
     logger.info(f"  Precision: {PRECISION}")
-    logger.info(f"  Supported Extensions: {SUPPORTED_EXTENSIONS}")
+    logger.info(f"  Supported Formats: {', '.join(config.supported_formats)}")
 
     # Create uploads directory if it doesn't exist
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)

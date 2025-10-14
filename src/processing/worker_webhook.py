@@ -26,7 +26,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
-from ..config.processing_config import EnhancedModeConfig
+from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
 from .file_validator import validate_file_type
 
 # Import status management components
@@ -77,6 +77,7 @@ processing_status: Dict[str, Dict[str, Any]] = {}
 document_processor: Optional[DocumentProcessor] = None
 parser: Optional[DoclingParser] = None
 status_manager: Optional[StatusManager] = None
+processing_config: Optional[ProcessingConfig] = None
 
 # Thread pool for background processing
 executor = ThreadPoolExecutor(max_workers=2)
@@ -638,7 +639,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager, _loop
+    global document_processor, parser, status_manager, processing_config, _loop
 
     # Capture event loop for async broadcasts from sync context
     _loop = asyncio.get_event_loop()
@@ -652,6 +653,11 @@ async def startup_event():
     set_status_manager(status_manager)
     logger.info("StatusManager initialized")
 
+    # Initialize ProcessingConfig
+    processing_config = ProcessingConfig()
+    app.state.config = processing_config
+    logger.info("ProcessingConfig initialized")
+
     # Log configuration
     logger.info(f"Configuration:")
     logger.info(f"  Uploads Directory: {UPLOADS_DIR}")
@@ -659,7 +665,7 @@ async def startup_event():
     logger.info(f"  Device: {DEVICE}")
     logger.info(f"  Precision: {PRECISION}")
     logger.info(f"  Worker Port: {WORKER_PORT}")
-    logger.info(f"  Supported Extensions: {SUPPORTED_EXTENSIONS}")
+    logger.info(f"  Supported Formats: {', '.join(processing_config.supported_formats)}")
 
     # Initialize components
     logger.info("Initializing components...")
