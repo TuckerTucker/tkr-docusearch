@@ -612,6 +612,7 @@ body {
   overflow-wrap: break-word;
   word-wrap: break-word;
   hyphens: auto;
+  margin-right: var(--spacing-xs);
 }
 
 .document-card__button {
