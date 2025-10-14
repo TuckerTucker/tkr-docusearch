@@ -412,6 +412,7 @@ class AsrConfig:
             from docling.datamodel.pipeline_options_asr_model import (
                 InlineAsrNativeWhisperOptions
             )
+            from docling.datamodel.accelerator_options import AcceleratorDevice
         except ImportError as e:
             raise ImportError(
                 "Docling ASR not installed. Install with: pip install docling[asr]"
@@ -429,13 +430,22 @@ class AsrConfig:
 
         repo_id = model_map[self.model]
 
+        # Map device string to AcceleratorDevice enum
+        device_map = {
+            "auto": AcceleratorDevice.AUTO,
+            "cpu": AcceleratorDevice.CPU,
+            "cuda": AcceleratorDevice.CUDA,
+            "mps": AcceleratorDevice.MPS
+        }
+        accelerator_device = device_map.get(self.device.lower(), AcceleratorDevice.AUTO)
+
         # Build kwargs dynamically - omit language if "auto"
         kwargs = {
             "repo_id": repo_id,
             "word_timestamps": self.word_timestamps,
             "temperature": self.temperature,
             "max_time_chunk": self.max_time_chunk,
-            "device": self.device  # ADD DEVICE FOR MPS/CUDA/CPU ACCELERATION
+            "supported_devices": [accelerator_device]  # FIXED: Use supported_devices with AcceleratorDevice enum
         }
 
         # Only include language if not "auto" (for auto-detection, omit the parameter)
