@@ -32,7 +32,8 @@
       "Bash(open /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.context-kit/_ref/details_page/documents.svg)",
       "Bash(open:*)",
       "Bash(./scripts/stop-all.sh:*)",
-      "Bash(./scripts/start-all.sh:*)"
+      "Bash(./scripts/start-all.sh:*)",
+      "Read(//private/var/folders/**)"
     ],
     "deny": [],
     "ask": []

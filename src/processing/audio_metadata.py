@@ -274,39 +274,59 @@ def _extract_album_art(audio, metadata: AudioMetadata) -> None:
 def save_album_art(
     doc_id: str,
     metadata: AudioMetadata,
-    base_dir: str = "data/images"
+    base_dir: str = "data/images",
+    use_placeholder: bool = True
 ) -> Optional[str]:
     """
-    Save album art image to filesystem.
+    Save album art image to filesystem, or use placeholder if no album art.
 
     Args:
         doc_id: Document ID (used for directory name)
         metadata: AudioMetadata instance with album art data
         base_dir: Base directory for image storage
+        use_placeholder: If True, use placeholder image when no album art exists
 
     Returns:
-        Relative path to saved image, or None if no album art or save failed
+        Relative path to saved image, or None if no album art and use_placeholder=False
     """
-    if not metadata.has_album_art or not metadata.album_art_data:
-        return None
-
     try:
-        # Determine file extension from MIME type
-        ext = _mime_to_extension(metadata.album_art_mime)
-
         # Create directory for this document's images
         doc_image_dir = Path(base_dir) / doc_id
         doc_image_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save image
-        image_path = doc_image_dir / f"cover{ext}"
-        image_path.write_bytes(metadata.album_art_data)
+        if metadata.has_album_art and metadata.album_art_data:
+            # Determine file extension from MIME type
+            ext = _mime_to_extension(metadata.album_art_mime)
 
-        # Return relative path
-        relative_path = str(image_path)
-        logger.info(f"Saved album art to: {relative_path}")
+            # Save actual album art
+            image_path = doc_image_dir / f"cover{ext}"
+            image_path.write_bytes(metadata.album_art_data)
 
-        return relative_path
+            # Return relative path
+            relative_path = str(image_path)
+            logger.info(f"Saved album art to: {relative_path}")
+
+            return relative_path
+        elif use_placeholder:
+            # No album art - copy placeholder
+            import shutil
+
+            placeholder_path = Path(base_dir) / "placeholders" / "audio-placeholder.svg"
+
+            if not placeholder_path.exists():
+                logger.warning(f"Placeholder image not found: {placeholder_path}")
+                return None
+
+            # Copy placeholder to doc directory
+            dest_path = doc_image_dir / "cover.svg"
+            shutil.copy2(placeholder_path, dest_path)
+
+            relative_path = str(dest_path)
+            logger.info(f"Using placeholder image for audio file: {relative_path}")
+
+            return relative_path
+        else:
+            return None
 
     except Exception as e:
         logger.error(f"Failed to save album art for {doc_id}: {e}")
