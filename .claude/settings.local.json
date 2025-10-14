@@ -24,7 +24,11 @@
       "Bash(test:*)",
       "Bash(pytest:*)",
       "Bash(python:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(chmod:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker restart:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
