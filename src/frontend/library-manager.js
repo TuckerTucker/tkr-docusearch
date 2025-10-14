@@ -13,6 +13,10 @@ import { DocumentsAPIClient } from './api-client.js';
 import { createDocumentCard, updateCardState } from './document-card.js';
 import { FilterBar } from './filter-bar.js';
 import { UploadModal } from './upload-modal.js';
+import { applyEarlyTheme, initTheme } from './theme-toggle.js';
+
+// Apply theme immediately to avoid flash
+applyEarlyTheme();
 
 /**
  * Library Manager - Main application controller
@@ -491,10 +495,18 @@ export class LibraryManager {
 // Auto-initialize on page load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    // Initialize theme toggle button and listeners
+    initTheme();
+
+    // Initialize library manager
     const manager = new LibraryManager();
     manager.init();
   });
 } else {
+  // Initialize theme toggle button and listeners
+  initTheme();
+
+  // Initialize library manager
   const manager = new LibraryManager();
   manager.init();
 }

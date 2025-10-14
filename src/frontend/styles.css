@@ -15,43 +15,68 @@
 
 /* ============================================
    CSS Custom Properties (Design System)
+   Kraft Paper Theme - Light & Dark modes
    ============================================ */
 :root {
-  /* Colors - Primary */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #dbeafe;
+  /* Kraft Paper Theme - Semantic Color Tokens (Light Mode) */
+  --background: oklch(0.9582 0.0152 90.2357);
+  --foreground: oklch(0.3760 0.0225 64.3434);
+  --card: oklch(0.9914 0.0098 87.4695);
+  --card-foreground: oklch(0.3760 0.0225 64.3434);
+  --popover: oklch(0.9914 0.0098 87.4695);
+  --popover-foreground: oklch(0.3760 0.0225 64.3434);
+  --primary: oklch(0.6180 0.0778 65.5444);
+  --primary-foreground: oklch(1.0000 0 0);
+  --secondary: oklch(0.8846 0.0302 85.5655);
+  --secondary-foreground: oklch(0.4313 0.0300 64.9288);
+  --muted: oklch(0.9239 0.0190 83.0636);
+  --muted-foreground: oklch(0.5391 0.0387 71.1655);
+  --accent: oklch(0.8348 0.0426 88.8064);
+  --accent-foreground: oklch(0.3760 0.0225 64.3434);
+  --destructive: oklch(0.5471 0.1438 32.9149);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.8606 0.0321 84.5881);
+  --input: oklch(0.8606 0.0321 84.5881);
+  --ring: oklch(0.6180 0.0778 65.5444);
 
-  /* Colors - Neutral */
-  --color-bg-page: #f9fafb;
-  --color-bg-surface: #ffffff;
-  --color-bg-surface-hover: #f3f4f6;
-  --color-border: #e5e7eb;
-  --color-border-light: #f3f4f6;
-  --color-border-focus: #3b82f6;
+  /* Status Colors */
+  --success: oklch(0.60 0.15 145);
+  --success-foreground: oklch(1.0000 0 0);
+  --warning: oklch(0.70 0.15 85);
+  --warning-foreground: oklch(0.3760 0.0225 64.3434);
+  --info: oklch(0.60 0.15 230);
+  --info-foreground: oklch(1.0000 0 0);
 
-  /* Colors - Text */
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
-
-  /* Colors - Status */
-  --color-success: #10b981;
-  --color-success-light: #d1fae5;
-  --color-warning: #f59e0b;
-  --color-warning-light: #fef3c7;
-  --color-error: #ef4444;
-  --color-error-light: #fee2e2;
-  --color-info: #3b82f6;
-  --color-info-light: #dbeafe;
-
-  /* Colors - Connection Status */
-  --color-connected: #10b981;
-  --color-disconnected: #6b7280;
-  --color-reconnecting: #f59e0b;
+  /* Legacy Color Mappings (for backward compatibility during migration) */
+  --color-primary: var(--primary);
+  --color-primary-hover: oklch(0.5680 0.0878 65.5444);
+  --color-primary-light: var(--accent);
+  --color-bg-page: var(--background);
+  --color-bg-surface: var(--card);
+  --color-bg-surface-hover: var(--muted);
+  --color-border: var(--border);
+  --color-border-light: var(--muted);
+  --color-border-focus: var(--ring);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+  --color-text-tertiary: oklch(0.6391 0.0487 71.1655);
+  --color-success: var(--success);
+  --color-success-light: oklch(0.85 0.08 145);
+  --color-warning: var(--warning);
+  --color-warning-light: oklch(0.90 0.08 85);
+  --color-error: var(--destructive);
+  --color-error-light: oklch(0.85 0.10 32);
+  --color-info: var(--info);
+  --color-info-light: oklch(0.85 0.08 230);
+  --color-connected: var(--success);
+  --color-disconnected: var(--muted-foreground);
+  --color-reconnecting: var(--warning);
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --font-sans: Chocolate Classical Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: Alice, ui-serif, serif;
+  --font-mono: Courier Prime, ui-monospace, monospace;
+  --font-family: var(--font-sans);
   --font-size-xs: 0.75rem;    /* 12px */
   --font-size-sm: 0.875rem;   /* 14px */
   --font-size-base: 1rem;     /* 16px */
@@ -79,16 +104,22 @@
   --spacing-2xl: 3rem;      /* 48px */
 
   /* Border Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius: 0.25rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* Shadows (Kraft Paper Theme) */
+  --shadow-color: hsl(28 13% 20%);
+  --shadow-2xs: 2px 3px 5px 0px hsl(28 13% 20% / 0.06);
+  --shadow-xs: 2px 3px 5px 0px hsl(28 13% 20% / 0.06);
+  --shadow-sm: 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 1px 2px -1px hsl(28 13% 20% / 0.12);
+  --shadow: 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 1px 2px -1px hsl(28 13% 20% / 0.12);
+  --shadow-md: 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 2px 4px -1px hsl(28 13% 20% / 0.12);
+  --shadow-lg: 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 4px 6px -1px hsl(28 13% 20% / 0.12);
+  --shadow-xl: 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 8px 10px -1px hsl(28 13% 20% / 0.12);
+  --shadow-2xl: 2px 3px 5px 0px hsl(28 13% 20% / 0.30);
 
   /* Z-Index */
   --z-dropdown: 1000;
@@ -105,6 +136,37 @@
   --header-height: 64px;
   --filter-bar-height: auto;
   --max-width: 1440px;
+}
+
+/* Dark Mode Theme */
+.dark {
+  --background: oklch(0.2747 0.0139 57.6523);
+  --foreground: oklch(0.9239 0.0190 83.0636);
+  --card: oklch(0.3237 0.0155 59.0603);
+  --card-foreground: oklch(0.9239 0.0190 83.0636);
+  --popover: oklch(0.3237 0.0155 59.0603);
+  --popover-foreground: oklch(0.9239 0.0190 83.0636);
+  --primary: oklch(0.7264 0.0581 66.6967);
+  --primary-foreground: oklch(0.2747 0.0139 57.6523);
+  --secondary: oklch(0.3795 0.0181 57.1280);
+  --secondary-foreground: oklch(0.9239 0.0190 83.0636);
+  --muted: oklch(0.2939 0.0125 62.1298);
+  --muted-foreground: oklch(0.7982 0.0243 82.1078);
+  --accent: oklch(0.4186 0.0281 56.3404);
+  --accent-foreground: oklch(0.9239 0.0190 83.0636);
+  --destructive: oklch(0.5471 0.1438 32.9149);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.3795 0.0181 57.1280);
+  --input: oklch(0.3795 0.0181 57.1280);
+  --ring: oklch(0.7264 0.0581 66.6967);
+
+  /* Status Colors (Dark Mode) */
+  --success: oklch(0.65 0.15 145);
+  --success-foreground: oklch(0.2747 0.0139 57.6523);
+  --warning: oklch(0.75 0.15 85);
+  --warning-foreground: oklch(0.2747 0.0139 57.6523);
+  --info: oklch(0.65 0.15 230);
+  --info-foreground: oklch(0.2747 0.0139 57.6523);
 }
 
 /* ============================================
@@ -202,6 +264,71 @@ body {
 .header__nav-link:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Header Actions (Theme Toggle) */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  margin-right: var(--space-4);
+}
+
+.theme-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  background-color: var(--color-bg-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.theme-toggle__icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+/* Show sun icon in light mode */
+.theme-toggle__icon--sun {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.theme-toggle__icon--moon {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* Show moon icon in dark mode */
+.dark .theme-toggle__icon--sun {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.dark .theme-toggle__icon--moon {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(0deg);
 }
 
 .header__status {
