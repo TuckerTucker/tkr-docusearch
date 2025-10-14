@@ -258,6 +258,16 @@ export class LibraryManager {
 
     console.log(`📤 Upload complete: ${filename}`);
 
+    // Check if a processing card already exists for this filename (race condition fix)
+    // The WebSocket status update may arrive before uploadComplete fires
+    for (const [, existingCard] of this.documentCards.entries()) {
+      const cardFilename = existingCard.dataset.filename;
+      if (cardFilename === filename) {
+        console.log(`✅ Processing card already exists for ${filename}, skipping duplicate temp card`);
+        return;
+      }
+    }
+
     // Create loading card
     const card = createDocumentCard({
       filename,
@@ -267,8 +277,11 @@ export class LibraryManager {
       state: 'loading'
     });
 
+    // Store filename in dataset for race condition checking
+    card.dataset.filename = filename;
+
     // Generate temporary ID
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Add to grid (at top)
     this.grid.prepend(card);
@@ -297,7 +310,7 @@ export class LibraryManager {
     });
 
     // Generate temporary ID
-    const tempId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tempId = `error_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Add to grid (at top)
     this.grid.prepend(card);
@@ -350,6 +363,9 @@ export class LibraryManager {
           state: 'processing',
           processingStatus: { stage, progress }
         });
+
+        // Store filename in dataset for race condition checking
+        card.dataset.filename = filename;
 
         this.grid.prepend(card);
         this.documentCards.set(doc_id, card);
