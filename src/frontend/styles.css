@@ -727,7 +727,7 @@ body {
   height: 72px;
   background-color: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
-  color: var(--card);
+  color: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -767,7 +767,7 @@ body {
 .document-card__badge-icon {
   width: 24px;
   height: 24px;
-  color: var(--card);
+  color: rgba(255, 255, 255, 0.95);
   stroke: currentColor;
   stroke-width: 2;
   fill: none;
