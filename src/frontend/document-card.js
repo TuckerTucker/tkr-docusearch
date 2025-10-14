@@ -149,7 +149,8 @@ export function createDocumentCard(options) {
     variant: providedVariant,
     placeholderColor = '#E9E9E9',
     state = 'completed',
-    processingStatus = null
+    processingStatus = null,
+    errorMessage = null
   } = options;
 
   // Get file extension and determine variant
@@ -320,6 +321,42 @@ export function createDocumentCard(options) {
     button.textContent = 'Details';
     button.disabled = true;
     button.setAttribute('aria-label', 'Processing document - details unavailable');
+    right.appendChild(button);
+  } else if (state === 'failed') {
+    // Failed state: show error icon and message
+    const errorInfo = document.createElement('div');
+    errorInfo.className = 'document-card__error-info';
+
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'document-card__status document-card__status--error';
+
+    // Error icon (X in circle)
+    const errorIcon = document.createElement('div');
+    errorIcon.className = 'document-card__error-icon';
+    errorIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="15" y1="9" x2="9" y2="15"></line>
+      <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>`;
+    errorIcon.setAttribute('role', 'img');
+    errorIcon.setAttribute('aria-label', 'Error');
+
+    const statusLabel = document.createElement('div');
+    statusLabel.className = 'document-card__status-label document-card__status-label--error';
+    statusLabel.textContent = errorMessage || 'Upload failed';
+
+    statusContainer.appendChild(errorIcon);
+    statusContainer.appendChild(statusLabel);
+    errorInfo.appendChild(statusContainer);
+
+    right.appendChild(errorInfo);
+
+    // Disabled button (stays at bottom)
+    const button = document.createElement('button');
+    button.className = 'document-card__button';
+    button.textContent = 'Retry';
+    button.disabled = true;
+    button.setAttribute('aria-label', 'Upload failed - retry unavailable');
     right.appendChild(button);
   } else {
     // Completed state: show active button

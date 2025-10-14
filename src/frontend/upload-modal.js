@@ -26,6 +26,7 @@ export class UploadModal {
     this.uploadPath = options.uploadPath || '/uploads';
     this.supportedTypes = options.supportedTypes || ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.mp3', '.wav', '.flac', '.m4a'];
     this.maxFileSize = options.maxFileSize || 100 * 1024 * 1024; // 100MB
+    this.auth = options.auth || { username: 'admin', password: 'admin' };
 
     this.modal = null;
     this.dragCounter = 0;
@@ -264,7 +265,9 @@ export class UploadModal {
   uploadFile(file, onProgress) {
     return new Promise((resolve, reject) => {
       const formData = new FormData();
-      formData.append('file', file);
+      // Copyparty expects "act=bput" for basic PUT uploads
+      formData.append('act', 'bput');
+      formData.append('f', file);
 
       const xhr = new XMLHttpRequest();
 
@@ -295,6 +298,13 @@ export class UploadModal {
       });
 
       xhr.open('POST', `${this.copypartyUrl}${this.uploadPath}`);
+
+      // Add HTTP Basic Authentication if configured
+      if (this.auth) {
+        const credentials = btoa(`${this.auth.username}:${this.auth.password}`);
+        xhr.setRequestHeader('Authorization', `Basic ${credentials}`);
+      }
+
       xhr.send(formData);
     });
   }
