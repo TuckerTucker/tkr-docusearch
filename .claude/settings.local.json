@@ -16,7 +16,15 @@
       "Bash(./scripts/status.sh:*)",
       "Bash(curl:*)",
       "Bash(git log:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(python -m pytest test_file_validator.py -v --cov=file_validator --cov-report=term-missing)",
+      "Bash(PYTHONPATH=. python -m pytest:*)",
+      "Bash(python -m pytest src/processing/test_file_validator.py -v --cov=src.processing.file_validator --cov-report=term-missing)",
+      "Bash(test -f src/processing/test_file_validator.py)",
+      "Bash(test:*)",
+      "Bash(pytest:*)",
+      "Bash(python:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
