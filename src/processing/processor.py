@@ -286,6 +286,68 @@ class DocumentProcessor:
                     "document appears to be image-only (e.g., scanned PDF)"
                 )
 
+            # Stage 3.5: VTT Generation (audio with timestamps only)
+            if parsed_doc.metadata.get("has_word_timestamps") and parsed_doc.text_chunks:
+                # Check if any chunks have timestamps
+                has_timestamps = any(
+                    chunk.start_time is not None
+                    for chunk in parsed_doc.text_chunks
+                )
+
+                if has_timestamps:
+                    try:
+                        from .vtt_generator import generate_vtt, save_vtt
+
+                        logger.info(f"Generating VTT for audio file: {filename}")
+
+                        vtt_content = generate_vtt(parsed_doc.text_chunks, filename)
+                        vtt_path = save_vtt(doc_id, vtt_content)
+
+                        # Store VTT path in metadata
+                        parsed_doc.metadata["vtt_path"] = str(vtt_path)
+                        parsed_doc.metadata["vtt_available"] = True
+
+                        logger.info(f"Generated VTT: {vtt_path}")
+                    except Exception as e:
+                        logger.warning(f"VTT generation failed: {e}")
+                        parsed_doc.metadata["vtt_available"] = False
+                else:
+                    logger.info(
+                        f"No chunks with timestamps in {filename}, skipping VTT generation"
+                    )
+                    parsed_doc.metadata["vtt_available"] = False
+
+            # Stage 3.6: Markdown Generation (all documents with text)
+            if parsed_doc.text_chunks:
+                try:
+                    from .markdown_utils import generate_markdown_with_frontmatter, save_markdown
+
+                    logger.info(f"Generating markdown for document: {filename}")
+
+                    # Prepare chunks for markdown generation
+                    chunks_for_markdown = [
+                        {"text_content": chunk.text}
+                        for chunk in parsed_doc.text_chunks
+                    ]
+
+                    markdown_content = generate_markdown_with_frontmatter(
+                        chunks=chunks_for_markdown,
+                        doc_metadata=parsed_doc.metadata,
+                        filename=filename,
+                        doc_id=doc_id
+                    )
+
+                    markdown_path = save_markdown(doc_id, markdown_content)
+
+                    # Store markdown path in metadata
+                    parsed_doc.metadata["markdown_path"] = str(markdown_path)
+                    parsed_doc.metadata["markdown_available"] = True
+
+                    logger.info(f"Generated markdown: {markdown_path}")
+                except Exception as e:
+                    logger.warning(f"Markdown generation failed: {e}")
+                    parsed_doc.metadata["markdown_available"] = False
+
             # Stage 4: Storage
             status = ProcessingStatus(
                 doc_id=doc_id,
@@ -507,6 +569,9 @@ class DocumentProcessor:
 
             # Store text embeddings
             for result in text_results:
+                # Get chunk for context and timestamps
+                chunk = chunk_lookup.get(result.chunk_id)
+
                 base_metadata = {
                     "filename": filename,
                     "chunk_id": result.chunk_id,
@@ -517,9 +582,17 @@ class DocumentProcessor:
                     **safe_doc_metadata  # Use filtered metadata (already defined above)
                 }
 
+                # Add timestamp fields if chunk has timestamps (Wave 1)
+                # Only add if not None - ChromaDB doesn't accept None values
+                if chunk:
+                    if chunk.start_time is not None:
+                        base_metadata["start_time"] = chunk.start_time
+                    if chunk.end_time is not None:
+                        base_metadata["end_time"] = chunk.end_time
+                    base_metadata["has_timestamps"] = chunk.start_time is not None
+
                 # Get chunk context if available
                 chunk_context = None
-                chunk = chunk_lookup.get(result.chunk_id)
                 if chunk and chunk.context:
                     chunk_context = chunk.context
 

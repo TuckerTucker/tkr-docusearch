@@ -69,6 +69,9 @@ class ChunkInfo(BaseModel):
     chunk_id: str = Field(..., description="Chunk identifier")
     text_content: str = Field(..., description="Full text content")
     embedding_id: str = Field(..., description="ChromaDB embedding ID")
+    start_time: Optional[float] = Field(None, description="Start time in seconds (audio only)")
+    end_time: Optional[float] = Field(None, description="End time in seconds (audio only)")
+    has_timestamps: bool = Field(False, description="True if chunk has timestamps")
 
 
 class DocumentMetadata(BaseModel):
@@ -78,6 +81,9 @@ class DocumentMetadata(BaseModel):
     has_images: bool
     collections: List[str]
     raw_metadata: Optional[Dict[str, Any]] = Field(None, description="Raw metadata from ChromaDB (includes audio metadata)")
+    vtt_available: bool = Field(False, description="True if VTT file exists (audio only)")
+    markdown_available: bool = Field(False, description="True if markdown file exists")
+    has_timestamps: bool = Field(False, description="True if document has word-level timestamps (audio only)")
 
 
 class DocumentDetail(BaseModel):
@@ -438,10 +444,18 @@ async def get_document(doc_id: str):
             chunk_id = metadata.get("chunk_id", idx)
             text_preview = metadata.get("text_preview", "")
 
+            # Get timestamp fields (Wave 1)
+            start_time = metadata.get("start_time")
+            end_time = metadata.get("end_time")
+            has_timestamps = metadata.get("has_timestamps", False)
+
             chunks.append(ChunkInfo(
                 chunk_id=f"chunk_{chunk_id}",
                 text_content=text_preview,
-                embedding_id=text_ids[idx]
+                embedding_id=text_ids[idx],
+                start_time=start_time,
+                end_time=end_time,
+                has_timestamps=has_timestamps
             ))
 
         # Get document metadata
@@ -469,6 +483,11 @@ async def get_document(doc_id: str):
         elif visual_metadatas:
             raw_metadata = visual_metadatas[0]
 
+        # Check for VTT and markdown availability (Wave 2)
+        vtt_available = raw_metadata.get("vtt_available", False) if raw_metadata else False
+        markdown_available = raw_metadata.get("markdown_available", False) if raw_metadata else False
+        has_word_timestamps = raw_metadata.get("has_word_timestamps", False) if raw_metadata else False
+
         return DocumentDetail(
             doc_id=doc_id,
             filename=filename,
@@ -480,7 +499,10 @@ async def get_document(doc_id: str):
                 chunk_count=len(chunks),
                 has_images=has_images,
                 collections=collections,
-                raw_metadata=raw_metadata
+                raw_metadata=raw_metadata,
+                vtt_available=vtt_available,
+                markdown_available=markdown_available,
+                has_timestamps=has_word_timestamps
             )
         )
 
@@ -496,6 +518,156 @@ async def get_document(doc_id: str):
                 "details": {"message": str(e)}
             }
         )
+
+
+@router.get(
+    "/documents/{doc_id}/markdown",
+    summary="Get document markdown",
+    description="Download document as markdown with YAML frontmatter",
+    responses={
+        200: {"description": "Markdown file", "content": {"text/markdown": {}}},
+        400: {"description": "Invalid document ID"},
+        404: {"description": "Markdown file not found"}
+    }
+)
+async def get_markdown(doc_id: str):
+    """Get document as markdown with frontmatter.
+
+    Args:
+        doc_id: Document identifier (SHA-256 hash)
+
+    Returns:
+        FileResponse with markdown content
+
+    Raises:
+        HTTPException: 404 if markdown not found, 400 if invalid doc_id
+    """
+    # Validate doc_id
+    if not validate_doc_id(doc_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id}
+            }
+        )
+
+    # Check if markdown file exists
+    markdown_path = Path("data/markdown") / f"{doc_id}.md"
+
+    if not markdown_path.exists():
+        logger.info(f"Markdown file not found: {doc_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "Markdown file not found",
+                "code": "MARKDOWN_NOT_FOUND",
+                "details": {"doc_id": doc_id}
+            }
+        )
+
+    # Get filename from ChromaDB for the download filename
+    try:
+        client = get_chroma_client()
+        text_data = client._text_collection.get(
+            where={"doc_id": doc_id},
+            limit=1
+        )
+
+        filename = "unknown.md"
+        if text_data.get("metadatas"):
+            original_filename = text_data["metadatas"][0].get("filename", "unknown")
+            # Remove extension and add .md
+            filename = Path(original_filename).stem + ".md"
+    except Exception as e:
+        logger.warning(f"Failed to get filename from ChromaDB: {e}")
+        filename = f"{doc_id}.md"
+
+    # Return file with appropriate headers
+    return FileResponse(
+        path=markdown_path,
+        media_type="text/markdown",
+        filename=filename,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        }
+    )
+
+
+@router.get(
+    "/documents/{doc_id}/vtt",
+    summary="Get document VTT captions",
+    description="Download VTT caption file for audio documents",
+    responses={
+        200: {"description": "VTT file", "content": {"text/vtt": {}}},
+        400: {"description": "Invalid document ID"},
+        404: {"description": "VTT file not found"}
+    }
+)
+async def get_vtt(doc_id: str):
+    """Get VTT caption file for audio documents.
+
+    Args:
+        doc_id: Document identifier (SHA-256 hash)
+
+    Returns:
+        FileResponse with VTT content
+
+    Raises:
+        HTTPException: 404 if VTT not found, 400 if invalid doc_id
+    """
+    # Validate doc_id
+    if not validate_doc_id(doc_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id}
+            }
+        )
+
+    # Check if VTT file exists
+    vtt_path = Path("data/vtt") / f"{doc_id}.vtt"
+
+    if not vtt_path.exists():
+        logger.info(f"VTT file not found: {doc_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "VTT file not found",
+                "code": "VTT_NOT_FOUND",
+                "details": {"doc_id": doc_id, "message": "VTT captions only available for audio files with word-level timestamps"}
+            }
+        )
+
+    # Get filename from ChromaDB for the download filename
+    try:
+        client = get_chroma_client()
+        text_data = client._text_collection.get(
+            where={"doc_id": doc_id},
+            limit=1
+        )
+
+        filename = "unknown.vtt"
+        if text_data.get("metadatas"):
+            original_filename = text_data["metadatas"][0].get("filename", "unknown")
+            # Remove extension and add .vtt
+            filename = Path(original_filename).stem + ".vtt"
+    except Exception as e:
+        logger.warning(f"Failed to get filename from ChromaDB: {e}")
+        filename = f"{doc_id}.vtt"
+
+    # Return file with appropriate headers
+    return FileResponse(
+        path=vtt_path,
+        media_type="text/vtt",
+        filename=filename,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        }
+    )
 
 
 @router.get(

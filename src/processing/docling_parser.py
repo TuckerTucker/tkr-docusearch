@@ -433,6 +433,10 @@ class DoclingParser:
                     chunk_overlap_words
                 )
 
+            # Add timestamps to chunks if audio with provenance data
+            if metadata.get("has_word_timestamps"):
+                text_chunks = self._add_timestamps_to_chunks(text_chunks, doc, pages)
+
             parsed_doc = ParsedDocument(
                 filename=filename,
                 doc_id=doc_id,
@@ -869,6 +873,90 @@ class DoclingParser:
                 start_idx = end_idx - chunk_overlap_words
 
         logger.debug(f"Created {len(chunks)} chunks from {len(pages)} pages")
+        return chunks
+
+    def _extract_chunk_timestamps(
+        self,
+        chunk: TextChunk,
+        doc,
+        page: Page
+    ) -> tuple:
+        """Extract timestamps for a chunk from docling provenance data.
+
+        Args:
+            chunk: TextChunk to add timestamps to
+            doc: DoclingDocument with provenance data
+            page: Page containing this chunk
+
+        Returns:
+            Tuple of (start_time, end_time) in seconds, or (None, None) if no timestamps
+        """
+        if not hasattr(doc, 'texts') or not doc.texts:
+            return (None, None)
+
+        # Collect all timestamps for words in this chunk
+        chunk_words = set(chunk.text.lower().split())
+        timestamps = []
+
+        for text_item in doc.texts:
+            if not hasattr(text_item, 'prov') or not text_item.prov:
+                continue
+
+            for prov in text_item.prov:
+                # Check if this provenance item has timestamps
+                if not (hasattr(prov, 'start_time') and hasattr(prov, 'end_time')):
+                    continue
+
+                # Check if this word is in our chunk (simple matching)
+                prov_text = text_item.text if hasattr(text_item, 'text') else ""
+                if any(word in prov_text.lower() for word in chunk_words):
+                    timestamps.append((prov.start_time, prov.end_time))
+
+        if not timestamps:
+            return (None, None)
+
+        # Aggregate: start = min, end = max
+        start_time = min(t[0] for t in timestamps)
+        end_time = max(t[1] for t in timestamps)
+
+        # Round to 3 decimal places (millisecond precision)
+        return (round(start_time, 3), round(end_time, 3))
+
+    def _add_timestamps_to_chunks(
+        self,
+        chunks: List[TextChunk],
+        doc,
+        pages: List[Page]
+    ) -> List[TextChunk]:
+        """Add timestamps to chunks from docling provenance.
+
+        Args:
+            chunks: List of TextChunk objects
+            doc: DoclingDocument with provenance
+            pages: List of Page objects
+
+        Returns:
+            Same chunks list with timestamps added (in-place modification)
+        """
+        # Create page lookup
+        page_lookup = {p.page_num: p for p in pages}
+
+        for chunk in chunks:
+            page = page_lookup.get(chunk.page_num)
+            if page:
+                start_time, end_time = self._extract_chunk_timestamps(chunk, doc, page)
+                chunk.start_time = start_time
+                chunk.end_time = end_time
+
+        # Log results
+        chunks_with_timestamps = [c for c in chunks if c.start_time is not None]
+        if chunks_with_timestamps:
+            logger.info(
+                f"Added timestamps to {len(chunks_with_timestamps)}/{len(chunks)} chunks"
+            )
+        else:
+            logger.debug("No timestamps found in provenance data")
+
         return chunks
 
     def _chunk_document_enhanced(

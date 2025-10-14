@@ -587,19 +587,20 @@ class ChromaClient:
 
         # Add chunk context if provided
         if chunk_context:
-            context_dict = chunk_context.to_dict()
-
-            # Store context inline (not compressed - it's small)
-            metadata["chunk_context"] = context_dict
             metadata["has_context"] = True
 
-            # Add key fields for filtering
+            # Add key fields for filtering (ChromaDB only supports flat metadata)
             if chunk_context.parent_heading:
                 metadata["parent_heading"] = chunk_context.parent_heading
             if chunk_context.section_path:
                 metadata["section_path"] = chunk_context.section_path
             metadata["element_type"] = chunk_context.element_type
             metadata["is_page_boundary"] = chunk_context.is_page_boundary
+
+            # Store full context as JSON string if needed for reconstruction
+            # (commented out for now - can be added if needed)
+            # import json
+            # metadata["chunk_context_json"] = json.dumps(chunk_context.to_dict())
         else:
             metadata["has_context"] = False
 
