@@ -331,6 +331,7 @@ export class LibraryManager {
     console.log(`📡 Status update: ${doc_id} - ${status} (${Math.round((progress || 0) * 100)}%) - ${filename}`);
 
     let card = this.documentCards.get(doc_id);
+    console.log(`   Card found in map: ${!!card}, total cards: ${this.documentCards.size}`);
 
     if (!card && status === 'processing') {
       console.log(`🔍 Looking for temp card for: ${filename}`);
@@ -374,15 +375,74 @@ export class LibraryManager {
 
     // Update existing card
     if (card) {
-      if (status === 'processing') {
-        updateCardState(card, { state: 'processing', stage, progress });
-      } else if (status === 'completed') {
+      console.log(`   📝 Updating existing card, status: ${status}`);
+
+      // Update thumbnail if we have a valid doc_id and thumbnail isn't set yet
+      if (doc_id && doc_id !== 'pending') {
+        this.updateCardThumbnail(card, doc_id);
+      }
+
+      if (status === 'completed') {
+        console.log(`   ✅ Status is completed, reloading documents`);
         // Reload library to get full document data
         this.loadDocuments();
       } else if (status === 'failed') {
         // Mark as failed (could implement error state)
         console.error(`Document processing failed: ${doc_id}`);
+      } else {
+        // All other statuses are processing states (parsing, embedding_visual, embedding_text, storing, etc.)
+        console.log(`   🔄 Calling updateCardState with stage: ${stage}, progress: ${progress}`);
+        updateCardState(card, { state: 'processing', stage, progress });
       }
+    } else {
+      console.log(`   ⚠️ No card found to update!`);
+    }
+  }
+
+  /**
+   * Update card thumbnail with actual image
+   * @param {HTMLElement} card - Document card element
+   * @param {string} doc_id - Document ID
+   */
+  updateCardThumbnail(card, doc_id) {
+    const thumbnailContainer = card.querySelector('.document-card__thumbnail');
+    if (!thumbnailContainer) return;
+
+    // Check if it's currently a placeholder
+    const isPlaceholder = thumbnailContainer.classList.contains('document-card__thumbnail--placeholder');
+
+    // Check if we've already set a real image
+    const hasRealImage = thumbnailContainer.querySelector('img') !== null;
+
+    if (isPlaceholder && !hasRealImage) {
+      console.log(`   🖼️ Updating thumbnail for doc_id: ${doc_id}`);
+
+      // Construct thumbnail URL
+      const thumbnailUrl = `http://localhost:8002/images/${doc_id}/page001_thumb.jpg`;
+
+      // Create img element
+      const img = document.createElement('img');
+      img.className = 'document-card__thumbnail-image';
+      img.alt = 'Document thumbnail';
+
+      // Handle successful load
+      img.onload = () => {
+        console.log(`   ✅ Thumbnail loaded successfully`);
+        // Replace placeholder content with image
+        thumbnailContainer.innerHTML = '';
+        thumbnailContainer.appendChild(img);
+        thumbnailContainer.classList.remove('document-card__thumbnail--placeholder');
+        thumbnailContainer.classList.remove('document-card__thumbnail--loading');
+      };
+
+      // Handle load error (thumbnail might not be ready yet)
+      img.onerror = () => {
+        console.log(`   ⏳ Thumbnail not ready yet, will retry on next update`);
+        // Keep the placeholder, will retry on next status update
+      };
+
+      // Set src to trigger load
+      img.src = thumbnailUrl;
     }
   }
 

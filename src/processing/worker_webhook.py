@@ -353,11 +353,32 @@ def _update_processing_status(doc_id: str, status):
         start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
         elapsed = (update_time - start_time).total_seconds()
 
+        stage = status.stage if hasattr(status, 'stage') else status.status
+        progress = status.progress
+
         processing_status[doc_id]["status"] = status.status
-        processing_status[doc_id]["stage"] = status.stage if hasattr(status, 'stage') else status.status
-        processing_status[doc_id]["progress"] = status.progress
+        processing_status[doc_id]["stage"] = stage
+        processing_status[doc_id]["progress"] = progress
         processing_status[doc_id]["updated_at"] = update_time.isoformat()
         processing_status[doc_id]["elapsed_time"] = elapsed
+
+        logger.info(f"📊 Status update callback: {doc_id[:8]}... stage={stage}, progress={progress:.1%}")
+
+        # Broadcast progress update to WebSocket clients
+        broadcaster = get_broadcaster()
+        filename = processing_status[doc_id].get("filename", "unknown")
+
+        logger.info(f"🔔 Broadcasting status update: {filename} - {stage} ({progress:.1%})")
+
+        _broadcast_from_sync(
+            broadcaster.broadcast_status_update(
+                doc_id=doc_id,
+                status=status.status,
+                progress=progress,
+                filename=filename,
+                stage=stage
+            )
+        )
 
 
 def _broadcast_from_sync(coro):
