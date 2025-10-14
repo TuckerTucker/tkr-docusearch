@@ -27,6 +27,7 @@ from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
 from ..config.processing_config import EnhancedModeConfig
+from .file_validator import validate_file_type
 
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
@@ -68,10 +69,6 @@ CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
-
-# Load supported formats from environment
-_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp")
-SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Processing status tracking
 processing_status: Dict[str, Dict[str, Any]] = {}
@@ -203,11 +200,12 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Check extension
-        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        # Check extension using file_validator
+        valid, error = validate_file_type(str(path))
+        if not valid:
             return {
                 "status": "skipped",
-                "error": f"Unsupported file type: {path.suffix}"
+                "error": error
             }
 
         # Generate doc ID from file hash (SHA-256) if not provided

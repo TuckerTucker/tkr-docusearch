@@ -21,6 +21,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from .file_validator import validate_file_type
 
 # Configure logging
 logging.basicConfig(
@@ -43,10 +44,6 @@ CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
-
-# Load supported formats from environment
-_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp")
-SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Processing status tracking
 processing_status = {}
@@ -78,8 +75,9 @@ class DocumentUploadHandler(FileSystemEventHandler):
 
         file_path = Path(event.src_path)
 
-        # Check if supported file type
-        if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        # Check if supported file type using file_validator
+        valid, error = validate_file_type(str(file_path))
+        if not valid:
             logger.debug(f"Ignoring unsupported file type: {file_path}")
             return
 
