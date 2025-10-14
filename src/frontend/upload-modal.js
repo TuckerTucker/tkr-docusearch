@@ -153,8 +153,13 @@ export class UploadModal {
       // Reset progress display
       const progressSection = this.modal.querySelector('.upload-modal__progress');
       const dropZone = this.modal.querySelector('.upload-modal__drop-zone');
+      const progressList = this.modal.querySelector('.upload-modal__progress-list');
+
       progressSection.style.display = 'none';
       dropZone.style.display = 'block';
+
+      // Clear progress items
+      progressList.innerHTML = '';
     }
   }
 
@@ -185,6 +190,7 @@ export class UploadModal {
    */
   async uploadFiles(files) {
     const results = { successful: 0, failed: 0, total: files.length };
+    const progressList = this.modal.querySelector('.upload-modal__progress-list');
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -197,20 +203,31 @@ export class UploadModal {
         continue;
       }
 
+      // Add progress item to UI
+      const progressItem = this.createProgressItem(file.name);
+      progressList.appendChild(progressItem);
+
       // Emit start event
       this.emitUploadStart(file.name, file.size, i, files.length);
 
       try {
         // Upload file
         const response = await this.uploadFile(file, (progress) => {
-          this.emitUploadProgress(file.name, progress.loaded / progress.total, progress.loaded, progress.total);
+          const percentage = progress.loaded / progress.total;
+          this.updateProgressItem(progressItem, percentage);
+          this.emitUploadProgress(file.name, percentage, progress.loaded, progress.total);
         });
+
+        // Mark as complete
+        this.completeProgressItem(progressItem);
 
         // Emit complete event
         this.emitUploadComplete(file.name, response.path || `/uploads/${file.name}`, file.size, response);
         results.successful++;
 
       } catch (error) {
+        // Mark as failed
+        this.failProgressItem(progressItem, error.message);
         this.emitUploadError(file.name, error.message, 'UPLOAD_FAILED');
         results.failed++;
       }
@@ -225,6 +242,64 @@ export class UploadModal {
         this.hide();
       }, 2000);
     }
+  }
+
+  /**
+   * Create progress item element
+   * @param {string} filename - File name
+   * @returns {HTMLElement} Progress item element
+   */
+  createProgressItem(filename) {
+    const item = document.createElement('div');
+    item.className = 'upload-modal__progress-item';
+    item.innerHTML = `
+      <div class="upload-modal__progress-filename">${filename}</div>
+      <div class="upload-modal__progress-bar">
+        <div class="upload-modal__progress-fill" style="width: 0%"></div>
+      </div>
+      <div class="upload-modal__progress-status">Uploading...</div>
+    `;
+    return item;
+  }
+
+  /**
+   * Update progress item
+   * @param {HTMLElement} item - Progress item element
+   * @param {number} percentage - Progress percentage (0-1)
+   */
+  updateProgressItem(item, percentage) {
+    const fill = item.querySelector('.upload-modal__progress-fill');
+    const status = item.querySelector('.upload-modal__progress-status');
+    fill.style.width = `${Math.round(percentage * 100)}%`;
+    status.textContent = `${Math.round(percentage * 100)}%`;
+  }
+
+  /**
+   * Mark progress item as complete
+   * @param {HTMLElement} item - Progress item element
+   */
+  completeProgressItem(item) {
+    const fill = item.querySelector('.upload-modal__progress-fill');
+    const status = item.querySelector('.upload-modal__progress-status');
+    fill.style.width = '100%';
+    status.textContent = '✓ Complete';
+    status.style.color = '#10b981';
+    item.classList.add('upload-modal__progress-item--complete');
+  }
+
+  /**
+   * Mark progress item as failed
+   * @param {HTMLElement} item - Progress item element
+   * @param {string} error - Error message
+   */
+  failProgressItem(item, error) {
+    const fill = item.querySelector('.upload-modal__progress-fill');
+    const status = item.querySelector('.upload-modal__progress-status');
+    fill.style.width = '100%';
+    fill.style.backgroundColor = '#ef4444';
+    status.textContent = `✗ ${error}`;
+    status.style.color = '#ef4444';
+    item.classList.add('upload-modal__progress-item--failed');
   }
 
   /**

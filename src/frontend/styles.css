@@ -906,7 +906,45 @@ body {
 .upload-modal__progress-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.upload-modal__progress-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.upload-modal__progress-filename {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-modal__progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.upload-modal__progress-fill {
+  height: 100%;
+  background-color: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.2s ease-in-out;
+}
+
+.upload-modal__progress-status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-align: right;
 }
 
 .upload-modal__close {
