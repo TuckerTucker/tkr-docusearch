@@ -256,6 +256,8 @@ export class LibraryManager {
   handleUploadComplete(detail) {
     const { filename } = detail;
 
+    console.log(`📤 Upload complete: ${filename}`);
+
     // Create loading card
     const card = createDocumentCard({
       filename,
@@ -274,7 +276,7 @@ export class LibraryManager {
     // Track temp card
     this.tempDocs.set(tempId, { filename, card });
 
-    console.log(`Upload complete: ${filename} (temp ID: ${tempId})`);
+    console.log(`💾 Stored temp card: ${tempId} for filename: "${filename}"`);
   }
 
   /**
@@ -313,17 +315,21 @@ export class LibraryManager {
   handleStatusUpdate(message) {
     const { doc_id, status, progress, stage, filename } = message;
 
-    console.log(`Status update: ${doc_id} - ${status} (${Math.round((progress || 0) * 100)}%)`);
+    console.log(`📡 Status update: ${doc_id} - ${status} (${Math.round((progress || 0) * 100)}%) - ${filename}`);
 
     let card = this.documentCards.get(doc_id);
 
     if (!card && status === 'processing') {
+      console.log(`🔍 Looking for temp card for: ${filename}`);
+      console.log(`📦 Current temp docs:`, Array.from(this.tempDocs.entries()).map(([id, data]) => ({id, filename: data.filename})));
+
       // Check if this matches a temp doc
       let tempId = null;
       for (const [tid, tdata] of this.tempDocs.entries()) {
         if (tdata.filename === filename) {
           tempId = tid;
           card = tdata.card;
+          console.log(`✅ Found matching temp card: ${tempId}`);
           break;
         }
       }
@@ -332,7 +338,9 @@ export class LibraryManager {
         // Replace temp card with real doc_id
         this.tempDocs.delete(tempId);
         this.documentCards.set(doc_id, card);
+        console.log(`🔄 Converted temp card to real card: ${doc_id}`);
       } else {
+        console.log(`⚠️ No temp card found, creating new processing card`);
         // Create new processing card
         card = createDocumentCard({
           filename,
