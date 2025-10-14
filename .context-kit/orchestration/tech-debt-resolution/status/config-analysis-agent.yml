@@ -1,0 +1,130 @@
+agent: config-analysis-agent
+wave: 1
+status: complete
+started_at: "2025-10-13T00:00:00Z"
+completed_at: "2025-10-13T00:30:00Z"
+
+deliverables:
+  - path: integration-contracts/config-integration-spec.md
+    status: complete
+    description: "Comprehensive configuration integration specification"
+    lines: 800+
+    sections:
+      - Executive Summary
+      - Current Implementation Analysis
+      - Configuration Duplication Matrix
+      - Refactoring Strategy
+      - Worker Integration Pattern
+      - Migration Checklist
+      - API Compatibility Matrix
+      - Testing Requirements
+      - Environment Variable Reference
+      - Benefits of Consolidation
+      - Risk Analysis
+      - Dependencies
+      - Success Criteria
+      - Code Review Checklist
+
+contracts_published:
+  - name: config-integration-spec.md
+    version: "1.0"
+    consumers:
+      - config-refactor-agent (Wave 2)
+      - worker-integration-agent (Wave 3)
+      - test-agent (Wave 4)
+
+analysis_summary:
+  files_analyzed: 5
+  - src/config/processing_config.py
+  - src/processing/worker_webhook.py
+  - src/processing/worker.py
+  - src/processing/file_validator.py
+  - src/utils/paths.py
+
+  duplication_found:
+    locations: 4
+    - file_validator.py (canonical)
+    - ProcessingConfig.validate_file()
+    - worker_webhook.py (module-level)
+    - worker.py (module-level)
+
+    duplicate_code_lines: ~40
+
+  integration_points:
+    - ProcessingConfig.__post_init__() → get_supported_extensions()
+    - ProcessingConfig.validate_file() → validate_file_impl()
+    - worker_webhook.startup_event() → ProcessingConfig()
+    - worker.main() → ProcessingConfig()
+
+  backward_compatibility:
+    breaking_changes: 0
+    api_changes: 1 (new property: supported_extensions_set)
+    behavior_changes: 0
+
+key_findings:
+  - "THREE separate implementations of file validation logic"
+  - "Module-level config variables prevent runtime flexibility"
+  - "ProcessingConfig.validate_file() duplicates file_validator logic"
+  - "Workers use set format {'.pdf'} but ProcessingConfig uses list ['pdf']"
+  - "file_validator has more robust error handling (Path.suffix, negative size check)"
+
+recommendations:
+  phase_1:
+    - "Make ProcessingConfig delegate to file_validator for DRY"
+    - "Add supported_extensions_set property for set-based lookups"
+    - "Maintain backward compatibility (supported_formats remains list)"
+
+  phase_2:
+    - "Remove module-level SUPPORTED_EXTENSIONS from workers"
+    - "Initialize ProcessingConfig at startup (not import time)"
+    - "Store config in app.state for FastAPI endpoint access"
+    - "Update all extension checks to use processing_config"
+
+  phase_3:
+    - "Add integration tests for worker startup with ProcessingConfig"
+    - "Add regression tests for file validation behavior"
+    - "Test environment variable overrides"
+
+risk_assessment:
+  overall: low
+  details:
+    - "No breaking changes to ProcessingConfig API"
+    - "Workers need initialization order changes (startup vs import)"
+    - "Tests may need fixture updates"
+    - "Incremental rollout possible (one worker at a time)"
+
+next_steps:
+  - wave: 2
+    agent: config-refactor-agent
+    task: "Update ProcessingConfig to delegate to file_validator"
+    estimated_effort: "2 hours"
+
+  - wave: 3
+    agent: worker-integration-agent
+    task: "Remove duplicate config from workers, integrate ProcessingConfig"
+    estimated_effort: "3 hours"
+
+  - wave: 4
+    agent: test-agent
+    task: "Add integration tests and regression tests"
+    estimated_effort: "2 hours"
+
+notes:
+  - "file_validator.py is the canonical implementation (most robust)"
+  - "ProcessingConfig should be thin wrapper around file_validator"
+  - "Workers should get config via dependency injection, not module globals"
+  - "All 4 implementations use same SUPPORTED_FORMATS env var (good!)"
+  - "Format list is consistent across all implementations"
+
+territory:
+  readonly_files:
+    - src/config/processing_config.py
+    - src/processing/worker_webhook.py
+    - src/processing/worker.py
+    - src/processing/file_validator.py
+
+  created_files:
+    - .context-kit/orchestration/tech-debt-resolution/integration-contracts/config-integration-spec.md
+
+  no_modifications: true
+  analysis_only: true
