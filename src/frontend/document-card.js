@@ -428,11 +428,16 @@ export function createDocumentCard(options) {
 export function updateCardState(card, status) {
   const { state, stage, progress } = status;
 
+  console.log(`🔄 updateCardState called:`, { state, stage, progress: progress ? `${Math.round(progress * 100)}%` : 'N/A' });
+  console.log(`   Current card classes:`, card.className);
+
   // Update state classes
   card.classList.remove('document-card--loading', 'document-card--processing');
   if (state !== 'completed') {
     card.classList.add(`document-card--${state}`);
   }
+
+  console.log(`   Updated card classes:`, card.className);
 
   // Update processing-specific elements
   if (state === 'processing') {
@@ -441,22 +446,85 @@ export function updateCardState(card, status) {
     const progressText = card.querySelector('.document-card__progress-text');
     const progressContainer = card.querySelector('.document-card__progress');
 
-    if (statusLabel && stage) {
-      statusLabel.textContent = stage;
-    }
+    console.log(`   Found elements:`, {
+      hasStatusLabel: !!statusLabel,
+      hasProgressBar: !!progressBar,
+      hasProgressText: !!progressText,
+      hasProgressContainer: !!progressContainer
+    });
 
-    if (progressBar && progress !== undefined) {
-      progressBar.style.width = `${progress * 100}%`;
-    }
+    // If transitioning from loading to processing, need to add progress bar
+    if (!progressBar && statusLabel) {
+      console.log(`   ⚡ Transitioning from loading to processing - rebuilding card content`);
+      // Card is in loading state, upgrade to processing state
+      const right = card.querySelector('.document-card__right');
+      const processingInfo = card.querySelector('.document-card__processing-info');
 
-    if (progressText && progress !== undefined) {
-      progressText.textContent = `${Math.round(progress * 100)}%`;
-    }
+      if (processingInfo) {
+        // Remove old loading content
+        processingInfo.innerHTML = '';
 
-    if (progressContainer && progress !== undefined) {
-      progressContainer.setAttribute('aria-valuenow', Math.round(progress * 100));
+        // Add status container
+        const statusContainer = document.createElement('div');
+        statusContainer.className = 'document-card__status';
+
+        const spinner = document.createElement('div');
+        spinner.className = 'document-card__spinner';
+        spinner.setAttribute('role', 'status');
+        spinner.setAttribute('aria-label', 'Processing');
+
+        const newStatusLabel = document.createElement('div');
+        newStatusLabel.className = 'document-card__status-label';
+        newStatusLabel.textContent = stage || 'Processing...';
+
+        statusContainer.appendChild(spinner);
+        statusContainer.appendChild(newStatusLabel);
+        processingInfo.appendChild(statusContainer);
+
+        // Add progress bar
+        const newProgressContainer = document.createElement('div');
+        newProgressContainer.className = 'document-card__progress';
+        newProgressContainer.setAttribute('role', 'progressbar');
+        newProgressContainer.setAttribute('aria-valuemin', '0');
+        newProgressContainer.setAttribute('aria-valuemax', '100');
+        newProgressContainer.setAttribute('aria-valuenow', Math.round((progress || 0) * 100));
+
+        const newProgressBar = document.createElement('div');
+        newProgressBar.className = 'document-card__progress-bar';
+        newProgressBar.style.width = `${(progress || 0) * 100}%`;
+
+        const newProgressText = document.createElement('div');
+        newProgressText.className = 'document-card__progress-text';
+        newProgressText.textContent = `${Math.round((progress || 0) * 100)}%`;
+
+        newProgressContainer.appendChild(newProgressBar);
+        processingInfo.appendChild(newProgressContainer);
+        processingInfo.appendChild(newProgressText);
+      }
+    } else {
+      // Already has progress bar, just update values
+      console.log(`   ✅ Updating existing progress elements`);
+
+      if (statusLabel && stage) {
+        statusLabel.textContent = stage;
+        console.log(`      Updated status label to: "${stage}"`);
+      }
+
+      if (progressBar && progress !== undefined) {
+        progressBar.style.width = `${progress * 100}%`;
+        console.log(`      Updated progress bar to: ${Math.round(progress * 100)}%`);
+      }
+
+      if (progressText && progress !== undefined) {
+        progressText.textContent = `${Math.round(progress * 100)}%`;
+      }
+
+      if (progressContainer && progress !== undefined) {
+        progressContainer.setAttribute('aria-valuenow', Math.round(progress * 100));
+      }
     }
   } else if (state === 'completed') {
+    console.log(`   ✓ State is completed - no updates needed (will reload documents)`);
     // Transition to completed state - would need to rebuild right column
     // For now, just remove processing classes
     // Full implementation would recreate the right column with proper button

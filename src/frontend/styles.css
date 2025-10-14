@@ -566,6 +566,14 @@ body {
   }
 }
 
+/* Thumbnail image (replaces placeholder when loaded) */
+.document-card__thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* Info badge overlay */
 .document-card__badge {
   position: absolute;
