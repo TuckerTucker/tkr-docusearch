@@ -231,16 +231,26 @@ export class Accordion {
         // Toggle event
         header.addEventListener('click', () => this.toggleSection(header, contentDiv));
 
-        // Click-to-navigate events
-        if (timestamp && this.audioPlayer) {
+        // Click-to-navigate events with error handling
+        if (timestamp && timestamp.start !== null && timestamp.start >= 0 && this.audioPlayer) {
             header.addEventListener('click', () => {
-                this.audioPlayer.seekTo(timestamp.start);
+                try {
+                    console.log(`[Accordion→Audio] Seeking to ${timestamp.start}s`);
+                    this.audioPlayer.seekTo(timestamp.start);
+                } catch (error) {
+                    console.error('Failed to seek audio:', error);
+                }
             });
         }
 
-        if (pageNum && this.slideshow) {
+        if (pageNum && pageNum > 0 && this.slideshow) {
             header.addEventListener('click', () => {
-                this.slideshow.navigateToPage(pageNum);
+                try {
+                    console.log(`[Accordion→Slideshow] Navigating to page ${pageNum}`);
+                    this.slideshow.navigateToPage(pageNum);
+                } catch (error) {
+                    console.error('Failed to navigate slideshow:', error);
+                }
             });
         }
 
@@ -261,10 +271,25 @@ export class Accordion {
 
     // Open specific section by chunk ID (for audio sync)
     openSection(chunkId) {
-        const section = this.container.querySelector(`[data-section-id="${chunkId}"]`);
-        if (section) {
+        try {
+            if (!chunkId) {
+                console.warn('[Accordion] openSection called with null/undefined chunkId');
+                return;
+            }
+
+            const section = this.container.querySelector(`[data-section-id="${chunkId}"]`);
+            if (!section) {
+                console.warn(`[Accordion] Section not found: ${chunkId}`);
+                return;
+            }
+
             const header = section.querySelector('.accordion-header');
             const content = section.querySelector('.accordion-content');
+
+            if (!header || !content) {
+                console.error('[Accordion] Section missing header or content');
+                return;
+            }
 
             // Close all other sections
             this.closeAllSections();
@@ -275,6 +300,9 @@ export class Accordion {
 
             // Scroll into view
             section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            console.log(`[Audio→Accordion] Opened section: ${chunkId}`);
+        } catch (error) {
+            console.error('[Accordion] Error in openSection:', error);
         }
     }
 
@@ -329,11 +357,23 @@ export class Accordion {
 
     // Register audio player for click-to-seek and auto-open sync
     registerAudioPlayer(audioPlayer) {
+        if (!audioPlayer) {
+            console.warn('[Accordion] registerAudioPlayer called with null audioPlayer');
+            return;
+        }
+
         this.audioPlayer = audioPlayer;
 
-        // Set up callback for audio time updates
-        audioPlayer.registerTimeUpdateCallback((activeChunk) => {
-            this.openSection(activeChunk.chunk_id);
-        });
+        // Set up callback for audio time updates with error handling
+        try {
+            audioPlayer.registerTimeUpdateCallback((activeChunk) => {
+                if (activeChunk && activeChunk.chunk_id) {
+                    this.openSection(activeChunk.chunk_id);
+                }
+            });
+            console.log('[Accordion] Audio player registered for sync');
+        } catch (error) {
+            console.error('[Accordion] Failed to register audio player:', error);
+        }
     }
 }

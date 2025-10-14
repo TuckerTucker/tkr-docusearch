@@ -21,6 +21,11 @@ export class AudioPlayer {
         this.metadataElement = document.getElementById('audio-metadata');
         this.captionElement = document.getElementById('current-caption');
 
+        // Throttling for accordion sync (prevent excessive updates)
+        this.lastSyncTime = 0;
+        this.syncThrottleMs = 300; // Update accordion at most every 300ms
+        this.lastActiveChunkId = null; // Track which chunk was last synced
+
         this.init();
     }
 
@@ -79,22 +84,38 @@ export class AudioPlayer {
     }
 
     handleTimeUpdate() {
-        const currentTime = this.audioElement.currentTime;
+        try {
+            const currentTime = this.audioElement.currentTime;
+            const now = Date.now();
 
-        // Find active chunk based on current time
-        if (this.chunks && this.chunks.length > 0) {
-            const activeChunk = this.chunks.find(chunk =>
-                chunk.has_timestamps &&
-                chunk.start_time !== null &&
-                chunk.end_time !== null &&
-                currentTime >= chunk.start_time &&
-                currentTime < chunk.end_time
-            );
-
-            // Notify accordion to open active section
-            if (activeChunk && this.onTimeUpdate) {
-                this.onTimeUpdate(activeChunk);
+            // Throttle updates to prevent excessive DOM manipulation
+            if (now - this.lastSyncTime < this.syncThrottleMs) {
+                return;
             }
+
+            // Find active chunk based on current time
+            if (this.chunks && this.chunks.length > 0) {
+                const activeChunk = this.chunks.find(chunk =>
+                    chunk.has_timestamps &&
+                    chunk.start_time !== null &&
+                    chunk.end_time !== null &&
+                    currentTime >= chunk.start_time &&
+                    currentTime < chunk.end_time
+                );
+
+                // Only notify if chunk has changed (prevent redundant updates)
+                if (activeChunk &&
+                    activeChunk.chunk_id !== this.lastActiveChunkId &&
+                    this.onTimeUpdate) {
+
+                    console.log(`[Audio→Accordion] Active chunk: ${activeChunk.chunk_id} at ${currentTime.toFixed(2)}s`);
+                    this.onTimeUpdate(activeChunk);
+                    this.lastActiveChunkId = activeChunk.chunk_id;
+                    this.lastSyncTime = now;
+                }
+            }
+        } catch (error) {
+            console.error('[AudioPlayer] Error in handleTimeUpdate:', error);
         }
     }
 
@@ -114,26 +135,55 @@ export class AudioPlayer {
 
     // Public method for external seek (from accordion)
     seekTo(timeInSeconds) {
-        if (timeInSeconds < 0 || timeInSeconds > this.audioElement.duration) {
-            console.warn(`Invalid seek time: ${timeInSeconds}`);
-            return;
+        try {
+            if (typeof timeInSeconds !== 'number' || isNaN(timeInSeconds)) {
+                console.error(`[AudioPlayer] Invalid seek time (not a number): ${timeInSeconds}`);
+                return;
+            }
+
+            if (timeInSeconds < 0) {
+                console.warn(`[AudioPlayer] Seek time cannot be negative: ${timeInSeconds}, clamping to 0`);
+                timeInSeconds = 0;
+            }
+
+            // Check duration is available (metadata loaded)
+            if (!this.audioElement.duration || isNaN(this.audioElement.duration)) {
+                console.warn('[AudioPlayer] Audio duration not yet available, deferring seek');
+                // Defer seek until metadata is loaded
+                this.audioElement.addEventListener('loadedmetadata', () => {
+                    this.seekTo(timeInSeconds);
+                }, { once: true });
+                return;
+            }
+
+            if (timeInSeconds > this.audioElement.duration) {
+                console.warn(`[AudioPlayer] Seek time ${timeInSeconds}s exceeds duration ${this.audioElement.duration}s, clamping`);
+                timeInSeconds = this.audioElement.duration - 0.1;
+            }
+
+            this.audioElement.currentTime = timeInSeconds;
+
+            // Auto-play after seek (optional)
+            if (this.audioElement.paused) {
+                this.audioElement.play().catch(err => {
+                    console.warn('[AudioPlayer] Auto-play prevented:', err);
+                });
+            }
+
+            console.log(`[AudioPlayer] Seeked to ${timeInSeconds.toFixed(2)}s`);
+        } catch (error) {
+            console.error('[AudioPlayer] Error in seekTo:', error);
         }
-
-        this.audioElement.currentTime = timeInSeconds;
-
-        // Auto-play after seek (optional)
-        if (this.audioElement.paused) {
-            this.audioElement.play().catch(err => {
-                console.warn('Auto-play prevented:', err);
-            });
-        }
-
-        console.log(`Seeked to ${timeInSeconds}s`);
     }
 
     // Register callback for time updates (accordion sync)
     registerTimeUpdateCallback(callback) {
+        if (typeof callback !== 'function') {
+            console.error('[AudioPlayer] registerTimeUpdateCallback requires a function');
+            return;
+        }
         this.onTimeUpdate = callback;
+        console.log('[AudioPlayer] Time update callback registered');
     }
 
     formatTime(seconds) {

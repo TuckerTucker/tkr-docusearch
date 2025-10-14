@@ -53,35 +53,45 @@ export class Slideshow {
     }
 
     goToPage(pageNumber) {
-        // Validate page number
-        if (pageNumber < 1 || pageNumber > this.totalPages) {
-            console.warn(`Invalid page number: ${pageNumber}`);
-            return;
+        try {
+            // Type validation
+            if (typeof pageNumber !== 'number' || isNaN(pageNumber)) {
+                console.error(`[Slideshow] Invalid page number type: ${pageNumber}`);
+                return;
+            }
+
+            // Range validation
+            if (pageNumber < 1 || pageNumber > this.totalPages) {
+                console.warn(`[Slideshow] Page number ${pageNumber} out of range [1-${this.totalPages}]`);
+                return;
+            }
+
+            this.currentPage = pageNumber;
+
+            // Find page data
+            const page = this.pages.find(p => p.page_number === pageNumber);
+            if (!page) {
+                console.error(`[Slideshow] Page ${pageNumber} not found in pages data`);
+                return;
+            }
+
+            // Update image (prefer full resolution, fallback to thumbnail)
+            const imageSrc = page.image_path || page.thumb_path;
+            if (imageSrc) {
+                this.imageElement.src = imageSrc;
+                this.imageElement.alt = `Page ${pageNumber}`;
+            } else {
+                console.warn(`[Slideshow] No image available for page ${pageNumber}`);
+            }
+
+            // Update UI
+            this.pageInput.value = pageNumber;
+            this.updateNavigationButtons();
+
+            console.log(`[Slideshow] Navigated to page ${pageNumber}`);
+        } catch (error) {
+            console.error('[Slideshow] Error in goToPage:', error);
         }
-
-        this.currentPage = pageNumber;
-
-        // Find page data
-        const page = this.pages.find(p => p.page_number === pageNumber);
-        if (!page) {
-            console.error(`Page ${pageNumber} not found in pages data`);
-            return;
-        }
-
-        // Update image (prefer full resolution, fallback to thumbnail)
-        const imageSrc = page.image_path || page.thumb_path;
-        if (imageSrc) {
-            this.imageElement.src = imageSrc;
-            this.imageElement.alt = `Page ${pageNumber}`;
-        } else {
-            console.warn(`No image available for page ${pageNumber}`);
-        }
-
-        // Update UI
-        this.pageInput.value = pageNumber;
-        this.updateNavigationButtons();
-
-        console.log(`Navigated to page ${pageNumber}`);
     }
 
     previousPage() {
