@@ -45,7 +45,7 @@ DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 
 # Load supported formats from environment
-_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp")
 SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Processing status tracking
