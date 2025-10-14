@@ -47,6 +47,8 @@ class TextChunk:
         end_offset: Character offset in page
         word_count: Approximate word count
         context: Optional chunk context metadata (enhanced mode)
+        start_time: Optional start time in seconds (audio only)
+        end_time: Optional end time in seconds (audio only)
     """
 
     chunk_id: str
@@ -56,6 +58,8 @@ class TextChunk:
     end_offset: int
     word_count: int
     context: Optional[ChunkContext] = None
+    start_time: Optional[float] = None  # Seconds from start (audio only)
+    end_time: Optional[float] = None    # Seconds from start (audio only)
 
 
 @dataclass

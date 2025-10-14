@@ -221,7 +221,7 @@ export class LibraryManager {
         filename: doc.filename,
         thumbnailUrl: doc.first_page_thumb ? `http://localhost:8002${doc.first_page_thumb}` : '',
         dateAdded: new Date(doc.date_added),
-        detailsUrl: `#/document/${doc.doc_id}`,
+        detailsUrl: `details.html?id=${doc.doc_id}`,
         state: 'completed'
       });
 

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Details - DocuSearch</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="details.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <a href="index.html" class="back-link">← Back to Library</a>
+                <h1 id="doc-title">Document Details</h1>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="icon-button" aria-label="Toggle theme">
+                        🌙
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading document...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="error-state" style="display: none;">
+            <div class="error-content">
+                <h2>Document Not Found</h2>
+                <p id="error-message">The requested document could not be loaded.</p>
+                <a href="index.html" class="btn-primary">Return to Library</a>
+            </div>
+        </div>
+
+        <!-- Main Content (Two-Column Layout) -->
+        <main id="main-content" class="details-main" style="display: none;">
+            <div class="details-grid">
+                <!-- Left Column: Visual Content (Slideshow or Audio Player) -->
+                <div class="left-column">
+                    <!-- Slideshow (for documents with pages) -->
+                    <div id="slideshow-container" class="slideshow-container" style="display: none;">
+                        <div class="slideshow-header">
+                            <h2>Pages</h2>
+                            <div class="slideshow-controls">
+                                <button id="prev-page" class="control-btn" aria-label="Previous page">←</button>
+                                <div class="page-indicator">
+                                    <input
+                                        type="number"
+                                        id="page-input"
+                                        class="page-input"
+                                        min="1"
+                                        aria-label="Current page"
+                                    />
+                                    <span id="page-total" class="page-total">/ 1</span>
+                                </div>
+                                <button id="next-page" class="control-btn" aria-label="Next page">→</button>
+                            </div>
+                        </div>
+                        <div class="slideshow-viewport">
+                            <img id="slideshow-image" src="" alt="Document page" class="slideshow-image">
+                        </div>
+                        <div class="slideshow-footer">
+                            <small class="keyboard-hint">Tip: Use ← → arrow keys to navigate</small>
+                        </div>
+                    </div>
+
+                    <!-- Audio Player (for audio files) -->
+                    <div id="audio-container" class="audio-container" style="display: none;">
+                        <div class="audio-header">
+                            <h2>Audio Playback</h2>
+                            <div id="audio-metadata" class="audio-metadata"></div>
+                        </div>
+                        <div class="audio-player-wrapper">
+                            <audio id="audio-player" controls preload="metadata">
+                                <source id="audio-source" src="" type="audio/mpeg">
+                                <track
+                                    id="audio-track"
+                                    kind="captions"
+                                    src=""
+                                    srclang="en"
+                                    label="English"
+                                    default
+                                >
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        <div id="current-caption" class="current-caption"></div>
+                    </div>
+
+                    <!-- Placeholder for documents without visual content -->
+                    <div id="no-visual-content" class="no-visual-placeholder" style="display: none;">
+                        <div class="placeholder-content">
+                            <p>📄</p>
+                            <p>No visual preview available</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Text Content (Accordion) -->
+                <div class="right-column">
+                    <div id="accordion-container" class="accordion-container">
+                        <!-- Accordion sections will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="theme-toggle.js"></script>
+    <script type="module" src="api-client.js"></script>
+    <script type="module" src="slideshow.js"></script>
+    <script type="module" src="audio-player.js"></script>
+    <script type="module" src="accordion.js"></script>
+    <script type="module" src="clipboard-utils.js"></script>
+    <script type="module" src="download-utils.js"></script>
+    <script type="module" src="details.js"></script>
+</body>
+</html>

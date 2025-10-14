@@ -1,0 +1,421 @@
+/* Details Page Styles */
+
+.details-main {
+    padding: 2rem 0;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Left Column: Visual Content */
+.left-column {
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+}
+
+/* Slideshow Component */
+.slideshow-container {
+    background: var(--card-background);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.slideshow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.slideshow-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.slideshow-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.control-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: background 0.2s;
+}
+
+.control-btn:hover {
+    background: var(--primary-hover);
+}
+
+.control-btn:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 500;
+}
+
+.page-input {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1rem;
+    background: var(--background-color);
+    color: var(--text-color);
+}
+
+.page-total {
+    color: var(--text-muted);
+}
+
+.slideshow-viewport {
+    background: var(--background-color);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    max-height: 70vh;
+}
+
+.slideshow-image {
+    max-width: 100%;
+    max-height: 70vh;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.slideshow-footer {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.keyboard-hint {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Audio Player Component */
+.audio-container {
+    background: var(--card-background);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.audio-header {
+    margin-bottom: 1rem;
+}
+
+.audio-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+}
+
+.audio-metadata {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.audio-metadata .metadata-item {
+    margin: 0.25rem 0;
+}
+
+.audio-player-wrapper {
+    margin-bottom: 1rem;
+}
+
+.audio-player-wrapper audio {
+    width: 100%;
+    border-radius: 4px;
+}
+
+.current-caption {
+    background: var(--background-color);
+    border-radius: 4px;
+    padding: 1rem;
+    min-height: 60px;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-color);
+    text-align: center;
+    border-left: 3px solid var(--primary-color);
+}
+
+.current-caption:empty::before {
+    content: "Captions will appear here during playback";
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* No Visual Content Placeholder */
+.no-visual-placeholder {
+    background: var(--card-background);
+    border-radius: 8px;
+    padding: 4rem 2rem;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+}
+
+.placeholder-content p:first-child {
+    font-size: 4rem;
+    margin: 0 0 1rem 0;
+}
+
+.placeholder-content p:last-child {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Right Column: Text Content */
+.right-column {
+    min-height: 400px;
+}
+
+/* Accordion Component */
+.accordion-container {
+    background: var(--card-background);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.accordion-section {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.accordion-section:last-child {
+    border-bottom: none;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--background-color);
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+}
+
+.accordion-header:hover {
+    background: var(--hover-background);
+}
+
+.accordion-header.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.accordion-title {
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.accordion-timestamp {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+.accordion-header.active .accordion-timestamp {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.accordion-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.accordion-toggle {
+    font-size: 1.25rem;
+    transition: transform 0.2s;
+}
+
+.accordion-header.open .accordion-toggle {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.accordion-content.open {
+    max-height: 5000px;
+}
+
+.accordion-body {
+    padding: 1.5rem;
+    background: var(--card-background);
+}
+
+.accordion-body-text {
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+}
+
+.accordion-body-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    background: var(--background-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: var(--hover-background);
+    border-color: var(--primary-color);
+}
+
+.btn-icon.success {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+/* Loading and Error States */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 1rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 500px;
+}
+
+.error-content h2 {
+    color: var(--error-color);
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .left-column {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .details-main {
+        padding: 1rem 0;
+    }
+
+    .details-grid {
+        gap: 1rem;
+    }
+
+    .slideshow-container,
+    .audio-container,
+    .accordion-container {
+        padding: 1rem;
+    }
+
+    .accordion-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .accordion-body {
+        padding: 1rem;
+    }
+
+    .control-btn {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* CSS Variables (should match styles.css) */
+:root {
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --background-color: #ffffff;
+    --card-background: #ffffff;
+    --text-color: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
+    --hover-background: #f3f4f6;
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+    --background-color: #1f2937;
+    --card-background: #374151;
+    --text-color: #f9fafb;
+    --text-muted: #9ca3af;
+    --border-color: #4b5563;
+    --hover-background: #4b5563;
+}

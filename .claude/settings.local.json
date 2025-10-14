@@ -28,7 +28,11 @@
       "Bash(chmod:*)",
       "Bash(docker ps:*)",
       "Bash(docker restart:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(open /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.context-kit/_ref/details_page/documents.svg)",
+      "Bash(open:*)",
+      "Bash(./scripts/stop-all.sh:*)",
+      "Bash(./scripts/start-all.sh:*)"
     ],
     "deny": [],
     "ask": []
