@@ -26,6 +26,7 @@ from ..embeddings import ColPaliEngine
 from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
+from ..config.processing_config import EnhancedModeConfig
 
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
@@ -682,12 +683,23 @@ async def startup_event():
         )
         logger.info("✓ ChromaDB connected")
 
-        # Initialize document processor
+        # Load enhanced mode configuration
+        logger.info("Loading enhanced mode configuration...")
+        enhanced_config = EnhancedModeConfig.from_env()
+        logger.info(
+            f"✓ Enhanced mode enabled: "
+            f"table_structure={enhanced_config.enable_table_structure}, "
+            f"picture_classification={enhanced_config.enable_picture_classification}, "
+            f"chunking={enhanced_config.chunking_strategy.value}"
+        )
+
+        # Initialize document processor with enhanced mode
         document_processor = DocumentProcessor(
             embedding_engine=embedding_engine,
-            storage_client=storage_client
+            storage_client=storage_client,
+            enhanced_mode_config=enhanced_config
         )
-        logger.info("✓ Document processor initialized")
+        logger.info("✓ Document processor initialized (enhanced mode)")
 
         # Initialize document parser
         parser = DoclingParser()
