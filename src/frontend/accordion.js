@@ -115,52 +115,44 @@ export class Accordion {
     }
 
     addChunkSections() {
-        // Parse markdown into time-stamped segments for full text display
-        const segments = this.parseMarkdownSegments();
+        /**
+         * Display chunk sections with timestamps.
+         * Uses chunk.start_time/end_time directly from API.
+         * Text comes from chunk.text_content (already cleaned of [time: X-Y] markers).
+         */
 
-        if (segments.length > 0) {
-            // Use parsed segments from markdown (full text)
-            segments.forEach((segment, index) => {
-                const section = this.createSection({
-                    id: `segment-${index}`,
-                    title: `Segment ${index + 1} (${this.formatTime(segment.startTime)} - ${this.formatTime(segment.endTime)})`,
-                    content: segment.text,
-                    isOpen: false,
-                    timestamp: { start: segment.startTime, end: segment.endTime },
-                    pageNum: null,
-                    actions: [
-                        {
-                            label: '📋 Copy',
-                            handler: (btn) => copyToClipboard(segment.text, btn)
-                        }
-                    ]
-                });
-
-                this.container.appendChild(section);
-            });
-        } else {
-            // Fallback to using chunks if markdown parsing fails
-            this.chunks.forEach((chunk, index) => {
-                const chunkTitle = this.getChunkTitle(chunk, index);
-
-                const section = this.createSection({
-                    id: chunk.chunk_id,
-                    title: chunkTitle,
-                    content: chunk.text_content,
-                    isOpen: false,
-                    timestamp: chunk.has_timestamps ? { start: chunk.start_time, end: chunk.end_time } : null,
-                    pageNum: this.getPageFromChunk(chunk),
-                    actions: [
-                        {
-                            label: '📋 Copy',
-                            handler: (btn) => copyToClipboard(chunk.text_content, btn)
-                        }
-                    ]
-                });
-
-                this.container.appendChild(section);
-            });
+        if (!this.chunks || this.chunks.length === 0) {
+            console.warn('[Accordion] No chunks available');
+            return;
         }
+
+        this.chunks.forEach((chunk, index) => {
+            // Determine section title based on timestamp presence
+            const sectionTitle = this.getChunkTitle(chunk, index);
+
+            // Create section with chunk data
+            const section = this.createSection({
+                id: chunk.chunk_id,
+                title: sectionTitle,
+                content: chunk.text_content,  // Already cleaned (no [time: X-Y])
+                isOpen: false,
+                timestamp: chunk.start_time !== null ? {
+                    start: chunk.start_time,
+                    end: chunk.end_time
+                } : null,
+                pageNum: this.getPageFromChunk(chunk),
+                actions: [
+                    {
+                        label: '📋 Copy',
+                        handler: (btn) => copyToClipboard(chunk.text_content, btn)
+                    }
+                ]
+            });
+
+            this.container.appendChild(section);
+        });
+
+        console.log(`[Accordion] Created ${this.chunks.length} sections`);
     }
 
     addVTTSection() {
@@ -313,53 +305,28 @@ export class Accordion {
         }
     }
 
-    // Open specific section by chunk ID or timestamp (for audio sync)
-    openSection(chunkOrTimestamp) {
+    // Open specific section by chunk (for audio sync)
+    openSection(chunk) {
+        /**
+         * Open accordion section for given chunk.
+         * Called by audio player during playback.
+         *
+         * @param {Object} chunk - Chunk object with chunk_id
+         */
+
         try {
-            if (!chunkOrTimestamp) {
-                console.warn('[Accordion] openSection called with null/undefined');
+            if (!chunk || !chunk.chunk_id) {
+                console.warn('[Accordion] openSection called without valid chunk');
                 return;
             }
 
-            let section = null;
-
-            // Try to find by chunk_id first (backward compatibility)
-            if (chunkOrTimestamp.chunk_id) {
-                section = this.container.querySelector(`[data-section-id="${chunkOrTimestamp.chunk_id}"]`);
-            }
-
-            // If not found, find by matching timestamp
-            if (!section) {
-                // Parse timestamp from text_content if available
-                const textContent = chunkOrTimestamp.text_content || '';
-                const match = textContent.match(/^\[time:\s*([\d.]+)-([\d.]+)\]/);
-
-                if (match) {
-                    const startTime = parseFloat(match[1]);
-                    const allSections = this.container.querySelectorAll('.accordion-section');
-
-                    // Find section with matching timestamp
-                    for (const sec of allSections) {
-                        const sectionId = sec.dataset.sectionId;
-                        if (sectionId && sectionId.startsWith('segment-')) {
-                            const header = sec.querySelector('.accordion-header');
-                            const titleText = header?.textContent || '';
-                            const timeMatch = titleText.match(/([\d:]+)\s*-\s*([\d:]+)/);
-
-                            if (timeMatch) {
-                                const sectionStart = this.parseTimeString(timeMatch[1]);
-                                if (Math.abs(sectionStart - startTime) < 0.1) {
-                                    section = sec;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Find section by chunk_id (simplified - no timestamp matching needed)
+            const section = this.container.querySelector(
+                `[data-section-id="${chunk.chunk_id}"]`
+            );
 
             if (!section) {
-                console.warn(`[Accordion] Section not found for chunk/timestamp`);
+                console.warn(`[Accordion] Section not found: ${chunk.chunk_id}`);
                 return;
             }
 
@@ -380,19 +347,11 @@ export class Accordion {
 
             // Scroll into view
             section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            console.log(`[Audio→Accordion] Opened section`);
+
+            console.log(`[Accordion] Opened section: ${chunk.chunk_id}`);
         } catch (error) {
             console.error('[Accordion] Error in openSection:', error);
         }
-    }
-
-    parseTimeString(timeStr) {
-        // Convert "MM:SS" to seconds
-        const parts = timeStr.split(':');
-        if (parts.length === 2) {
-            return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
-        }
-        return parseFloat(timeStr);
     }
 
     closeAllSections() {
@@ -408,61 +367,30 @@ export class Accordion {
         });
     }
 
-    parseMarkdownSegments() {
-        if (!this.markdownContent) {
-            return [];
-        }
-
-        const segments = [];
-
-        // Split content by timestamp markers
-        const timeRegex = /\[time:\s*([\d.]+)-([\d.]+)\]/g;
-        const matches = [];
-        let match;
-
-        // Collect all timestamp positions and values
-        while ((match = timeRegex.exec(this.markdownContent)) !== null) {
-            matches.push({
-                index: match.index,
-                startTime: parseFloat(match[1]),
-                endTime: parseFloat(match[2]),
-                fullMatch: match[0]
-            });
-        }
-
-        // Extract text between each timestamp and the next
-        for (let i = 0; i < matches.length; i++) {
-            const currentMatch = matches[i];
-            const nextMatch = matches[i + 1];
-
-            // Get text after current timestamp until next timestamp (or end of string)
-            const textStart = currentMatch.index + currentMatch.fullMatch.length;
-            const textEnd = nextMatch ? nextMatch.index : this.markdownContent.length;
-            const text = this.markdownContent.substring(textStart, textEnd).trim();
-
-            if (text) {
-                segments.push({
-                    startTime: currentMatch.startTime,
-                    endTime: currentMatch.endTime,
-                    text: text
-                });
-            }
-        }
-
-        console.log(`[Accordion] Parsed ${segments.length} segments from markdown`);
-        return segments;
-    }
 
     getChunkTitle(chunk, index) {
-        let title = `Chunk ${index + 1}`;
+        /**
+         * Generate section title with optional timestamp.
+         *
+         * Examples:
+         *   - With timestamps: "Segment 1 (0:00 - 0:04)"
+         *   - Without timestamps: "Chunk 1" or "Chunk 1 (Page 2)"
+         */
 
-        // Add page reference if available
-        const pageNum = this.getPageFromChunk(chunk);
-        if (pageNum) {
-            title = `Chunk ${index + 1} (Page ${pageNum})`;
+        if (chunk.start_time !== null && chunk.end_time !== null) {
+            // Format: "Segment N (MM:SS - MM:SS)"
+            const startStr = this.formatTime(chunk.start_time);
+            const endStr = this.formatTime(chunk.end_time);
+            return `Segment ${index + 1} (${startStr} - ${endStr})`;
+        } else {
+            // No timestamps - simple title
+            const pageNum = this.getPageFromChunk(chunk);
+            if (pageNum) {
+                return `Chunk ${index + 1} (Page ${pageNum})`;
+            } else {
+                return `Chunk ${index + 1}`;
+            }
         }
-
-        return title;
     }
 
     getPageFromChunk(chunk) {
@@ -496,7 +424,8 @@ export class Accordion {
         try {
             audioPlayer.registerTimeUpdateCallback((activeChunk) => {
                 if (activeChunk && activeChunk.chunk_id) {
-                    this.openSection(activeChunk.chunk_id);
+                    // Pass the full chunk object to openSection
+                    this.openSection(activeChunk);
                 }
             });
             console.log('[Accordion] Audio player registered for sync');

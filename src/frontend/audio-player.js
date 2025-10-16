@@ -204,8 +204,9 @@ export class AudioPlayer {
             const currentTime = this.audioElement.currentTime;
             const now = Date.now();
 
-            // Find and update caption from parsed segments
-            if (this.segments && this.segments.length > 0) {
+            // Caption display: Prefer VTT (via handleCueChange), fallback to markdown
+            // Only use markdown parsing if VTT is not available
+            if (!this.metadata.vtt_available && this.segments && this.segments.length > 0) {
                 const activeSegment = this.segments.find(seg =>
                     currentTime >= seg.startTime && currentTime < seg.endTime
                 );
@@ -224,6 +225,7 @@ export class AudioPlayer {
                     }
                 }
             }
+            // Note: When VTT is available, captions are handled by handleCueChange()
 
             // Throttle accordion sync updates
             if (now - this.lastSyncTime < this.syncThrottleMs) {

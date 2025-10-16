@@ -307,6 +307,29 @@ class DocumentProcessor:
                     "document appears to be image-only (e.g., scanned PDF)"
                 )
 
+            # Stage 3.4: Check for timestamps and set metadata flags
+            if parsed_doc.text_chunks:
+                has_timestamps = any(
+                    chunk.start_time is not None and chunk.end_time is not None
+                    for chunk in parsed_doc.text_chunks
+                )
+                parsed_doc.metadata["has_timestamps"] = has_timestamps
+
+                # For audio files with timestamps, set VTT trigger flag
+                if parsed_doc.metadata.get("format_type") == "audio" and has_timestamps:
+                    parsed_doc.metadata["has_word_timestamps"] = True
+
+                timestamp_count = sum(
+                    1 for c in parsed_doc.text_chunks
+                    if c.start_time is not None
+                )
+                logger.info(
+                    f"Document has timestamps: {has_timestamps} "
+                    f"({timestamp_count}/{len(parsed_doc.text_chunks)} chunks)"
+                )
+            else:
+                parsed_doc.metadata["has_timestamps"] = False
+
             # Stage 3.5: VTT Generation (audio with timestamps only)
             if parsed_doc.metadata.get("has_word_timestamps") and parsed_doc.text_chunks:
                 # Check if any chunks have timestamps
