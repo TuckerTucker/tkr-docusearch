@@ -6,14 +6,83 @@ coordinating with the embedding agent and preparing results for storage.
 """
 
 import logging
+import re
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
 
 from .docling_parser import TextChunk
 
 logger = logging.getLogger(__name__)
+
+
+def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[float], str]:
+    """
+    Extract [time: X-Y] timestamp markers from text.
+
+    Args:
+        text: Text potentially containing [time: START-END] marker at beginning
+
+    Returns:
+        Tuple of (start_time, end_time, cleaned_text):
+        - start_time: float seconds or None if not found/invalid
+        - end_time: float seconds or None if not found/invalid
+        - cleaned_text: text with timestamp marker removed
+
+    Parsing Rules:
+        - Marker must be at start of text (after optional whitespace)
+        - Format: [time: <float>-<float>]
+        - Both timestamps must be valid floats
+        - end_time must be > start_time
+        - start_time must be >= 0.0
+        - If invalid, return (None, None, original_text)
+
+    Examples:
+        >>> extract_timestamps_from_text("[time: 1.5-3.2] Hello")
+        (1.5, 3.2, "Hello")
+
+        >>> extract_timestamps_from_text("[time: 0.62-3.96]  Multiple spaces")
+        (0.62, 3.96, "Multiple spaces")
+
+        >>> extract_timestamps_from_text("No timestamp here")
+        (None, None, "No timestamp here")
+
+        >>> extract_timestamps_from_text("[time: 5.0-2.0] Invalid")
+        (None, None, "[time: 5.0-2.0] Invalid")
+    """
+    # Match [time: X-Y] at start of text (don't consume trailing whitespace)
+    pattern = r'^\s*\[time:\s*([\d.]+)-([\d.]+)\]'
+    match = re.match(pattern, text)
+
+    if not match:
+        # No timestamp marker found
+        return (None, None, text)
+
+    try:
+        # Parse timestamps
+        start_time = float(match.group(1))
+        end_time = float(match.group(2))
+
+        # Validate timestamps
+        if start_time < 0.0:
+            logger.warning(f"Malformed timestamp in text (negative_start): {text[:50]}...")
+            return (None, None, text)
+
+        if end_time <= start_time:
+            logger.warning(f"Malformed timestamp in text (invalid_duration): {text[:50]}...")
+            return (None, None, text)
+
+        # Remove timestamp marker from text (preserve trailing whitespace)
+        cleaned_text = text[match.end():]
+
+        logger.debug(f"Extracted timestamp: {start_time:.2f}-{end_time:.2f}")
+        return (start_time, end_time, cleaned_text)
+
+    except (ValueError, IndexError) as e:
+        # Failed to parse numbers
+        logger.warning(f"Malformed timestamp in text (parse_error): {text[:50]}... ({e})")
+        return (None, None, text)
 
 
 @dataclass

@@ -928,7 +928,11 @@ class DoclingParser:
         doc,
         pages: List[Page]
     ) -> List[TextChunk]:
-        """Add timestamps to chunks from docling provenance.
+        """Add timestamps to chunks from docling provenance or text markers.
+
+        Tries two methods:
+        1. Extract from [time: X-Y] text markers (new - Wave 2)
+        2. Extract from docling provenance data (existing)
 
         Args:
             chunks: List of TextChunk objects
@@ -938,15 +942,28 @@ class DoclingParser:
         Returns:
             Same chunks list with timestamps added (in-place modification)
         """
+        # Import extraction function
+        from .text_processor import extract_timestamps_from_text
+
         # Create page lookup
         page_lookup = {p.page_num: p for p in pages}
 
         for chunk in chunks:
-            page = page_lookup.get(chunk.page_num)
-            if page:
-                start_time, end_time = self._extract_chunk_timestamps(chunk, doc, page)
+            # Method 1: Try extracting from text markers first
+            start_time, end_time, cleaned_text = extract_timestamps_from_text(chunk.text)
+
+            if start_time is not None:
+                # Successfully extracted from text marker
                 chunk.start_time = start_time
                 chunk.end_time = end_time
+                chunk.text = cleaned_text  # Update text with marker removed
+            else:
+                # Method 2: Fall back to provenance extraction
+                page = page_lookup.get(chunk.page_num)
+                if page:
+                    start_time, end_time = self._extract_chunk_timestamps(chunk, doc, page)
+                    chunk.start_time = start_time
+                    chunk.end_time = end_time
 
         # Log results
         chunks_with_timestamps = [c for c in chunks if c.start_time is not None]
@@ -955,7 +972,7 @@ class DoclingParser:
                 f"Added timestamps to {len(chunks_with_timestamps)}/{len(chunks)} chunks"
             )
         else:
-            logger.debug("No timestamps found in provenance data")
+            logger.debug("No timestamps found in provenance data or text markers")
 
         return chunks
 
