@@ -98,7 +98,7 @@ export class Accordion {
             id: 'markdown-full',
             title: 'Full Document',
             content: stripFrontmatter(this.markdownContent),
-            isOpen: true,
+            isOpen: false,
             actions: [
                 {
                     label: '📥 Download',
@@ -115,26 +115,52 @@ export class Accordion {
     }
 
     addChunkSections() {
-        this.chunks.forEach((chunk, index) => {
-            const chunkTitle = this.getChunkTitle(chunk, index);
+        // Parse markdown into time-stamped segments for full text display
+        const segments = this.parseMarkdownSegments();
 
-            const section = this.createSection({
-                id: chunk.chunk_id,
-                title: chunkTitle,
-                content: chunk.text_content,
-                isOpen: false,
-                timestamp: chunk.has_timestamps ? { start: chunk.start_time, end: chunk.end_time } : null,
-                pageNum: this.getPageFromChunk(chunk),
-                actions: [
-                    {
-                        label: '📋 Copy',
-                        handler: (btn) => copyToClipboard(chunk.text_content, btn)
-                    }
-                ]
+        if (segments.length > 0) {
+            // Use parsed segments from markdown (full text)
+            segments.forEach((segment, index) => {
+                const section = this.createSection({
+                    id: `segment-${index}`,
+                    title: `Segment ${index + 1} (${this.formatTime(segment.startTime)} - ${this.formatTime(segment.endTime)})`,
+                    content: segment.text,
+                    isOpen: false,
+                    timestamp: { start: segment.startTime, end: segment.endTime },
+                    pageNum: null,
+                    actions: [
+                        {
+                            label: '📋 Copy',
+                            handler: (btn) => copyToClipboard(segment.text, btn)
+                        }
+                    ]
+                });
+
+                this.container.appendChild(section);
             });
+        } else {
+            // Fallback to using chunks if markdown parsing fails
+            this.chunks.forEach((chunk, index) => {
+                const chunkTitle = this.getChunkTitle(chunk, index);
 
-            this.container.appendChild(section);
-        });
+                const section = this.createSection({
+                    id: chunk.chunk_id,
+                    title: chunkTitle,
+                    content: chunk.text_content,
+                    isOpen: false,
+                    timestamp: chunk.has_timestamps ? { start: chunk.start_time, end: chunk.end_time } : null,
+                    pageNum: this.getPageFromChunk(chunk),
+                    actions: [
+                        {
+                            label: '📋 Copy',
+                            handler: (btn) => copyToClipboard(chunk.text_content, btn)
+                        }
+                    ]
+                });
+
+                this.container.appendChild(section);
+            });
+        }
     }
 
     addVTTSection() {
@@ -261,25 +287,79 @@ export class Accordion {
         const isOpen = header.classList.contains('open');
 
         if (isOpen) {
+            // Close this section
             header.classList.remove('open');
             content.classList.remove('open');
         } else {
+            // Close all other sections first
+            const allHeaders = this.container.querySelectorAll('.accordion-header');
+            const allContents = this.container.querySelectorAll('.accordion-content');
+
+            allHeaders.forEach(h => {
+                if (h !== header) {
+                    h.classList.remove('open', 'active');
+                }
+            });
+
+            allContents.forEach(c => {
+                if (c !== content) {
+                    c.classList.remove('open');
+                }
+            });
+
+            // Open this section
             header.classList.add('open');
             content.classList.add('open');
         }
     }
 
-    // Open specific section by chunk ID (for audio sync)
-    openSection(chunkId) {
+    // Open specific section by chunk ID or timestamp (for audio sync)
+    openSection(chunkOrTimestamp) {
         try {
-            if (!chunkId) {
-                console.warn('[Accordion] openSection called with null/undefined chunkId');
+            if (!chunkOrTimestamp) {
+                console.warn('[Accordion] openSection called with null/undefined');
                 return;
             }
 
-            const section = this.container.querySelector(`[data-section-id="${chunkId}"]`);
+            let section = null;
+
+            // Try to find by chunk_id first (backward compatibility)
+            if (chunkOrTimestamp.chunk_id) {
+                section = this.container.querySelector(`[data-section-id="${chunkOrTimestamp.chunk_id}"]`);
+            }
+
+            // If not found, find by matching timestamp
             if (!section) {
-                console.warn(`[Accordion] Section not found: ${chunkId}`);
+                // Parse timestamp from text_content if available
+                const textContent = chunkOrTimestamp.text_content || '';
+                const match = textContent.match(/^\[time:\s*([\d.]+)-([\d.]+)\]/);
+
+                if (match) {
+                    const startTime = parseFloat(match[1]);
+                    const allSections = this.container.querySelectorAll('.accordion-section');
+
+                    // Find section with matching timestamp
+                    for (const sec of allSections) {
+                        const sectionId = sec.dataset.sectionId;
+                        if (sectionId && sectionId.startsWith('segment-')) {
+                            const header = sec.querySelector('.accordion-header');
+                            const titleText = header?.textContent || '';
+                            const timeMatch = titleText.match(/([\d:]+)\s*-\s*([\d:]+)/);
+
+                            if (timeMatch) {
+                                const sectionStart = this.parseTimeString(timeMatch[1]);
+                                if (Math.abs(sectionStart - startTime) < 0.1) {
+                                    section = sec;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!section) {
+                console.warn(`[Accordion] Section not found for chunk/timestamp`);
                 return;
             }
 
@@ -300,10 +380,19 @@ export class Accordion {
 
             // Scroll into view
             section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            console.log(`[Audio→Accordion] Opened section: ${chunkId}`);
+            console.log(`[Audio→Accordion] Opened section`);
         } catch (error) {
             console.error('[Accordion] Error in openSection:', error);
         }
+    }
+
+    parseTimeString(timeStr) {
+        // Convert "MM:SS" to seconds
+        const parts = timeStr.split(':');
+        if (parts.length === 2) {
+            return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+        }
+        return parseFloat(timeStr);
     }
 
     closeAllSections() {
@@ -311,18 +400,57 @@ export class Accordion {
         const contents = this.container.querySelectorAll('.accordion-content');
 
         headers.forEach(header => {
-            header.classList.remove('active');
-            // Don't close markdown section
-            if (header.parentElement.dataset.sectionId !== 'markdown-full') {
-                header.classList.remove('open');
-            }
+            header.classList.remove('active', 'open');
         });
 
         contents.forEach(content => {
-            if (content.parentElement.dataset.sectionId !== 'markdown-full') {
-                content.classList.remove('open');
-            }
+            content.classList.remove('open');
         });
+    }
+
+    parseMarkdownSegments() {
+        if (!this.markdownContent) {
+            return [];
+        }
+
+        const segments = [];
+
+        // Split content by timestamp markers
+        const timeRegex = /\[time:\s*([\d.]+)-([\d.]+)\]/g;
+        const matches = [];
+        let match;
+
+        // Collect all timestamp positions and values
+        while ((match = timeRegex.exec(this.markdownContent)) !== null) {
+            matches.push({
+                index: match.index,
+                startTime: parseFloat(match[1]),
+                endTime: parseFloat(match[2]),
+                fullMatch: match[0]
+            });
+        }
+
+        // Extract text between each timestamp and the next
+        for (let i = 0; i < matches.length; i++) {
+            const currentMatch = matches[i];
+            const nextMatch = matches[i + 1];
+
+            // Get text after current timestamp until next timestamp (or end of string)
+            const textStart = currentMatch.index + currentMatch.fullMatch.length;
+            const textEnd = nextMatch ? nextMatch.index : this.markdownContent.length;
+            const text = this.markdownContent.substring(textStart, textEnd).trim();
+
+            if (text) {
+                segments.push({
+                    startTime: currentMatch.startTime,
+                    endTime: currentMatch.endTime,
+                    text: text
+                });
+            }
+        }
+
+        console.log(`[Accordion] Parsed ${segments.length} segments from markdown`);
+        return segments;
     }
 
     getChunkTitle(chunk, index) {

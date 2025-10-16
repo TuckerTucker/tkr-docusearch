@@ -184,19 +184,22 @@
 /* Caption overlay on album art */
 .current-caption {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 0.75rem 1rem;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    background: rgba(255, 255, 255, 0.55);
+    color: rgb(22, 20, 20);
+    padding: 1rem 1.5rem;
     min-height: 60px;
     font-size: 0.95rem;
     line-height: 1.5;
     text-align: center;
-    border-radius: 0 0 8px 8px;
     backdrop-filter: blur(4px);
     transition: opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .current-caption:empty {
@@ -446,8 +449,9 @@
     /* Smaller caption text on mobile */
     .current-caption {
         font-size: 0.85rem;
-        padding: 0.5rem 0.75rem;
+        padding: 0.75rem 1rem;
         min-height: 50px;
+        width: 85%;
     }
 }
 
