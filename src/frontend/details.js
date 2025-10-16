@@ -74,7 +74,10 @@ class DetailsPage {
 
     initializeComponents() {
         const hasPages = this.documentData.pages && this.documentData.pages.length > 0;
-        const hasAudio = this.documentData.metadata.has_timestamps;
+        // Check if document is audio by format_type or file extension
+        const isAudioFile = this.documentData.metadata.raw_metadata?.format_type === 'audio' ||
+                           this.documentData.filename?.match(/\.(mp3|wav|m4a|ogg|flac)$/i);
+        const hasAudio = isAudioFile || this.documentData.metadata.has_timestamps;
         const hasChunks = this.documentData.chunks && this.documentData.chunks.length > 0;
 
         // Initialize Slideshow (documents with pages)

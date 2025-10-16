@@ -84,6 +84,8 @@ class DocumentMetadata(BaseModel):
     vtt_available: bool = Field(False, description="True if VTT file exists (audio only)")
     markdown_available: bool = Field(False, description="True if markdown file exists")
     has_timestamps: bool = Field(False, description="True if document has word-level timestamps (audio only)")
+    has_album_art: bool = Field(False, description="True if album art is available (audio only)")
+    album_art_url: Optional[str] = Field(None, description="URL to album art cover image (audio only)")
 
 
 class DocumentDetail(BaseModel):
@@ -488,6 +490,20 @@ async def get_document(doc_id: str):
         markdown_available = raw_metadata.get("markdown_available", False) if raw_metadata else False
         has_word_timestamps = raw_metadata.get("has_word_timestamps", False) if raw_metadata else False
 
+        # Check for album art availability (Wave 5)
+        has_album_art = False
+        album_art_url = None
+
+        # Check if cover art file exists
+        images_dir = Path("data/images") / doc_id
+        if images_dir.exists():
+            for ext in ["jpg", "jpeg", "png"]:
+                cover_file = images_dir / f"cover.{ext}"
+                if cover_file.exists():
+                    has_album_art = True
+                    album_art_url = f"/documents/{doc_id}/cover"
+                    break
+
         return DocumentDetail(
             doc_id=doc_id,
             filename=filename,
@@ -502,7 +518,9 @@ async def get_document(doc_id: str):
                 raw_metadata=raw_metadata,
                 vtt_available=vtt_available,
                 markdown_available=markdown_available,
-                has_timestamps=has_word_timestamps
+                has_timestamps=has_word_timestamps,
+                has_album_art=has_album_art,
+                album_art_url=album_art_url
             )
         )
 
@@ -666,6 +684,191 @@ async def get_vtt(doc_id: str):
         filename=filename,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
+        }
+    )
+
+
+@router.get(
+    "/documents/{doc_id}/audio",
+    summary="Get audio file",
+    description="Stream audio file for playback",
+    responses={
+        200: {"description": "Audio file", "content": {"audio/mpeg": {}, "audio/wav": {}, "audio/mp4": {}}},
+        400: {"description": "Invalid document ID"},
+        404: {"description": "Audio file not found"}
+    }
+)
+async def get_audio(doc_id: str):
+    """Stream audio file for playback.
+
+    Args:
+        doc_id: Document identifier
+
+    Returns:
+        FileResponse with audio data
+
+    Raises:
+        HTTPException: 404 if audio not found, 400 if invalid doc_id
+    """
+    # Validate doc_id
+    if not validate_doc_id(doc_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id}
+            }
+        )
+
+    # Get document metadata to find audio filename
+    try:
+        chroma_client = get_chroma_client()
+
+        # Try text collection first (audio transcripts)
+        text_results = chroma_client._text_collection.get(
+            where={"doc_id": doc_id},
+            limit=1
+        )
+
+        if not text_results["ids"]:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Audio file not found",
+                    "code": "AUDIO_NOT_FOUND",
+                    "details": {"doc_id": doc_id, "message": "Document not found or is not an audio file"}
+                }
+            )
+
+        metadata = text_results["metadatas"][0]
+        filename = metadata.get("filename") or metadata.get("original_filename")
+
+        if not filename:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Audio filename not found in metadata",
+                    "code": "FILENAME_NOT_FOUND",
+                    "details": {"doc_id": doc_id}
+                }
+            )
+
+        # Check for audio file in data/uploads/
+        uploads_dir = Path("data/uploads")
+        audio_path = uploads_dir / filename
+
+        if not audio_path.exists():
+            logger.warning(f"Audio file not found: {audio_path}")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Audio file not found on disk",
+                    "code": "AUDIO_FILE_NOT_FOUND",
+                    "details": {"doc_id": doc_id, "filename": filename}
+                }
+            )
+
+        # Determine MIME type based on extension
+        ext = audio_path.suffix.lower()
+        mime_types = {
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".m4a": "audio/mp4",
+            ".ogg": "audio/ogg",
+            ".flac": "audio/flac"
+        }
+        media_type = mime_types.get(ext, "audio/mpeg")
+
+        # Return file with proper headers for streaming
+        return FileResponse(
+            path=audio_path,
+            media_type=media_type,
+            headers={
+                "Accept-Ranges": "bytes",  # Enable seeking
+                "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving audio for {doc_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Internal server error",
+                "code": "AUDIO_SERVE_ERROR",
+                "details": {"doc_id": doc_id, "message": str(e)}
+            }
+        )
+
+
+@router.get(
+    "/documents/{doc_id}/cover",
+    summary="Get album art cover image",
+    description="Get album art cover image for audio documents",
+    responses={
+        200: {"description": "Cover image file", "content": {"image/jpeg": {}, "image/png": {}}},
+        400: {"description": "Invalid document ID"},
+        404: {"description": "Cover art not found"}
+    }
+)
+async def get_cover(doc_id: str):
+    """Get album art cover image for audio documents.
+
+    Args:
+        doc_id: Document identifier (SHA-256 hash)
+
+    Returns:
+        FileResponse with image data
+
+    Raises:
+        HTTPException: 404 if cover not found, 400 if invalid doc_id
+    """
+    # Validate doc_id
+    if not validate_doc_id(doc_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id}
+            }
+        )
+
+    # Check for cover art in data/images/{doc_id}/
+    images_dir = Path("data/images") / doc_id
+
+    cover_path = None
+    media_type = None
+
+    if images_dir.exists():
+        # Try different extensions (JPEG and PNG)
+        for ext, mime in [("jpg", "image/jpeg"), ("jpeg", "image/jpeg"), ("png", "image/png")]:
+            candidate = images_dir / f"cover.{ext}"
+            if candidate.exists():
+                cover_path = candidate
+                media_type = mime
+                break
+
+    if not cover_path:
+        logger.info(f"Cover art not found for document: {doc_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "Cover art not found",
+                "code": "COVER_NOT_FOUND",
+                "details": {"doc_id": doc_id, "message": "Album art only available for audio files with embedded cover images"}
+            }
+        )
+
+    # Return file with caching headers (1 year for immutable images)
+    return FileResponse(
+        path=cover_path,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "max-age=31536000, immutable",  # 1 year
         }
     )
 
