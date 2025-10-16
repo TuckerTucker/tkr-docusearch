@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Analysis of commit quality and code hygiene">
+    <title>Commit & PR Quality Report - tkr-project-kit</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <link rel="stylesheet" href="../../assets/css/themes/light.css">
+    <link rel="stylesheet" href="../../assets/css/themes/dark.css">
+    <link rel="stylesheet" href="../../assets/css/components/cards.css">
+    <link rel="stylesheet" href="../../assets/css/components/badges.css">
+    <link rel="stylesheet" href="../../assets/css/components/tables.css">
+    <link rel="stylesheet" href="../../assets/css/components/progress.css">
+    <link rel="stylesheet" href="../../assets/css/components/buttons.css">
+    <link rel="stylesheet" href="../../assets/css/components/navigation.css">
+
+    <!-- Report Configuration -->
+    <script>
+        window.REPORT_CONFIG = {
+            reportType: 'commit-pr-quality-report',
+            reportDate: '2025-10-16',
+            reportTitle: 'Commit & PR Quality Report',
+            agent: 'commit-pr-quality-agent'
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs"></div>
+
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h1>🔀 Commit & PR Quality Report</h1>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-lg); margin-top: 0.5rem;">
+                        Analysis of commit quality and code hygiene
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: var(--font-size-sm);">
+                        <span>📅 Generated: 2025-10-16</span>
+                        <span>🤖 Agent: commit-pr-quality-agent</span>
+                        <span>📊 Version: 3.6.0</span>
+                    </div>
+                </div>
+                <div id="theme-toggle-container"></div>
+            </div>
+        </header>
+
+        <!-- Quick Navigation -->
+        <div id="report-navigation"></div>
+
+        <!-- Main Content -->
+        <main>
+            <div class="section"><h2>Executive Summary</h2><div class="grid-3">
+<div class="metric-card"><div class="metric-value" style="color:var(--color-success)">80/100</div><div class="metric-label">Overall Quality Score</div></div>
+<div class="metric-card"><div class="metric-value">100</div><div class="metric-label">Total Commits Analyzed</div></div>
+<div class="metric-card"><div class="metric-value" style="color:var(--color-success)">97%</div><div class="metric-label">Conventional Commits Compliance</div></div>
+</div></div>
+
+<div class="section">
+<h2>Summary</h2>
+<p>This repository demonstrates <strong>excellent commit hygiene</strong> with a 80/100 overall quality score.</p>
+<ul>
+<li><strong>Commit Messages:</strong> 97% follow Conventional Commits (97/100)</li>
+<li><strong>Documentation:</strong> 50% include detailed body text (50/100)</li>
+<li><strong>Atomicity:</strong> 88% under 1000 lines (88/100)</li>
+<li><strong>Large Commits:</strong> 12 commits exceed 1000 lines</li>
+<li><strong>Exemplary Commits:</strong> 31 demonstrate all best practices</li>
+</ul>
+</div>
+
+
+<div class="section">
+<h2>Key Recommendations</h2>
+<ol>
+<li><strong>Maintain Conventional Commits Excellence (97% compliance)</strong> - Continue current practices</li>
+<li><strong>Enhance Commit Bodies</strong> - Target 70%+ commits with detailed context (current: 50%)</li>
+<li><strong>Review Large Commits</strong> - 12 commits over 1000 lines, though many are Wave completions</li>
+<li><strong>Implement PR Workflow</strong> - Add PR templates and self-review checklists</li>
+<li><strong>Add Git Hooks</strong> - Automate commit message validation with commitlint</li>
+</ol>
+</div>
+
+<div class="section"><h2>Large Commits (&gt;1000 lines)</h2><table><thead><tr><th>Commit</th><th>Subject</th><th>Lines</th></tr></thead><tbody>
+<tr><td><code>2d7d980f</code></td><td>feat(audio): implement Wave 1+2 VTT caption architecture</td><td style="color:var(--color-error)">7,677</td></tr>
+<tr><td><code>0e6726b1</code></td><td>feat(audio): add complete album art display with caption overlay</td><td style="color:var(--color-error)">4,393</td></tr>
+<tr><td><code>da14c6c0</code></td><td>feat(details-page): complete Wave 4 integration with comprehensive error handlin</td><td style="color:var(--color-error)">1,144</td></tr>
+<tr><td><code>16dcd82e</code></td><td>feat(details-page): implement Waves 1-3 with audio/visual sync and full document</td><td style="color:var(--color-error)">4,483</td></tr>
+<tr><td><code>1b88f6be</code></td><td>docs(wave4): complete documentation and technical debt resolution</td><td style="color:var(--color-error)">8,137</td></tr>
+<tr><td><code>c267d1ab</code></td><td>feat(processing): enable Docling enhanced mode with comprehensive documentation</td><td style="color:var(--color-error)">1,030</td></tr>
+<tr><td><code>a668e37d</code></td><td>feat(frontend): implement production-ready Library UI with WebSocket real-time u</td><td style="color:var(--color-error)">14,820</td></tr>
+<tr><td><code>0b9e7b53</code></td><td>chore: remove data/markdown files from git tracking</td><td style="color:var(--color-error)">2,212</td></tr>
+<tr><td><code>dab1449c</code></td><td>feat(audio): add comprehensive ID3 metadata extraction and audio-optimized UI</td><td style="color:var(--color-error)">1,613</td></tr>
+<tr><td><code>cc9bb760</code></td><td>feat(ui): add document viewing with page images and REST API</td><td style="color:var(--color-error)">6,320</td></tr>
+</tbody></table></div>
+<div class="section"><h2>Exemplary Commits (31)</h2><p>These commits demonstrate best practices:</p><table><thead><tr><th>Commit</th><th>Subject</th></tr></thead><tbody>
+<tr><td><code>7e89e190</code></td><td>feat(frontend): implement full markdown text parsing and improved caption displa</td></tr>
+<tr><td><code>f31bd92d</code></td><td>chore(deps): update docling to 2.57.0 and add MLX Whisper monitoring</td></tr>
+<tr><td><code>68013bbd</code></td><td>feat(ui): add favicon with book icon to frontend</td></tr>
+<tr><td><code>bfe8e411</code></td><td>fix(asr): force Whisper to use CPU due to MPS sparse tensor incompatibility</td></tr>
+<tr><td><code>69a8d2ec</code></td><td>fix(audio): ensure placeholder cover art is used for audio files without album a</td></tr>
+<tr><td><code>3849fefa</code></td><td>fix(asr): correct Whisper GPU acceleration - use supported_devices parameter</td></tr>
+<tr><td><code>4b45c74b</code></td><td>feat(audio): add placeholder cover art for audio files without album art</td></tr>
+<tr><td><code>98e9e23e</code></td><td>fix: add missing os import in processor.py</td></tr>
+<tr><td><code>54beb1e2</code></td><td>feat(ui): add file-type-specific status messages for better user visibility</td></tr>
+<tr><td><code>cfcfd271</code></td><td>fix(asr): add device parameter to Whisper configuration for GPU acceleration</td></tr>
+<tr><td><code>e1595b17</code></td><td>feat(cleanup): implement complete document deletion workflow</td></tr>
+<tr><td><code>d36584f1</code></td><td>chore(docs): reorganize document schema and update test tooling</td></tr>
+<tr><td><code>a61b6f4b</code></td><td>fix(storage): sanitize metadata for ChromaDB compatibility</td></tr>
+<tr><td><code>bfca3f91</code></td><td>refactor(wave3): consolidate configuration management via ProcessingConfig</td></tr>
+<tr><td><code>d536c5c0</code></td><td>fix(worker): sync legacy worker supported formats with webhook worker</td></tr>
+</tbody></table></div>
+
+<div class="section">
+<h2>Methodology</h2>
+<p>Analyzed 100 recent commits using:</p>
+<ul>
+<li><strong>Conventional Commits:</strong> type(scope): description format validation</li>
+<li><strong>Atomicity:</strong> Lines changed threshold (1000+ = large)</li>
+<li><strong>Documentation:</strong> Body text presence and length (&gt;20 chars)</li>
+<li><strong>Exemplary:</strong> Conventional + detailed body + &lt;500 lines</li>
+</ul>
+<p><strong>Scoring:</strong> Overall = 40% Message + 30% Body + 30% Atomicity</p>
+</div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Commit & PR Quality Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by commit-pr-quality-agent | W3C Design Token Format 3.0 Compliant</p>
+            <p style="margin-top: 0.5rem;">tkr-project-kit 3.6.0 | 2025-10-16</p>
+            <p style="margin-top: 1rem; font-size: var(--font-size-xs);">
+                <a href="https://github.com/tuckertucker/tkr-project-kit" target="_blank" rel="noopener">GitHub</a> |
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../../assets/js/navigation.js"></script>
+    <script src="../../assets/js/theme-toggle.js"></script>
+
+    <!-- Custom Report Script (optional) -->
+    
+<script>
+function generatePlan(recommendation) {
+    const message = '/create_plan ' + recommendation;
+    if (confirm('Generate plan for: ' + recommendation + '?')) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(message).then(() => alert('✓ Copied to clipboard!'));
+        } else {
+            prompt('Copy this:', message);
+        }
+    }
+}
+</script>
+
+</body>
+</html>

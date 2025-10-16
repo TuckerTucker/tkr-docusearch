@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Comprehensive dependency analysis with CVE detection, license compliance, and supply chain security assessment">
+    <title>Dependency Security Audit Report - tkr-project-kit</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../../assets/css/base.css">
+    <link rel="stylesheet" href="../../assets/css/themes/light.css">
+    <link rel="stylesheet" href="../../assets/css/themes/dark.css">
+    <link rel="stylesheet" href="../../assets/css/components/cards.css">
+    <link rel="stylesheet" href="../../assets/css/components/badges.css">
+    <link rel="stylesheet" href="../../assets/css/components/tables.css">
+    <link rel="stylesheet" href="../../assets/css/components/progress.css">
+    <link rel="stylesheet" href="../../assets/css/components/buttons.css">
+    <link rel="stylesheet" href="../../assets/css/components/navigation.css">
+
+    <!-- Report Configuration -->
+    <script>
+        window.REPORT_CONFIG = {
+            reportType: 'dependency-audit-report',
+            reportDate: '2025-10-16',
+            reportTitle: 'Dependency Security Audit Report',
+            agent: 'dependency-audit-agent'
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs"></div>
+
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1;">
+                    <h1>📦 Dependency Security Audit Report</h1>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-lg); margin-top: 0.5rem;">
+                        Comprehensive dependency analysis with CVE detection, license compliance, and supply chain security assessment
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: var(--font-size-sm);">
+                        <span>📅 Generated: 2025-10-16</span>
+                        <span>🤖 Agent: dependency-audit-agent</span>
+                        <span>📊 Version: 3.6.0</span>
+                    </div>
+                </div>
+                <div id="theme-toggle-container"></div>
+            </div>
+        </header>
+
+        <!-- Quick Navigation -->
+        <div id="report-navigation"></div>
+
+        <!-- Main Content -->
+        <main>
+            
+<div class="section">
+    <h2>Executive Summary</h2>
+    <div class="card-grid">
+        <div class="card severity-high">
+            <h3>Overall Risk Score</h3>
+            <div class="stat-value">HIGH</div>
+            <div class="stat-label">Score: 68.0 (Corrected)</div>
+        </div>
+        <div class="card severity-high">
+            <h3>Security Vulnerabilities</h3>
+            <div class="stat-value">4</div>
+            <div class="stat-label">0 Critical, 3 High</div>
+        </div>
+        <div class="card severity-low">
+            <h3>Actual License Issues</h3>
+            <div class="stat-value">5</div>
+            <div class="stat-label">1 AGPL, 1 GPL, 3 LGPL/dev-only (34 false positives resolved)</div>
+        </div>
+        <div class="card severity-low">
+            <h3>Outdated Packages</h3>
+            <div class="stat-value">43</div>
+            <div class="stat-label">6 major updates available</div>
+        </div>
+    </div>
+    <div class="info-box">
+        <strong>Total Packages Installed:</strong> 181<br>
+        <strong>Python Version:</strong> 3.13.3<br>
+        <strong>Virtual Environment:</strong> .venv-native<br>
+        <strong>Analysis Date:</strong> 2025-10-16 12:06:14
+    </div>
+</div>
+
+<div class="section">
+    <h2>Quick Actions</h2>
+    <div class="quick-action-buttons" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="#cve-vulnerabilities" class="quick-action-btn" style="background: var(--color-danger); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+            🔒 Review 4 CVE Vulnerabilities
+        </a>
+        <a href="#license-compliance" class="quick-action-btn" style="background: var(--color-success); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+            ✅ Review 5 Actual License Issues (34 resolved)
+        </a>
+        <a href="#outdated-packages" class="quick-action-btn" style="background: var(--color-info); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+            📦 Update 43 Packages
+        </a>
+    </div>
+</div>
+
+<div class="section" id="cve-vulnerabilities">
+    <h2>CVE Vulnerabilities</h2>
+    <div class="card-grid">
+        <div class="card severity-critical">
+            <h3>Critical</h3>
+            <div class="stat-value">0</div>
+            <div class="stat-label">Immediate action required</div>
+        </div>
+        <div class="card severity-high">
+            <h3>High</h3>
+            <div class="stat-value">3</div>
+            <div class="stat-label">Action required soon</div>
+        </div>
+        <div class="card severity-medium">
+            <h3>Medium</h3>
+            <div class="stat-value">0</div>
+            <div class="stat-label">Plan remediation</div>
+        </div>
+        <div class="card severity-low">
+            <h3>Low</h3>
+            <div class="stat-value">1</div>
+            <div class="stat-label">Monitor</div>
+        </div>
+    </div>
+
+    <h3>HIGH Severity Vulnerabilities</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>CVE ID</th>
+                <th>Fix Version</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td><strong>pip</strong></td>
+                <td>25.2</td>
+                <td><span class="badge badge-danger">GHSA-4xh5-x5gv-qwph</span></td>
+                <td>No fix available</td>
+                <td style="font-size: 0.85em;">### Summary  In the fallback extraction path for source distributions, `pip` used Python’s `tarfile` module without verifying that symbolic/hard link targets resolve inside the intended extraction dir...</td>
+            </tr>
+
+            <tr>
+                <td><strong>torch</strong></td>
+                <td>2.7.1</td>
+                <td><span class="badge badge-danger">GHSA-887c-mr87-cxwp</span></td>
+                <td>2.8.0</td>
+                <td style="font-size: 0.85em;">A vulnerability, which was classified as problematic, was found in PyTorch 2.6.0. Affected is the function torch.nn.functional.ctc_loss of the file aten/src/ATen/native/LossCTC.cpp. The manipulation l...</td>
+            </tr>
+
+            <tr>
+                <td><strong>urllib3</strong></td>
+                <td>2.3.0</td>
+                <td><span class="badge badge-danger">GHSA-48p4-8xcf-vxj5</span></td>
+                <td>2.5.0</td>
+                <td style="font-size: 0.85em;">urllib3 [supports](https://urllib3.readthedocs.io/en/2.4.0/reference/contrib/emscripten.html) being used in a Pyodide runtime utilizing the [JavaScript Fetch API](https://developer.mozilla.org/en-US/d...</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <h3>LOW Severity Vulnerabilities</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>CVE ID</th>
+                <th>Fix Version</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td><strong>urllib3</strong></td>
+                <td>2.3.0</td>
+                <td><span class="badge badge-danger">GHSA-pq67-6m6q-mj2v</span></td>
+                <td>2.5.0</td>
+                <td style="font-size: 0.85em;">urllib3 handles redirects and retries using the same mechanism, which is controlled by the `Retry` object. The most common way to disable redirects is at the request level, as follows:  ```python resp...</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+</div>
+
+<div class="section" id="license-compliance">
+    <h2>License Compliance (Corrected After Manual Review)</h2>
+
+    <div class="info-box" style="background: var(--color-success-bg, #d4edda); border-color: var(--color-success, #28a745);">
+        <strong>✅ License Review Complete: 34 false positives resolved</strong><br>
+        Of 39 packages initially flagged, only <strong>5 require attention</strong>. The others have permissive licenses (MIT/BSD/Apache) but pip reported "UNKNOWN" due to metadata formatting.<br><br>
+        <strong>Actual issues:</strong> 1 AGPL (PyMuPDF - replace with pypdf), 1 GPL (mutagen - review usage), 2 LGPL (python-bidi, astroid - acceptable), 1 dev-only GPL (pylint - low risk)
+    </div>
+    
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>License</th>
+                <th>Risk Level</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td><strong>CacheControl</strong></td>
+                <td>0.14.3</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://pypi.org/project/CacheControl/" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>MarkupSafe</strong></td>
+                <td>3.0.3</td>
+                <td>BSD-3-Clause ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/pallets/markupsafe/" target="_blank">Link</a></td>
+            </tr>
+
+            <tr style="background-color: #fff3cd;">
+                <td><strong>PyMuPDF</strong></td>
+                <td>1.26.4</td>
+                <td>AGPL-3.0 ⚠️ (Dual: commercial available)</td>
+                <td><span class="badge badge-danger">CRITICAL</span></td>
+                <td><a href="https://github.com/pymupdf/pymupdf" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>anyio</strong></td>
+                <td>4.11.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://anyio.readthedocs.io/en/stable/versionhistory.html" target="_blank">Link</a></td>
+            </tr>
+
+            <tr style="background-color: #f8f9fa;">
+                <td><strong>astroid</strong></td>
+                <td>4.0.1</td>
+                <td>LGPL-2.1+ (dev tool)</td>
+                <td><span class="badge badge-info">DEV-ONLY</span></td>
+                <td><a href="https://github.com/pylint-dev/astroid/issues" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>attrs</strong></td>
+                <td>25.4.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://www.attrs.org/en/stable/changelog.html" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>build</strong></td>
+                <td>1.3.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://build.pypa.io" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>click</strong></td>
+                <td>8.3.0</td>
+                <td>BSD-3-Clause ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/pallets/click/" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>docling</strong></td>
+                <td>2.57.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/docling-project/docling" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>docling-core</strong></td>
+                <td>2.48.4</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/docling-project" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>docling-ibm-models</strong></td>
+                <td>3.9.1</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/docling-project/docling-ibm-models" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>docling-parse</strong></td>
+                <td>4.5.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/docling-project/docling-parse" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>fsspec</strong></td>
+                <td>2025.9.0</td>
+                <td>BSD-3-Clause ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/fsspec/filesystem_spec" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>jsonschema</strong></td>
+                <td>4.25.1</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/python-jsonschema/jsonschema" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>jsonschema-specifications</strong></td>
+                <td>2025.9.1</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/python-jsonschema/jsonschema-specifications" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>lightning-whisper-mlx</strong></td>
+                <td>0.0.10</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/mustafaaljadery/lightning-whisper-mlx" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>more-itertools</strong></td>
+                <td>10.8.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/more-itertools/more-itertools" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>msgpack</strong></td>
+                <td>1.1.2</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://msgpack.org/" target="_blank">Link</a></td>
+            </tr>
+
+            <tr style="background-color: #fff3cd;">
+                <td><strong>mutagen</strong></td>
+                <td>1.47.0</td>
+                <td>GPLv2+ ⚠️</td>
+                <td><span class="badge badge-danger">HIGH</span></td>
+                <td><a href="https://github.com/quodlibet/mutagen" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-api</strong></td>
+                <td>1.37.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-exporter-otlp-proto-common</strong></td>
+                <td>1.37.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-common" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-exporter-otlp-proto-grpc</strong></td>
+                <td>1.37.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-grpc" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-proto</strong></td>
+                <td>1.37.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-proto" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-sdk</strong></td>
+                <td>1.37.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-sdk" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>opentelemetry-semantic-conventions</strong></td>
+                <td>0.58b0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-semantic-conventions" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>pillow</strong></td>
+                <td>11.3.0</td>
+                <td>HPND (permissive) ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://python-pillow.github.io" target="_blank">Link</a></td>
+            </tr>
+
+            <tr style="background-color: #f8f9fa;">
+                <td><strong>pylint</strong></td>
+                <td>4.0.1</td>
+                <td>GPLv2+ (dev tool)</td>
+                <td><span class="badge badge-info">DEV-ONLY</span></td>
+                <td><a href="https://github.com/pylint-dev/pylint" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>pyparsing</strong></td>
+                <td>3.2.5</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/pyparsing/pyparsing/" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>pypdf</strong></td>
+                <td>6.1.1</td>
+                <td>BSD-3-Clause ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/py-pdf/pypdf" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>pytest-asyncio</strong></td>
+                <td>1.2.0</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/pytest-dev/pytest-asyncio" target="_blank">Link</a></td>
+            </tr>
+
+            <tr style="background-color: #fff8e1;">
+                <td><strong>python-bidi</strong></td>
+                <td>0.6.6</td>
+                <td>LGPL-3.0 (acceptable for Python)</td>
+                <td><span class="badge badge-warning">MEDIUM</span></td>
+                <td><a href="https://github.com/MeirKriheli/python-bidi" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>referencing</strong></td>
+                <td>0.36.2</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/python-jsonschema/referencing" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>regex</strong></td>
+                <td>2025.9.18</td>
+                <td>Apache-2.0 ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/mrabarnett/mrab-regex" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>rpds-py</strong></td>
+                <td>0.27.1</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/crate-py/rpds" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>rtree</strong></td>
+                <td>1.4.1</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/Toblerity/rtree" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>scikit-learn</strong></td>
+                <td>1.7.2</td>
+                <td>BSD-3-Clause ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://scikit-learn.org" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>typing-inspection</strong></td>
+                <td>0.4.2</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/pydantic/typing-inspection" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>typing_extensions</strong></td>
+                <td>4.15.0</td>
+                <td>PSF-2.0 (Python Foundation) ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/python/typing_extensions" target="_blank">Link</a></td>
+            </tr>
+
+            <tr>
+                <td><strong>zipp</strong></td>
+                <td>3.23.0</td>
+                <td>MIT ✅</td>
+                <td><span class="badge badge-success">LOW</span></td>
+                <td><a href="https://github.com/jaraco/zipp" target="_blank">Link</a></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <h3>License Distribution</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>License Type</th>
+                <th>Package Count</th>
+                <th>Examples</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td>MIT License</td>
+                <td>57</td>
+                <td style="font-size: 0.85em;">Faker, PyYAML, annotated-types (+54 more)</td>
+            </tr>
+
+            <tr>
+                <td>UNKNOWN</td>
+                <td>36</td>
+                <td style="font-size: 0.85em;">CacheControl, MarkupSafe, anyio (+33 more)</td>
+            </tr>
+
+            <tr>
+                <td>BSD License</td>
+                <td>35</td>
+                <td style="font-size: 0.85em;">Jinja2, Pygments, colorama (+32 more)</td>
+            </tr>
+
+            <tr>
+                <td>Apache Software License</td>
+                <td>32</td>
+                <td style="font-size: 0.85em;">PyPika, accelerate, bcrypt (+29 more)</td>
+            </tr>
+
+            <tr>
+                <td>MIT</td>
+                <td>15</td>
+                <td style="font-size: 0.85em;">charset-normalizer, durationpy, jsonref (+12 more)</td>
+            </tr>
+
+            <tr>
+                <td>Apache Software License; MIT License</td>
+                <td>4</td>
+                <td style="font-size: 0.85em;">orjson, sniffio, structlog (+1 more)</td>
+            </tr>
+
+            <tr>
+                <td>BSD</td>
+                <td>3</td>
+                <td style="font-size: 0.85em;">antlr4-python3-runtime, llvmlite, torchvision</td>
+            </tr>
+
+            <tr>
+                <td>Apache-2.0</td>
+                <td>3</td>
+                <td style="font-size: 0.85em;">coverage, license-expression, rapidocr</td>
+            </tr>
+
+            <tr>
+                <td>Apache Software License; BSD License</td>
+                <td>3</td>
+                <td style="font-size: 0.85em;">ninja, packaging, python-dateutil</td>
+            </tr>
+
+            <tr>
+                <td>BSD-3-Clause</td>
+                <td>3</td>
+                <td style="font-size: 0.85em;">oauthlib, psutil, tifffile</td>
+            </tr>
+
+            <tr>
+                <td>Dual Licensed - GNU AFFERO GPL 3.0 or Artifex Commercial License</td>
+                <td>1</td>
+                <td style="font-size: 0.85em;">PyMuPDF</td>
+            </tr>
+
+            <tr>
+                <td>BSD-2-Clause</td>
+                <td>1</td>
+                <td style="font-size: 0.85em;">boolean.py</td>
+            </tr>
+
+            <tr>
+                <td>Mozilla Public License 2.0 (MPL 2.0)</td>
+                <td>1</td>
+                <td style="font-size: 0.85em;">certifi</td>
+            </tr>
+
+            <tr>
+                <td>Python Software Foundation License</td>
+                <td>1</td>
+                <td style="font-size: 0.85em;">defusedxml</td>
+            </tr>
+
+            <tr>
+                <td>Apache License 2.0</td>
+                <td>1</td>
+                <td style="font-size: 0.85em;">easyocr</td>
+            </tr>
+
+        </tbody>
+    </table>
+</div>
+
+<div class="section" id="outdated-packages">
+    <h2>Outdated Packages</h2>
+
+    <h3>Major Version Updates Available (6)</h3>
+    <div class="warning-box">
+        <strong>⚠️ These packages have major version updates available</strong><br>
+        Review breaking changes before updating.
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Current Version</th>
+                <th>Latest Version</th>
+                <th>Update Type</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td><strong>cyclonedx-python-lib</strong></td>
+                <td>9.1.0</td>
+                <td><span class="badge badge-info">11.2.0</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+            <tr>
+                <td><strong>jsonlines</strong></td>
+                <td>3.1.0</td>
+                <td><span class="badge badge-info">4.0.0</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+            <tr>
+                <td><strong>lxml</strong></td>
+                <td>5.4.0</td>
+                <td><span class="badge badge-info">6.0.2</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+            <tr>
+                <td><strong>pillow</strong></td>
+                <td>11.3.0</td>
+                <td><span class="badge badge-info">12.0.0</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+            <tr>
+                <td><strong>posthog</strong></td>
+                <td>5.4.0</td>
+                <td><span class="badge badge-info">6.7.8</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+            <tr>
+                <td><strong>semchunk</strong></td>
+                <td>2.2.2</td>
+                <td><span class="badge badge-info">3.2.3</span></td>
+                <td><span class="badge badge-warning">Major Update</span></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <h3>Minor/Patch Updates Available (37)</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Current Version</th>
+                <th>Latest Version</th>
+                <th>Update Type</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td>antlr4-python3-runtime</td>
+                <td>4.9.3</td>
+                <td><span class="badge badge-success">4.13.2</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>cachetools</td>
+                <td>6.2.0</td>
+                <td><span class="badge badge-success">6.2.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>charset-normalizer</td>
+                <td>3.4.3</td>
+                <td><span class="badge badge-success">3.4.4</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>colorlog</td>
+                <td>6.9.0</td>
+                <td><span class="badge badge-success">6.10.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>coverage</td>
+                <td>7.10.7</td>
+                <td><span class="badge badge-success">7.11.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>docling-core</td>
+                <td>2.48.4</td>
+                <td><span class="badge badge-success">2.49.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>docling-parse</td>
+                <td>4.5.0</td>
+                <td><span class="badge badge-success">4.5.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>Faker</td>
+                <td>37.8.0</td>
+                <td><span class="badge badge-success">37.11.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>fastapi</td>
+                <td>0.118.0</td>
+                <td><span class="badge badge-success">0.119.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>filelock</td>
+                <td>3.19.1</td>
+                <td><span class="badge badge-success">3.20.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>httptools</td>
+                <td>0.6.4</td>
+                <td><span class="badge badge-success">0.7.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>idna</td>
+                <td>3.10</td>
+                <td><span class="badge badge-success">3.11</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>mando</td>
+                <td>0.7.1</td>
+                <td><span class="badge badge-success">0.8.2</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>marko</td>
+                <td>2.2.0</td>
+                <td><span class="badge badge-success">2.2.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>numpy</td>
+                <td>2.2.6</td>
+                <td><span class="badge badge-success">2.3.4</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>onnxruntime</td>
+                <td>1.23.0</td>
+                <td><span class="badge badge-success">1.23.1</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>opentelemetry-api</td>
+                <td>1.37.0</td>
+                <td><span class="badge badge-success">1.38.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>opentelemetry-exporter-otlp-proto-common</td>
+                <td>1.37.0</td>
+                <td><span class="badge badge-success">1.38.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>opentelemetry-exporter-otlp-proto-grpc</td>
+                <td>1.37.0</td>
+                <td><span class="badge badge-success">1.38.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+            <tr>
+                <td>opentelemetry-proto</td>
+                <td>1.37.0</td>
+                <td><span class="badge badge-success">1.38.0</span></td>
+                <td><span class="badge badge-info">Minor/Patch</span></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+</div>
+
+<div class="section" id="supply-chain">
+    <h2>Supply Chain Security</h2>
+
+    <div class="warning-box">
+        <strong>⚠️ 1 supply chain risks identified</strong>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>Risk Type</th>
+                <th>Severity</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td><strong>colpali_engine</strong></td>
+                <td>0.3.13.dev1+g9bee9b2b7</td>
+                <td>Development/Preview Version</td>
+                <td><span class="badge badge-warning">MEDIUM</span></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+</div>
+
+<div class="section" id="recommendations">
+    <h2>Remediation Recommendations (Updated After License Review)</h2>
+
+    <h3>Immediate Actions (Critical Priority)</h3>
+    <div class="card">
+
+        <h4>1. Replace PyMuPDF (AGPL-3.0) - CRITICAL</h4>
+        <ul>
+            <li><strong>Issue:</strong> AGPL requires source disclosure for network-accessible services</li>
+            <li><strong>Solution:</strong> Replace with <code>pypdf</code> (BSD-3-Clause, already installed)</li>
+            <li><strong>Action:</strong> Run <code>grep -r "import fitz\|from fitz\|PyMuPDF" src/</code> to find usage</li>
+            <li><strong>Migration:</strong> Replace <code>import fitz</code> with <code>from pypdf import PdfReader</code></li>
+        </ul>
+
+        <h4>2. Address High Severity CVEs (3 vulnerabilities)</h4>
+        <ul>
+            <li>Update <code>torch</code> to 2.8.0 (GHSA-887c-mr87-cxwp)</li>
+            <li>Update <code>urllib3</code> to 2.5.0 (GHSA-48p4-8xcf-vxj5, GHSA-pq67-6m6q-mj2v)</li>
+            <li>Monitor <code>pip</code> for fix (GHSA-4xh5-x5gv-qwph - no fix available yet)</li>
+        </ul>
+
+    </div>
+
+    <h3>Short-term Actions (High Priority)</h3>
+    <div class="card">
+
+        <h4>3. Review mutagen (GPLv2+) Usage</h4>
+        <ul>
+            <li><strong>Check usage:</strong> <code>grep -r "import mutagen\|from mutagen" src/</code></li>
+            <li><strong>Question:</strong> Is audio metadata needed for a document search system?</li>
+            <li><strong>Options:</strong> Remove if unused, isolate if needed, or accept GPL terms</li>
+        </ul>
+
+        <h4>4. Plan Major Version Updates (6 packages)</h4>
+        <ul>
+            <li>Review breaking changes in PyTorch 2.7.1 → 2.8.0 (includes security fix)</li>
+            <li>Review breaking changes in urllib3 2.3.0 → 2.5.0 (includes security fixes)</li>
+            <li>Test: pillow, lxml, posthog, jsonlines, semchunk updates</li>
+        </ul>
+
+    </div>
+    
+    <h3>Long-term Actions (Medium Priority)</h3>
+    <div class="card">
+        <h4>5. Monitor LGPL Packages (python-bidi, astroid)</h4>
+        <ul>
+            <li><strong>python-bidi:</strong> LGPL-3.0, acceptable for Python (dynamic linking)</li>
+            <li><strong>astroid:</strong> LGPL-2.1+, dev tool only, low risk</li>
+            <li><strong>pylint:</strong> GPLv2+, dev tool only, low risk</li>
+            <li>No immediate action required, but monitor usage</li>
+        </ul>
+
+        <h4>6. Maintain Package Currency</h4>
+        <ul>
+            <li>Implement automated dependency update checks (e.g., Dependabot)</li>
+            <li>Schedule monthly dependency review and update cycles</li>
+            <li>Monitor security advisories for critical dependencies</li>
+        </ul>
+
+        <h4>7. Optimize Dependency Tree</h4>
+        <ul>
+            <li>Review and remove unused dependencies</li>
+            <li>Consider consolidating similar functionality packages</li>
+            <li>Monitor bundle size impact of new dependencies</li>
+        </ul>
+    </div>
+    
+    <h3>Process Improvements</h3>
+    <div class="card">
+        <h4>8. Implement Security Best Practices</h4>
+        <ul>
+            <li>Enable automated security scanning in CI/CD pipeline</li>
+            <li>Establish dependency approval process for new packages</li>
+            <li>Document accepted security risks and exceptions</li>
+            <li>Set up security policy and vulnerability disclosure process</li>
+        </ul>
+
+        <h4>9. License Metadata Improvements</h4>
+        <ul>
+            <li>34 packages flagged as "UNKNOWN" actually have permissive licenses (MIT/BSD/Apache)</li>
+            <li>Issue caused by older metadata formats that pip doesn't recognize</li>
+            <li>Packages are safe to use - this is a metadata reporting issue, not an actual risk</li>
+            <li>Consider upgrading to newer package versions which may have improved metadata</li>
+        </ul>
+    </div>
+</div>
+
+<div class="section" id="update-commands">
+    <h2>Update Commands</h2>
+
+    <div class="info-box" style="background: var(--color-info-bg, #d1ecf1); border-color: var(--color-info, #0c5460); margin-bottom: 1.5rem;">
+        <strong>📝 Note:</strong> License compliance is better than initially reported. Focus on CVE patches and PyMuPDF replacement first.
+    </div>
+
+    <div class="card">
+        <h3>1. Replace PyMuPDF (AGPL) with pypdf (BSD)</h3>
+        <pre><code># First, check if PyMuPDF is actually used
+grep -r "import fitz\|from fitz\|PyMuPDF" src/
+
+# If not used, remove it
+pip uninstall PyMuPDF
+
+# If used, migrate to pypdf (already installed) then remove PyMuPDF
+</code></pre>
+
+        <h3>2. Critical CVE Patches</h3>
+        <pre><code># Update packages with high severity CVEs
+pip install --upgrade \
+    torch>=2.8.0 \
+    urllib3>=2.5.0 \
+</code></pre>
+        
+        <h3>3. Update All Outdated Packages (Minor/Patch)</h3>
+        <pre><code># Safe updates (minor/patch versions)
+pip install --upgrade \
+    antlr4-python3-runtime>=4.13.2 \
+    cachetools>=6.2.1 \
+    charset-normalizer>=3.4.4 \
+    colorlog>=6.10.1 \
+    coverage>=7.11.0 \
+    docling-core>=2.49.0 \
+    docling-parse>=4.5.1 \
+    Faker>=37.11.0 \
+    fastapi>=0.119.0 \
+    filelock>=3.20.0 \
+</code></pre>
+        
+        <div class="warning-box">
+            <strong>⚠️ Test Updates First</strong><br>
+            Always test dependency updates in a development environment before deploying to production.
+            Major version updates may contain breaking changes.
+        </div>
+    </div>
+</div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p><strong>Dependency Security Audit Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by dependency-audit-agent | W3C Design Token Format 3.0 Compliant</p>
+            <p style="margin-top: 0.5rem;">tkr-project-kit 3.6.0 | 2025-10-16</p>
+            <p style="margin-top: 1rem; font-size: var(--font-size-xs);">
+                <a href="https://github.com/tuckertucker/tkr-project-kit" target="_blank" rel="noopener">GitHub</a> |
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../../assets/js/navigation.js"></script>
+    <script src="../../assets/js/theme-toggle.js"></script>
+
+    <!-- Custom Report Script (optional) -->
+    
+</body>
+</html>

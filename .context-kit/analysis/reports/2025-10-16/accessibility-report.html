@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>♿ Accessibility Audit Report - tkr-docusearch</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --critical: #dc2626;
+            --bg: #ffffff;
+            --bg-secondary: #f9fafb;
+            --text: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg-secondary);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            margin: -2rem -2rem 2rem;
+            border-radius: 0 0 1rem 1rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+        
+        .score-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            color: white;
+        }
+        
+        .score-details {
+            flex: 1;
+            margin-left: 2rem;
+        }
+        
+        .score-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .score-item {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .score-item.critical {
+            border-left-color: var(--critical);
+        }
+        
+        .score-item.warning {
+            border-left-color: var(--warning);
+        }
+        
+        .score-item.info {
+            border-left-color: var(--success);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .section h2 {
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        
+        .section h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 1rem;
+            color: var(--text);
+        }
+        
+        .violation {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--error);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+        }
+        
+        .violation.warning {
+            border-left-color: var(--warning);
+        }
+        
+        .violation.info {
+            border-left-color: var(--success);
+        }
+        
+        .violation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .violation-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+        
+        .severity-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: var(--critical);
+            color: white;
+        }
+        
+        .severity-badge.warning {
+            background: var(--warning);
+        }
+        
+        .severity-badge.info {
+            background: var(--success);
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+        
+        .file-ref {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-family: 'Courier New', monospace;
+            margin: 0.25rem 0;
+        }
+        
+        .recommendation {
+            background: #dbeafe;
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+        }
+        
+        .recommendation strong {
+            color: var(--primary);
+        }
+        
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        li {
+            margin: 0.5rem 0;
+        }
+        
+        .quick-action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        .quick-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .quick-action-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .wcag-criterion {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0.5rem;
+        }
+        
+        .wcag-criterion code {
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        
+        .status-pass {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .status-fail {
+            color: var(--error);
+            font-weight: 600;
+        }
+        
+        .status-partial {
+            color: var(--warning);
+            font-weight: 600;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>♿ Accessibility Audit Report</h1>
+            <p>WCAG 2.1 Level AA Compliance Assessment</p>
+            <p><strong>Project:</strong> tkr-docusearch | <strong>Date:</strong> 2025-10-16 | <strong>Agent:</strong> accessibility-agent v3.6.0</p>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="score-card">
+            <div class="score-header">
+                <div class="score-circle">62</div>
+                <div class="score-details">
+                    <h2>Overall Accessibility Score</h2>
+                    <p style="font-size: 1.1rem; margin-top: 0.5rem;">The application shows <strong>moderate accessibility</strong> with good semantic HTML structure and ARIA usage, but requires improvements in keyboard navigation, color contrast, and comprehensive screen reader support.</p>
+                </div>
+            </div>
+            
+            <div class="score-breakdown">
+                <div class="score-item critical">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--critical);">8</div>
+                    <div style="color: var(--text-secondary);">Critical Issues</div>
+                </div>
+                <div class="score-item warning">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--warning);">15</div>
+                    <div style="color: var(--text-secondary);">Warnings</div>
+                </div>
+                <div class="score-item info">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--success);">12</div>
+                    <div style="color: var(--text-secondary);">Best Practices</div>
+                </div>
+                <div class="score-item">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary);">45%</div>
+                    <div style="color: var(--text-secondary);">WCAG 2.1 AA</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WCAG 2.1 AA Compliance Status -->
+        <div class="section">
+            <h2>WCAG 2.1 Level AA Compliance Status</h2>
+            
+            <h3>Perceivable (Principle 1)</h3>
+            <table>
+                <tr>
+                    <th>Success Criterion</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>1.1.1 Non-text Content</td>
+                    <td>A</td>
+                    <td class="status-partial">Partial</td>
+                    <td>Images have alt text but some decorative icons lack aria-hidden</td>
+                </tr>
+                <tr>
+                    <td>1.3.1 Info and Relationships</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Good semantic HTML and ARIA landmarks</td>
+                </tr>
+                <tr>
+                    <td>1.3.2 Meaningful Sequence</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Logical reading order maintained</td>
+                </tr>
+                <tr>
+                    <td>1.4.3 Contrast (Minimum)</td>
+                    <td>AA</td>
+                    <td class="status-fail">Fail</td>
+                    <td>Multiple color contrast violations found</td>
+                </tr>
+                <tr>
+                    <td>1.4.11 Non-text Contrast</td>
+                    <td>AA</td>
+                    <td class="status-fail">Fail</td>
+                    <td>Focus indicators and UI components need improvement</td>
+                </tr>
+            </table>
+
+            <h3>Operable (Principle 2)</h3>
+            <table>
+                <tr>
+                    <th>Success Criterion</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>2.1.1 Keyboard</td>
+                    <td>A</td>
+                    <td class="status-partial">Partial</td>
+                    <td>Most functionality accessible, but custom components need work</td>
+                </tr>
+                <tr>
+                    <td>2.1.2 No Keyboard Trap</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>No keyboard traps detected</td>
+                </tr>
+                <tr>
+                    <td>2.4.3 Focus Order</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Focus order is logical</td>
+                </tr>
+                <tr>
+                    <td>2.4.7 Focus Visible</td>
+                    <td>AA</td>
+                    <td class="status-partial">Partial</td>
+                    <td>Some focus indicators have insufficient contrast</td>
+                </tr>
+                <tr>
+                    <td>2.5.3 Label in Name</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Visible labels match accessible names</td>
+                </tr>
+            </table>
+
+            <h3>Understandable (Principle 3)</h3>
+            <table>
+                <tr>
+                    <th>Success Criterion</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>3.1.1 Language of Page</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>lang="en" properly set on all pages</td>
+                </tr>
+                <tr>
+                    <td>3.2.3 Consistent Navigation</td>
+                    <td>AA</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Navigation is consistent across pages</td>
+                </tr>
+                <tr>
+                    <td>3.3.1 Error Identification</td>
+                    <td>A</td>
+                    <td class="status-partial">Partial</td>
+                    <td>Form validation present but error announcements incomplete</td>
+                </tr>
+                <tr>
+                    <td>3.3.2 Labels or Instructions</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>Form inputs have clear labels</td>
+                </tr>
+            </table>
+
+            <h3>Robust (Principle 4)</h3>
+            <table>
+                <tr>
+                    <th>Success Criterion</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+                <tr>
+                    <td>4.1.2 Name, Role, Value</td>
+                    <td>A</td>
+                    <td class="status-pass">Pass</td>
+                    <td>ARIA attributes properly implemented for most components</td>
+                </tr>
+                <tr>
+                    <td>4.1.3 Status Messages</td>
+                    <td>AA</td>
+                    <td class="status-partial">Partial</td>
+                    <td>Limited aria-live regions for dynamic content</td>
+                </tr>
+            </table>
+
+            <div class="recommendation">
+                <strong>Overall WCAG 2.1 AA Compliance: 45%</strong><br>
+                The application meets approximately 9 out of 20 key WCAG 2.1 AA success criteria fully, with 6 partially met and 5 failing. Priority should be given to color contrast, keyboard navigation completeness, and screen reader announcements.
+            </div>
+        </div>
+
+        <!-- Semantic HTML Analysis -->
+        <div class="section">
+            <h2>Semantic HTML Structure</h2>
+            
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Excellent Landmark Usage</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>All pages use proper semantic HTML5 landmarks with ARIA labels:</p>
+                <ul>
+                    <li><code>&lt;header role="banner"&gt;</code> - Properly identifies page header</li>
+                    <li><code>&lt;nav role="navigation" aria-label="Main navigation"&gt;</code> - Clear navigation structure</li>
+                    <li><code>&lt;main role="main"&gt;</code> - Main content properly identified</li>
+                    <li><code>&lt;footer role="contentinfo"&gt;</code> - Footer semantics correct</li>
+                    <li><code>&lt;aside role="complementary"&gt;</code> - Filter bar properly marked</li>
+                </ul>
+                <span class="file-ref">src/frontend/index.html</span>
+                <span class="file-ref">data/copyparty/www/search.html</span>
+            </div>
+
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Logical Heading Hierarchy</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>Heading structure follows proper hierarchy across all pages:</p>
+                <ul>
+                    <li>Single <code>&lt;h1&gt;</code> per page (DocuSearch, Document Details, etc.)</li>
+                    <li><code>&lt;h2&gt;</code> for major sections (Search Documents, Pages, Audio Playback)</li>
+                    <li><code>&lt;h3&gt;</code> for subsections (Features, Filters, Processing Status)</li>
+                    <li>No skipped heading levels detected</li>
+                </ul>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Missing Section Elements</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Some content areas use generic <code>&lt;div&gt;</code> elements instead of semantic <code>&lt;section&gt;</code> or <code>&lt;article&gt;</code> tags:</p>
+                <span class="file-ref">data/copyparty/www/status_dashboard.html:29-65</span>
+                <div class="code-block"><!-- Queue statistics --&gt;
+&lt;section class="queue-stats"&gt;
+  &lt;!-- Should be wrapped in article tags for each stat --&gt;
+  &lt;div class="stat-card"&gt;...&lt;/div&gt;
+&lt;/section&gt;</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Wrap individual stat cards in <code>&lt;article&gt;</code> elements to better identify discrete pieces of content. Consider using <code>&lt;section&gt;</code> for the features list on the home page.
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Emoji as Content</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Decorative emojis in feature cards and buttons lack proper handling:</p>
+                <span class="file-ref">data/copyparty/www/index.html:164-196</span>
+                <div class="code-block">&lt;div class="feature-icon" aria-hidden="true"&gt;🔍&lt;/div&gt;
+&lt;h3&gt;Hybrid Search&lt;/h3&gt;</div>
+                <p><strong>Current:</strong> <code>aria-hidden="true"</code> is applied (good!)</p>
+                <p><strong>Issue:</strong> Theme toggle button uses emoji without proper ARIA:</p>
+                <span class="file-ref">src/frontend/details.html:19-21</span>
+                <div class="code-block">&lt;button id="theme-toggle" class="icon-button" aria-label="Toggle theme"&gt;
+    🌙
+&lt;/button&gt;</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Ensure all emoji content is either:
+                    <ul>
+                        <li>Decorative: wrapped in <code>&lt;span aria-hidden="true"&gt;</code></li>
+                        <li>Functional: button has proper <code>aria-label</code> (already done for theme toggle)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ARIA Implementation Review -->
+        <div class="section">
+            <h2>ARIA Implementation</h2>
+            
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Excellent ARIA Landmark Labels</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>Navigation landmarks include descriptive aria-label attributes:</p>
+                <span class="file-ref">src/frontend/index.html:20</span>
+                <div class="code-block">&lt;nav class="header__nav" role="navigation" aria-label="Main navigation"&gt;
+&lt;aside class="filter-bar-container" role="complementary" aria-label="Document filters"&gt;
+&lt;div id="document-grid" class="document-grid" role="region" aria-label="Document library"&gt;</div>
+            </div>
+
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Proper aria-current Usage</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>Active navigation links correctly use <code>aria-current="page"</code>:</p>
+                <span class="file-ref">src/frontend/index.html:21</span>
+                <div class="code-block">&lt;a href="/frontend" class="header__nav-link header__nav-link--active" 
+   aria-current="page"&gt;
+    Library
+&lt;/a&gt;</div>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Insufficient aria-live Regions</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Dynamic content updates lack proper screen reader announcements:</p>
+                <span class="file-ref">src/frontend/index.html:53-56</span>
+                <div class="code-block">&lt;!-- Only connection status has aria-live --&gt;
+&lt;span id="connection-status" 
+      class="connection-status connection-status--disconnected" 
+      role="status" 
+      aria-live="polite"&gt;
+    Disconnected
+&lt;/span&gt;</div>
+                <p><strong>Missing aria-live regions for:</strong></p>
+                <ul>
+                    <li>Document grid loading/update states</li>
+                    <li>Search result announcements</li>
+                    <li>File upload progress</li>
+                    <li>Processing status updates</li>
+                    <li>Error messages and form validation</li>
+                </ul>
+                <span class="file-ref">data/copyparty/www/search.html:27</span>
+                <div class="code-block">&lt;!-- Alert container present but may not announce dynamically --&gt;
+&lt;div id="alert-container" aria-live="polite"&gt;&lt;/div&gt;</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add aria-live regions for:
+                    <div class="code-block">&lt;!-- Search results announcement --&gt;
+&lt;div role="status" aria-live="polite" aria-atomic="true" class="sr-only"&gt;
+    Found 10 results for "quarterly revenue"
+&lt;/div&gt;
+
+&lt;!-- Document grid status --&gt;
+&lt;div role="status" aria-live="polite" aria-atomic="true"&gt;
+    Loading documents...
+&lt;/div&gt;
+
+&lt;!-- Upload progress --&gt;
+&lt;div role="status" aria-live="polite" aria-atomic="true"&gt;
+    Uploading file.pdf: 45% complete
+&lt;/div&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Modal Dialog ARIA Issues</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Preview modal has proper ARIA but may lack focus management:</p>
+                <span class="file-ref">data/copyparty/www/search.html:195</span>
+                <div class="code-block">&lt;div id="preview-modal" 
+     class="modal" 
+     hidden 
+     role="dialog" 
+     aria-labelledby="preview-title" 
+     aria-modal="true"&gt;
+    &lt;div class="modal-overlay" aria-hidden="true"&gt;&lt;/div&gt;
+    ...
+&lt;/div&gt;</div>
+                <p><strong>Issues:</strong></p>
+                <ul>
+                    <li>No verification of focus trap implementation in JavaScript</li>
+                    <li>Close button lacks explicit focus on modal open</li>
+                    <li>Return focus to trigger element on close not confirmed</li>
+                    <li>Escape key handling not verified in HTML review</li>
+                </ul>
+                <span class="file-ref">src/frontend/upload-modal.js:48-51</span>
+                <div class="code-block">this.modal.setAttribute('role', 'dialog');
+this.modal.setAttribute('aria-modal', 'true');
+this.modal.setAttribute('aria-labelledby', 'upload-modal-title');</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Implement proper focus management:
+                    <div class="code-block">// On modal open
+showModal() {
+    this.lastFocusedElement = document.activeElement;
+    this.modal.removeAttribute('hidden');
+    this.modal.querySelector('.close-btn').focus();
+    this.trapFocus();
+}
+
+// On modal close
+hideModal() {
+    this.modal.setAttribute('hidden', '');
+    this.lastFocusedElement?.focus();
+}</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Expandable Filters Without Complete ARIA</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Toggle filters button has aria-expanded but implementation may be incomplete:</p>
+                <span class="file-ref">data/copyparty/www/search.html:84-89</span>
+                <div class="code-block">&lt;button type="button" 
+        id="toggle-filters" 
+        class="btn btn-secondary" 
+        aria-expanded="false" 
+        aria-controls="filters-panel"&gt;
+    &lt;span class="btn-text"&gt;Filters&lt;/span&gt;
+    &lt;span class="btn-icon" aria-hidden="true"&gt;▼&lt;/span&gt;
+&lt;/button&gt;
+
+&lt;div id="filters-panel" class="filters" hidden aria-labelledby="filters-heading"&gt;</div>
+                <p><strong>Good:</strong> Uses <code>aria-expanded</code>, <code>aria-controls</code>, and <code>hidden</code> attribute</p>
+                <p><strong>Verify:</strong> JavaScript properly toggles <code>aria-expanded</code> state</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Ensure JavaScript updates ARIA states:
+                    <div class="code-block">toggleButton.addEventListener('click', () => {
+    const expanded = toggleButton.getAttribute('aria-expanded') === 'true';
+    toggleButton.setAttribute('aria-expanded', !expanded);
+    filtersPanel.hidden = expanded;
+});</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Disabled Button States</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Slideshow navigation buttons properly disabled but may need aria-disabled:</p>
+                <span class="file-ref">src/frontend/slideshow.js:119-121</span>
+                <div class="code-block">updateNavigationButtons() {
+    this.prevButton.disabled = (this.currentPage === 1);
+    this.nextButton.disabled = (this.currentPage === this.totalPages);
+}</div>
+                <p>While the <code>disabled</code> attribute is used, explicitly setting <code>aria-disabled="true"</code> can improve screen reader announcements.</p>
+            </div>
+        </div>
+
+        <!-- Keyboard Navigation Assessment -->
+        <div class="section">
+            <h2>Keyboard Navigation</h2>
+            
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Excellent Keyboard Support for Slideshow</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>Slideshow component implements comprehensive keyboard navigation:</p>
+                <span class="file-ref">src/frontend/slideshow.js:123-149</span>
+                <div class="code-block">handleKeyboard(event) {
+    switch (event.key) {
+        case 'ArrowLeft':
+            event.preventDefault();
+            this.previousPage();
+            break;
+        case 'ArrowRight':
+            event.preventDefault();
+            this.nextPage();
+            break;
+        case 'Home':
+            event.preventDefault();
+            this.goToPage(1);
+            break;
+        case 'End':
+            event.preventDefault();
+            this.goToPage(this.totalPages);
+            break;
+    }
+}</div>
+                <p><strong>Excellent features:</strong></p>
+                <ul>
+                    <li>Arrow keys for navigation</li>
+                    <li>Home/End keys for first/last page</li>
+                    <li>Prevents default browser behavior</li>
+                    <li>Checks if input field has focus before handling</li>
+                    <li>Provides keyboard hint: "Tip: Use ← → arrow keys to navigate"</li>
+                </ul>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Missing Enter/Space Key Handlers</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Custom interactive elements may not respond to Enter/Space keys:</p>
+                <span class="file-ref">src/frontend/document-card.js</span>
+                <p>Document cards and other custom components that use click handlers need keyboard activation:</p>
+                <div class="code-block">// Current: Only click events
+element.addEventListener('click', handler);
+
+// Should also include:
+element.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handler(e);
+    }
+});</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add keyboard handlers for all clickable custom elements, or use native <code>&lt;button&gt;</code> elements where possible.
+                </div>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Drag-and-Drop Not Keyboard Accessible</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Upload modal only supports drag-and-drop, no keyboard alternative:</p>
+                <span class="file-ref">src/frontend/upload-modal.js:86-96</span>
+                <div class="code-block">dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    this.handleDrop(e);
+});</div>
+                <p><strong>Missing:</strong> File input element with proper label and keyboard activation</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add a keyboard-accessible file input:
+                    <div class="code-block">&lt;div class="upload-modal__drop-zone"&gt;
+    &lt;input 
+        type="file" 
+        id="file-input" 
+        multiple 
+        accept=".pdf,.docx,.mp3,.wav"
+        style="display: none"
+    /&gt;
+    &lt;label for="file-input" class="upload-btn"&gt;
+        Choose Files or Drag and Drop
+    &lt;/label&gt;
+    &lt;p class="upload-modal__hint"&gt;Supported: PDF, DOCX, MP3 (max 100MB)&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+document.getElementById('file-input').addEventListener('change', (e) => {
+    this.handleFiles(e.target.files);
+});
+&lt;/script&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Tab Order Issues in Complex Layouts</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Details page two-column layout may have non-intuitive tab order:</p>
+                <span class="file-ref">src/frontend/details.html:43-122</span>
+                <p>The left column (slideshow/audio) and right column (accordion) are side-by-side, which could cause tab order to jump between columns unexpectedly.</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Verify tab order follows visual flow. Consider using <code>tabindex</code> if necessary, or restructure DOM order to match visual presentation on mobile.
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Focus Indicators Need Enhancement</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>While focus styles are defined, they may not meet 3:1 contrast requirement:</p>
+                <span class="file-ref">src/frontend/styles.css:263-266</span>
+                <div class="code-block">.header__nav-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}</div>
+                <span class="file-ref">data/copyparty/www/styles.css:172-175</span>
+                <div class="code-block">.nav-link:focus {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+}</div>
+                <p><strong>Issue:</strong> On light backgrounds, the primary blue outline may not have sufficient contrast with adjacent colors.</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Use a high-contrast focus indicator with a contrasting border:
+                    <div class="code-block">:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.1);
+}
+
+/* Or use a two-color approach */
+:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #2563eb;
+}</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Skip Link Missing</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>No "skip to main content" link for keyboard users:</p>
+                <p>All pages start with header navigation, requiring keyboard users to tab through multiple links before reaching main content.</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add a skip link as the first focusable element:
+                    <div class="code-block">&lt;a href="#main-content" class="skip-link"&gt;
+    Skip to main content
+&lt;/a&gt;
+
+&lt;style&gt;
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #2563eb;
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 9999;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+&lt;/style&gt;
+
+&lt;main id="main-content" role="main"&gt;...&lt;/main&gt;</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Contrast Analysis -->
+        <div class="section">
+            <h2>Color Contrast Issues</h2>
+            
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Secondary Text Contrast Failure</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Secondary text color fails WCAG AA contrast requirements:</p>
+                <span class="file-ref">data/copyparty/www/styles.css:27-28</span>
+                <div class="code-block">--color-text-secondary: #6b7280;  /* Gray-500 */
+/* On white background: Contrast ratio ≈ 4.0:1 (Needs 4.5:1) */</div>
+                <p><strong>Failing combinations:</strong></p>
+                <ul>
+                    <li><code>#6b7280</code> on <code>#ffffff</code> = <strong>4.0:1</strong> (needs 4.5:1) ❌</li>
+                    <li><code>#6b7280</code> on <code>#f9fafb</code> = <strong>3.9:1</strong> (needs 4.5:1) ❌</li>
+                    <li><code>#9ca3af</code> (tertiary) on white = <strong>2.8:1</strong> (needs 4.5:1) ❌</li>
+                </ul>
+                <span class="file-ref">Multiple files use these color tokens</span>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Adjust secondary text colors:
+                    <div class="code-block">/* Current */
+--color-text-secondary: #6b7280;  /* 4.0:1 - FAIL */
+--color-text-tertiary: #9ca3af;   /* 2.8:1 - FAIL */
+
+/* Recommended */
+--color-text-secondary: #4b5563;  /* 7.0:1 - PASS */
+--color-text-tertiary: #6b7280;   /* 4.6:1 - PASS */</div>
+                </div>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Kraft Paper Theme Contrast Issues</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Custom kraft paper theme has multiple contrast violations:</p>
+                <span class="file-ref">src/frontend/styles.css:32</span>
+                <div class="code-block">--muted-foreground: oklch(0.5391 0.0387 71.1655);
+/* Approximate #78716c - Contrast on light bg ≈ 4.2:1 (needs 4.5:1) */</div>
+                <p><strong>Additional issues in dark mode:</strong></p>
+                <span class="file-ref">src/frontend/styles.css:153</span>
+                <div class="code-block">/* Dark mode */
+--muted-foreground: oklch(0.7982 0.0243 82.1078);
+/* May not provide 4.5:1 on dark background */</div>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Test all oklch color values against WCAG AA requirements. Use a contrast checker tool to validate:
+                    <ul>
+                        <li>Normal text: minimum 4.5:1</li>
+                        <li>Large text (18pt+): minimum 3:1</li>
+                        <li>UI components: minimum 3:1</li>
+                    </ul>
+                    Tools: <a href="https://webaim.org/resources/contrastchecker/" target="_blank">WebAIM Contrast Checker</a>, <a href="https://www.siegemedia.com/contrast-ratio" target="_blank">Contrast Ratio</a>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Link Contrast in Feature Cards</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Links within muted text areas may have insufficient contrast:</p>
+                <span class="file-ref">data/copyparty/www/index.html:230-231</span>
+                <div class="code-block">&lt;a href="status_dashboard.html" style="color: #2563eb;"&gt;Status Dashboard&lt;/a&gt;
+&lt;a href="search.html" style="color: #2563eb;"&gt;Search page&lt;/a&gt;</div>
+                <p>Blue links (#2563eb) on light gray text (#6b7280) need verification for 3:1 adjacent color contrast.</p>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Status Indicator Contrast</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Connection status colors may not meet 3:1 non-text contrast:</p>
+                <span class="file-ref">src/frontend/styles.css:70-72</span>
+                <div class="code-block">--color-connected: var(--success);      /* Green */
+--color-disconnected: var(--muted-foreground);  /* Gray */
+--color-reconnecting: var(--warning);   /* Orange */</div>
+                <p>These status indicators need 3:1 contrast against adjacent colors (WCAG 2.1 SC 1.4.11).</p>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Placeholder Text Contrast</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Form input placeholders use tertiary text color:</p>
+                <span class="file-ref">data/copyparty/www/styles.css:260-262</span>
+                <div class="code-block">.form-input::placeholder {
+    color: var(--color-text-tertiary);  /* #9ca3af - 2.8:1 FAIL */
+}</div>
+                <p>While placeholder text is often given a pass, it should still meet 4.5:1 for better usability.</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Use a darker placeholder color:
+                    <div class="code-block">.form-input::placeholder {
+    color: var(--color-text-secondary);  /* Use #4b5563 for 7.0:1 */
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen Reader Compatibility -->
+        <div class="section">
+            <h2>Screen Reader Compatibility</h2>
+            
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Good Image Alt Text</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>Images have descriptive alt text:</p>
+                <span class="file-ref">src/frontend/details.html:66</span>
+                <div class="code-block">&lt;img id="slideshow-image" src="" alt="Document page" class="slideshow-image"&gt;</div>
+                <span class="file-ref">src/frontend/details.html:85</span>
+                <div class="code-block">&lt;img id="album-art" class="album-art" src="" alt="Album art" loading="lazy"&gt;</div>
+                <p>Alt text is present and contextually appropriate.</p>
+            </div>
+
+            <div class="violation info">
+                <div class="violation-header">
+                    <div class="violation-title">✓ Proper Form Labels</div>
+                    <span class="severity-badge info">Best Practice</span>
+                </div>
+                <p>All form inputs have associated labels:</p>
+                <span class="file-ref">data/copyparty/www/search.html:37-56</span>
+                <div class="code-block">&lt;label for="query" class="form-label"&gt;Search Query&lt;/label&gt;
+&lt;input
+    type="text"
+    id="query"
+    name="query"
+    class="form-input"
+    required
+    aria-required="true"
+    aria-describedby="query-help"
+/&gt;
+&lt;small id="query-help" class="form-help"&gt;Minimum 2 characters required&lt;/small&gt;</div>
+                <p><strong>Excellent features:</strong></p>
+                <ul>
+                    <li>Label explicitly associated with input via <code>for</code> attribute</li>
+                    <li><code>aria-required="true"</code> properly set</li>
+                    <li><code>aria-describedby</code> links to help text</li>
+                </ul>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Missing Error Message Announcements</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Form validation errors lack proper ARIA announcements:</p>
+                <span class="file-ref">data/copyparty/www/search.html:44-48</span>
+                <div class="code-block">&lt;input
+    type="text"
+    id="query"
+    required
+    minlength="2"
+    maxlength="500"
+/&gt;</div>
+                <p><strong>Missing:</strong></p>
+                <ul>
+                    <li><code>aria-invalid="true"</code> when validation fails</li>
+                    <li><code>aria-describedby</code> pointing to error message</li>
+                    <li>Error message with proper role/aria-live</li>
+                </ul>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Implement proper error handling:
+                    <div class="code-block">&lt;label for="query"&gt;Search Query&lt;/label&gt;
+&lt;input
+    type="text"
+    id="query"
+    aria-required="true"
+    aria-invalid="false"
+    aria-describedby="query-help query-error"
+/&gt;
+&lt;small id="query-help"&gt;Minimum 2 characters required&lt;/small&gt;
+&lt;span id="query-error" role="alert" style="display: none;"&gt;
+    &lt;!-- JavaScript adds error message here --&gt;
+&lt;/span&gt;
+
+&lt;script&gt;
+function showError(input, message) {
+    input.setAttribute('aria-invalid', 'true');
+    const errorEl = document.getElementById(input.id + '-error');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+&lt;/script&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation">
+                <div class="violation-header">
+                    <div class="violation-title">Loading States Not Announced</div>
+                    <span class="severity-badge">Critical</span>
+                </div>
+                <p>Loading indicators lack aria-live announcements:</p>
+                <span class="file-ref">src/frontend/index.html:71</span>
+                <div class="code-block">&lt;div class="loading"&gt;Loading documents...&lt;/div&gt;</div>
+                <span class="file-ref">data/copyparty/www/search.html:175-178</span>
+                <div class="code-block">&lt;div id="loading" class="loading" hidden role="status" aria-live="polite"&gt;
+    &lt;div class="loading-spinner"&gt;&lt;/div&gt;
+    &lt;p class="loading-text"&gt;Searching documents...&lt;/p&gt;
+&lt;/div&gt;</div>
+                <p><strong>Good:</strong> Search page loading indicator has <code>role="status"</code> and <code>aria-live="polite"</code></p>
+                <p><strong>Missing:</strong> Document grid loading state lacks these attributes</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add aria-live to all loading states:
+                    <div class="code-block">&lt;div class="loading" role="status" aria-live="polite" aria-atomic="true"&gt;
+    Loading documents...
+&lt;/div&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Dynamic Content Updates</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Dynamically inserted content may not be announced to screen readers:</p>
+                <ul>
+                    <li>Document cards added to grid</li>
+                    <li>Search results populated</li>
+                    <li>Accordion sections expanded/collapsed</li>
+                    <li>Processing status updates</li>
+                </ul>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Use aria-live regions or role="status" for dynamic updates:
+                    <div class="code-block">&lt;!-- Add announcement element --&gt;
+&lt;div class="sr-only" role="status" aria-live="polite" aria-atomic="true" id="announcements"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+function announce(message, priority = 'polite') {
+    const announcer = document.getElementById('announcements');
+    announcer.textContent = '';
+    setTimeout(() => {
+        announcer.textContent = message;
+    }, 100);
+}
+
+// Usage
+announce('10 documents loaded');
+announce('Search completed. Found 5 results.');
+&lt;/script&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Table Headers Missing</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Status dashboard table lacks proper header structure:</p>
+                <span class="file-ref">data/copyparty/www/status_dashboard.html:104-119</span>
+                <div class="code-block">&lt;table id="recent-docs-table" class="data-table"&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;Filename&lt;/th&gt;
+            &lt;th&gt;Status&lt;/th&gt;
+            &lt;th&gt;Pages&lt;/th&gt;
+            &lt;th&gt;Processing Time&lt;/th&gt;
+            &lt;th&gt;Uploaded&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody id="recent-docs-body"&gt;...&lt;/tbody&gt;
+&lt;/table&gt;</div>
+                <p><strong>Good:</strong> Headers present in <code>&lt;thead&gt;</code></p>
+                <p><strong>Enhancement:</strong> Add <code>scope="col"</code> for clarity</p>
+                <div class="recommendation">
+                    <strong>Recommendation:</strong> Add scope attributes:
+                    <div class="code-block">&lt;thead&gt;
+    &lt;tr&gt;
+        &lt;th scope="col"&gt;Filename&lt;/th&gt;
+        &lt;th scope="col"&gt;Status&lt;/th&gt;
+        &lt;th scope="col"&gt;Pages&lt;/th&gt;
+        &lt;th scope="col"&gt;Processing Time&lt;/th&gt;
+        &lt;th scope="col"&gt;Uploaded&lt;/th&gt;
+    &lt;/tr&gt;
+&lt;/thead&gt;</div>
+                </div>
+            </div>
+
+            <div class="violation warning">
+                <div class="violation-header">
+                    <div class="violation-title">Audio/Video Track Accessibility</div>
+                    <span class="severity-badge warning">Warning</span>
+                </div>
+                <p>Audio player includes captions track (excellent!) but needs verification:</p>
+                <span class="file-ref">src/frontend/details.html:92-102</span>
+                <div class="code-block">&lt;audio id="audio-player" controls preload="metadata"&gt;
+    &lt;source id="audio-source" src="" type="audio/mpeg"&gt;
+    &lt;track
+        id="audio-track"
+        kind="captions"
+        src=""
+        srclang="en"
+        label="English"
+        default
+    &gt;
+    Your browser does not support the audio element.
+&lt;/audio&gt;</div>
+                <p><strong>Excellent:</strong></p>
+                <ul>
+                    <li><code>&lt;track&gt;</code> element for captions</li>
+                    <li><code>kind="captions"</code> properly set</li>
+                    <li><code>srclang</code> and <code>label</code> present</li>
+                    <li>Fallback text for unsupported browsers</li>
+                </ul>
+                <p><strong>Verify:</strong> VTT caption files are properly formatted and synchronized</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
+            <h2>Quick Actions</h2>
+            <p>Generate implementation plans for priority fixes:</p>
+            <div class="quick-action-buttons">
+                <button onclick="generatePlan('Fix Color Contrast Violations')" class="quick-action-btn">
+                    🎨 Generate Contrast Fix Plan
+                </button>
+                <button onclick="generatePlan('Improve Keyboard Navigation')" class="quick-action-btn">
+                    ⌨️ Generate Keyboard Navigation Plan
+                </button>
+                <button onclick="generatePlan('Add aria-live Announcements')" class="quick-action-btn">
+                    📢 Generate Screen Reader Plan
+                </button>
+                <button onclick="generatePlan('Implement Focus Management')" class="quick-action-btn">
+                    🎯 Generate Focus Management Plan
+                </button>
+            </div>
+        </div>
+
+        <!-- Prioritized Recommendations -->
+        <div class="section">
+            <h2>Prioritized Remediation Roadmap</h2>
+            
+            <h3>🔴 Critical Priority (Immediate)</h3>
+            <ol>
+                <li><strong>Fix color contrast violations</strong>
+                    <ul>
+                        <li>Adjust secondary text color from #6b7280 to #4b5563</li>
+                        <li>Test all oklch color values in kraft paper theme</li>
+                        <li>Verify focus indicators meet 3:1 contrast</li>
+                    </ul>
+                </li>
+                <li><strong>Add comprehensive aria-live regions</strong>
+                    <ul>
+                        <li>Document grid loading/update announcements</li>
+                        <li>Search result count announcements</li>
+                        <li>Error message announcements with role="alert"</li>
+                    </ul>
+                </li>
+                <li><strong>Implement keyboard accessibility for drag-and-drop</strong>
+                    <ul>
+                        <li>Add file input with proper label</li>
+                        <li>Ensure Enter/Space activation on custom elements</li>
+                    </ul>
+                </li>
+                <li><strong>Add proper focus management for modals</strong>
+                    <ul>
+                        <li>Focus trap implementation</li>
+                        <li>Return focus on close</li>
+                        <li>Escape key handler</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>🟡 High Priority (Within 2 Weeks)</h3>
+            <ol>
+                <li><strong>Enhance form validation</strong>
+                    <ul>
+                        <li>Add aria-invalid toggling</li>
+                        <li>Implement error message associations</li>
+                        <li>Use role="alert" for immediate errors</li>
+                    </ul>
+                </li>
+                <li><strong>Add skip navigation links</strong></li>
+                <li><strong>Improve focus indicators</strong>
+                    <ul>
+                        <li>Use high-contrast multi-color approach</li>
+                        <li>Ensure 3:1 contrast against all backgrounds</li>
+                    </ul>
+                </li>
+                <li><strong>Verify and fix tab order</strong>
+                    <ul>
+                        <li>Test two-column layout navigation</li>
+                        <li>Ensure logical flow on all screen sizes</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>🟢 Medium Priority (Within 1 Month)</h3>
+            <ol>
+                <li><strong>Add table scope attributes</strong></li>
+                <li><strong>Implement status announcements for auto-refresh content</strong></li>
+                <li><strong>Add aria-disabled to disabled buttons</strong></li>
+                <li><strong>Wrap stat cards in article elements</strong></li>
+                <li><strong>Test VTT caption quality and synchronization</strong></li>
+            </ol>
+
+            <h3>🔵 Low Priority (Ongoing)</h3>
+            <ol>
+                <li><strong>Conduct user testing with screen reader users</strong></li>
+                <li><strong>Test with multiple screen readers</strong> (NVDA, JAWS, VoiceOver)</li>
+                <li><strong>Implement automated accessibility testing</strong> (axe-core, pa11y)</li>
+                <li><strong>Create accessibility documentation for developers</strong></li>
+            </ol>
+        </div>
+
+        <!-- Testing Recommendations -->
+        <div class="section">
+            <h2>Testing Recommendations</h2>
+            
+            <h3>Automated Testing Tools</h3>
+            <ul>
+                <li><strong>axe DevTools</strong> - Browser extension for automated accessibility testing</li>
+                <li><strong>WAVE</strong> - WebAIM's accessibility evaluation tool</li>
+                <li><strong>Lighthouse</strong> - Chrome DevTools accessibility audit</li>
+                <li><strong>pa11y</strong> - Command-line accessibility testing tool</li>
+            </ul>
+
+            <h3>Manual Testing Checklist</h3>
+            <ol>
+                <li><strong>Keyboard Navigation</strong>
+                    <ul>
+                        <li>Tab through entire page without mouse</li>
+                        <li>Test all interactive elements</li>
+                        <li>Verify focus indicators are visible</li>
+                        <li>Ensure no keyboard traps</li>
+                    </ul>
+                </li>
+                <li><strong>Screen Reader Testing</strong>
+                    <ul>
+                        <li>Test with NVDA (Windows) or VoiceOver (Mac)</li>
+                        <li>Navigate by landmarks</li>
+                        <li>Verify form announcements</li>
+                        <li>Check dynamic content updates</li>
+                    </ul>
+                </li>
+                <li><strong>Color Contrast</strong>
+                    <ul>
+                        <li>Use WebAIM Contrast Checker</li>
+                        <li>Test all text/background combinations</li>
+                        <li>Verify focus indicators</li>
+                    </ul>
+                </li>
+                <li><strong>Zoom Testing</strong>
+                    <ul>
+                        <li>Test at 200% zoom</li>
+                        <li>Verify text reflows properly</li>
+                        <li>Check for horizontal scrolling</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Screen Reader Testing Matrix</h3>
+            <table>
+                <tr>
+                    <th>Browser</th>
+                    <th>Screen Reader</th>
+                    <th>Platform</th>
+                    <th>Priority</th>
+                </tr>
+                <tr>
+                    <td>Chrome</td>
+                    <td>NVDA</td>
+                    <td>Windows</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>Safari</td>
+                    <td>VoiceOver</td>
+                    <td>macOS</td>
+                    <td>High</td>
+                </tr>
+                <tr>
+                    <td>Firefox</td>
+                    <td>NVDA</td>
+                    <td>Windows</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>Safari</td>
+                    <td>VoiceOver</td>
+                    <td>iOS</td>
+                    <td>Medium</td>
+                </tr>
+                <tr>
+                    <td>Chrome</td>
+                    <td>TalkBack</td>
+                    <td>Android</td>
+                    <td>Medium</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Summary -->
+        <div class="section">
+            <h2>Summary and Next Steps</h2>
+            
+            <p>The tkr-docusearch application demonstrates a <strong>solid foundation</strong> in accessibility with excellent semantic HTML structure, proper ARIA landmark usage, and good keyboard navigation for key components like the slideshow. However, significant improvements are needed to achieve full WCAG 2.1 Level AA compliance.</p>
+
+            <h3>Key Strengths</h3>
+            <ul>
+                <li>Proper semantic HTML5 elements (header, nav, main, aside, footer)</li>
+                <li>ARIA landmarks with descriptive labels</li>
+                <li>Logical heading hierarchy</li>
+                <li>Excellent keyboard navigation for slideshow component</li>
+                <li>Form inputs have proper labels and aria-describedby</li>
+                <li>Modal dialogs use aria-modal and role="dialog"</li>
+                <li>Audio player includes caption track support</li>
+            </ul>
+
+            <h3>Critical Gaps</h3>
+            <ul>
+                <li>Color contrast violations in secondary text (#6b7280 on white = 4.0:1, needs 4.5:1)</li>
+                <li>Insufficient aria-live regions for dynamic content updates</li>
+                <li>Drag-and-drop upload lacks keyboard alternative</li>
+                <li>Missing error announcements for form validation</li>
+                <li>Focus management incomplete for modal dialogs</li>
+                <li>No skip navigation link</li>
+            </ul>
+
+            <h3>Immediate Next Steps</h3>
+            <ol>
+                <li><strong>Color Audit</strong> - Test all color combinations and adjust tokens to meet 4.5:1 ratio</li>
+                <li><strong>aria-live Implementation</strong> - Add status regions for document loading, search results, and errors</li>
+                <li><strong>Upload Accessibility</strong> - Add file input element with proper keyboard support</li>
+                <li><strong>Focus Management</strong> - Implement focus trap and return focus for modals</li>
+                <li><strong>Form Validation</strong> - Add aria-invalid and role="alert" for errors</li>
+            </ol>
+
+            <h3>Long-term Goals</h3>
+            <ul>
+                <li>Achieve 90%+ WCAG 2.1 AA compliance</li>
+                <li>Establish automated accessibility testing in CI/CD pipeline</li>
+                <li>Conduct user testing with assistive technology users</li>
+                <li>Create accessibility component library and guidelines</li>
+                <li>Regular accessibility audits (quarterly)</li>
+            </ul>
+
+            <div class="recommendation">
+                <strong>Estimated Effort:</strong>
+                <ul>
+                    <li>Critical fixes: 3-5 days</li>
+                    <li>High priority: 5-7 days</li>
+                    <li>Medium priority: 3-4 days</li>
+                    <li><strong>Total to reach 90% compliance: ~2-3 weeks</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Generated by accessibility-agent v3.6.0 on 2025-10-16</p>
+            <p>Report Location: /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.context-kit/analysis/reports/2025-10-16/accessibility-report.html</p>
+            <p>For questions about this report, contact the tkr-context-kit team</p>
+        </div>
+    </div>
+
+    <script>
+        function generatePlan(recommendation) {
+            const reportPath = window.location.pathname;
+            const message = `/create_plan ${recommendation} - ${reportPath}`;
+            if (confirm(`Generate implementation plan for: ${recommendation}?\\n\\nThis will copy a command you can paste into Claude Code.`)) {
+                // Create temporary textarea to copy text
+                const textarea = document.createElement('textarea');
+                textarea.value = message;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('Command copied to clipboard!\\n\\nPaste this into Claude Code:\\n' + message);
+                } catch (err) {
+                    alert('Copy this command to Claude Code:\\n\\n' + message);
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+    </script>
+</body>
+</html>

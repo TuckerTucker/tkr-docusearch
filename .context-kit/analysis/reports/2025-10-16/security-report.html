@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Comprehensive security analysis identifying vulnerabilities, credential leaks, and attack vectors">
+    <title>Security Audit Report - tkr-docusearch</title>
+
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-text: #1a1a1a;
+            --color-text-secondary: #666666;
+            --color-border: #e0e0e0;
+            --color-critical: #d32f2f;
+            --color-high: #f57c00;
+            --color-medium: #fbc02d;
+            --color-low: #388e3c;
+            --color-info: #1976d2;
+            --color-card-bg: #f8f9fa;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #1a1a1a;
+                --color-text: #e0e0e0;
+                --color-text-secondary: #b0b0b0;
+                --color-border: #333333;
+                --color-critical: #ef5350;
+                --color-high: #ff9800;
+                --color-medium: #ffeb3b;
+                --color-low: #66bb6a;
+                --color-info: #42a5f5;
+                --color-card-bg: #252525;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--color-text);
+            background-color: var(--color-bg);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--color-text);
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--color-text);
+        }
+
+        .metadata {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--color-card-bg);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+
+        .severity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .severity-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid;
+            background: var(--color-card-bg);
+        }
+
+        .severity-card.critical {
+            border-color: var(--color-critical);
+        }
+
+        .severity-card.high {
+            border-color: var(--color-high);
+        }
+
+        .severity-card.medium {
+            border-color: var(--color-medium);
+        }
+
+        .severity-card.low {
+            border-color: var(--color-low);
+        }
+
+        .severity-card h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .severity-card .count {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .finding {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border-left: 4px solid;
+            background: var(--color-card-bg);
+            border-radius: 4px;
+        }
+
+        .finding.critical {
+            border-left-color: var(--color-critical);
+        }
+
+        .finding.high {
+            border-left-color: var(--color-high);
+        }
+
+        .finding.medium {
+            border-left-color: var(--color-medium);
+        }
+
+        .finding.low {
+            border-left-color: var(--color-low);
+        }
+
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .finding-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .severity-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .severity-badge.critical {
+            background-color: var(--color-critical);
+        }
+
+        .severity-badge.high {
+            background-color: var(--color-high);
+        }
+
+        .severity-badge.medium {
+            background-color: var(--color-medium);
+        }
+
+        .severity-badge.low {
+            background-color: var(--color-low);
+        }
+
+        .file-path {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .remediation {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 3px solid var(--color-low);
+            border-radius: 4px;
+        }
+
+        .remediation h4 {
+            margin-top: 0;
+            color: var(--color-low);
+        }
+
+        .remediation ol, .remediation ul {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .remediation li {
+            margin-bottom: 0.5rem;
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--color-border);
+            text-align: center;
+            color: var(--color-text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            flex: 1;
+            padding: 1rem;
+            background: var(--color-card-bg);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box .label {
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-box .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--color-text);
+            margin-top: 0.25rem;
+        }
+
+        .quick-action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .quick-action-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--color-info);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔒 Security Audit Report</h1>
+            <p style="font-size: 1.1rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
+                Comprehensive security analysis identifying vulnerabilities, credential leaks, and attack vectors
+            </p>
+        </header>
+
+        <div class="metadata">
+            <span>📅 Generated: 2025-10-16</span>
+            <span>🤖 Agent: security-agent</span>
+            <span>📦 Project: tkr-docusearch</span>
+            <span>📊 Version: 0.9.0</span>
+        </div>
+
+        <!-- Executive Summary -->
+        <section>
+            <h2>Executive Summary</h2>
+            
+            <div class="summary-stats">
+                <div class="stat-box">
+                    <div class="label">Total Findings</div>
+                    <div class="value">8</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Files Analyzed</div>
+                    <div class="value">200+</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Dependencies Scanned</div>
+                    <div class="value">220+</div>
+                </div>
+            </div>
+
+            <div class="severity-grid">
+                <div class="severity-card critical">
+                    <h3>Critical</h3>
+                    <div class="count" style="color: var(--color-critical);">1</div>
+                    <p>Requires immediate action</p>
+                </div>
+                <div class="severity-card high">
+                    <h3>High</h3>
+                    <div class="count" style="color: var(--color-high);">3</div>
+                    <p>Address within 1 week</p>
+                </div>
+                <div class="severity-card medium">
+                    <h3>Medium</h3>
+                    <div class="count" style="color: var(--color-medium);">3</div>
+                    <p>Address within 2 weeks</p>
+                </div>
+                <div class="severity-card low">
+                    <h3>Low</h3>
+                    <div class="count" style="color: var(--color-low);">1</div>
+                    <p>Address in next sprint</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section>
+            <h2>Quick Actions</h2>
+            <div class="quick-action-buttons">
+                <a href="#finding-cors" class="quick-action-btn">🔧 Fix CORS Configuration</a>
+                <a href="#finding-eval" class="quick-action-btn">🛡️ Remediate eval() Usage</a>
+                <a href="#finding-password" class="quick-action-btn">🔑 Update Default Passwords</a>
+                <a href="#finding-headers" class="quick-action-btn">📋 Add Security Headers</a>
+            </div>
+        </section>
+
+        <!-- Detailed Findings -->
+        <section>
+            <h2>Critical Findings</h2>
+
+            <div class="finding critical" id="finding-cors">
+                <div class="finding-header">
+                    <div class="finding-title">Insecure CORS Configuration - Wildcard Origin</div>
+                    <span class="severity-badge critical">Critical</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 9.1 (Critical)</p>
+                <p><strong>Category:</strong> Security Misconfiguration</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/api/server.py:105</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/processing/worker_webhook.py:101</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    Multiple FastAPI applications have CORS configured with <code>allow_origins=["*"]</code>, which allows any origin to make requests to the API. 
+                    Combined with <code>allow_credentials=True</code>, this creates a critical security vulnerability allowing any malicious website to make 
+                    authenticated requests on behalf of users.
+                </p>
+
+                <h4>Code Snippet</h4>
+                <pre><code>app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # ⚠️ CRITICAL: Allows any origin
+    allow_credentials=True,  # ⚠️ Combined with wildcard is dangerous
+    allow_methods=["*"],
+    allow_headers=["*"],
+)</code></pre>
+
+                <h4>Impact</h4>
+                <ul>
+                    <li>Cross-Site Request Forgery (CSRF) attacks from any malicious website</li>
+                    <li>Unauthorized access to sensitive document processing endpoints</li>
+                    <li>Data exfiltration through cross-origin requests</li>
+                    <li>Session hijacking if authentication cookies are used</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li><strong>IMMEDIATE:</strong> Update CORS configuration to specify exact allowed origins</li>
+                        <li>Remove <code>allow_credentials=True</code> or ensure origins are explicitly whitelisted</li>
+                        <li>Use environment variables to configure allowed origins for different environments</li>
+                    </ol>
+                    
+                    <h4>Secure Configuration Example</h4>
+                    <pre><code># In .env file
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# In server.py
+import os
+
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,  # Specific origins only
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],  # Specific methods only
+    allow_headers=["Content-Type", "Authorization"],  # Specific headers
+)</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>High Severity Findings</h2>
+
+            <div class="finding high" id="finding-eval">
+                <div class="finding-header">
+                    <div class="finding-title">Unsafe Use of eval() Function</div>
+                    <span class="severity-badge high">High</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 8.1 (High)</p>
+                <p><strong>Category:</strong> Code Injection</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/storage/chroma_client.py:660</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/storage/chroma_client.py:734</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    The code uses Python's <code>eval()</code> function to parse embedding shape strings from metadata. 
+                    If an attacker can control the metadata stored in ChromaDB, they could inject arbitrary Python code that 
+                    would be executed when the data is retrieved.
+                </p>
+
+                <h4>Code Snippet</h4>
+                <pre><code># VULNERABLE CODE (Line 660)
+shape_str = metadata.get('embedding_shape', '')
+if shape_str:
+    # Extract dimensions from string like "(1031, 128)"
+    seq_len, dim = eval(shape_str)  # ⚠️ DANGEROUS: Arbitrary code execution
+    shape = (seq_len, dim)</code></pre>
+
+                <h4>Attack Vector</h4>
+                <p>If an attacker can inject malicious metadata like:</p>
+                <pre><code>embedding_shape = "__import__('os').system('malicious_command')"</code></pre>
+                <p>This would execute arbitrary system commands when the embedding is retrieved.</p>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li>Replace <code>eval()</code> with <code>ast.literal_eval()</code> which safely evaluates literals</li>
+                        <li>Alternatively, use regex or string parsing to extract the dimensions</li>
+                        <li>Add input validation to ensure the shape_str matches expected format</li>
+                    </ol>
+                    
+                    <h4>Secure Implementation</h4>
+                    <pre><code>import ast
+import re
+
+# Option 1: Using ast.literal_eval (safe for literals only)
+try:
+    shape_tuple = ast.literal_eval(shape_str)
+    if isinstance(shape_tuple, tuple) and len(shape_tuple) == 2:
+        seq_len, dim = shape_tuple
+    else:
+        raise ValueError("Invalid shape format")
+except (ValueError, SyntaxError) as e:
+    logger.error(f"Invalid embedding shape: {shape_str}")
+    return None
+
+# Option 2: Using regex (more explicit)
+match = re.match(r'\((\d+),\s*(\d+)\)', shape_str)
+if match:
+    seq_len = int(match.group(1))
+    dim = int(match.group(2))
+else:
+    raise ValueError(f"Invalid shape format: {shape_str}")</code></pre>
+                </div>
+            </div>
+
+            <div class="finding high" id="finding-command-injection">
+                <div class="finding-header">
+                    <div class="finding-title">Potential Command Injection in Slide Renderer</div>
+                    <span class="severity-badge high">High</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 7.8 (High)</p>
+                <p><strong>Category:</strong> Command Injection</p>
+                <p><strong>Affected File:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/docker/slide_renderer_api.py:96-147</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    The slide renderer service uses <code>subprocess.run()</code> to execute external commands (LibreOffice, pdftoppm, ImageMagick) 
+                    with file paths that could potentially be manipulated. While the code uses Path objects which provides some protection, 
+                    there's no explicit validation of the file paths to prevent directory traversal or command injection.
+                </p>
+
+                <h4>Code Snippet</h4>
+                <pre><code>result = subprocess.run(
+    [
+        'libreoffice',
+        '--headless',
+        '--convert-to', 'pdf',
+        '--outdir', str(temp_path),
+        str(pptx_path)  # User-controlled path
+    ],
+    capture_output=True,
+    text=True,
+    timeout=60
+)</code></pre>
+
+                <h4>Risk Factors</h4>
+                <ul>
+                    <li>File paths come from POST request data (<code>request.file_path</code>)</li>
+                    <li>No authentication or authorization on the <code>/render</code> endpoint</li>
+                    <li>Potential for path traversal to access files outside uploads directory</li>
+                    <li>Timeout set to 60 seconds could enable DoS attacks</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li>Add authentication/authorization to the <code>/render</code> endpoint</li>
+                        <li>Validate file paths to ensure they're within the expected upload directory</li>
+                        <li>Sanitize file paths to prevent directory traversal (../ sequences)</li>
+                        <li>Implement rate limiting to prevent DoS attacks</li>
+                        <li>Use absolute paths and validate against whitelist of allowed directories</li>
+                    </ol>
+                    
+                    <h4>Secure Implementation</h4>
+                    <pre><code>from pathlib import Path
+import os
+
+ALLOWED_UPLOAD_DIR = Path("/data/uploads").resolve()
+
+def validate_file_path(file_path: str) -> Path:
+    """Validate that file path is within allowed directory."""
+    path = Path(file_path).resolve()
+    
+    # Check if path is within allowed directory
+    if not str(path).startswith(str(ALLOWED_UPLOAD_DIR)):
+        raise ValueError("File path outside allowed directory")
+    
+    # Check for directory traversal attempts
+    if ".." in file_path:
+        raise ValueError("Directory traversal detected")
+    
+    # Verify file exists and is a regular file
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    
+    return path
+
+@app.post("/render", response_model=RenderResponse)
+async def render_slides(request: RenderRequest):
+    try:
+        # Validate file path before processing
+        safe_path = validate_file_path(request.file_path)
+        result = render_slides_with_libreoffice(str(safe_path), ...)</code></pre>
+                </div>
+            </div>
+
+            <div class="finding high" id="finding-password">
+                <div class="finding-header">
+                    <div class="finding-title">Hardcoded Default Password in Configuration</div>
+                    <span class="severity-badge high">High</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 7.5 (High)</p>
+                <p><strong>Category:</strong> Insecure Defaults / Credential Management</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/docker/.env:184</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/docker/.env.template:178</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    The Copyparty admin password is set to "changeme" in both the production <code>.env</code> file and the template. 
+                    While the environment file indicates this should be changed in production, having a weak default password in a 
+                    committed configuration file is a security risk.
+                </p>
+
+                <h4>Code Snippet</h4>
+                <pre><code># docker/.env (Line 184)
+COPYPARTY_PASSWORD=changeme
+
+# Comment suggests changing it, but default remains weak
+# Admin password (CHANGE IN PRODUCTION!)</code></pre>
+
+                <h4>Risk Factors</h4>
+                <ul>
+                    <li>Default password is trivially guessable</li>
+                    <li><code>.env</code> file is committed to version control (based on file presence)</li>
+                    <li>Password grants admin access to file upload system</li>
+                    <li>No password complexity requirements enforced</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li><strong>IMMEDIATE:</strong> Remove <code>docker/.env</code> from version control</li>
+                        <li>Add <code>docker/.env</code> to <code>.gitignore</code></li>
+                        <li>Generate strong random password for production environment</li>
+                        <li>Update <code>.env.template</code> to require password generation on first setup</li>
+                        <li>Add startup check to prevent service from starting with default password</li>
+                        <li>Implement password complexity requirements (minimum 16 characters, mixed case, special chars)</li>
+                        <li>Consider using environment-specific secrets management (AWS Secrets Manager, HashiCorp Vault, etc.)</li>
+                    </ol>
+                    
+                    <h4>Secure Configuration</h4>
+                    <pre><code># .env.template
+COPYPARTY_PASSWORD=  # REQUIRED: Generate strong password (min 16 chars)
+# Example: openssl rand -base64 32
+
+# Add to .gitignore
+docker/.env
+.env
+*.env
+!*.env.template
+
+# Startup validation script
+if [ "$COPYPARTY_PASSWORD" = "changeme" ] || [ -z "$COPYPARTY_PASSWORD" ]; then
+    echo "ERROR: COPYPARTY_PASSWORD must be set to a strong password"
+    echo "Generate one with: openssl rand -base64 32"
+    exit 1
+fi</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Medium Severity Findings</h2>
+
+            <div class="finding medium" id="finding-headers">
+                <div class="finding-header">
+                    <div class="finding-title">Missing Security Headers</div>
+                    <span class="severity-badge medium">Medium</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 5.3 (Medium)</p>
+                <p><strong>Category:</strong> Security Misconfiguration</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/api/server.py</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/processing/worker_webhook.py</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    The FastAPI applications do not implement critical security headers that protect against common web attacks. 
+                    No evidence of the following headers being set:
+                </p>
+                <ul>
+                    <li><code>Strict-Transport-Security</code> - Enforces HTTPS connections</li>
+                    <li><code>X-Frame-Options</code> - Prevents clickjacking attacks</li>
+                    <li><code>X-Content-Type-Options</code> - Prevents MIME-sniffing</li>
+                    <li><code>Content-Security-Policy</code> - Mitigates XSS attacks</li>
+                    <li><code>X-XSS-Protection</code> - Legacy XSS protection</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li>Add security headers middleware to all FastAPI applications</li>
+                        <li>Configure appropriate CSP policy for the application</li>
+                        <li>Enable HSTS for production deployments</li>
+                    </ol>
+                    
+                    <h4>Implementation</h4>
+                    <pre><code>from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # HSTS - Enforce HTTPS (production only)
+        if os.getenv("ENVIRONMENT") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # Prevent MIME-sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # XSS Protection (legacy but still useful)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # Content Security Policy
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'"
+        )
+        
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)</code></pre>
+                </div>
+            </div>
+
+            <div class="finding medium" id="finding-md5">
+                <div class="finding-header">
+                    <div class="finding-title">Use of Weak Hashing Algorithm (MD5)</div>
+                    <span class="severity-badge medium">Medium</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 4.3 (Medium)</p>
+                <p><strong>Category:</strong> Cryptographic Weakness</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/processing/worker.py:110</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/api/server.py:393</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    MD5 is used to generate document IDs from file content. While MD5 is acceptable for non-cryptographic purposes like 
+                    generating unique identifiers, it should not be used for security-critical operations. The current usage appears to be 
+                    for document identification rather than security, but using a deprecated algorithm is still a concern.
+                </p>
+
+                <h4>Code Snippet</h4>
+                <pre><code>doc_id = hashlib.md5(content).hexdigest()[:12]</code></pre>
+
+                <h4>Recommendation</h4>
+                <p>
+                    For document ID generation (non-security purpose), this usage is acceptable but consider upgrading to SHA-256 for 
+                    consistency and future-proofing. If this hash is ever used for integrity verification or security purposes, it must 
+                    be changed immediately.
+                </p>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li>Replace MD5 with SHA-256 for document ID generation</li>
+                        <li>Ensure backward compatibility if document IDs are already stored</li>
+                        <li>Document that this is for identification, not security</li>
+                    </ol>
+                    
+                    <h4>Updated Implementation</h4>
+                    <pre><code>import hashlib
+
+# For document identification (non-security purpose)
+doc_id = hashlib.sha256(content).hexdigest()[:16]
+
+# Or use Python's secrets module for truly unique IDs
+import secrets
+doc_id = secrets.token_hex(16)</code></pre>
+                </div>
+            </div>
+
+            <div class="finding medium" id="finding-debug">
+                <div class="finding-header">
+                    <div class="finding-title">Debug Mode and Verbose Logging Configuration</div>
+                    <span class="severity-badge medium">Medium</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 4.1 (Medium)</p>
+                <p><strong>Category:</strong> Information Disclosure</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.env:16</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/docker/.env:191-193</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    The root <code>.env</code> file has <code>LOG_LEVEL=DEBUG</code>, which may expose sensitive information in logs. 
+                    Additionally, <code>DEV_MODE=true</code> is set in docker/.env which could enable debug features in production if deployed incorrectly.
+                </p>
+
+                <h4>Risk Factors</h4>
+                <ul>
+                    <li>Debug logs may expose internal application state, file paths, or sensitive data</li>
+                    <li>Stack traces could reveal application structure to attackers</li>
+                    <li>Development mode may disable security features or enable debug endpoints</li>
+                    <li>Increased log volume could fill disk space (DoS)</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps</h4>
+                    <ol>
+                        <li>Set <code>LOG_LEVEL=INFO</code> (or <code>WARNING</code>) for production</li>
+                        <li>Set <code>DEBUG=false</code> and <code>DEV_MODE=false</code> in production</li>
+                        <li>Implement environment-specific configuration</li>
+                        <li>Add log sanitization to remove sensitive data (passwords, tokens, API keys)</li>
+                        <li>Implement log rotation to prevent disk space exhaustion</li>
+                    </ol>
+                    
+                    <h4>Environment-Specific Configuration</h4>
+                    <pre><code># .env.production
+LOG_LEVEL=WARNING
+DEBUG=false
+DEV_MODE=false
+ENVIRONMENT=production
+
+# .env.development
+LOG_LEVEL=DEBUG
+DEBUG=true
+DEV_MODE=true
+ENVIRONMENT=development
+
+# In code: Load appropriate config based on ENVIRONMENT
+import os
+import logging
+
+env = os.getenv("ENVIRONMENT", "development")
+log_level = os.getenv("LOG_LEVEL", "INFO" if env == "production" else "DEBUG")
+logging.basicConfig(level=getattr(logging, log_level))</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Low Severity Findings</h2>
+
+            <div class="finding low">
+                <div class="finding-header">
+                    <div class="finding-title">Missing Authentication on Processing Endpoints</div>
+                    <span class="severity-badge low">Low</span>
+                </div>
+
+                <p><strong>CVSS Score:</strong> 3.1 (Low)</p>
+                <p><strong>Category:</strong> Missing Authentication</p>
+                <p><strong>Affected Files:</strong></p>
+                <ul>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/src/processing/worker_webhook.py</span></li>
+                    <li><span class="file-path">/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/docker/slide_renderer_api.py</span></li>
+                </ul>
+
+                <h4>Description</h4>
+                <p>
+                    Several internal processing endpoints (webhook, slide renderer) do not implement authentication. While these services 
+                    appear to be designed for internal communication within Docker network, they should still implement some form of 
+                    authentication to prevent unauthorized access if network isolation is compromised.
+                </p>
+
+                <h4>Recommendation</h4>
+                <p>
+                    For development and local deployment, the current setup may be acceptable if services are properly isolated. 
+                    For production deployment, consider:
+                </p>
+                <ul>
+                    <li>API key authentication for service-to-service communication</li>
+                    <li>Network-level restrictions (firewall rules, security groups)</li>
+                    <li>Request signing using HMAC to verify requests come from authorized services</li>
+                </ul>
+
+                <div class="remediation">
+                    <h4>Remediation Steps (Optional for Production)</h4>
+                    <pre><code>from fastapi import Security, HTTPException, status
+from fastapi.security import APIKeyHeader
+import os
+import secrets
+
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
+
+def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
+    """Verify API key for internal service communication."""
+    if not INTERNAL_API_KEY:
+        # In development, allow requests without key
+        if os.getenv("ENVIRONMENT") != "production":
+            return
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="API key not configured"
+        )
+    
+    if not secrets.compare_digest(api_key, INTERNAL_API_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid API key"
+        )
+
+@app.post("/process", dependencies=[Security(verify_api_key)])
+async def process_document(request: ProcessRequest):
+    # Protected endpoint
+    ...</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dependency Analysis -->
+        <section>
+            <h2>Dependency Security Analysis</h2>
+            
+            <h3>Installed Packages: 220+</h3>
+            <p>
+                The project has a substantial dependency tree with 220+ installed packages. Key security-relevant dependencies:
+            </p>
+            
+            <h4>Security-Positive Dependencies</h4>
+            <ul>
+                <li><strong>bcrypt 5.0.0</strong> - Strong password hashing (good)</li>
+                <li><strong>pydantic 2.11.10</strong> - Data validation helps prevent injection (good)</li>
+                <li><strong>fastapi 0.118.0</strong> - Recent version with security fixes (good)</li>
+                <li><strong>python-multipart 0.0.20</strong> - Safe file upload handling (good)</li>
+            </ul>
+
+            <h4>Recommendations</h4>
+            <ul>
+                <li>Run regular dependency audits: <code>pip-audit</code> or <code>safety check</code></li>
+                <li>Enable Dependabot or Renovate Bot for automated dependency updates</li>
+                <li>Pin major versions but allow minor/patch updates for security fixes</li>
+                <li>Review transitive dependencies for known vulnerabilities</li>
+            </ul>
+
+            <div class="remediation">
+                <h4>Automated Dependency Scanning</h4>
+                <pre><code># Install pip-audit
+pip install pip-audit
+
+# Run security audit
+pip-audit
+
+# In CI/CD pipeline
+pip-audit --require-hashes --no-deps
+
+# Alternative: safety
+pip install safety
+safety check --json</code></pre>
+            </div>
+        </section>
+
+        <!-- Best Practices & Recommendations -->
+        <section>
+            <h2>Security Best Practices & Recommendations</h2>
+
+            <h3>Immediate Actions (Within 24 Hours)</h3>
+            <ol>
+                <li><strong>Fix CORS Configuration:</strong> Update all CORS middleware to use explicit origin whitelists</li>
+                <li><strong>Replace eval():</strong> Switch to <code>ast.literal_eval()</code> in chroma_client.py</li>
+                <li><strong>Update Default Password:</strong> Remove .env from git, generate strong password</li>
+            </ol>
+
+            <h3>Week 1 Actions</h3>
+            <ol>
+                <li><strong>Add Security Headers:</strong> Implement security headers middleware</li>
+                <li><strong>Path Validation:</strong> Add file path validation in slide renderer</li>
+                <li><strong>Environment Configuration:</strong> Set up production vs development configs</li>
+            </ol>
+
+            <h3>Week 2 Actions</h3>
+            <ol>
+                <li><strong>Upgrade Hashing:</strong> Replace MD5 with SHA-256 for document IDs</li>
+                <li><strong>Dependency Audit:</strong> Run pip-audit and address any critical vulnerabilities</li>
+                <li><strong>Logging Review:</strong> Audit logs for sensitive data exposure</li>
+            </ol>
+
+            <h3>Long-Term Improvements</h3>
+            <ul>
+                <li>Implement rate limiting on all public endpoints</li>
+                <li>Add request signing for service-to-service communication</li>
+                <li>Set up automated security scanning in CI/CD pipeline</li>
+                <li>Implement secrets management solution (HashiCorp Vault, AWS Secrets Manager)</li>
+                <li>Add input validation middleware for all API endpoints</li>
+                <li>Implement comprehensive audit logging</li>
+                <li>Set up security monitoring and alerting</li>
+            </ul>
+        </section>
+
+        <!-- Summary -->
+        <section>
+            <h2>Summary & Next Steps</h2>
+            
+            <p>
+                The tkr-docusearch codebase has a generally sound security posture but requires immediate attention to critical 
+                CORS misconfiguration and unsafe eval() usage. The findings are typical for a development/MVP project transitioning 
+                to production readiness.
+            </p>
+
+            <h3>Priority Matrix</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                <thead style="background: var(--color-card-bg);">
+                    <tr>
+                        <th style="padding: 0.75rem; border: 1px solid var(--color-border); text-align: left;">Priority</th>
+                        <th style="padding: 0.75rem; border: 1px solid var(--color-border); text-align: left;">Finding</th>
+                        <th style="padding: 0.75rem; border: 1px solid var(--color-border); text-align: left;">Timeline</th>
+                        <th style="padding: 0.75rem; border: 1px solid var(--color-border); text-align: left;">Effort</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);"><span class="severity-badge critical">P0</span></td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">Fix CORS Configuration</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">24 hours</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">1-2 hours</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);"><span class="severity-badge high">P1</span></td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">Replace eval() with safe alternative</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">48 hours</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">2-3 hours</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);"><span class="severity-badge high">P1</span></td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">Add path validation in slide renderer</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">1 week</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">3-4 hours</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);"><span class="severity-badge high">P1</span></td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">Update default passwords</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">1 week</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">1 hour</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);"><span class="severity-badge medium">P2</span></td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">Add security headers</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">2 weeks</td>
+                        <td style="padding: 0.75rem; border: 1px solid var(--color-border);">2-3 hours</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Conclusion</h3>
+            <p>
+                No evidence of active exploitation or malicious code was found. The identified vulnerabilities are related to 
+                configuration and coding practices that need to be addressed before production deployment. With the recommended 
+                fixes implemented, the application will have a strong security foundation.
+            </p>
+        </section>
+
+        <footer>
+            <p><strong>Security Audit Report</strong></p>
+            <p style="margin-top: 0.5rem;">Generated by security-agent | Defensive Security Analysis</p>
+            <p style="margin-top: 0.5rem;">tkr-docusearch v0.9.0 | 2025-10-16</p>
+            <p style="margin-top: 1rem; font-size: 0.85rem;">
+                <a href="../../index.html">All Reports</a> |
+                <a href="#" onclick="window.print(); return false;">Print</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

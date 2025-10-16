@@ -47,9 +47,31 @@
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip show:*)",
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip check:*)",
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/python:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip list:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/radon cc src -s -n C)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/radon mi src -s -n B)",
+      "Read(//Volumes/tkr-riffic/@tkr-projects/tkr-project-kit/.context-kit/analysis/templates/**)",
+      "Read(//private/tmp/**)",
+      "Bash(node assets/js/manifest-generator.js:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pytest --collect-only -q)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pytest:*)",
+      "Bash(PYTHONPATH=/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pytest:*)",
+      "Bash(for i in 1 2 3)",
+      "Bash(do echo \"=== Run $i ===\")",
+      "Bash(done)",
+      "Bash(node /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.context-kit/analysis/assets/js/template-generator.js:*)"
     ],
-    "deny": [],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo rm:*)",
+      "Bash(format:*)",
+      "Bash(dd:*)",
+      "Edit(/etc/**)",
+      "Edit(/usr/**)",
+      "Edit(~/.ssh/**)"
+    ],
     "ask": []
   },
   "defaultMode": "acceptEdits",

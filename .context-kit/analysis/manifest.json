@@ -1,33 +1,33 @@
 {
   "version": "1.0",
-  "generated": "2025-09-30T22:53:05.552Z",
+  "generated": "2025-10-16T19:21:57.254Z",
   "reports": [
     {
-      "date": "2025-01-30",
-      "count": 9,
+      "date": "2025-10-16",
+      "count": 8,
       "reports": [
         {
           "id": "accessibility",
           "filename": "accessibility-report.html",
-          "title": "Accessibility Audit Report",
+          "title": "♿ Accessibility Audit Report - tkr-docusearch",
           "type": "Phase 2",
           "score": null,
           "issues": {
-            "critical": 6,
+            "critical": 0,
             "high": 0,
             "medium": 0,
             "low": 0,
-            "total": 10
+            "total": 90
           },
-          "summary": ".context-kit/dashboard/src/App.tsx:1616-1807",
-          "size": 46200,
-          "modified": "2025-09-30T22:35:11.000Z"
+          "summary": "",
+          "size": 64346,
+          "modified": "2025-10-16T18:25:53.000Z"
         },
         {
-          "id": "architecture-report-content",
-          "filename": "architecture-report-content.html",
-          "title": "architecture-report-content.html",
-          "type": "Other",
+          "id": "architecture",
+          "filename": "architecture-report.html",
+          "title": "Architecture Consistency Report - tkr-docusearch",
+          "type": "Phase 3",
           "score": null,
           "issues": {
             "critical": 0,
@@ -36,43 +36,26 @@
             "low": 0,
             "total": 0
           },
-          "summary": "",
-          "size": 4364,
-          "modified": "2025-09-30T22:43:58.000Z"
-        },
-        {
-          "id": "architecture",
-          "filename": "architecture-report.html",
-          "title": "Architecture Consistency Report",
-          "type": "Phase 3",
-          "score": null,
-          "issues": {
-            "critical": 0,
-            "high": 2,
-            "medium": 0,
-            "low": 0,
-            "total": 2
-          },
-          "summary": "The unified core module successfully implements IoC principles by consolidating business logic and providing clean interfaces for consumer modules.",
-          "size": 17718,
-          "modified": "2025-09-30T22:45:21.000Z"
+          "summary": "Key Strengths:",
+          "size": 54447,
+          "modified": "2025-10-16T19:07:16.000Z"
         },
         {
           "id": "code-quality",
           "filename": "code-quality-report.html",
-          "title": "Code Quality Analysis Report",
+          "title": "Code Quality Analysis Report - tkr-docusearch",
           "type": "Phase 1",
           "score": null,
           "issues": {
             "critical": 0,
-            "high": 50,
+            "high": 0,
             "medium": 0,
             "low": 0,
-            "total": 375
+            "total": 247
           },
-          "summary": "Functions exceeding recommended cyclomatic complexity threshold (>10):",
-          "size": 35224,
-          "modified": "2025-09-30T22:19:45.000Z"
+          "summary": "",
+          "size": 51634,
+          "modified": "2025-10-16T18:05:51.000Z"
         },
         {
           "id": "commit-pr-quality",
@@ -87,9 +70,9 @@
             "low": 0,
             "total": 0
           },
-          "summary": "GitHub CLI (gh) is not installed or configured. PR analysis requires the gh command to be available.",
-          "size": 23315,
-          "modified": "2025-09-30T22:52:23.000Z"
+          "summary": "This repository demonstrates excellent commit hygiene with a 80/100 overall quality score.",
+          "size": 9740,
+          "modified": "2025-10-16T19:21:50.000Z"
         },
         {
           "id": "dependency-audit",
@@ -99,36 +82,36 @@
           "score": null,
           "issues": {
             "critical": 0,
-            "high": 0,
+            "high": 3,
             "medium": 0,
             "low": 0,
-            "total": 2372
+            "total": 181
           },
-          "summary": "Module: Core",
-          "size": 19134,
-          "modified": "2025-09-30T22:19:07.000Z"
+          "summary": "Dependency Security Audit Report",
+          "size": 41056,
+          "modified": "2025-10-16T18:31:10.000Z"
         },
         {
           "id": "performance",
           "filename": "performance-report.html",
-          "title": "Performance Analysis Report",
+          "title": "Performance Analysis Report - tkr-docusearch",
           "type": "Phase 2",
-          "score": 35,
+          "score": null,
           "issues": {
             "critical": 0,
             "high": 0,
             "medium": 0,
             "low": 0,
-            "total": 30
+            "total": 0
           },
-          "summary": "File: .context-kit/analysis/assets/js/theme-toggle.js:205-219",
-          "size": 8960,
-          "modified": "2025-09-30T22:37:58.000Z"
+          "summary": "",
+          "size": 41892,
+          "modified": "2025-10-16T18:18:58.000Z"
         },
         {
           "id": "security",
           "filename": "security-report.html",
-          "title": "Security Audit Report",
+          "title": "Security Audit Report - tkr-docusearch",
           "type": "Phase 1",
           "score": null,
           "issues": {
@@ -138,9 +121,9 @@
             "low": 0,
             "total": 0
           },
-          "summary": "Security Posture: Moderate Risk",
-          "size": 21621,
-          "modified": "2025-09-30T22:30:01.000Z"
+          "summary": "Requires immediate action",
+          "size": 44870,
+          "modified": "2025-10-16T18:05:39.000Z"
         },
         {
           "id": "test-coverage",
@@ -153,11 +136,11 @@
             "high": 0,
             "medium": 0,
             "low": 0,
-            "total": 0
+            "total": 23
           },
-          "summary": "Risk Level: Critical - 0% coverage",
-          "size": 29879,
-          "modified": "2025-09-30T22:35:37.000Z"
+          "summary": "Files with coverage below 50% (>10 statements):",
+          "size": 25648,
+          "modified": "2025-10-16T19:01:51.000Z"
         }
       ]
     }

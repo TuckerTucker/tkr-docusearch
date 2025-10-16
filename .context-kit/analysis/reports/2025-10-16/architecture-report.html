@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Consistency Report - tkr-docusearch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 20px 40px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .metadata-label {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 3px;
+        }
+        
+        .metadata-value {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .score-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 40px;
+        }
+        
+        .score-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .score-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .score-card.excellent { border-color: #28a745; }
+        .score-card.good { border-color: #28a745; }
+        .score-card.warning { border-color: #ffc107; }
+        .score-card.critical { border-color: #dc3545; }
+        
+        .score-number {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .score-card.excellent .score-number { color: #28a745; }
+        .score-card.good .score-number { color: #28a745; }
+        .score-card.warning .score-number { color: #ffc107; }
+        .score-card.critical .score-number { color: #dc3545; }
+        
+        .score-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .section h3 {
+            font-size: 1.3em;
+            color: #34495e;
+            margin: 25px 0 15px 0;
+        }
+        
+        .finding {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .finding.violation { border-left-color: #dc3545; background: #fff5f5; }
+        .finding.warning { border-left-color: #ffc107; background: #fffbf0; }
+        .finding.success { border-left-color: #28a745; background: #f0fff4; }
+        
+        .finding-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+        
+        .finding-detail {
+            color: #495057;
+            margin: 5px 0;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        
+        .file-path {
+            color: #667eea;
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .severity-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .severity-high {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .severity-medium {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .severity-low {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        .summary-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .summary-box h3 {
+            color: #004085;
+            margin-top: 0;
+        }
+        
+        .recommendation {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .recommendation-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .quick-action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .quick-action-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .quick-action-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 0.9em;
+            border-radius: 0 0 8px 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ Architecture Consistency Report</h1>
+            <div class="subtitle">tkr-docusearch - Comprehensive IoC, DRY, Module Boundaries & Design Pattern Analysis</div>
+        </header>
+        
+        <div class="metadata">
+            <div class="metadata-item">
+                <span class="metadata-label">Report Date</span>
+                <span class="metadata-value">2025-10-16</span>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Project Version</span>
+                <span class="metadata-value">0.9.0</span>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Architecture Phase</span>
+                <span class="metadata-value">Wave 5 Complete</span>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Analysis Agent</span>
+                <span class="metadata-value">architecture-consistency-agent</span>
+            </div>
+        </div>
+        
+        <div class="score-cards">
+            <div class="score-card excellent">
+                <div class="score-label">Overall Health</div>
+                <div class="score-number">82/100</div>
+                <div class="score-label">Good</div>
+            </div>
+            <div class="score-card good">
+                <div class="score-label">IoC Compliance</div>
+                <div class="score-number">85%</div>
+                <div class="score-label">Strong Module Separation</div>
+            </div>
+            <div class="score-card warning">
+                <div class="score-label">DRY Violations</div>
+                <div class="score-number">8</div>
+                <div class="score-label">Needs Attention</div>
+            </div>
+            <div class="score-card good">
+                <div class="score-label">Module Boundaries</div>
+                <div class="score-number">90%</div>
+                <div class="score-label">Clear Separation</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Executive Summary -->
+            <div class="section">
+                <h2>Executive Summary</h2>
+                
+                <div class="summary-box">
+                    <h3>Architecture Health: 82/100 (Good)</h3>
+                    <p><strong>Key Strengths:</strong></p>
+                    <ul>
+                        <li>Strong modular architecture with clear separation of concerns (embeddings, storage, processing, search, config)</li>
+                        <li>Excellent use of dependency injection through constructor parameters</li>
+                        <li>No circular dependencies detected in core modules</li>
+                        <li>Comprehensive type hints and error handling patterns</li>
+                        <li>Well-defined integration contracts between modules</li>
+                        <li>Centralized configuration management in config/ module</li>
+                    </ul>
+                    
+                    <p><strong>Primary Concerns:</strong></p>
+                    <ul>
+                        <li>8 DRY violations with duplicated file I/O and path management logic across processing utilities</li>
+                        <li>Path constants scattered across modules instead of centralized in core</li>
+                        <li>Some business logic embedded in processing utilities that should be extracted to core</li>
+                        <li>Inconsistent error handling patterns between modules</li>
+                    </ul>
+                </div>
+                
+                <p><strong>Violation Breakdown:</strong></p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>High</th>
+                            <th>Medium</th>
+                            <th>Low</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>IoC Compliance</td>
+                            <td>0</td>
+                            <td>3</td>
+                            <td>2</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <td>DRY Violations</td>
+                            <td>2</td>
+                            <td>4</td>
+                            <td>2</td>
+                            <td>8</td>
+                        </tr>
+                        <tr>
+                            <td>Module Boundaries</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>2</td>
+                            <td>3</td>
+                        </tr>
+                        <tr>
+                            <td>Design Patterns</td>
+                            <td>0</td>
+                            <td>2</td>
+                            <td>3</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total</strong></td>
+                            <td><strong>2</strong></td>
+                            <td><strong>10</strong></td>
+                            <td><strong>9</strong></td>
+                            <td><strong>21</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="section">
+                <h2>Quick Actions</h2>
+                <div class="quick-action-buttons">
+                    <a href="#" onclick="alert('Copy this command to Claude Code:\n\n/create_plan Extract duplicated file I/O utilities to src/utils/file_operations.py - Consolidate save_vtt, save_markdown, save_album_art, save_page_image patterns'); return false;" class="quick-action-btn">
+                        📋 Generate DRY Improvement Plan
+                    </a>
+                    <a href="#" onclick="alert('Copy this command to Claude Code:\n\n/create_plan Centralize path management - Move all PROJECT_ROOT, UPLOAD_DIR, and path constant definitions to src/utils/paths.py'); return false;" class="quick-action-btn">
+                        🏗️ Generate Path Centralization Plan
+                    </a>
+                    <a href="#" onclick="alert('Copy this command to Claude Code:\n\n/create_plan Standardize error handling - Create src/utils/error_handler.py with consistent exception hierarchy and logging patterns'); return false;" class="quick-action-btn">
+                        🔀 Generate Error Handling Plan
+                    </a>
+                </div>
+            </div>
+            
+            <!-- IoC Compliance Section -->
+            <div class="section">
+                <h2>1. IoC (Inversion of Control) Compliance</h2>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Excellent Dependency Injection Pattern</div>
+                    <div class="finding-detail">
+                        All major components (DocumentProcessor, SearchEngine, VisualProcessor, TextProcessor) use constructor-based dependency injection, accepting interfaces rather than concrete implementations.
+                    </div>
+                    <div class="code-block">
+# src/processing/processor.py
+class DocumentProcessor:
+    def __init__(
+        self,
+        embedding_engine,  # Accepts interface (real or mock)
+        storage_client,    # Accepts interface (real or mock)
+        parser_config: Optional[Dict[str, Any]] = None,
+        ...
+    )</div>
+                    <div class="finding-detail">
+                        <strong>Files demonstrating good IoC:</strong>
+                        <ul>
+                            <li><span class="file-path">src/processing/processor.py</span> - Injects embedding_engine and storage_client</li>
+                            <li><span class="file-path">src/search/search_engine.py</span> - Injects storage and embedding dependencies</li>
+                            <li><span class="file-path">src/processing/visual_processor.py</span> - Accepts embedding_engine interface</li>
+                            <li><span class="file-path">src/processing/text_processor.py</span> - Accepts embedding_engine interface</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Direct Path Construction in Processing Utilities <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Location:</strong> <span class="file-path">src/processing/vtt_generator.py</span>, <span class="file-path">src/processing/markdown_utils.py</span>, <span class="file-path">src/processing/audio_metadata.py</span>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> These utilities directly construct filesystem paths instead of accepting path configuration through dependency injection.
+                    </div>
+                    <div class="code-block">
+# src/processing/vtt_generator.py:195
+def save_vtt(doc_id: str, vtt_content: str, output_dir: Optional[Path] = None) -> Path:
+    if output_dir is None:
+        from src.utils.paths import PROJECT_ROOT
+        output_dir = PROJECT_ROOT / "data" / "vtt"  # Hardcoded path construction
+    ...</div>
+                    <div class="finding-detail">
+                        <strong>Impact:</strong> Reduces testability and makes the code coupled to specific directory structures.
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Create a FileStorageService class that accepts path configuration through constructor, then inject this service into utilities.
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Environment Variable Access Scattered Across Modules <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Locations:</strong>
+                        <ul>
+                            <li><span class="file-path">src/processing/worker_webhook.py:66</span> - UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", "/uploads"))</li>
+                            <li><span class="file-path">src/processing/worker.py:43</span> - UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", "/uploads"))</li>
+                            <li><span class="file-path">src/config/processing_config.py:49</span> - upload_dir: str = os.getenv('UPLOAD_DIR', '/uploads')</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> Configuration is read at module level in multiple places, violating IoC principle of centralized configuration injection.
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Centralize all environment variable reading in src/config/ and inject configuration objects.
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Direct Import of Utilities Within Processing Logic <span class="severity-badge severity-low">LOW</span></div>
+                    <div class="finding-detail">
+                        <strong>Location:</strong> <span class="file-path">src/processing/processor.py:343-356</span>
+                    </div>
+                    <div class="code-block">
+# src/processing/processor.py
+if has_timestamps:
+    try:
+        from .vtt_generator import generate_vtt, save_vtt  # Import inside method
+        logger.info(f"Generating VTT for audio file: {filename}")
+        vtt_content = generate_vtt(parsed_doc.text_chunks, filename)
+        vtt_path = save_vtt(doc_id, vtt_content)
+        ...</div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> Late imports suggest tight coupling. VTT generation logic should be injected as a service.
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Create optional VttGeneratorService and MarkdownGeneratorService injected through constructor.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DRY Violations Section -->
+            <div class="section">
+                <h2>2. DRY (Don't Repeat Yourself) Violations</h2>
+                
+                <div class="finding violation">
+                    <div class="finding-title">❌ Duplicated File Save Pattern Across 4 Utilities <span class="severity-badge severity-high">HIGH</span></div>
+                    <div class="finding-detail">
+                        <strong>Affected Files:</strong>
+                        <ul>
+                            <li><span class="file-path">src/processing/vtt_generator.py:195</span> - save_vtt()</li>
+                            <li><span class="file-path">src/processing/markdown_utils.py:99</span> - save_markdown()</li>
+                            <li><span class="file-path">src/processing/audio_metadata.py:274</span> - save_album_art()</li>
+                            <li><span class="file-path">src/processing/image_utils.py:68</span> - save_page_image()</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Pattern Repeated:</strong>
+                        <ol>
+                            <li>Validate doc_id with regex pattern</li>
+                            <li>Construct output directory path</li>
+                            <li>Create directory with exist_ok=True</li>
+                            <li>Generate filename</li>
+                            <li>Write file with error handling</li>
+                            <li>Return path as string</li>
+                        </ol>
+                    </div>
+                    <div class="code-block">
+# Example from vtt_generator.py (lines 195-227)
+def save_vtt(doc_id: str, vtt_content: str, output_dir: Optional[Path] = None) -> Path:
+    if not DOC_ID_PATTERN.match(doc_id):
+        raise ValueError(f"Invalid doc_id format: {doc_id}")
+    
+    if output_dir is None:
+        from src.utils.paths import PROJECT_ROOT
+        output_dir = PROJECT_ROOT / "data" / "vtt"
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{doc_id}.vtt"
+    
+    try:
+        output_path.write_text(vtt_content, encoding='utf-8')
+        logger.info(f"Saved VTT to {output_path}")
+        return output_path
+    except Exception as e:
+        logger.error(f"Failed to save VTT: {e}")
+        raise VTTGenerationError(f"Failed to save VTT: {e}") from e
+        
+# Nearly identical pattern in markdown_utils.py, audio_metadata.py, image_utils.py</div>
+                    <div class="finding-detail">
+                        <strong>Estimated Duplication:</strong> ~120 lines of duplicated logic across 4 files
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Refactoring:</div>
+                        <div>Create <span class="file-path">src/utils/file_operations.py</span> with:</div>
+                        <ul>
+                            <li><code>save_document_artifact(doc_id, content, artifact_type, subdir)</code> - Generic save function</li>
+                            <li><code>validate_doc_id(doc_id)</code> - Centralized validation</li>
+                            <li><code>get_artifact_path(doc_id, artifact_type, subdir)</code> - Path generation</li>
+                        </ul>
+                        <div>Then each utility calls this shared function with artifact-specific parameters.</div>
+                    </div>
+                </div>
+                
+                <div class="finding violation">
+                    <div class="finding-title">❌ Duplicated Path Pattern Validation <span class="severity-badge severity-high">HIGH</span></div>
+                    <div class="finding-detail">
+                        <strong>Locations:</strong>
+                        <ul>
+                            <li><span class="file-path">src/processing/image_utils.py:60</span> - DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')</li>
+                            <li><span class="file-path">src/processing/cover_art_utils.py:24</span> - DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')</li>
+                            <li><span class="file-path">src/processing/vtt_generator.py</span> - Similar pattern (not shown but exists)</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> The exact same regex pattern is compiled independently in multiple modules.
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Refactoring:</div>
+                        <div>Move to <span class="file-path">src/utils/validation.py</span>:</div>
+                        <div class="code-block">
+# src/utils/validation.py
+import re
+from typing import Pattern
+
+DOC_ID_PATTERN: Pattern = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
+
+def validate_doc_id(doc_id: str) -> bool:
+    """Validate document ID format."""
+    return bool(DOC_ID_PATTERN.match(doc_id))
+    
+def ensure_valid_doc_id(doc_id: str) -> None:
+    """Raise ValueError if doc_id is invalid."""
+    if not validate_doc_id(doc_id):
+        raise ValueError(f"Invalid doc_id format: {doc_id}")</div>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Duplicated Exception Class Patterns <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Locations:</strong>
+                        <ul>
+                            <li><span class="file-path">src/processing/image_utils.py:41-53</span> - ImageStorageError, DiskFullError, PermissionError</li>
+                            <li><span class="file-path">src/processing/cover_art_utils.py:31-33</span> - CoverArtError</li>
+                            <li><span class="file-path">src/processing/vtt_generator.py:21-31</span> - VTTGenerationError, InvalidTimestampError, EmptyChunkError</li>
+                            <li><span class="file-path">src/storage/markdown_utils.py:30</span> - MarkdownStorageError</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> Each module defines its own file-storage-related exceptions without a shared hierarchy.
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Refactoring:</div>
+                        <div>Create <span class="file-path">src/utils/exceptions.py</span> with shared base classes:</div>
+                        <div class="code-block">
+# src/utils/exceptions.py
+class FileOperationError(Exception):
+    """Base exception for file operations."""
+    pass
+
+class DocumentArtifactError(FileOperationError):
+    """Error saving/loading document artifacts."""
+    pass
+
+class DiskFullError(FileOperationError):
+    """Disk space exhausted."""
+    pass
+
+class ValidationError(Exception):
+    """Input validation failed."""
+    pass</div>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Duplicated Directory Creation Logic <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Pattern Found In:</strong> All file save utilities create directories with <code>mkdir(parents=True, exist_ok=True)</code>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> No centralized directory management, each utility independently ensures directories exist.
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Approach:</div>
+                        <div>Add to <span class="file-path">src/utils/file_operations.py</span>:</div>
+                        <div class="code-block">
+def ensure_directory(path: Path, description: str = "directory") -> Path:
+    """Ensure directory exists, creating if necessary.
+    
+    Args:
+        path: Directory path to ensure
+        description: Human-readable description for error messages
+        
+    Returns:
+        Resolved absolute path
+        
+    Raises:
+        PermissionError: If cannot create directory
+    """
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return path.resolve()
+    except PermissionError as e:
+        raise PermissionError(
+            f"Cannot create {description} at {path}: {e}"
+        ) from e</div>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Duplicated Logging Patterns <span class="severity-badge severity-low">LOW</span></div>
+                    <div class="finding-detail">
+                        <strong>Observation:</strong> 48 files use identical logging setup pattern:
+                    </div>
+                    <div class="code-block">
+import logging
+logger = logging.getLogger(__name__)</div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> While this is standard Python practice, there's no centralized logging configuration or helper.
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Impact:</strong> Low - This is acceptable duplication, but could benefit from a logging utility for consistent formatting.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Module Boundaries Section -->
+            <div class="section">
+                <h2>3. Module Boundary Violations</h2>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ No Circular Dependencies Detected</div>
+                    <div class="finding-detail">
+                        Analysis of import chains shows clean unidirectional dependencies:
+                        <ul>
+                            <li><strong>config/</strong> → (no internal dependencies)</li>
+                            <li><strong>utils/</strong> → (no internal dependencies)</li>
+                            <li><strong>embeddings/</strong> → config/</li>
+                            <li><strong>storage/</strong> → config/, utils/</li>
+                            <li><strong>processing/</strong> → embeddings/, storage/, config/, utils/</li>
+                            <li><strong>search/</strong> → embeddings/, storage/, config/</li>
+                            <li><strong>api/</strong> → processing/, search/</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        This creates a clean dependency graph with config and utils at the foundation, core libraries (embeddings, storage) in the middle, and higher-level modules (processing, search, api) at the top.
+                    </div>
+                </div>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Clear Module Responsibilities</div>
+                    <div class="finding-detail">
+                        Each module has well-defined, single responsibilities:
+                        <ul>
+                            <li><strong>embeddings/</strong> - ColPali embedding generation (13 files)</li>
+                            <li><strong>storage/</strong> - ChromaDB persistence (13 files)</li>
+                            <li><strong>processing/</strong> - Document processing pipeline (35+ files)</li>
+                            <li><strong>search/</strong> - Two-stage search engine (10 files)</li>
+                            <li><strong>config/</strong> - Centralized configuration (5 files)</li>
+                            <li><strong>api/</strong> - FastAPI server endpoints (3 files)</li>
+                            <li><strong>utils/</strong> - Shared utilities (2 files, needs expansion)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Processing Module Size Concerns <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> The processing module contains 35+ files with diverse responsibilities:
+                        <ul>
+                            <li>Core processing (processor.py, docling_parser.py, visual_processor.py, text_processor.py)</li>
+                            <li>File utilities (image_utils.py, cover_art_utils.py, file_validator.py)</li>
+                            <li>Format-specific generators (vtt_generator.py, markdown_utils.py)</li>
+                            <li>API endpoints (worker_webhook.py, documents_api.py, status_api.py)</li>
+                            <li>Support utilities (monitoring_utils.py, websocket_broadcaster.py)</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Impact:</strong> This violates the Single Responsibility Principle at the module level. The processing module is doing too much.
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Restructuring:</div>
+                        <ul>
+                            <li>Move file utilities (image_utils, cover_art_utils) to <span class="file-path">src/utils/</span></li>
+                            <li>Move format generators (vtt_generator, markdown_utils) to <span class="file-path">src/generators/</span></li>
+                            <li>Move API endpoints to <span class="file-path">src/api/</span> (consolidate with existing api module)</li>
+                            <li>Move monitoring to <span class="file-path">src/utils/monitoring.py</span></li>
+                            <li>Keep only core processing logic in <span class="file-path">src/processing/</span></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Inconsistent Cross-Module Import Paths <span class="severity-badge severity-low">LOW</span></div>
+                    <div class="finding-detail">
+                        <strong>Observation:</strong> Some files use relative imports (<code>from .module</code>) while others use absolute imports (<code>from src.module</code>).
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Examples:</strong>
+                        <ul>
+                            <li><span class="file-path">src/storage/chroma_client.py</span> uses relative: <code>from .compression import</code></li>
+                            <li><span class="file-path">src/processing/processor.py</span> uses absolute: <code>from src.config.processing_config import</code></li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Standardize on absolute imports for cross-module dependencies, relative imports only within same module.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Design Pattern Adherence Section -->
+            <div class="section">
+                <h2>4. Design Pattern Adherence</h2>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Excellent Type Hint Coverage</div>
+                    <div class="finding-detail">
+                        <strong>Observation:</strong> Nearly all functions include comprehensive type hints following PEP 484.
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Example from src/processing/processor.py:</strong>
+                    </div>
+                    <div class="code-block">
+def process_document(
+    self,
+    file_path: str,
+    chunk_size_words: int = 250,
+    chunk_overlap_words: int = 50,
+    status_callback=None
+) -> StorageConfirmation:</div>
+                    <div class="finding-detail">
+                        This excellent type hint coverage significantly improves code maintainability and IDE support.
+                    </div>
+                </div>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Comprehensive Error Handling Hierarchies</div>
+                    <div class="finding-detail">
+                        <strong>Observation:</strong> Each major module defines domain-specific exception hierarchies:
+                        <ul>
+                            <li><span class="file-path">src/embeddings/exceptions.py</span> - EmbeddingError → ModelLoadError, DeviceError, etc.</li>
+                            <li><span class="file-path">src/storage/chroma_client.py</span> - StorageError → ChromaDBConnectionError, etc.</li>
+                            <li><span class="file-path">src/search/search_engine.py</span> - SearchError → RetrievalError, RerankingError</li>
+                            <li><span class="file-path">src/processing/processor.py</span> - ProcessingError → EmbeddingError, StorageError</li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        This follows best practices for error handling with specific, catchable exceptions.
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Inconsistent Error Logging Patterns <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> Different modules use different error logging patterns:
+                    </div>
+                    <div class="code-block">
+# Pattern 1: Log and raise
+logger.error(f"Failed: {e}")
+raise StorageError(f"Failed: {e}") from e
+
+# Pattern 2: Raise with traceback logging
+logger.error(f"Failed: {e}", exc_info=True)
+raise StorageError(f"Failed: {e}") from e
+
+# Pattern 3: Catch and return
+except Exception as e:
+    logger.warning(f"Failed: {e}")
+    return None</div>
+                    <div class="finding-detail">
+                        <strong>Impact:</strong> Inconsistent error visibility and debugging difficulty.
+                    </div>
+                    <div class="recommendation">
+                        <div class="recommendation-title">Recommended Standardization:</div>
+                        <ul>
+                            <li>Use <code>exc_info=True</code> for all error-level logs</li>
+                            <li>Always use <code>from e</code> when re-raising to preserve exception chain</li>
+                            <li>Create error handling decorator for consistent try/catch patterns</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Mixed Configuration Access Patterns <span class="severity-badge severity-medium">MEDIUM</span></div>
+                    <div class="finding-detail">
+                        <strong>Issue:</strong> Configuration is accessed through multiple patterns:
+                        <ol>
+                            <li>Dataclass configuration objects (ProcessingConfig, ModelConfig, StorageConfig)</li>
+                            <li>Direct environment variable access with os.getenv()</li>
+                            <li>Module-level constants</li>
+                            <li>Constructor parameters with defaults</li>
+                        </ol>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Standardize on dataclass config objects injected through constructors. Eliminate direct os.getenv() calls outside config/ module.
+                    </div>
+                </div>
+                
+                <div class="finding warning">
+                    <div class="finding-title">⚠ Callback Pattern Inconsistency <span class="severity-badge severity-low">LOW</span></div>
+                    <div class="finding-detail">
+                        <strong>Observation:</strong> Progress callbacks are implemented differently across modules:
+                        <ul>
+                            <li><span class="file-path">processor.py</span> uses <code>status_callback(status: ProcessingStatus)</code></li>
+                            <li><span class="file-path">visual_processor.py</span> uses <code>progress_callback(completed: int, total: int)</code></li>
+                        </ul>
+                    </div>
+                    <div class="finding-detail">
+                        <strong>Recommendation:</strong> Standardize on a unified callback protocol or use observables for progress tracking.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Architectural Debt Section -->
+            <div class="section">
+                <h2>5. Architectural Debt Assessment</h2>
+                
+                <h3>High Priority Debt (Address in Next Sprint)</h3>
+                
+                <div class="recommendation">
+                    <div class="recommendation-title">1. Consolidate File I/O Utilities</div>
+                    <div><strong>Effort:</strong> 4-6 hours | <strong>Impact:</strong> High</div>
+                    <ul>
+                        <li>Create <span class="file-path">src/utils/file_operations.py</span></li>
+                        <li>Extract shared save/load/validate patterns</li>
+                        <li>Refactor 4 utilities to use shared implementation</li>
+                        <li>Estimated line reduction: ~100 lines</li>
+                    </ul>
+                </div>
+                
+                <div class="recommendation">
+                    <div class="recommendation-title">2. Centralize Path Management</div>
+                    <div><strong>Effort:</strong> 2-3 hours | <strong>Impact:</strong> High</div>
+                    <ul>
+                        <li>Expand <span class="file-path">src/utils/paths.py</span> with all path constants</li>
+                        <li>Remove scattered PROJECT_ROOT calculations</li>
+                        <li>Eliminate duplicate UPLOADS_DIR definitions</li>
+                        <li>Files to update: 8-10 files</li>
+                    </ul>
+                </div>
+                
+                <h3>Medium Priority Debt (Address in Next Month)</h3>
+                
+                <div class="recommendation">
+                    <div class="recommendation-title">3. Restructure Processing Module</div>
+                    <div><strong>Effort:</strong> 8-12 hours | <strong>Impact:</strong> Medium</div>
+                    <ul>
+                        <li>Create new modules: generators/, utils/ (expand)</li>
+                        <li>Move 10-15 files to appropriate modules</li>
+                        <li>Update import paths across codebase</li>
+                        <li>Validate all tests still pass</li>
+                    </ul>
+                </div>
+                
+                <div class="recommendation">
+                    <div class="recommendation-title">4. Standardize Error Handling</div>
+                    <div><strong>Effort:</strong> 4-6 hours | <strong>Impact:</strong> Medium</div>
+                    <ul>
+                        <li>Create <span class="file-path">src/utils/exceptions.py</span> with base hierarchy</li>
+                        <li>Create error handling decorators</li>
+                        <li>Standardize logging patterns</li>
+                        <li>Update 20+ exception handlers</li>
+                    </ul>
+                </div>
+                
+                <h3>Low Priority Debt (Nice to Have)</h3>
+                
+                <div class="recommendation">
+                    <div class="recommendation-title">5. Implement Configuration Injection Service</div>
+                    <div><strong>Effort:</strong> 6-8 hours | <strong>Impact:</strong> Low</div>
+                    <ul>
+                        <li>Create dependency injection container</li>
+                        <li>Register all configuration objects</li>
+                        <li>Eliminate direct environment variable access</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Positive Patterns Section -->
+            <div class="section">
+                <h2>6. Positive Architectural Patterns to Maintain</h2>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Wave-Based Development with Integration Contracts</div>
+                    <div class="finding-detail">
+                        The project successfully used a wave-based development approach with clearly defined integration contracts between modules. This resulted in:
+                        <ul>
+                            <li>Zero merge conflicts during development</li>
+                            <li>Clear module ownership and boundaries</li>
+                            <li>Systematic validation at each wave gate</li>
+                            <li>Comprehensive integration tests</li>
+                        </ul>
+                        <strong>Continue this pattern for future features.</strong>
+                    </div>
+                </div>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Comprehensive Docstrings Following Google Style</div>
+                    <div class="finding-detail">
+                        Nearly all modules include detailed docstrings with Args, Returns, Raises, and Examples. This significantly aids code understanding and maintenance.
+                    </div>
+                </div>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Mock Implementations for Testing</div>
+                    <div class="finding-detail">
+                        Each major interface has corresponding mock implementations:
+                        <ul>
+                            <li><span class="file-path">src/search/mocks.py</span> - MockEmbeddingEngine, MockStorageClient</li>
+                            <li><span class="file-path">src/processing/mocks.py</span> - Mock implementations for processing</li>
+                        </ul>
+                        This enables isolated unit testing and follows dependency inversion principle.
+                    </div>
+                </div>
+                
+                <div class="finding success">
+                    <div class="finding-title">✓ Centralized Configuration Module</div>
+                    <div class="finding-detail">
+                        The <span class="file-path">src/config/</span> module provides centralized configuration with environment variable support:
+                        <ul>
+                            <li>ModelConfig - Embedding model configuration</li>
+                            <li>ProcessingConfig - Document processing settings</li>
+                            <li>StorageConfig - ChromaDB configuration</li>
+                            <li>ImageConfig - Image processing settings</li>
+                        </ul>
+                        This is a strong foundation - now enforce that all modules use these configs instead of direct environment access.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recommendations Summary -->
+            <div class="section">
+                <h2>7. Implementation Roadmap</h2>
+                
+                <h3>Phase 1: Critical DRY Violations (Week 1)</h3>
+                <ol>
+                    <li>
+                        <strong>Create src/utils/file_operations.py</strong>
+                        <ul>
+                            <li>Implement save_document_artifact()</li>
+                            <li>Implement ensure_directory()</li>
+                            <li>Refactor save_vtt, save_markdown, save_album_art, save_page_image</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Create src/utils/validation.py</strong>
+                        <ul>
+                            <li>Move DOC_ID_PATTERN</li>
+                            <li>Implement validate_doc_id(), ensure_valid_doc_id()</li>
+                            <li>Update all utilities to use shared validation</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Centralize path management</strong>
+                        <ul>
+                            <li>Expand src/utils/paths.py</li>
+                            <li>Add get_vtt_dir(), get_markdown_dir(), get_cover_art_dir()</li>
+                            <li>Remove scattered path calculations</li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>Phase 2: Module Restructuring (Week 2-3)</h3>
+                <ol>
+                    <li>
+                        <strong>Reorganize processing module</strong>
+                        <ul>
+                            <li>Create src/generators/ (vtt_generator, markdown_utils)</li>
+                            <li>Move utils to src/utils/ (image_utils, cover_art_utils, monitoring_utils)</li>
+                            <li>Consolidate API endpoints in src/api/</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Create src/utils/exceptions.py</strong>
+                        <ul>
+                            <li>Define base exception hierarchy</li>
+                            <li>Refactor module-specific exceptions to inherit from shared base</li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>Phase 3: Configuration Injection (Week 4)</h3>
+                <ol>
+                    <li>
+                        <strong>Eliminate direct environment variable access</strong>
+                        <ul>
+                            <li>Move all os.getenv() calls to config/ module</li>
+                            <li>Ensure all modules receive configuration through constructor injection</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Standardize error handling patterns</strong>
+                        <ul>
+                            <li>Create error handling decorators</li>
+                            <li>Update all exception handlers to use exc_info=True</li>
+                            <li>Document error handling standards</li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h3>Success Metrics</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Current</th>
+                            <th>Target</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DRY Violations</td>
+                            <td>8</td>
+                            <td>≤ 2</td>
+                        </tr>
+                        <tr>
+                            <td>Duplicated Code Lines</td>
+                            <td>~120</td>
+                            <td>≤ 30</td>
+                        </tr>
+                        <tr>
+                            <td>Direct os.getenv() calls outside config/</td>
+                            <td>5+</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td>Processing module file count</td>
+                            <td>35+</td>
+                            <td>≤ 20</td>
+                        </tr>
+                        <tr>
+                            <td>Architecture Health Score</td>
+                            <td>82/100</td>
+                            <td>≥ 90/100</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <footer>
+            <p><strong>Report Generated:</strong> 2025-10-16 by architecture-consistency-agent v3.6.0</p>
+            <p><strong>Project:</strong> tkr-docusearch v0.9.0 (Wave 5 Complete - Management Enhancement)</p>
+            <p><strong>Analysis Scope:</strong> 87 Python files across src/ directory (excluding tests, .venv-native, __pycache__)</p>
+        </footer>
+    </div>
+</body>
+</html>
