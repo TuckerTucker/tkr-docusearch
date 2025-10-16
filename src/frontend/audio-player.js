@@ -29,11 +29,16 @@ export class AudioPlayer {
         this.lastSyncTime = 0;
         this.syncThrottleMs = 300; // Update accordion at most every 300ms
         this.lastActiveChunkId = null; // Track which chunk was last synced
+        this.lastCaptionTime = -1; // Track last caption update
+
+        // Parsed segments from markdown for captions
+        this.segments = [];
+        this.markdownContent = null;
 
         this.init();
     }
 
-    init() {
+    async init() {
         // Set audio source (from worker API endpoint)
         // Use /documents/{doc_id}/audio endpoint to avoid CORS issues
         this.sourceElement.src = `/documents/${this.docId}/audio`;
@@ -44,6 +49,13 @@ export class AudioPlayer {
             this.trackElement.src = `/documents/${this.docId}/vtt`;
         } else {
             this.trackElement.remove();
+        }
+
+        // Fetch markdown for caption segments
+        if (this.metadata.markdown_available) {
+            await this.fetchMarkdown();
+            this.segments = this.parseMarkdownSegments();
+            console.log(`[AudioPlayer] Loaded ${this.segments.length} caption segments`);
         }
 
         // Display metadata
@@ -68,6 +80,58 @@ export class AudioPlayer {
         // Force the audio element to load the source
         this.audioElement.load();
         console.log('[AudioPlayer] Audio player initialized, loading audio...');
+    }
+
+    async fetchMarkdown() {
+        try {
+            const response = await fetch(`/documents/${this.docId}/markdown`);
+            if (response.ok) {
+                this.markdownContent = await response.text();
+            }
+        } catch (err) {
+            console.error('[AudioPlayer] Error fetching markdown:', err);
+        }
+    }
+
+    parseMarkdownSegments() {
+        if (!this.markdownContent) {
+            return [];
+        }
+
+        const segments = [];
+        const timeRegex = /\[time:\s*([\d.]+)-([\d.]+)\]/g;
+        const matches = [];
+        let match;
+
+        // Collect all timestamp positions and values
+        while ((match = timeRegex.exec(this.markdownContent)) !== null) {
+            matches.push({
+                index: match.index,
+                startTime: parseFloat(match[1]),
+                endTime: parseFloat(match[2]),
+                fullMatch: match[0]
+            });
+        }
+
+        // Extract text between each timestamp and the next
+        for (let i = 0; i < matches.length; i++) {
+            const currentMatch = matches[i];
+            const nextMatch = matches[i + 1];
+
+            const textStart = currentMatch.index + currentMatch.fullMatch.length;
+            const textEnd = nextMatch ? nextMatch.index : this.markdownContent.length;
+            const text = this.markdownContent.substring(textStart, textEnd).trim();
+
+            if (text) {
+                segments.push({
+                    startTime: currentMatch.startTime,
+                    endTime: currentMatch.endTime,
+                    text: text
+                });
+            }
+        }
+
+        return segments;
     }
 
     displayMetadata() {
@@ -140,15 +204,35 @@ export class AudioPlayer {
             const currentTime = this.audioElement.currentTime;
             const now = Date.now();
 
-            // Throttle updates to prevent excessive DOM manipulation
+            // Find and update caption from parsed segments
+            if (this.segments && this.segments.length > 0) {
+                const activeSegment = this.segments.find(seg =>
+                    currentTime >= seg.startTime && currentTime < seg.endTime
+                );
+
+                if (activeSegment) {
+                    // Only update if changed (avoid unnecessary DOM updates)
+                    if (Math.floor(activeSegment.startTime) !== this.lastCaptionTime) {
+                        this.captionElement.textContent = activeSegment.text;
+                        this.lastCaptionTime = Math.floor(activeSegment.startTime);
+                    }
+                } else {
+                    // Clear caption when no active segment
+                    if (this.captionElement.textContent !== '') {
+                        this.captionElement.textContent = '';
+                        this.lastCaptionTime = -1;
+                    }
+                }
+            }
+
+            // Throttle accordion sync updates
             if (now - this.lastSyncTime < this.syncThrottleMs) {
                 return;
             }
 
-            // Find active chunk based on current time
+            // Find active chunk for accordion sync
             if (this.chunks && this.chunks.length > 0) {
                 let activeChunk = null;
-                let captionText = null;
 
                 // Try to find chunk with proper start_time/end_time fields
                 activeChunk = this.chunks.find(chunk =>
@@ -159,33 +243,20 @@ export class AudioPlayer {
                     currentTime < chunk.end_time
                 );
 
-                if (activeChunk) {
-                    captionText = activeChunk.text_content;
-                } else {
-                    // Fallback: Parse timestamps from text content like "[time: 1.62-16.54]"
+                // Fallback: Parse timestamps from text content
+                if (!activeChunk) {
                     for (const chunk of this.chunks) {
-                        const match = chunk.text_content?.match(/^\[time:\s*([\d.]+)-([\d.]+)\]\s*(.*)/s);
+                        const match = chunk.text_content?.match(/^\[time:\s*([\d.]+)-([\d.]+)\]/);
                         if (match) {
                             const startTime = parseFloat(match[1]);
                             const endTime = parseFloat(match[2]);
-                            const text = match[3].trim();
 
                             if (currentTime >= startTime && currentTime < endTime) {
                                 activeChunk = chunk;
-                                captionText = text;
-                                console.log(`[AudioPlayer] Caption: ${currentTime.toFixed(2)}s -> "${text.substring(0, 50)}..."`);
                                 break;
                             }
                         }
                     }
-                }
-
-                // Update caption display
-                if (captionText) {
-                    this.captionElement.textContent = captionText;
-                } else {
-                    // Clear caption when no active segment
-                    this.captionElement.textContent = '';
                 }
 
                 // Only notify accordion if chunk has changed (prevent redundant updates)
