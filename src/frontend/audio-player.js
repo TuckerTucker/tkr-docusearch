@@ -5,7 +5,11 @@
  * Auto-opens accordion sections based on current playback time.
  *
  * Wave 3 - Frontend Component
+ * Wave 5 - Album Art Support
  */
+
+// Default album art SVG (gray microphone icon) as data URI
+const DEFAULT_ALBUM_ART_SVG = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KIDxyZWN0IHg9Ii01MS4yIiB5PSItNTEuMiIgd2lkdGg9IjYxNC40IiBoZWlnaHQ9IjYxNC40IiBmaWxsPSIjNjc2NzY3Ii8+CiA8cGF0aCBkPSJtMjMyLjgyIDIwNi4xNWMtMS44MDA4IDAtMy40Mzc1LTAuNzQyMTktNC42MzY3LTEuOTI1OC0xLjE4MzYtMS4xODM2LTEuOTI1OC0yLjgyMDMtMS45MjU4LTQuNjM2N3YtMzEuMjczYzAtMS44MDA4IDAuNzQyMTktMy40Mzc1IDEuOTI1OC00LjYzNjcgMS4xODM2LTEuMTgzNiAyLjgyMDMtMS45MjU4IDQuNjM2Ny0xLjkyNTggMS44MDA4IDAgMy40Mzc1IDAuNzQyMTkgNC42MzY3IDEuOTI1OCAxLjE4MzYgMS4xODM2IDEuOTI1OCAyLjgyMDMgMS45MjU4IDQuNjM2N3YzMS4yNzNjMCAxLjgwMDgtMC43NDIxOSAzLjQzNzUtMS45MjU4IDQuNjM2Ny0xLjE4MzYgMS4xODM2LTIuODIwMyAxLjkyNTgtNC42MzY3IDEuOTI1OHptLTUyLjM4MyA4NC4yMTFjMCAxLjE0NDUtMC45MzM1OSAyLjA3ODEtMi4wNzgxIDIuMDc4MWgtMjkuNTM1YzAuNjI4OTEgNy4xMDU1IDMuODA0NyAxMy41MTYgOC41ODk4IDE4LjMwMSA1LjM3ODkgNS4zNzg5IDEyLjc4NSA4LjcwMzEgMjAuOTM0IDguNzAzMSA4LjE0ODQgMCAxNS41NjYtMy4zMzU5IDIwLjkzNC04LjcwMzEgNS4zNzg5LTUuMzc4OSA4LjcwMzEtMTIuNzg1IDguNzAzMS0yMC45MzR2LTQxLjMzNmMwLTguMTQ4NC0zLjMzNTktMTUuNTY2LTguNzAzMS0yMC45MzQtNS4zNzg5LTUuMzc4OS0xMi43ODUtOC43MDMxLTIwLjkzNC04LjcwMzEtOC4xNDg0IDAtMTUuNTY2IDMuMzM1OS0yMC45MzQgOC43MDMxLTQuNzczNCA0Ljc3MzQtNy45MzM2IDExLjE0OC04LjU3ODEgMTguMjExaDI5LjUzNWMxLjE0NDUgMCAyLjA3ODEgMC45MzM1OSAyLjA3ODEgMi4wNzgxczAtMC45MzM1OS0yLjA3ODEgMi4wNzgxaC0yOS42NDh2MTAuMDM5aDI5LjY0OGMxLjE0NDUgMCAyLjA3ODEgMC45MzM1OSAyLjA3ODEgMi4wNzgxcy0wLjkzMzU5IDIuMDc4MS0yLjA3ODEgMi4wNzgxaC0yOS42NDh2MTAuMDM5aDI5LjY0OGMxLjE0NDUgMCAyLjA3ODEgMC45MzM1OSAyLjA3ODEgMi4wNzgxIDAgMS4xNDQ1LTAuOTMzNTkgMi4wNzgxLTIuMDc4MSAyLjA3ODFoLTI5LjY0OHYxMC4wMzloMjkuNjQ4YzEuMTQ0NSAwIDIuMDc4MSAwLjkzMzU5IDIuMDc4MSAyLjA3ODF6bTE5NC4xMS0xNTguMjVjLTIuMzc4OS0yLjM3ODktNS42NTYyLTMuODU1NS05LjI2OTUtMy44NTU1aC0xOTIuODljLTMuNjEzMyAwLTYuODkwNiAxLjQ3MjctOS4yNjk1IDMuODU1NS0yLjM3ODkgMi4zNzg5LTMuODU1NSA1LjY1NjItMy44NTU1IDkuMjY5NXY2OC43NDJjMCAxLjE0NDUgMC45MzM1OSAyLjA3ODEgMi4wNzgxIDIuMDc4MSAxLjE0NDUgMCAyLjA3ODEtMC45MzM1OSAyLjA3ODEtMi4wNzgxbC0wLjAxMTcxOC02OC43NDJjMC0yLjQ2ODggMS4wMDc4LTQuNzEwOSAyLjY0NDUtNi4zNDc3IDEuNjI1LTEuNjI1IDMuODc4OS0yLjY0NDUgNi4zNDc3LTIuNjQ0NWgxOTIuODhjMi40Njg4IDAgNC43MTA5IDEuMDA3OCA2LjM0NzcgMi42NDQ1IDEuNjI1IDEuNjI1IDIuNjQ0NSAzLjg3ODkgMi42NDQ1IDYuMzQ3N3Y4NC41MjdjMCAyLjQ2ODgtMS4wMDc4IDQuNzEwOS0yLjY0NDUgNi4zNDc3LTEuNjI1IDEuNjI1LTMuODc4OSAyLjY0NDUtNi4zNDc3IDIuNjQ0NWgtMTQ4LjIxYy0xLjE0NDUgMC0yLjA3ODEgMC45MzM1OS0yLjA3ODEgMi4wNzgxczAuOTMzNTkgMi4wNzgxIDIuMDc4MSAyLjA3ODFoMTQ4LjIxYzMuNjEzMyAwIDYuODkwNi0xLjQ3MjcgOS4yNjk1LTMuODU1NSAyLjM3ODktMi4zNzg5IDMuODU1NS01LjY1NjIgMy44NTU1LTkuMjY5NXYtODQuNTU1YzAtMy42MTMzLTEuNDcyNy02Ljg5MDYtMy44NTU1LTkuMjY5NXptLTE5MC4xOSA2Ny4yODFjMS44MDA4IDAgMy40Mzc1LTAuNzQyMTkgNC42MzY3LTEuOTI1OCAxLjE4MzYtMS4xODM2IDEuOTI1OC0yLjgyMDMgMS45MjU4LTQuNjM2N3YtMTcuNzQ2YzAtMS44MDA4LTAuNzQyMTktMy40Mzc1LTEuOTI1OC00LjYzNjctMS4xODM2LTEuMTgzNi0yLjgyMDMtMS45MjU4LTQuNjM2Ny0xLjkyNTgtMS44MDA4IDAtMy40Mzc1IDAuNzQyMTktNC42MzY3IDEuOTI1OC0xLjE4MzYgMS4xODM2LTEuOTI1OCAyLjgyMDMtMS45MjU4IDQuNjM2N3YxNy43NDZjMCAxLjgwMDggMC43NDIxOSAzLjQzNzUgMS45MjU4IDQuNjM2NyAxLjE4MzYgMS4xODM2IDIuODIwMyAxLjkyNTggNC42MzY3IDEuOTI1OHptMjkuMDIgMTAuMjI3YzEuMTgzNi0xLjE4MzYgMS45MjU4LTIuODIwMyAxLjkyNTgtNC42MzY3di00Mi4wODJjMC0xLjgwMDgtMC43NDIxOS0zLjQzNzUtMS45MjU4LTQuNjM2Ny0xLjE4MzYtMS4xODM2LTIuODIwMy0xLjkyNTgtNC42MzY3LTEuOTI1OC0xLjgwMDggMC0zLjQzNzUgMC43NDIxOS00LjYzNjcgMS45MjU4LTEuMTgzNiAxLjE4MzYtMS45MjU4IDIuODIwMy0xLjkyNTggNC42MzY3djQyLjA4MmMwIDEuODAwOCAwLjc0MjE5IDMuNDM3NSAxLjkyNTggNC42MzY3IDEuMTgzNiAxLjE4MzYgMi44MjAzIDEuOTI1OCA0LjYzNjcgMS45MjU4IDEuODAwOCAwIDMuNDM3NS0wLjc0MjE5IDQuNjM2Ny0xLjkyNTh6bTQ3Ljk4OCAwYzEuMTgzNi0xLjE4MzYgMS45MjU4LTIuODIwMyAxLjkyNTgtNC42MzY3di00Mi4wODJjMC0xLjgwMDgtMC43NDIxOS0zLjQzNzUtMS45MjU4LTQuNjM2Ny0xLjE4MzYtMS4xODM2LTIuODIwMy0xLjkyNTgtNC42MzY3LTEuOTI1OC0xLjgwMDggMC0zLjQzNzUgMC43NDIxOS00LjYzNjcgMS45MjU4LTEuMTgzNiAxLjE4MzYtMS45MjU4IDIuODIwMy0xLjkyNTggNC42MzY3djQyLjA4MmMwIDEuODAwOCAwLjc0MjE5IDMuNDM3NSAxLjkyNTggNC42MzY3IDEuMTgzNiAxLjE4MzYgMi44MjAzIDEuOTI1OCA0LjYzNjcgMS45MjU4IDEuODAwOCAwIDMuNDM3NS0wLjc0MjE5IDQuNjM2Ny0xLjkyNTh6bTcyLjc3My0xMS41MzljMS4xODM2LTEuMTgzNiAxLjkyNTgtMi44MjAzIDEuOTI1OC00LjYzNjd2LTE4Ljk4YzAtMS44MDA4LTAuNzQyMTktMy40Mzc1LTEuOTI1OC00LjYzNjctMS4xODM2LTEuMTgzNi0yLjgyMDMtMS45MjU4LTQuNjM2Ny0xLjkyNTgtMS44MDA4IDAtMy40Mzc1IDAuNzQyMTktNC42MzY3IDEuOTI1OC0xLjE4MzYgMS4xODM2LTEuOTI1OCAyLjgyMDMtMS45MjU4IDQuNjM2N3YxOC45OGMwIDEuODAwOCAwLjc0MjE5IDMuNDM3NSAxLjkyNTggNC42MzY3IDEuMTgzNiAxLjE4MzYgMi44MjAzIDEuOTI1OCA0LjYzNjcgMS45MjU4IDEuODAwOCAwIDMuNDM3NS0wLjc0MjE5IDQuNjM2Ny0xLjkyNTh6bS0yNC45MjYgMTIuMDI3YzEuMTgzNi0xLjE4MzYgMS45MjU4LTIuODIwMyAxLjkyNTgtNC42MzY3di00My4wNjJjMC0xLjgwMDgtMC43NDIxOS0zLjQzNzUtMS45MjU4LTQuNjM2Ny0xLjE4MzYtMS4xODM2LTIuODIwMy0xLjkyNTgtNC42MzY3LTEuOTI1OC0xLjgwMDggMC0zLjQzNzUgMC43NDIxOS00LjYzNjcgMS45MjU4LTEuMTgzNiAxLjE4MzYtMS45MjU4IDIuODIwMy0xLjkyNTggNC42MzY3djQzLjA2MmMwIDEuODAwOCAwLjc0MjE5IDMuNDM3NSAxLjkyNTggNC42MzY3IDEuMTgzNiAxLjE4MzYgMi44MjAzIDEuOTI1OCA0LjYzNjcgMS45MjU4IDEuODAwOCAwIDMuNDM3NS0wLjc0MjE5IDQuNjM2Ny0xLjkyNTh6bS0yMy45MTggMTUuOTY5YzEuMTgzNi0xLjE4MzYgMS45MjU4LTIuODIwMyAxLjkyNTgtNC42MzY3di03NC45OGMwLTEuODAwOC0wLjc0MjE5LTMuNDM3NS0xLjkyNTgtNC42MzY3LTEuMTgzNi0xLjE4MzYtMi44MjAzLTEuOTI1OC00LjYzNjctMS45MjU4LTEuODAwOCAwLTMuNDM3NSAwLjc0MjE5LTQuNjM2NyAxLjkyNTgtMS4xODM2IDEuMTgzNi0xLjkyNTggMi44MjAzLTEuOTI1OCA0LjYzNjd2NzQuOThjMCAxLjgwMDggMC43NDIxOSAzLjQzNzUgMS45MjU4IDQuNjM2NyAxLjE4MzYgMS4xODM2IDIuODIwMyAxLjkyNTggNC42MzY3IDEuOTI1OCAxLjgwMDggMCAzLjQzNzUtMC43NDIxOSA0LjYzNjctMS45MjU4em03My4wMDQtMjEuMTIxYzEuMTgzNi0xLjE4MzYgMS45MjU4LTIuODIwMyAxLjkyNTgtNC42MzY3di0zMi43NThjMC0xLjgwMDgtMC43NDIxOS0zLjQzNzUtMS45MjU4LTQuNjM2Ny0xLjE4MzYtMS4xODM2LTIuODIwMy0xLjkyNTgtNC42MzY3LTEuOTI1OC0xLjgwMDggMC0zLjQzNzUgMC43NDIxOS00LjYzNjcgMS45MjU4LTEuMTgzNiAxLjE4MzYtMS45MjU4IDIuODIwMy0xLjkyNTggNC42MzY3djMyLjc1OGMwIDEuODAwOCAwLjc0MjE5IDMuNDM3NSAxLjkyNTggNC42MzY3IDEuMTgzNiAxLjE4MzYgMi44MjAzIDEuOTI1OCA0LjYzNjcgMS45MjU4IDEuODAwOCAwIDMuNDM3NS0wLjc0MjE5IDQuNjM2Ny0xLjkyNTh6bS0xMzcuMjcgODAuODU5Yy0xLjE0NDUgMC0yLjA4OTggMC45MzM1OS0yLjA4OTggMi4wODk4djQuNjk5MmMwIDIyLjM4My0xOC4xOTkgNDAuNTgyLTQwLjU4MiA0MC41ODItMjIuMzgzIDAtNDAuNTgyLTE4LjE5OS00MC41ODItNDAuNTgydi00LjY5OTJjMC0xLjE0NDUtMC45MzM1OS0yLjA4OTgtMi4wODk4LTIuMDg5OC0xLjE0NDUgMC0yLjA4OTggMC45MzM1OS0yLjA4OTggMi4wODk4djQuNjk5MmMwIDIyLjc1OCAxNy4wNzggNDEuNTY2IDM5LjA5NCA0NC4zNTktMC4wMTE3MTkgMC4xMzY3Mi0wLjA1MDc4MSAwLjI2NTYyLTAuMDUwNzgxIDAuNDAyMzR2MzQuNDM4YzAgMC4yODkwNi0wLjIyNjU2IDAuNTE1NjItMC41MTU2MiAwLjUxNTYyaC0xNC4xMDVjLTEuNTc0MiAwLTIuOTk2MSAwLjY0MDYzLTQuMDMxMiAxLjY3NTgtMS4wMzEyIDEuMDMxMi0xLjY3NTggMi40Njg4LTEuNjc1OCA0LjAzMTIgMCAxLjU3NDIgMC42NDA2MiAyLjk5NjEgMS42NzU4IDQuMDMxMiAxLjAzMTIgMS4wMzEyIDIuNDY4OCAxLjY3NTggNC4wMzEyIDEuNjc1OGg0MC42NjhjMS41NzQyIDAgMi45OTYxLTAuNjQwNjIgNC4wMzEyLTEuNjc1OCAxLjAzMTItMS4wMzEyIDEuNjc1OC0yLjQ2ODggMS42NzU4LTQuMDMxMiAwLTEuNTc0Mi0wLjY0MDYyLTIuOTk2MS0xLjY3NTgtNC4wMzEyLTEuMDMxMi0xLjAzMTItMi40Njg4LTEuNjc1OC00LjAzMTItMS42NzU4aC0xNC4xMDVjLTAuMjg5MDYgMC0wLjUxNTYyLTAuMjI2NTYtMC41MTU2Mi0wLjUxNTYydi0zNC40MzhjMC0wLjEzNjcyLTAuMDM5MDYyLTAuMjY1NjMtMC4wNTA3ODEtMC40MDIzNCAyMi4wMDQtMi43OTY5IDM5LjA5NC0yMS42MDIgMzkuMDk0LTQ0LjM1OXYtNC42OTkyYzAtMS4xNDQ1LTAuOTMzNTktMi4wODk4LTIuMDg5OC0yLjA4OTh6IiBmaWxsPSIjZDJkMmQyIi8+Cjwvc3ZnPgo=';
 
 export class AudioPlayer {
     constructor(containerId, docId, metadata, chunks) {
@@ -30,13 +34,10 @@ export class AudioPlayer {
     }
 
     init() {
-        // Set audio source (from uploads directory)
-        const audioPath = this.metadata.raw_metadata?.source_path || '';
-        if (audioPath) {
-            // Extract filename from path
-            const filename = audioPath.split('/').pop();
-            this.sourceElement.src = `/uploads/${filename}`;
-        }
+        // Set audio source (from worker API endpoint)
+        // Use /documents/{doc_id}/audio endpoint to avoid CORS issues
+        this.sourceElement.src = `/documents/${this.docId}/audio`;
+        console.log(`[AudioPlayer] Audio source set to: ${this.sourceElement.src}`);
 
         // Set VTT track if available
         if (this.metadata.vtt_available) {
@@ -48,16 +49,25 @@ export class AudioPlayer {
         // Display metadata
         this.displayMetadata();
 
+        // Display album art (Wave 5)
+        this.displayAlbumArt();
+
         // Bind event listeners
         this.audioElement.addEventListener('timeupdate', () => this.handleTimeUpdate());
         this.audioElement.addEventListener('loadedmetadata', () => this.handleLoaded());
+        this.audioElement.addEventListener('error', (e) => {
+            console.error('[AudioPlayer] Audio load error:', e);
+            console.error('[AudioPlayer] Error details:', this.audioElement.error);
+        });
 
         // Handle cue changes (VTT)
         if (this.trackElement.track) {
             this.trackElement.track.addEventListener('cuechange', () => this.handleCueChange());
         }
 
-        console.log('Audio player initialized');
+        // Force the audio element to load the source
+        this.audioElement.load();
+        console.log('[AudioPlayer] Audio player initialized, loading audio...');
     }
 
     displayMetadata() {
@@ -83,6 +93,48 @@ export class AudioPlayer {
         }
     }
 
+    displayAlbumArt() {
+        const albumArtElement = document.getElementById('album-art');
+        if (!albumArtElement) {
+            console.warn('[AudioPlayer] Album art element not found');
+            return;
+        }
+
+        // Set alt text based on metadata
+        const raw = this.metadata.raw_metadata || {};
+        const altText = raw.title
+            ? `Album art for ${this.escapeHtml(raw.title)}`
+            : 'Album art';
+        albumArtElement.alt = altText;
+
+        // Check if album art is available
+        if (this.metadata.has_album_art && this.metadata.album_art_url) {
+            // Load album art from API endpoint
+            albumArtElement.classList.add('loading');
+            albumArtElement.src = this.metadata.album_art_url;
+
+            // Handle successful load
+            albumArtElement.addEventListener('load', () => {
+                albumArtElement.classList.remove('loading');
+                albumArtElement.classList.add('loaded');
+                console.log('[AudioPlayer] Album art loaded successfully');
+            }, { once: true });
+
+            // Handle load error (fallback to default SVG)
+            albumArtElement.addEventListener('error', () => {
+                console.warn('[AudioPlayer] Album art failed to load, using default SVG');
+                albumArtElement.src = DEFAULT_ALBUM_ART_SVG;
+                albumArtElement.classList.remove('loading');
+                albumArtElement.classList.add('loaded');
+            }, { once: true });
+        } else {
+            // No album art available, use default SVG
+            albumArtElement.src = DEFAULT_ALBUM_ART_SVG;
+            albumArtElement.classList.add('loaded');
+            console.log('[AudioPlayer] No album art available, using default SVG');
+        }
+    }
+
     handleTimeUpdate() {
         try {
             const currentTime = this.audioElement.currentTime;
@@ -95,7 +147,11 @@ export class AudioPlayer {
 
             // Find active chunk based on current time
             if (this.chunks && this.chunks.length > 0) {
-                const activeChunk = this.chunks.find(chunk =>
+                let activeChunk = null;
+                let captionText = null;
+
+                // Try to find chunk with proper start_time/end_time fields
+                activeChunk = this.chunks.find(chunk =>
                     chunk.has_timestamps &&
                     chunk.start_time !== null &&
                     chunk.end_time !== null &&
@@ -103,7 +159,36 @@ export class AudioPlayer {
                     currentTime < chunk.end_time
                 );
 
-                // Only notify if chunk has changed (prevent redundant updates)
+                if (activeChunk) {
+                    captionText = activeChunk.text_content;
+                } else {
+                    // Fallback: Parse timestamps from text content like "[time: 1.62-16.54]"
+                    for (const chunk of this.chunks) {
+                        const match = chunk.text_content?.match(/^\[time:\s*([\d.]+)-([\d.]+)\]\s*(.*)/s);
+                        if (match) {
+                            const startTime = parseFloat(match[1]);
+                            const endTime = parseFloat(match[2]);
+                            const text = match[3].trim();
+
+                            if (currentTime >= startTime && currentTime < endTime) {
+                                activeChunk = chunk;
+                                captionText = text;
+                                console.log(`[AudioPlayer] Caption: ${currentTime.toFixed(2)}s -> "${text.substring(0, 50)}..."`);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Update caption display
+                if (captionText) {
+                    this.captionElement.textContent = captionText;
+                } else {
+                    // Clear caption when no active segment
+                    this.captionElement.textContent = '';
+                }
+
+                // Only notify accordion if chunk has changed (prevent redundant updates)
                 if (activeChunk &&
                     activeChunk.chunk_id !== this.lastActiveChunkId &&
                     this.onTimeUpdate) {

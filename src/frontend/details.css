@@ -142,6 +142,36 @@
     margin: 0.25rem 0;
 }
 
+/* Album Art Styles */
+.album-art-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.album-art {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: opacity 0.2s ease-in;
+}
+
+.album-art.loading {
+    opacity: 0;
+}
+
+.album-art.loaded {
+    opacity: 1;
+}
+
 .audio-player-wrapper {
     margin-bottom: 1rem;
 }
@@ -151,22 +181,31 @@
     border-radius: 4px;
 }
 
+/* Caption overlay on album art */
 .current-caption {
-    background: var(--background-color);
-    border-radius: 4px;
-    padding: 1rem;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 0.75rem 1rem;
     min-height: 60px;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--text-color);
+    font-size: 0.95rem;
+    line-height: 1.5;
     text-align: center;
-    border-left: 3px solid var(--primary-color);
+    border-radius: 0 0 8px 8px;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
 }
 
-.current-caption:empty::before {
-    content: "Captions will appear here during playback";
-    color: var(--text-muted);
-    font-style: italic;
+.current-caption:empty {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.current-caption:not(:empty) {
+    opacity: 1;
 }
 
 /* No Visual Content Placeholder */
@@ -393,6 +432,22 @@
 
     .control-btn {
         padding: 0.5rem 0.75rem;
+    }
+
+    /* Responsive album art (200x200px on mobile) */
+    .album-art-container {
+        max-width: 200px;
+    }
+
+    .album-art {
+        max-width: 200px;
+    }
+
+    /* Smaller caption text on mobile */
+    .current-caption {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        min-height: 50px;
     }
 }
 

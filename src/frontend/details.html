@@ -76,6 +76,18 @@
                             <h2>Audio Playback</h2>
                             <div id="audio-metadata" class="audio-metadata"></div>
                         </div>
+                        <!-- Album Art Container with Caption Overlay -->
+                        <div id="album-art-container" class="album-art-container">
+                            <img
+                                id="album-art"
+                                class="album-art"
+                                src=""
+                                alt="Album art"
+                                loading="lazy"
+                            >
+                            <!-- Caption overlay on album art -->
+                            <div id="current-caption" class="current-caption"></div>
+                        </div>
                         <div class="audio-player-wrapper">
                             <audio id="audio-player" controls preload="metadata">
                                 <source id="audio-source" src="" type="audio/mpeg">
@@ -90,7 +102,6 @@
                                 Your browser does not support the audio element.
                             </audio>
                         </div>
-                        <div id="current-caption" class="current-caption"></div>
                     </div>
 
                     <!-- Placeholder for documents without visual content -->

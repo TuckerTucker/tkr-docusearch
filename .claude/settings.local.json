@@ -46,7 +46,8 @@
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip install:*)",
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip show:*)",
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip check:*)",
-      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/python:*)"
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/python:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
