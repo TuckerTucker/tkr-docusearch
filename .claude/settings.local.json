@@ -33,7 +33,20 @@
       "Bash(open:*)",
       "Bash(./scripts/stop-all.sh:*)",
       "Bash(./scripts/start-all.sh:*)",
-      "Read(//private/var/folders/**)"
+      "Read(//private/var/folders/**)",
+      "Bash(docker logs:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker-compose:*)",
+      "WebSearch",
+      "Bash(source .venv-native/bin/activate)",
+      "Bash(pip show:*)",
+      "Bash(pip index:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pip install:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip install:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip show:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/pip check:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/python:*)"
     ],
     "deny": [],
     "ask": []
