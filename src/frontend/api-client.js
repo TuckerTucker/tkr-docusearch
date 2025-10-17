@@ -22,6 +22,29 @@ export class DocumentsAPIClient {
   }
 
   /**
+   * Get supported file formats from server
+   *
+   * @returns {Promise<Object>} Response with extensions array and groups array
+   */
+  async getSupportedFormats() {
+    const url = `${this.baseUrl}/config/supported-formats`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get supported formats:', error);
+      throw error;
+    }
+  }
+
+  /**
    * List documents with filtering and pagination
    *
    * @param {Object} options - Query options

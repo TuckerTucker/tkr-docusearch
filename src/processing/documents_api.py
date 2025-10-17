@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from src.config.image_config import PAGE_IMAGE_DIR
+from src.processing.file_validator import get_supported_extensions
 from src.storage import ChromaClient
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,23 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Human-readable error message")
     code: str = Field(..., description="Machine-readable error code")
     details: Dict[str, Any] = Field(default_factory=dict, description="Additional error details")
+
+
+class FormatGroup(BaseModel):
+    """File format group schema."""
+
+    id: str = Field(..., description="Group identifier")
+    label: str = Field(..., description="Display label")
+    extensions: List[str] = Field(..., description="File extensions in this group")
+
+
+class SupportedFormatsResponse(BaseModel):
+    """Response model for GET /config/supported-formats."""
+
+    extensions: List[str] = Field(
+        ..., description="All supported file extensions (with dot prefix)"
+    )
+    groups: List[FormatGroup] = Field(..., description="Format groups for filtering")
 
 
 # ============================================================================
@@ -256,6 +274,70 @@ def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) 
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
+
+@router.get(
+    "/config/supported-formats",
+    response_model=SupportedFormatsResponse,
+    summary="Get supported file formats",
+    description="Get list of supported file formats and format groups for filtering",
+)
+async def get_supported_formats():
+    """Get supported file formats configuration.
+
+    Returns:
+        SupportedFormatsResponse with extensions and groups
+
+    Note:
+        This endpoint serves as the single source of truth for supported formats.
+        Frontend should fetch this on initialization to stay in sync with backend.
+    """
+    # Get extensions from file_validator.py (respects SUPPORTED_FORMATS env var)
+    extensions = sorted(get_supported_extensions())
+
+    # Define format groups for filtering
+    # Extensions without dots for matching against file extensions
+    ext_set = {ext.lstrip(".") for ext in extensions}
+
+    groups = []
+
+    # PDF group
+    pdf_exts = [f".{ext}" for ext in ["pdf"] if ext in ext_set]
+    if pdf_exts:
+        groups.append(FormatGroup(id="pdf", label="PDF", extensions=pdf_exts))
+
+    # Audio group (only mp3 and wav - fully supported by Docling)
+    audio_exts = [f".{ext}" for ext in ["mp3", "wav"] if ext in ext_set]
+    if audio_exts:
+        groups.append(FormatGroup(id="audio", label="Audio", extensions=audio_exts))
+
+    # Office Documents group
+    office_exts = [f".{ext}" for ext in ["docx", "doc", "xlsx", "xls"] if ext in ext_set]
+    if office_exts:
+        groups.append(FormatGroup(id="office", label="Office Documents", extensions=office_exts))
+
+    # Text Documents group
+    text_exts = [
+        f".{ext}" for ext in ["md", "asciidoc", "vtt", "html", "xhtml", "csv"] if ext in ext_set
+    ]
+    if text_exts:
+        groups.append(FormatGroup(id="text", label="Text Documents", extensions=text_exts))
+
+    # Presentations group
+    presentation_exts = [f".{ext}" for ext in ["pptx", "ppt"] if ext in ext_set]
+    if presentation_exts:
+        groups.append(
+            FormatGroup(id="presentations", label="Presentations", extensions=presentation_exts)
+        )
+
+    # Images group
+    image_exts = [
+        f".{ext}" for ext in ["png", "jpg", "jpeg", "tiff", "bmp", "webp"] if ext in ext_set
+    ]
+    if image_exts:
+        groups.append(FormatGroup(id="images", label="Images", extensions=image_exts))
+
+    return SupportedFormatsResponse(extensions=extensions, groups=groups)
 
 
 @router.get(

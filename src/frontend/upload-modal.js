@@ -47,6 +47,16 @@ export class UploadModal {
   }
 
   /**
+   * Build friendly format list for display
+   * @returns {string} Comma-separated list of uppercase extensions
+   */
+  buildFormatListDisplay() {
+    return this.supportedTypes
+      .map(ext => ext.toUpperCase().replace('.', ''))
+      .join(', ');
+  }
+
+  /**
    * Create modal DOM element
    */
   createModal() {
@@ -56,6 +66,12 @@ export class UploadModal {
     this.modal.setAttribute('aria-modal', 'true');
     this.modal.setAttribute('aria-labelledby', 'upload-modal-title');
     this.modal.style.display = 'none';
+
+    // Build accept attribute dynamically from supportedTypes
+    const acceptAttr = this.supportedTypes.join(',');
+
+    // Build friendly format list for display
+    const formatList = this.buildFormatListDisplay();
 
     this.modal.innerHTML = `
       <div class="upload-modal__backdrop"></div>
@@ -78,14 +94,14 @@ export class UploadModal {
               id="upload-modal-file-input"
               class="upload-modal__file-input"
               multiple
-              accept=".pdf,.docx,.doc,.pptx,.ppt,.mp3,.wav"
+              accept="${acceptAttr}"
               aria-label="Select files to upload"
             />
             <label for="upload-modal-file-input" class="upload-modal__file-button">
               Choose Files
             </label>
 
-            <p class="upload-modal__hint">Supported: PDF, DOCX, PPTX, MP3, WAV (max 100MB)</p>
+            <p class="upload-modal__hint">Supported: ${formatList} (max 100MB)</p>
           </div>
 
           <div class="upload-modal__progress" style="display: none;">
