@@ -11,6 +11,7 @@
 data/uploads/*
 data/images/*
 data/markdown/*
+data/vtt/*
 
 # Downloaded models (14GB+)
 data/models/
