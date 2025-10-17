@@ -805,9 +805,6 @@ async def get_audio(doc_id: str):
         mime_types = {
             ".mp3": "audio/mpeg",
             ".wav": "audio/wav",
-            ".m4a": "audio/mp4",
-            ".ogg": "audio/ogg",
-            ".flac": "audio/flac",
         }
         media_type = mime_types.get(ext, "audio/mpeg")
 

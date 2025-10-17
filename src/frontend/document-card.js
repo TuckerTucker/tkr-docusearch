@@ -50,10 +50,6 @@ const fileTypeIcons = {
   // Audio
   mp3: 'audio',
   wav: 'audio',
-  flac: 'audio',
-  aac: 'audio',
-  ogg: 'audio',
-  m4a: 'audio',
 
   // Video
   mp4: 'video',
@@ -80,10 +76,6 @@ const fileTypeVariants = {
 
   mp3: 'audio',
   wav: 'audio',
-  flac: 'audio',
-  aac: 'audio',
-  ogg: 'audio',
-  m4a: 'audio',
 
   mp4: 'audio', // Using audio variant for video (square)
   avi: 'audio',

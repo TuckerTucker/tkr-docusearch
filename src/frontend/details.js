@@ -81,7 +81,7 @@ class DetailsPage {
         const hasPages = this.documentData.pages && this.documentData.pages.length > 0;
         // Check if document is audio by format_type or file extension
         const isAudioFile = this.documentData.metadata.raw_metadata?.format_type === 'audio' ||
-                           this.documentData.filename?.match(/\.(mp3|wav|m4a|ogg|flac)$/i);
+                           this.documentData.filename?.match(/\.(mp3|wav)$/i);
         const hasAudio = isAudioFile || this.documentData.metadata.has_timestamps;
         const hasChunks = this.documentData.chunks && this.documentData.chunks.length > 0;
 
@@ -125,7 +125,7 @@ class DetailsPage {
         } else {
             // No text content available
             const container = document.getElementById('accordion-container');
-            container.innerHTML = '<div class="no-visual-placeholder"><div class="placeholder-content"><p>No text content available</p></div></div>';
+            container.innerHTML = '<p>No text content available</p>';
         }
     }
 

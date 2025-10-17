@@ -28,7 +28,7 @@ export class UploadModal {
     this.supportedTypes = options.supportedTypes || [
       '.pdf', '.docx', '.doc', '.pptx', '.ppt',
       '.xlsx', '.xls', '.html', '.xhtml', '.md', '.asciidoc', '.csv',
-      '.mp3', '.wav', '.flac', '.m4a', '.vtt',
+      '.mp3', '.wav', '.vtt',
       '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'
     ];
     this.maxFileSize = options.maxFileSize || 100 * 1024 * 1024; // 100MB
@@ -78,7 +78,7 @@ export class UploadModal {
               id="upload-modal-file-input"
               class="upload-modal__file-input"
               multiple
-              accept=".pdf,.docx,.doc,.pptx,.ppt,.mp3,.wav,.flac,.m4a"
+              accept=".pdf,.docx,.doc,.pptx,.ppt,.mp3,.wav"
               aria-label="Select files to upload"
             />
             <label for="upload-modal-file-input" class="upload-modal__file-button">

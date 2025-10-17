@@ -245,7 +245,7 @@ export class LibraryManager {
         allDocuments = allDocuments.filter(doc => {
           const ext = doc.filename.split('.').pop().toLowerCase();
           return this.currentQuery.file_types.includes(ext) ||
-                 (this.currentQuery.file_types.includes('audio') && ['mp3', 'wav', 'm4a', 'flac'].includes(ext));
+                 (this.currentQuery.file_types.includes('audio') && ['mp3', 'wav'].includes(ext));
         });
       }
 
