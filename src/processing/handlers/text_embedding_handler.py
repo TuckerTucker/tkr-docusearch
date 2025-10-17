@@ -97,6 +97,7 @@ class TextEmbeddingHandler:
             "chunk_id": result.chunk_id,
             "page": result.page_num,
             "text_preview": result.text[:200],
+            "full_text": result.text,  # Store complete chunk text
             "word_count": len(result.text.split()),
             "source_path": file_path,
             **safe_doc_metadata,

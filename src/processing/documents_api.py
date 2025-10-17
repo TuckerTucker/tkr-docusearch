@@ -452,7 +452,8 @@ async def get_document(doc_id: str):
         text_metadatas = text_data.get("metadatas", [])
         for idx, metadata in enumerate(text_metadatas):
             chunk_id = metadata.get("chunk_id", idx)
-            text_preview = metadata.get("text_preview", "")
+            # Use full_text if available, fallback to text_preview for backwards compatibility
+            text_content = metadata.get("full_text") or metadata.get("text_preview", "")
 
             # Get timestamp fields (Wave 1)
             start_time = metadata.get("start_time")
@@ -462,7 +463,7 @@ async def get_document(doc_id: str):
             chunks.append(
                 ChunkInfo(
                     chunk_id=f"chunk_{chunk_id}",
-                    text_content=text_preview,
+                    text_content=text_content,
                     embedding_id=text_ids[idx],
                     start_time=start_time,
                     end_time=end_time,

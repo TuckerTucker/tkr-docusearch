@@ -18,9 +18,6 @@ from src.processing.image_utils import ImageStorageError, save_page_image
 from src.processing.smart_chunker import SmartChunker, create_chunker
 from src.processing.structure_extractor import extract_document_structure
 
-# Import timestamp extraction (Wave 3)
-from src.processing.text_processor import extract_timestamps_from_text
-
 # Import shared types (re-exported for backward compatibility)
 from src.processing.types import Page, ParsedDocument, TextChunk
 
@@ -679,6 +676,8 @@ class DoclingParser:
 
                 # Extract timestamps from text (audio only)
                 # Extracts [time: X-Y] markers and returns cleaned text
+                from src.processing.text_processor import extract_timestamps_from_text
+
                 start_time, end_time, cleaned_text = extract_timestamps_from_text(chunk_text)
                 if start_time is not None:
                     logger.info(
