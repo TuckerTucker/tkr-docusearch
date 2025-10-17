@@ -14,9 +14,10 @@ from typing import Dict, List, Literal, Optional
 import structlog
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from src.embeddings.colpali_wrapper import ColPaliWrapper
+from src.embeddings.colpali_wrapper import ColPaliEngine
 from src.research.citation_parser import CitationParser
 from src.research.context_builder import ContextBuilder
 from src.research.litellm_client import (
@@ -149,7 +150,7 @@ async def lifespan(app: FastAPI):
     app.state.chroma_client = ChromaClient(host=chroma_host, port=chroma_port)
 
     # Initialize ColPali embedding engine
-    app.state.embedding_engine = ColPaliWrapper(
+    app.state.embedding_engine = ColPaliEngine(
         model_name=os.getenv("MODEL_NAME", "vidore/colpali-v1.2"), device=os.getenv("DEVICE", "mps")
     )
 
@@ -197,8 +198,14 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],  # Copyparty UI
-    allow_methods=["GET", "POST"],
+    allow_origins=[
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",  # Copyparty UI
+        "http://localhost:8002",
+        "http://127.0.0.1:8002",  # Worker API UI
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -487,8 +494,11 @@ async def list_models():
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     """Custom HTTP exception handler"""
-    return ErrorResponse(
-        error=exc.detail.split(":")[0] if ":" in exc.detail else "Error",
-        detail=exc.detail,
+    return JSONResponse(
         status_code=exc.status_code,
+        content={
+            "error": exc.detail.split(":")[0] if ":" in exc.detail else "Error",
+            "detail": exc.detail,
+            "status_code": exc.status_code,
+        },
     )
