@@ -77,19 +77,19 @@ export class Accordion {
     buildAccordion() {
         this.container.innerHTML = '';
 
-        // Section 1: Full Markdown (default open)
+        // Section 1: Full Markdown (collapsed by default)
         if (this.markdownContent) {
             this.addMarkdownSection();
         }
 
-        // Section 2: Per-Chunk Sections (collapsed by default)
-        if (this.chunks && this.chunks.length > 0) {
-            this.addChunkSections();
-        }
-
-        // Section 3: VTT Transcript (audio only, collapsed by default)
+        // Section 2: VTT Transcript (audio only, collapsed by default)
         if (this.vttContent && this.metadata.has_timestamps) {
             this.addVTTSection();
+        }
+
+        // Section 3: Per-Chunk Sections (collapsed by default)
+        if (this.chunks && this.chunks.length > 0) {
+            this.addChunkSections();
         }
     }
 
