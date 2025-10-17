@@ -1,0 +1,895 @@
+# Design System Specification
+# Extracted from tkr-docusearch project
+# W3C Design Token Format 3.0
+# Generated: 2025-10-16
+
+metadata:
+  project: tkr-docusearch
+  version: "0.9.0"
+  theme: "Kraft Paper - Light & Dark modes"
+  compliance: "WCAG 2.1 AA"
+  extraction_sources:
+    - src/frontend/styles.css
+    - src/frontend/details.css
+    - data/copyparty/www/styles.css
+    - src/frontend/upload-modal.js
+
+tokens:
+  # W3C Design Token Format 3.0
+
+  light:
+    # Color Tokens - Kraft Paper Theme (Light Mode)
+    color:
+      # Semantic colors
+      background:
+        primary:
+          $value: "oklch(0.9582 0.0152 90.2357)"
+          $type: "color"
+          $description: "Main page background - warm kraft paper"
+        secondary:
+          $value: "oklch(0.9914 0.0098 87.4695)"
+          $type: "color"
+          $description: "Card and surface backgrounds"
+
+      foreground:
+        primary:
+          $value: "oklch(0.3760 0.0225 64.3434)"
+          $type: "color"
+          $description: "Primary text color"
+        secondary:
+          $value: "oklch(0.4700 0.0350 71.1655)"
+          $type: "color"
+          $description: "Muted text for secondary content"
+        tertiary:
+          $value: "oklch(0.5400 0.0400 71.1655)"
+          $type: "color"
+          $description: "Tertiary text - least emphasis"
+
+      primary:
+        base:
+          $value: "oklch(0.6180 0.0778 65.5444)"
+          $type: "color"
+          $description: "Primary brand color"
+        hover:
+          $value: "oklch(0.5680 0.0878 65.5444)"
+          $type: "color"
+          $description: "Primary color hover state"
+        light:
+          $value: "oklch(0.8348 0.0426 88.8064)"
+          $type: "color"
+          $description: "Light primary for backgrounds"
+        foreground:
+          $value: "oklch(1.0000 0 0)"
+          $type: "color"
+          $description: "Text on primary background"
+
+      secondary:
+        base:
+          $value: "oklch(0.8846 0.0302 85.5655)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.4313 0.0300 64.9288)"
+          $type: "color"
+
+      accent:
+        base:
+          $value: "oklch(0.8348 0.0426 88.8064)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.3760 0.0225 64.3434)"
+          $type: "color"
+
+      muted:
+        base:
+          $value: "oklch(0.9239 0.0190 83.0636)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.4700 0.0350 71.1655)"
+          $type: "color"
+
+      # Status colors
+      success:
+        base:
+          $value: "oklch(0.60 0.15 145)"
+          $type: "color"
+          $description: "Success state color"
+        foreground:
+          $value: "oklch(1.0000 0 0)"
+          $type: "color"
+        light:
+          $value: "oklch(0.85 0.08 145)"
+          $type: "color"
+
+      warning:
+        base:
+          $value: "oklch(0.70 0.15 85)"
+          $type: "color"
+          $description: "Warning state color"
+        foreground:
+          $value: "oklch(0.3760 0.0225 64.3434)"
+          $type: "color"
+        light:
+          $value: "oklch(0.90 0.08 85)"
+          $type: "color"
+
+      destructive:
+        base:
+          $value: "oklch(0.5471 0.1438 32.9149)"
+          $type: "color"
+          $description: "Error/destructive actions"
+        foreground:
+          $value: "oklch(1.0000 0 0)"
+          $type: "color"
+        light:
+          $value: "oklch(0.85 0.10 32)"
+          $type: "color"
+
+      info:
+        base:
+          $value: "oklch(0.60 0.15 230)"
+          $type: "color"
+        foreground:
+          $value: "oklch(1.0000 0 0)"
+          $type: "color"
+        light:
+          $value: "oklch(0.85 0.08 230)"
+          $type: "color"
+
+      # Border and input colors
+      border:
+        base:
+          $value: "oklch(0.8606 0.0321 84.5881)"
+          $type: "color"
+        focus:
+          $value: "oklch(0.6180 0.0778 65.5444)"
+          $type: "color"
+          $description: "Focus ring color"
+
+      input:
+        border:
+          $value: "oklch(0.8606 0.0321 84.5881)"
+          $type: "color"
+
+      ring:
+        $value: "oklch(0.6180 0.0778 65.5444)"
+        $type: "color"
+        $description: "Focus ring color"
+
+  dark:
+    # Color Tokens - Kraft Paper Theme (Dark Mode)
+    color:
+      background:
+        primary:
+          $value: "oklch(0.2747 0.0139 57.6523)"
+          $type: "color"
+        secondary:
+          $value: "oklch(0.3237 0.0155 59.0603)"
+          $type: "color"
+
+      foreground:
+        primary:
+          $value: "oklch(0.9239 0.0190 83.0636)"
+          $type: "color"
+        secondary:
+          $value: "oklch(0.7982 0.0243 82.1078)"
+          $type: "color"
+
+      primary:
+        base:
+          $value: "oklch(0.7264 0.0581 66.6967)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.2747 0.0139 57.6523)"
+          $type: "color"
+
+      secondary:
+        base:
+          $value: "oklch(0.3795 0.0181 57.1280)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.9239 0.0190 83.0636)"
+          $type: "color"
+
+      accent:
+        base:
+          $value: "oklch(0.4186 0.0281 56.3404)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.9239 0.0190 83.0636)"
+          $type: "color"
+
+      muted:
+        base:
+          $value: "oklch(0.2939 0.0125 62.1298)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.7982 0.0243 82.1078)"
+          $type: "color"
+
+      success:
+        base:
+          $value: "oklch(0.65 0.15 145)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.2747 0.0139 57.6523)"
+          $type: "color"
+
+      warning:
+        base:
+          $value: "oklch(0.75 0.15 85)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.2747 0.0139 57.6523)"
+          $type: "color"
+
+      destructive:
+        base:
+          $value: "oklch(0.5471 0.1438 32.9149)"
+          $type: "color"
+        foreground:
+          $value: "oklch(1.0000 0 0)"
+          $type: "color"
+
+      info:
+        base:
+          $value: "oklch(0.65 0.15 230)"
+          $type: "color"
+        foreground:
+          $value: "oklch(0.2747 0.0139 57.6523)"
+          $type: "color"
+
+      border:
+        base:
+          $value: "oklch(0.3795 0.0181 57.1280)"
+          $type: "color"
+
+      ring:
+        $value: "oklch(0.7264 0.0581 66.6967)"
+        $type: "color"
+
+  # Typography Tokens
+  typography:
+    family:
+      sans:
+        $value: "Chocolate Classical Sans, ui-sans-serif, sans-serif, system-ui"
+        $type: "fontFamily"
+        $description: "Primary sans-serif font stack"
+      serif:
+        $value: "Alice, ui-serif, serif"
+        $type: "fontFamily"
+        $description: "Serif font for special content"
+      mono:
+        $value: "Courier Prime, ui-monospace, monospace"
+        $type: "fontFamily"
+        $description: "Monospace for code and technical content"
+
+    size:
+      xs:
+        $value: "0.75rem"
+        $type: "dimension"
+        $description: "12px - smallest text"
+      sm:
+        $value: "0.875rem"
+        $type: "dimension"
+        $description: "14px - small text"
+      base:
+        $value: "1rem"
+        $type: "dimension"
+        $description: "16px - body text"
+      lg:
+        $value: "1.125rem"
+        $type: "dimension"
+        $description: "18px - large text"
+      xl:
+        $value: "1.25rem"
+        $type: "dimension"
+        $description: "20px - headings"
+      "2xl":
+        $value: "1.5rem"
+        $type: "dimension"
+        $description: "24px - large headings"
+      "3xl":
+        $value: "2rem"
+        $type: "dimension"
+        $description: "32px - hero text"
+
+    lineHeight:
+      normal:
+        $value: "1.5"
+        $type: "number"
+        $description: "Default line height for readability"
+
+  # Spacing Tokens
+  spacing:
+    "1":
+      $value: "0.25rem"
+      $type: "dimension"
+      $description: "4px"
+    "2":
+      $value: "0.5rem"
+      $type: "dimension"
+      $description: "8px"
+    "3":
+      $value: "0.75rem"
+      $type: "dimension"
+      $description: "12px"
+    "4":
+      $value: "1rem"
+      $type: "dimension"
+      $description: "16px"
+    "5":
+      $value: "1.25rem"
+      $type: "dimension"
+      $description: "20px"
+    "6":
+      $value: "1.5rem"
+      $type: "dimension"
+      $description: "24px"
+    "8":
+      $value: "2rem"
+      $type: "dimension"
+      $description: "32px"
+    "10":
+      $value: "2.5rem"
+      $type: "dimension"
+      $description: "40px"
+    "12":
+      $value: "3rem"
+      $type: "dimension"
+      $description: "48px"
+
+  # Border Radius Tokens
+  radius:
+    sm:
+      $value: "0.5rem"
+      $type: "dimension"
+      $description: "8px - small radius"
+    md:
+      $value: "0.625rem"
+      $type: "dimension"
+      $description: "10px - medium radius"
+    lg:
+      $value: "0.75rem"
+      $type: "dimension"
+      $description: "12px - base radius"
+    xl:
+      $value: "1rem"
+      $type: "dimension"
+      $description: "16px - extra large radius"
+    full:
+      $value: "9999px"
+      $type: "dimension"
+      $description: "Fully rounded"
+
+  # Shadow Tokens (Kraft Paper Theme)
+  shadow:
+    color:
+      $value: "hsl(28 13% 20%)"
+      $type: "color"
+      $description: "Shadow base color"
+    "2xs":
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.06)"
+      $type: "shadow"
+    xs:
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.06)"
+      $type: "shadow"
+    sm:
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 1px 2px -1px hsl(28 13% 20% / 0.12)"
+      $type: "shadow"
+    md:
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 2px 4px -1px hsl(28 13% 20% / 0.12)"
+      $type: "shadow"
+    lg:
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 4px 6px -1px hsl(28 13% 20% / 0.12)"
+      $type: "shadow"
+    xl:
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 8px 10px -1px hsl(28 13% 20% / 0.12)"
+      $type: "shadow"
+    "2xl":
+      $value: "2px 3px 5px 0px hsl(28 13% 20% / 0.30)"
+      $type: "shadow"
+
+  # Z-Index Tokens
+  zIndex:
+    base:
+      $value: "1"
+      $type: "number"
+    dropdown:
+      $value: "1000"
+      $type: "number"
+    sticky:
+      $value: "1020"
+      $type: "number"
+    modalBackdrop:
+      $value: "1040"
+      $type: "number"
+    modal:
+      $value: "1050"
+      $type: "number"
+
+  # Transition Tokens
+  transition:
+    fast:
+      duration:
+        $value: "150ms"
+        $type: "duration"
+      easing:
+        $value: "cubic-bezier(0.4, 0, 0.2, 1)"
+        $type: "cubicBezier"
+    base:
+      duration:
+        $value: "200ms"
+        $type: "duration"
+      easing:
+        $value: "cubic-bezier(0.4, 0, 0.2, 1)"
+        $type: "cubicBezier"
+    slow:
+      duration:
+        $value: "300ms"
+        $type: "duration"
+      easing:
+        $value: "cubic-bezier(0.4, 0, 0.2, 1)"
+        $type: "cubicBezier"
+
+  # Layout Tokens
+  layout:
+    headerHeight:
+      $value: "64px"
+      $type: "dimension"
+    maxWidth:
+      $value: "1440px"
+      $type: "dimension"
+      $description: "Maximum content width"
+
+# Component Specifications
+components:
+
+  Header:
+    description: "Sticky header with branding, navigation, and theme toggle"
+    props:
+      position: ["sticky"]
+      zIndex: ["var(--z-sticky)"]
+    states:
+      default: true
+      sticky: true
+    a11y:
+      role: "banner"
+      structure: "Contains navigation landmark"
+      focusManagement: "Focus visible outline on all interactive elements"
+    features:
+      - "Sticky positioning at top"
+      - "Theme toggle with icon animation"
+      - "Connection status indicator"
+      - "Responsive layout"
+
+  ThemeToggle:
+    description: "Button to toggle between light and dark themes"
+    props:
+      size: ["36px × 36px"]
+    states:
+      default: true
+      hover: "background-color change"
+      focus: "2px solid ring color with offset"
+      light: "Shows sun icon"
+      dark: "Shows moon icon"
+    a11y:
+      keyboard: ["Enter: activate", "Space: activate"]
+      focusVisible: "2px solid outline with 2px offset"
+      ariaLabel: "Toggle theme"
+    animations:
+      iconRotation:
+        duration: "var(--transition-fast)"
+        easing: "ease"
+        transform: "rotate(90deg)"
+
+  ConnectionStatus:
+    description: "Displays connection state with animated indicator"
+    variants: ["connected", "disconnected", "reconnecting"]
+    states:
+      connected:
+        color: "var(--color-success)"
+        background: "var(--color-success-light)"
+        animation: "pulse 2s infinite"
+      disconnected:
+        color: "var(--color-disconnected)"
+        background: "var(--color-border-light)"
+        animation: "none"
+      reconnecting:
+        color: "var(--color-reconnecting)"
+        background: "var(--color-warning-light)"
+        animation: "pulse 1s infinite"
+    a11y:
+      role: "status"
+      ariaLive: "polite"
+
+  FilterBar:
+    description: "Sticky filter and search controls bar"
+    props:
+      position: ["sticky"]
+      top: ["var(--header-height)"]
+    features:
+      - "Search input"
+      - "Sort select"
+      - "File type checkboxes"
+      - "Pagination controls"
+    states:
+      default: true
+      sticky: true
+    a11y:
+      role: "search"
+      labels: "All inputs have visible labels"
+      keyboard: "Tab navigation, Enter to submit"
+
+  DocumentCard:
+    description: "Card component displaying document preview and metadata"
+    variants: ["document", "audio"]
+    dimensions:
+      width: "385px"
+      height: "285px"
+      thumbnail: "200px × 285px"
+    layout:
+      grid: "200px 1fr"
+    states:
+      default: true
+      hover: "translateY(-2px), shadow-lg"
+      focus: "2px outline with offset"
+      loading: "skeleton animation"
+      processing: "progress bar and spinner"
+      failed: "error styling"
+    features:
+      - "Thumbnail with fallback"
+      - "File type badge"
+      - "Upload date badge"
+      - "Primary action button"
+      - "Processing states"
+    a11y:
+      focusWithin: "Outline on keyboard focus"
+      keyboard: ["Tab: focus button", "Enter: activate"]
+      ariaLabel: "Document title included"
+
+  DocumentCardBadge:
+    description: "Info overlay showing file type and date"
+    dimensions:
+      width: "200px"
+      height: "72px"
+    features:
+      - "File type icon"
+      - "File extension label"
+      - "Upload date"
+      - "Backdrop blur effect"
+    styling:
+      background: "rgba(0, 0, 0, 0.7)"
+      backdropFilter: "blur(4px)"
+      color: "rgba(255, 255, 255, 0.95)"
+
+  Button:
+    description: "Primary action button component"
+    variants: ["primary", "secondary", "outline"]
+    sizes: ["sm", "base"]
+    states:
+      default: true
+      hover: "Background darkens, translateY(-1px)"
+      active: "translateY(0)"
+      focus: "2px outline with 2px offset"
+      disabled: "opacity 0.5, cursor not-allowed"
+    a11y:
+      keyboard: ["Enter: activate", "Space: activate"]
+      focusVisible: "2px solid outline"
+      ariaDisabled: "true when disabled"
+
+  UploadModal:
+    description: "Lightbox modal for drag-and-drop file uploads"
+    features:
+      - "Global drag detection"
+      - "File validation"
+      - "Progress tracking"
+      - "Multiple file support"
+      - "Keyboard accessible file input"
+    states:
+      hidden: "display: none"
+      visible: "display: flex"
+      uploading: "Shows progress bars"
+    a11y:
+      role: "dialog"
+      ariaModal: "true"
+      ariaLabelledBy: "upload-modal-title"
+      keyboard: ["Escape: close", "Tab: cycle through controls"]
+      focusTrap: "Focus remains in modal when open"
+      fileInput: "Hidden visually, accessible to screen readers"
+    animations:
+      backdrop:
+        name: "fadeIn"
+        duration: "var(--transition-base)"
+      container:
+        name: "slideUp"
+        duration: "var(--transition-slow)"
+        from: "translateY(20px)"
+        to: "translateY(0)"
+
+  FormInput:
+    description: "Text input field"
+    states:
+      default: true
+      hover: "border-color changes"
+      focus: "border-color primary, box-shadow ring"
+      disabled: "reduced opacity"
+    a11y:
+      label: "Associated with form-label"
+      placeholder: "Tertiary text color"
+      focusRing: "0 0 0 3px rgba(59, 130, 246, 0.1)"
+
+  FormSelect:
+    description: "Select dropdown input"
+    states:
+      default: true
+      hover: "border-color changes"
+      focus: "border-color primary, box-shadow ring"
+    a11y:
+      label: "Associated with form-label"
+      keyboard: ["Arrow keys: navigate", "Enter: select"]
+
+  Accordion:
+    description: "Expandable content sections (details page)"
+    states:
+      closed: "max-height: 0"
+      open: "max-height: 5000px"
+      active: "header background primary color"
+    features:
+      - "Timestamp display"
+      - "Copy to clipboard action"
+      - "Smooth expand/collapse transition"
+    a11y:
+      keyboard: ["Enter: toggle", "Space: toggle"]
+      ariaExpanded: "true/false based on state"
+    animations:
+      toggle:
+        duration: "0.3s"
+        easing: "ease"
+        property: "max-height"
+
+  Slideshow:
+    description: "Image slideshow with navigation controls"
+    features:
+      - "Previous/next navigation"
+      - "Page indicator with input"
+      - "Keyboard shortcuts"
+    states:
+      default: true
+      firstPage: "previous button disabled"
+      lastPage: "next button disabled"
+    a11y:
+      keyboard: ["Left arrow: previous", "Right arrow: next", "Input: jump to page"]
+      ariaLabel: "Navigation buttons labeled"
+      ariaDisabled: "Disabled buttons marked"
+
+  AudioPlayer:
+    description: "Audio playback with album art and captions"
+    features:
+      - "Native HTML5 audio controls"
+      - "Album art display"
+      - "Caption overlay on album art"
+      - "Responsive sizing (300px desktop, 200px mobile)"
+    states:
+      loading: "opacity: 0"
+      loaded: "opacity: 1"
+    captionOverlay:
+      background: "rgba(255, 255, 255, 0.55)"
+      backdropFilter: "blur(4px)"
+      transition: "opacity 0.3s"
+      visibility: "hidden when empty, visible when populated"
+
+  LoadingSpinner:
+    description: "Animated loading indicator"
+    variants: ["small (20px)", "medium (40px)"]
+    animation:
+      name: "spin"
+      duration: "0.8s"
+      timing: "linear"
+      iteration: "infinite"
+    a11y:
+      role: "status"
+      ariaLabel: "Loading"
+
+# Accessibility Specifications
+a11y:
+  compliance: "WCAG 2.1 AA"
+
+  focus:
+    visible:
+      outline: "2px solid var(--color-primary)"
+      outlineOffset: "2px"
+    management:
+      trap: ["modal", "upload-modal"]
+      restoration: "Focus returned to trigger element on modal close"
+
+  keyboard:
+    navigation:
+      - "Tab: Move forward through interactive elements"
+      - "Shift+Tab: Move backward"
+      - "Enter: Activate buttons and links"
+      - "Space: Activate buttons and checkboxes"
+      - "Escape: Close modals and dialogs"
+      - "Arrow keys: Navigate within components"
+    shortcuts:
+      slideshow:
+        - "Left arrow: Previous page"
+        - "Right arrow: Next page"
+
+  aria:
+    roles:
+      - "dialog: Modal components"
+      - "banner: Header"
+      - "search: Filter bar"
+      - "status: Connection status, loading indicators"
+      - "button: All clickable actions"
+    attributes:
+      - "aria-modal: true on modals"
+      - "aria-labelledby: Associates headings"
+      - "aria-label: Descriptive labels for icon buttons"
+      - "aria-expanded: Accordion state"
+      - "aria-disabled: Disabled button state"
+      - "aria-live: polite for status updates"
+
+  colorContrast:
+    improvements:
+      - "Text secondary: #4b5563 (improved from #6b7280)"
+      - "Text tertiary: #6b7280 (sufficient contrast)"
+      - "All text meets minimum 4.5:1 ratio"
+    verification:
+      - "Primary text on background: >7:1"
+      - "Secondary text on background: >4.5:1"
+      - "Button text on primary: >7:1"
+
+  screenReader:
+    support:
+      - "sr-only class for visually hidden text"
+      - "Semantic HTML structure"
+      - "Descriptive labels on all form inputs"
+      - "Alternative text patterns for icons"
+
+  motionReduction:
+    prefersReducedMotion: true
+    behavior: "Animations duration reduced to 0.01ms"
+    scope: "All animations, transitions, and transforms"
+
+  highContrast:
+    prefersContrast: true
+    adjustments:
+      - "Border colors set to pure black"
+      - "Text colors set to pure black"
+      - "Increased border width on focus"
+
+# Animation Specifications
+animations:
+  pulse:
+    description: "Pulsing opacity for connection indicators"
+    keyframes:
+      "0%": "opacity: 1"
+      "50%": "opacity: 0.5"
+      "100%": "opacity: 1"
+    duration: "2s (connected), 1s (reconnecting)"
+    easing: "cubic-bezier(0.4, 0, 0.6, 1)"
+    iteration: "infinite"
+
+  fadeIn:
+    description: "Fade in animation for modals"
+    keyframes:
+      from: "opacity: 0"
+      to: "opacity: 1"
+    duration: "var(--transition-base)"
+
+  slideUp:
+    description: "Slide up animation for modal content"
+    keyframes:
+      from:
+        opacity: 0
+        transform: "translateY(20px)"
+      to:
+        opacity: 1
+        transform: "translateY(0)"
+    duration: "var(--transition-slow)"
+
+  shimmer:
+    description: "Loading shimmer effect for placeholders"
+    keyframes:
+      "0%": "left: -100%"
+      "100%": "left: 100%"
+    duration: "1.5s"
+    iteration: "infinite"
+
+  skeletonLoading:
+    description: "Skeleton loading background animation"
+    keyframes:
+      "0%": "background-position: 200% 0"
+      "100%": "background-position: -200% 0"
+    duration: "1.5s"
+    easing: "ease-in-out"
+    iteration: "infinite"
+
+  spinnerRotate:
+    description: "Spinner rotation animation"
+    keyframes:
+      "0%": "transform: rotate(0deg)"
+      "100%": "transform: rotate(360deg)"
+    duration: "0.8s"
+    easing: "linear"
+    iteration: "infinite"
+
+  spin:
+    description: "Loading spinner rotation"
+    keyframes:
+      to: "transform: rotate(360deg)"
+    duration: "1s"
+    easing: "linear"
+    iteration: "infinite"
+
+# Responsive Breakpoints
+responsive:
+  breakpoints:
+    mobile:
+      maxWidth: "480px"
+      adjustments:
+        - "Single column layouts"
+        - "Reduced padding and spacing"
+        - "Stacked navigation"
+        - "Smaller typography"
+        - "Album art: 200x200px"
+        - "Caption font-size: 0.85rem"
+
+    tablet:
+      maxWidth: "768px"
+      adjustments:
+        - "Header wraps on smaller screens"
+        - "Filter bar becomes vertical"
+        - "Reduced document grid columns"
+        - "Album art: 200x200px"
+
+    desktop:
+      minWidth: "769px"
+      adjustments:
+        - "Multi-column grid layouts"
+        - "Horizontal navigation"
+        - "Full-width filter controls"
+        - "Album art: 300x300px"
+
+# Theme System
+themes:
+  light:
+    name: "Kraft Paper Light"
+    description: "Warm, paper-inspired light theme"
+    baseColors: "oklch color space for perceptual uniformity"
+
+  dark:
+    name: "Kraft Paper Dark"
+    description: "Dark variant with warm tones"
+    baseColors: "oklch color space for perceptual uniformity"
+
+  toggle:
+    mechanism: "CSS class (.dark) on root element"
+    persistence: "localStorage (assumed)"
+    animation: "Icon rotation transition"
+
+# Design Patterns
+patterns:
+  - "Consistent 8px spacing system"
+  - "Rounded corners (12px base radius)"
+  - "Subtle kraft paper shadows"
+  - "OKLCH color space for better perceptual consistency"
+  - "Two-column layout for detail pages (sticky left)"
+  - "Card-based information architecture"
+  - "Progressive disclosure (accordions)"
+  - "Optimistic UI updates"
+  - "Skeleton loading states"
+  - "Focus management for accessibility"
+  - "Responsive-first approach"
+
+# Notes
+notes:
+  - "All color values use OKLCH for perceptual uniformity and better dark mode transitions"
+  - "Kraft paper theme provides warm, organic feel distinct from standard UI kits"
+  - "Wave 1 accessibility improvements included contrast fixes (#4b5563, #6b7280)"
+  - "Complete keyboard navigation support across all interactive components"
+  - "Theme toggle includes smooth icon rotation animation"
+  - "Mobile-first responsive approach with progressive enhancement"
+  - "Album art captions feature dynamic overlay with backdrop blur"
+  - "Upload modal features both drag-drop and keyboard-accessible file selection"

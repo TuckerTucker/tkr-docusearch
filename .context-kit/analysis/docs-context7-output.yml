@@ -1,0 +1,228 @@
+# Dependency to Context7 ID mapping
+# Generated: 2025-10-16
+# Project: tkr-docusearch v0.9.0
+# NOTE: Context7 IDs require MCP tool access (mcp__context7__resolve-library-id)
+# This file contains the dependency structure ready for Context7 ID population
+
+meta:
+  project: tkr-docusearch
+  version: "0.9.0"
+  generated: "2025-10-16"
+  python_version: ">=3.10"
+  dependency_source: ["requirements.txt", "pyproject.toml"]
+  note: "Context7 IDs require MCP tool 'mcp__context7__resolve-library-id' for resolution"
+
+deps:
+  py:
+    prod:
+      # Core ML/AI Framework
+      torch:
+        id: "pending-context7-lookup"
+        ver: ">=2.8.0"
+        category: "ml_core"
+        notes: "CVE patch: updated from 2.0.0"
+
+      torchvision:
+        id: "pending-context7-lookup"
+        ver: ">=0.15.0"
+        category: "ml_core"
+
+      transformers:
+        id: "pending-context7-lookup"
+        ver: ">=4.30.0"
+        category: "ml_core"
+
+      sentence-transformers:
+        id: "pending-context7-lookup"
+        ver: ">=2.2.0"
+        category: "ml_core"
+
+      colpali-engine:
+        id: "pending-context7-lookup"
+        ver: ">=0.2.0"
+        category: "ml_core"
+        notes: "Multimodal embedding model - install from GitHub"
+
+      # Image Processing
+      Pillow:
+        id: "pending-context7-lookup"
+        ver: ">=10.0.0"
+        category: "image_processing"
+
+      # Document Processing
+      docling:
+        id: "pending-context7-lookup"
+        ver: ">=2.55.0"
+        category: "document_processing"
+        extras: ["asr"]
+        notes: "Unified document parser - handles PDF, DOCX, PPTX, audio transcription"
+
+      # Vector Database
+      chromadb:
+        id: "pending-context7-lookup"
+        ver: ">=0.4.0"
+        category: "storage"
+        notes: "Vector database for 128-dim embeddings"
+
+      # Data and Utilities
+      numpy:
+        id: "pending-context7-lookup"
+        ver: ">=1.24.0"
+        category: "utilities"
+
+      pydantic:
+        id: "pending-context7-lookup"
+        ver: ">=2.0.0"
+        category: "utilities"
+        notes: "Data validation"
+
+      python-dotenv:
+        id: "pending-context7-lookup"
+        ver: ">=1.0.0"
+        category: "utilities"
+
+      tqdm:
+        id: "pending-context7-lookup"
+        ver: ">=4.65.0"
+        category: "utilities"
+
+      structlog:
+        id: "pending-context7-lookup"
+        ver: ">=23.1.0"
+        category: "utilities"
+        notes: "Structured logging"
+
+      urllib3:
+        id: "pending-context7-lookup"
+        ver: ">=2.5.0"
+        category: "utilities"
+        notes: "CVE patch: explicit version pinning"
+
+      # Audio Processing
+      mutagen:
+        id: "pending-context7-lookup"
+        ver: ">=1.47.0"
+        category: "audio_processing"
+        notes: "Audio metadata extraction (ID3 tags, album art)"
+
+      # API Framework
+      fastapi:
+        id: "pending-context7-lookup"
+        ver: ">=0.104.0"
+        category: "web_server"
+        notes: "Worker HTTP API"
+
+      uvicorn:
+        id: "pending-context7-lookup"
+        ver: ">=0.24.0"
+        category: "web_server"
+        extras: ["standard"]
+        notes: "ASGI server"
+
+      python-multipart:
+        id: "pending-context7-lookup"
+        ver: ">=0.0.6"
+        category: "web_server"
+
+      # File Watching
+      watchdog:
+        id: "pending-context7-lookup"
+        ver: ">=3.0.0"
+        category: "utilities"
+
+    dev:
+      # Testing Framework
+      pytest:
+        id: "pending-context7-lookup"
+        ver: ">=7.4.0"
+        category: "testing"
+
+      pytest-cov:
+        id: "pending-context7-lookup"
+        ver: ">=4.1.0"
+        category: "testing"
+        notes: "Coverage reporting"
+
+      pytest-asyncio:
+        id: "pending-context7-lookup"
+        ver: ">=0.21.0"
+        category: "testing"
+        notes: "Async test support"
+
+# Category summary for reference
+categories:
+  ml_core:
+    count: 5
+    packages: ["torch", "torchvision", "transformers", "sentence-transformers", "colpali-engine"]
+    description: "Machine learning and AI framework dependencies"
+
+  image_processing:
+    count: 1
+    packages: ["Pillow"]
+    description: "Image manipulation and processing"
+
+  document_processing:
+    count: 1
+    packages: ["docling"]
+    description: "Document parsing and text extraction"
+
+  audio_processing:
+    count: 1
+    packages: ["mutagen"]
+    description: "Audio metadata and tag extraction"
+
+  storage:
+    count: 1
+    packages: ["chromadb"]
+    description: "Vector database for embeddings"
+
+  web_server:
+    count: 3
+    packages: ["fastapi", "uvicorn", "python-multipart"]
+    description: "Web API framework and server"
+
+  utilities:
+    count: 6
+    packages: ["numpy", "pydantic", "python-dotenv", "tqdm", "structlog", "urllib3", "watchdog"]
+    description: "General utilities and helpers"
+
+  testing:
+    count: 3
+    packages: ["pytest", "pytest-cov", "pytest-asyncio"]
+    description: "Testing framework and tools"
+
+# Statistics
+stats:
+  total_dependencies: 24
+  production: 21
+  development: 3
+  with_extras: 2  # docling[asr], uvicorn[standard]
+  security_patches: 2  # torch, urllib3
+
+# Next steps for Context7 integration
+context7_integration:
+  required_tool: "mcp__context7__resolve-library-id"
+  process:
+    - "Query Context7 for each package name"
+    - "Update 'id' field with actual Context7 documentation ID"
+    - "Mark as 'not found' if no Context7 documentation exists"
+    - "Verify version compatibility with Context7 docs"
+
+  priority_packages:
+    high:
+      - torch  # Core ML framework
+      - transformers  # HuggingFace models
+      - chromadb  # Vector database
+      - fastapi  # Web framework
+      - pytest  # Testing
+
+    medium:
+      - colpali-engine  # Specialized - may not have Context7 docs
+      - docling  # Specialized - may not have Context7 docs
+      - pydantic  # Data validation
+      - numpy  # Numerical computing
+
+    low:
+      - mutagen  # Specialized audio library
+      - watchdog  # File system monitoring
+      - tqdm  # Progress bars

@@ -1,0 +1,728 @@
+# Project Directory Structure - tkr-docusearch
+# Generated: 2025-10-16
+# Total tracked files: 3775
+# Analysis depth: 5 levels
+
+root:
+  _count: 3775
+  _types:
+    md: 699
+    py: 697
+    rs: 477
+    json: 267
+    ts: 253
+    txt: 149
+    js: 139
+    tsx: 88
+    sh: 88
+    go: 78
+    yaml: 74
+    yml: 71
+    html: 66
+    png: 65
+    sql: 56
+    toml: 45
+    ipynb: 38
+    css: 29
+    svg: 26
+    pdf: 18
+    other: 289
+
+  # Core source code
+  src:
+    _count: 129
+    _types:
+      py: 90
+      md: 15
+      js: 11
+      html: 6
+      css: 2
+      svg: 1
+    _status: production-ready
+
+    api:
+      _count: 3
+      _types: {py: 3}
+      __init__.py: tracked
+      models.py: tracked
+      server.py: tracked-modified
+
+    config:
+      _count: 6
+      _types: {py: 6}
+      __init__.py: tracked
+      image_config.py: tracked
+      model_config.py: tracked
+      processing_config.py: tracked
+      storage_config.py: tracked
+      test_asr_config.py: tracked
+
+    embeddings:
+      _count: 12
+      _types: {py: 10, md: 2}
+      _status: wave2-complete
+      __init__.py: tracked
+      colpali_wrapper.py: tracked
+      exceptions.py: tracked
+      model_loader.py: tracked-modified
+      scoring.py: tracked
+      types.py: tracked
+      test_embeddings.py: tracked-modified
+      example_usage.py: tracked
+      verify_implementation.py: tracked
+      run_tests.py: tracked
+      README.md: tracked
+      IMPLEMENTATION_SUMMARY.md: tracked
+
+    frontend:
+      _count: 29
+      _types: {js: 11, md: 7, html: 5, css: 2, svg: 1, vtt: 1}
+      _status: production-ready
+      _features: ["audio-player", "album-art", "vtt-captions", "markdown-parsing"]
+      index.html: tracked
+      details.html: tracked
+      styles.css: tracked-modified
+      details.css: tracked-modified
+      api-client.js: tracked
+      audio-player.js: tracked
+      document-card.js: tracked
+      library-manager.js: tracked
+      upload-modal.js: tracked-modified
+      websocket-client.js: tracked
+      accordion.js: tracked
+      clipboard-utils.js: tracked
+      download-utils.js: tracked
+      filter-bar.js: tracked
+      slideshow.js: tracked
+      test-integration.js: tracked
+      theme-toggle.js: tracked
+      favicon.svg: tracked
+      test_audio_player_album_art.html: tracked
+      test_vtt_integration.html: tracked
+      test_sample.vtt: tracked
+      README.md: tracked
+      E2E_TEST_RESULTS.md: tracked
+      PERFORMANCE_REPORT.md: tracked
+      PRODUCTION_CHECKLIST.md: tracked
+      TESTING_PROGRESS_REPORT.md: tracked
+      TEST_VTT_INTEGRATION.md: tracked
+      WAVE_0_VALIDATION.md: tracked
+
+    processing:
+      _count: 52
+      _types: {py: 44, md: 2, html: 1}
+      _status: wave3-complete-with-webhook
+      _features: ["audio-metadata", "album-art", "slide-renderer", "vtt-generator"]
+      __init__.py: tracked
+      processor.py: tracked
+      docling_parser.py: tracked
+      visual_processor.py: tracked
+      text_processor.py: tracked
+      worker_webhook.py: tracked-modified
+      audio_metadata.py: tracked
+      cover_art_utils.py: tracked
+      file_validator.py: tracked
+      image_utils.py: tracked
+      markdown_utils.py: tracked
+      monitoring_utils.py: tracked
+      slide_renderer_client.py: tracked
+      smart_chunker.py: tracked
+      status_api.py: tracked
+      status_manager.py: tracked
+      status_models.py: tracked
+      structure_extractor.py: tracked
+      vtt_generator.py: tracked
+      websocket_broadcaster.py: tracked
+      documents_api.py: tracked
+      mocks.py: tracked
+      types.py: tracked
+      validate_mocks.py: tracked
+
+      handlers:
+        _count: 4
+        __init__.py: tracked
+        album_art_handler.py: tracked
+        metadata_filter.py: tracked
+        text_embedding_handler.py: tracked
+        visual_embedding_handler.py: tracked
+
+      parsers:
+        _count: 4
+        __init__.py: tracked
+        audio_metadata_extractor.py: tracked
+        format_options_builder.py: tracked
+        slide_renderer.py: tracked
+        symlink_helper.py: tracked
+
+      static:
+        _count: 1
+        monitor.html: tracked
+
+      # Test files
+      test_audio_album_art.py: tracked
+      test_audio_placeholder.py: tracked
+      test_documents_api.py: tracked
+      test_file_validator.py: tracked-modified
+      test_multiformat.py: tracked
+      test_processing.py: tracked
+      test_status_api.py: tracked-modified
+      test_status_manager.py: tracked
+      test_timestamp_extraction.py: tracked
+      test_vtt_generator.py: tracked
+      test_wave2_integration.py: tracked
+      test_wave3_enhanced.py: tracked
+      test_wave3_integration.py: tracked
+      run_file_validator_tests.py: tracked
+
+      AUDIO_METADATA_SCHEMA.md: tracked
+      WAVE2_SUMMARY.md: tracked
+
+    search:
+      _count: 9
+      _types: {py: 7, md: 2}
+      _status: wave3-complete
+      __init__.py: tracked
+      search_engine.py: tracked
+      query_processor.py: tracked
+      result_ranker.py: tracked
+      mocks.py: tracked
+      test_search.py: tracked
+      validate_search.py: tracked
+      README.md: tracked
+      QUICK_START.md: tracked
+
+    storage:
+      _count: 16
+      _types: {py: 10, md: 5, txt: 1}
+      _status: wave2-complete
+      __init__.py: tracked
+      chroma_client.py: tracked-modified
+      collection_manager.py: tracked
+      compression.py: tracked
+      test_storage.py: tracked
+      test_real_chromadb.py: tracked-deleted
+      manual_test_real_chromadb.py: untracked
+      requirements.txt: tracked
+      README.md: tracked
+      QUICK_REFERENCE.md: tracked
+      ARCHITECTURE.md: tracked
+      CONTRACT_VALIDATION.md: tracked
+      IMPLEMENTATION_SUMMARY.md: tracked
+
+    utils:
+      _count: 2
+      _types: {py: 2}
+      __init__.py: tracked
+      environment.py: tracked
+
+  # Test suite
+  tests:
+    _count: 9
+    _types: {py: 9}
+    _status: comprehensive
+    test_image_utils.py: tracked-modified
+
+    search:
+      _count: 2
+      _status: untracked
+      __init__.py: untracked
+      test_search_api.py: untracked
+
+    storage:
+      _count: 2
+      _status: untracked
+      __init__.py: untracked
+      test_chroma_operations.py: untracked
+
+  # Management scripts
+  scripts:
+    _count: 10
+    _types: {sh: 10}
+    _status: unified-management-complete
+
+    # Production scripts
+    start-all.sh: tracked
+    stop-all.sh: tracked
+    status.sh: tracked
+    run-worker-native.sh: tracked
+    setup.sh: tracked
+    start.sh: tracked
+    stop.sh: tracked
+    monitor.sh: tracked
+
+    # Legacy scripts (archived)
+    legacy:
+      _count: 4
+      _status: archived
+      start-all.sh: tracked
+      stop-all.sh: tracked
+      start-api.sh: tracked
+      start-ui.sh: tracked
+      README.md: tracked
+
+  # Docker configuration
+  docker:
+    _count: 12
+    _types: {yml: 4, py: 3, sh: 2, env: 2, txt: 1}
+    _status: hybrid-architecture
+    docker-compose.yml: tracked
+    docker-compose.native-worker.yml: tracked
+    docker-compose.slide-renderer.yml: tracked
+    docker-compose.override.yml: tracked
+    slide_renderer_api.py: tracked-modified
+    .env: tracked-modified
+    .env.example: untracked
+
+    hooks:
+      _count: 2
+      on_upload.py: tracked
+      test_webhook.sh: tracked
+
+  # Documentation
+  docs:
+    _count: 15
+    _types: {md: 15}
+    _status: comprehensive
+
+    # Management guides
+    QUICK_START.md: untracked
+    SCRIPTS.md: tracked
+    GPU_ACCELERATION.md: tracked
+    NATIVE_WORKER_SETUP.md: tracked
+
+    # Architecture guides
+    ARCHITECTURE.md: tracked
+    DEPLOYMENT.md: tracked
+    WAVE_EXECUTION.md: tracked
+
+    # Reference
+    API_REFERENCE.md: tracked
+    CONTRIBUTING.md: untracked
+    TROUBLESHOOTING.md: tracked
+
+    # Component docs
+    embeddings:
+      _count: 3
+      README.md: tracked
+      IMPLEMENTATION.md: tracked
+      QUICK_START.md: tracked
+
+  # Context kit orchestration
+  .context-kit:
+    _count: 3100
+    _types: {md: 600, py: 550, rs: 400, json: 250, other: 1300}
+    _status: orchestration-hub
+
+    _context-kit.yml: tracked
+    .gitignore: tracked
+
+    orchestration:
+      _count: 180
+      _status: multi-wave-planning
+
+      docusearch-mvp:
+        _count: 45
+        _status: wave3-4-complete
+        orchestration-plan.md: tracked
+        agent-assignments.md: tracked
+        validation-strategy.md: tracked
+        coordination-protocol.md: tracked
+        README.md: tracked
+        wave1-completion-checklist.md: tracked
+
+        integration-contracts:
+          _count: 6
+          _status: validated
+          01-embedding-interface.md: tracked
+          02-storage-interface.md: tracked
+          03-processing-interface.md: tracked
+          04-search-interface.md: tracked
+          05-webhook-interface.md: tracked
+          06-frontend-interface.md: tracked
+
+        status:
+          _count: 8
+          wave1-foundation.yml: tracked
+          wave2-components.yml: tracked
+          wave3-integration.yml: tracked
+          wave4-production.yml: tracked
+          wave5-management.yml: tracked
+
+      audio-album-art:
+        _count: 15
+        _status: wave1-complete
+        orchestration-plan.md: tracked
+        agent-assignments.md: tracked
+        validation-strategy.md: tracked
+        coordination-protocol.md: tracked
+        README.md: tracked
+        WAVE1_COMPLETION.md: tracked
+        ORCHESTRATION_SUMMARY.txt: tracked
+
+        integration-contracts:
+          _count: 3
+          01-album-art-api.md: tracked
+          02-album-art-metadata.md: tracked
+          03-default-svg-fallback.md: tracked
+
+      audio-timestamp-fix:
+        _count: 25
+        _status: wave2-complete
+        orchestration-plan.md: tracked
+        agent-assignments.md: tracked
+        validation-strategy.md: tracked
+        coordination-protocol.md: tracked
+        issues.md: tracked
+        status.md: tracked
+        README.md: tracked
+        wave2-completion-summary.md: tracked
+
+        integration-contracts:
+          _count: 8
+          IC-001-textchunk-timestamp.md: tracked
+          IC-002-vtt-pipeline.md: tracked
+          IC-003-metadata-flags.md: tracked
+          IC-004-api-response.md: tracked
+          IC-005-vtt-track-element.md: tracked
+          IC-006-caption-display.md: tracked
+          IC-007-accordion-timestamp.md: tracked
+          IC-008-deprecation.md: tracked
+
+      custom-upload-ui:
+        _count: 20
+        _status: in-progress
+        agent-assignments.md: tracked
+        orchestration-plan.md: tracked
+
+        integration-contracts:
+          _count: 8
+          schemas:
+            error-response.schema.json: tracked
+            processing-status.schema.json: tracked
+
+      repo-critical-fixes:
+        _count: 25
+        _status: comprehensive-review
+
+        gates:
+          _count: 12
+          _status: untracked
+          00-initial-scan.md: untracked
+          01-architecture-audit.md: untracked
+          02-dependency-check.md: untracked
+          03-security-review.md: untracked
+          04-performance-analysis.md: untracked
+          05-code-quality.md: untracked
+
+    _ref:
+      _count: 2800
+      _status: reference-library
+      _note: "Contains chromadb, copyparty, docling, smolagents package references"
+
+      packages:
+        chroma:
+          _count: 800
+          _note: "ChromaDB reference implementation"
+
+        copyparty:
+          _count: 600
+          _note: "Copyparty file server reference"
+
+        docling:
+          _count: 400
+          _note: "Docling document parser reference"
+
+        smolagents:
+          _count: 200
+          _note: "Smolagents framework reference"
+
+      context-kit:
+        _count: 150
+        _note: "Context-kit framework documentation"
+
+      # Project reference docs
+      ARCHITECTURE_SUMMARY.md: tracked
+      COMPLETION_SUMMARY.md: tracked
+      PRODUCTION_SETUP.md: tracked
+      SEARCH_AGENT_SUMMARY.md: tracked
+      WAVE4_COMPLETION.md: tracked
+      mvp-architecture.md: tracked
+      kg-update-summary-wave3-4.md: tracked
+      docling-model-requirements.md: tracked
+      document-view-tab-requirements.md: tracked
+      document_information_schema.md: tracked
+      footer_header_changes.md: tracked
+      default_audio_coverart.svg: tracked
+
+      details_page:
+        audio.svg: tracked
+        default_audio_cover_art.svg: tracked
+        documents.svg: tracked
+
+    analysis:
+      _count: 1
+      _status: new
+      dir-structure-output.yml: untracked
+
+  # GitHub workflows
+  .github:
+    _count: 5
+    _status: untracked
+    _types: {yml: 3, md: 2}
+
+    workflows:
+      _count: 3
+      ci.yml: untracked
+      pre-commit.yml: untracked
+      tests.yml: untracked
+
+    ISSUE_TEMPLATE:
+      bug_report.md: untracked
+      feature_request.md: untracked
+
+  # Claude Code agents
+  .claude:
+    _count: 65
+    _types: {md: 60, json: 2, sh: 3}
+    _status: agent-framework
+
+    agents:
+      _count: 25
+      accessibility-agent.md: tracked
+      architecture-consistency-agent.md: tracked
+      code-quality-agent.md: tracked
+      command-writer.md: tracked
+      commit-pr-quality-agent.md: tracked
+      data-flow-analyzer.md: tracked
+      dependency-audit-agent.md: tracked
+      design-system.md: tracked
+      dir-mapper.md: tracked
+      docs-context7.md: tracked
+      documentation-agent.md: tracked
+      import-relationship-mapper.md: tracked
+      kg-update.md: tracked
+      meta-agent.md: tracked
+      performance-agent.md: tracked
+      port-consistency.md: tracked
+      project-yaml-builder.md: tracked
+      project-yaml-update.md: tracked
+      react-component-analyzer.md: tracked
+      react-hooks-analyzer.md: tracked
+      security-agent.md: tracked
+      storybook-component-analyzer.md: tracked
+      storybook-maintainer.md: tracked
+      test-coverage-agent.md: tracked
+      validation-agent.md: tracked
+
+    commands:
+      _count: 15
+      categorize_errors.md: tracked
+      commit.md: tracked
+      context-init.md: tracked
+      context_prime.md: tracked
+      create_plan.md: tracked
+      five.md: tracked
+      kg-orchestrate.md: tracked
+      kg_init.md: tracked
+      minima.md: tracked
+      orchestration_plan.md: tracked
+      project-yaml.md: tracked
+      repo-review.md: tracked
+      update_claude_code.md: tracked
+
+    hooks:
+      hooks.sh: tracked
+
+    settings.local.json: tracked-modified
+
+  # Data directories (ignored but structured)
+  data:
+    _count: 0
+    _status: runtime-generated-ignored
+    _note: "All subdirectories are gitignored"
+
+    uploads: ignored
+    images: ignored
+    markdown: ignored
+    models: ignored
+    chroma_db: ignored
+    logs: ignored
+    copyparty: ignored
+    page_images: ignored
+
+  # Runtime directories
+  logs:
+    _count: 0
+    _status: runtime-generated
+    worker-native.log: runtime
+    processing.log: runtime
+    api.log: runtime
+
+  # Configuration files (root level)
+  configuration:
+    _count: 15
+    _types: {yml: 3, yaml: 2, toml: 1, ini: 1, json: 3, txt: 2, md: 3}
+
+    # Python config
+    requirements.txt: tracked-modified
+    pyproject.toml: untracked
+    pytest.ini: untracked
+    conftest.py: untracked
+    setup.py: tracked
+
+    # Pre-commit
+    .pre-commit-config.yaml: untracked
+
+    # Git
+    .gitignore: tracked-modified
+    .gitattributes: tracked
+
+    # Documentation
+    README.md: tracked
+    LICENSE: tracked
+    CLAUDE.local.md: tracked
+
+    # Runtime
+    .worker.pid: runtime
+    .env: ignored
+
+  # Virtual environments (ignored)
+  virtual_environments:
+    _status: ignored
+    .venv: ignored
+    .venv-native: ignored
+    env: ignored
+    venv: ignored
+
+# Summary Statistics
+summary:
+  total_tracked_files: 3775
+  total_untracked_files: 25
+
+  by_category:
+    source_code:
+      count: 129
+      languages: {py: 90, js: 11, ts: 0, html: 6}
+
+    tests:
+      count: 9
+      coverage: comprehensive
+
+    documentation:
+      count: 714
+      types: {md: 699, txt: 15}
+
+    scripts:
+      count: 10
+      status: unified-management-complete
+
+    configuration:
+      count: 15
+      status: production-ready
+
+    reference_packages:
+      count: 2800
+      note: "External package documentation in .context-kit/_ref/"
+
+  by_status:
+    tracked: 3750
+    tracked_modified: 20
+    tracked_deleted: 1
+    untracked: 25
+    ignored: 50+
+
+  key_features:
+    - "Hybrid Metal GPU + Docker architecture"
+    - "Real ColPali embeddings (128-dim)"
+    - "ChromaDB vector storage"
+    - "Two-stage semantic search"
+    - "Audio metadata with album art"
+    - "VTT caption generation"
+    - "Markdown text parsing"
+    - "Unified management scripts"
+    - "Multi-wave orchestration framework"
+    - "Comprehensive test coverage"
+
+  recent_changes:
+    wave_5_management:
+      - "Unified start/stop/status scripts"
+      - "Native Metal GPU worker support"
+      - "Docker Compose override for hybrid mode"
+      - "Comprehensive documentation guides"
+
+    wave_3_4_integration:
+      - "Real ColPali + ChromaDB integration"
+      - "Two-stage search implementation"
+      - "Webhook processing pipeline"
+      - "End-to-end validation"
+
+    audio_enhancements:
+      - "Album art extraction and display"
+      - "VTT caption generation"
+      - "Timestamp synchronization"
+      - "Markdown text parsing for lyrics"
+
+# Architecture Modes
+modes:
+  gpu_mode:
+    description: "Native Metal GPU worker + Docker services (default)"
+    startup: "./scripts/start-all.sh"
+    performance: "10-20x faster than CPU"
+    components:
+      - "Native Python worker (port 8002, MPS device)"
+      - "ChromaDB (port 8001, Docker)"
+      - "Copyparty (port 8000, Docker)"
+
+  cpu_mode:
+    description: "All services in Docker containers"
+    startup: "./scripts/start-all.sh --cpu"
+    performance: "Baseline (1x)"
+    components:
+      - "Containerized worker (port 8002, CPU)"
+      - "ChromaDB (port 8001, Docker)"
+      - "Copyparty (port 8000, Docker)"
+
+  docker_only_mode:
+    description: "Docker services only, no worker"
+    startup: "./scripts/start-all.sh --docker-only"
+    use_case: "Development, debugging, manual worker management"
+    components:
+      - "ChromaDB (port 8001, Docker)"
+      - "Copyparty (port 8000, Docker)"
+
+# Orchestration Framework
+orchestration:
+  active_projects:
+    - name: "docusearch-mvp"
+      status: "wave5-complete (98% production-ready)"
+      waves: [foundation, components, integration, production, management]
+
+    - name: "audio-album-art"
+      status: "wave1-complete"
+      waves: [foundation]
+
+    - name: "audio-timestamp-fix"
+      status: "wave2-complete"
+      waves: [foundation, implementation]
+
+    - name: "custom-upload-ui"
+      status: "in-progress"
+      waves: [planning]
+
+    - name: "repo-critical-fixes"
+      status: "comprehensive-review"
+      waves: [audit, gates]
+
+  integration_contracts:
+    count: 25
+    types: ["API contracts", "data schemas", "event protocols", "deprecation plans"]
+    validation: "Contract-first development with progressive gates"
+
+  agent_roles:
+    - infrastructure-agent
+    - storage-agent
+    - embedding-agent
+    - processing-agent
+    - search-agent
+    - ui-agent
+    - coordination-agent
