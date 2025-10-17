@@ -27,7 +27,7 @@ export class FilterBar {
     // Filter state
     this.state = {
       search: '',
-      sort_by: 'date_added',
+      sort_by: 'newest_first',
       file_types: ['pdf', 'docx', 'pptx', 'audio'],
       limit: 50,
       offset: 0
@@ -98,9 +98,10 @@ export class FilterBar {
         <div class="filter-bar__sort">
           <label for="sort-select" class="filter-bar__label">Sort by:</label>
           <select id="sort-select" class="filter-bar__select" aria-label="Sort documents by">
-            <option value="date_added" ${this.state.sort_by === 'date_added' ? 'selected' : ''}>Date Added</option>
-            <option value="filename" ${this.state.sort_by === 'filename' ? 'selected' : ''}>Filename</option>
-            <option value="page_count" ${this.state.sort_by === 'page_count' ? 'selected' : ''}>Page Count</option>
+            <option value="newest_first" ${this.state.sort_by === 'newest_first' ? 'selected' : ''}>Newest First</option>
+            <option value="oldest_first" ${this.state.sort_by === 'oldest_first' ? 'selected' : ''}>Oldest First</option>
+            <option value="name_asc" ${this.state.sort_by === 'name_asc' ? 'selected' : ''}>Name A-Z</option>
+            <option value="name_desc" ${this.state.sort_by === 'name_desc' ? 'selected' : ''}>Name Z-A</option>
           </select>
         </div>
 
@@ -209,7 +210,7 @@ export class FilterBar {
   clearFilters() {
     this.state = {
       search: '',
-      sort_by: 'date_added',
+      sort_by: 'newest_first',
       file_types: ['pdf', 'docx', 'pptx', 'audio'],
       limit: 50,
       offset: 0
@@ -263,7 +264,7 @@ export class FilterBar {
       params.set('search', this.state.search);
     }
 
-    if (this.state.sort_by !== 'date_added') {
+    if (this.state.sort_by !== 'newest_first') {
       params.set('sort_by', this.state.sort_by);
     }
 
