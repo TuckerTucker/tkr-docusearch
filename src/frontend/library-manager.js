@@ -14,6 +14,7 @@ import { createDocumentCard, updateCardState } from './document-card.js';
 import { FilterBar } from './filter-bar.js';
 import { UploadModal } from './upload-modal.js';
 import { applyEarlyTheme, initTheme } from './theme-toggle.js';
+import { initStyleSelector } from './style-selector.js';
 
 // Apply theme immediately to avoid flash
 applyEarlyTheme();
@@ -606,6 +607,9 @@ if (document.readyState === 'loading') {
     // Initialize theme toggle button and listeners
     initTheme();
 
+    // Initialize style selector
+    initStyleSelector();
+
     // Initialize library manager
     const manager = new LibraryManager();
     manager.init();
@@ -613,6 +617,9 @@ if (document.readyState === 'loading') {
 } else {
   // Initialize theme toggle button and listeners
   initTheme();
+
+  // Initialize style selector
+  initStyleSelector();
 
   // Initialize library manager
   const manager = new LibraryManager();
