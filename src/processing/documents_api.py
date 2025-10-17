@@ -268,7 +268,9 @@ async def list_documents(
     limit: int = Query(50, ge=1, le=100, description="Number of results to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     search: Optional[str] = Query(None, description="Filter by filename (case-insensitive)"),
-    sort_by: str = Query("date_added", description="Sort field: date_added, filename, page_count"),
+    sort_by: str = Query(
+        "newest_first", description="Sort order: newest_first, oldest_first, name_asc, name_desc"
+    ),
 ):
     """List all stored documents with metadata.
 
@@ -276,7 +278,7 @@ async def list_documents(
         limit: Number of results (1-100)
         offset: Pagination offset
         search: Optional filename filter
-        sort_by: Sort field (date_added, filename, page_count)
+        sort_by: Sort order (newest_first, oldest_first, name_asc, name_desc)
 
     Returns:
         DocumentListResponse with paginated documents
@@ -305,11 +307,13 @@ async def list_documents(
             doc_list = [doc for doc in doc_list if search_lower in doc["filename"].lower()]
 
         # Apply sorting
-        if sort_by == "filename":
+        if sort_by == "name_asc":
             doc_list.sort(key=lambda d: d["filename"].lower())
-        elif sort_by == "page_count":
-            doc_list.sort(key=lambda d: len(d["pages"]), reverse=True)
-        else:  # date_added (default)
+        elif sort_by == "name_desc":
+            doc_list.sort(key=lambda d: d["filename"].lower(), reverse=True)
+        elif sort_by == "oldest_first":
+            doc_list.sort(key=lambda d: d["date_added"])
+        else:  # newest_first (default)
             doc_list.sort(key=lambda d: d["date_added"], reverse=True)
 
         # Get total before pagination

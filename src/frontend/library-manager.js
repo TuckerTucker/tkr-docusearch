@@ -38,7 +38,7 @@ export class LibraryManager {
     this.documentCards = new Map(); // doc_id → HTMLElement
     this.currentQuery = {
       search: '',
-      sort_by: 'date_added',
+      sort_by: 'newest_first',
       file_types: ['pdf', 'docx', 'pptx', 'audio'],
       limit: 50,
       offset: 0
@@ -249,7 +249,7 @@ export class LibraryManager {
         });
       }
 
-      // Sort: Processing documents first (by most recent), then completed documents (by date_added)
+      // Sort: Processing documents first, then apply user's selected sort order
       allDocuments.sort((a, b) => {
         const aIsProcessing = a.status !== 'completed';
         const bIsProcessing = b.status !== 'completed';
@@ -258,10 +258,23 @@ export class LibraryManager {
         if (aIsProcessing && !bIsProcessing) return -1;
         if (!aIsProcessing && bIsProcessing) return 1;
 
-        // Within same category, sort by date (most recent first)
-        const aDate = new Date(a.date_added);
-        const bDate = new Date(b.date_added);
-        return bDate - aDate;
+        // Within same category, apply user's selected sort order
+        const sortBy = this.currentQuery.sort_by;
+
+        if (sortBy === 'name_asc') {
+          return a.filename.toLowerCase().localeCompare(b.filename.toLowerCase());
+        } else if (sortBy === 'name_desc') {
+          return b.filename.toLowerCase().localeCompare(a.filename.toLowerCase());
+        } else if (sortBy === 'oldest_first') {
+          const aDate = new Date(a.date_added);
+          const bDate = new Date(b.date_added);
+          return aDate - bDate;
+        } else {
+          // newest_first (default)
+          const aDate = new Date(a.date_added);
+          const bDate = new Date(b.date_added);
+          return bDate - aDate;
+        }
       });
 
       // Render documents
