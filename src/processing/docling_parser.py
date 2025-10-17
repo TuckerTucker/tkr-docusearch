@@ -18,6 +18,9 @@ from src.processing.image_utils import ImageStorageError, save_page_image
 from src.processing.smart_chunker import SmartChunker, create_chunker
 from src.processing.structure_extractor import extract_document_structure
 
+# Import timestamp extraction (Wave 3)
+from src.processing.text_processor import extract_timestamps_from_text
+
 # Import shared types (re-exported for backward compatibility)
 from src.processing.types import Page, ParsedDocument, TextChunk
 
@@ -411,8 +414,9 @@ class DoclingParser:
                 # Legacy mode with word-based chunking
                 text_chunks = self._chunk_text(pages, doc_id, chunk_size_words, chunk_overlap_words)
 
-            # Add timestamps to chunks if audio with provenance data
-            if metadata.get("has_word_timestamps"):
+            # Add timestamps to chunks if audio file
+            # This extracts [time: X-Y] markers from text or docling provenance
+            if metadata.get("format_type") == "audio":
                 text_chunks = self._add_timestamps_to_chunks(text_chunks, doc, pages)
 
             parsed_doc = ParsedDocument(
@@ -673,17 +677,27 @@ class DoclingParser:
                 chunk_words = words[start_idx:end_idx]
                 chunk_text = " ".join(chunk_words)
 
+                # Extract timestamps from text (audio only)
+                # Extracts [time: X-Y] markers and returns cleaned text
+                start_time, end_time, cleaned_text = extract_timestamps_from_text(chunk_text)
+                if start_time is not None:
+                    logger.info(
+                        f"[TIMESTAMP EXTRACTION] Extracted {start_time}-{end_time} from chunk"
+                    )
+
                 # Calculate character offsets (approximate)
                 char_start = sum(len(w) + 1 for w in words[:start_idx])
-                char_end = char_start + len(chunk_text)
+                char_end = char_start + len(cleaned_text)
 
                 chunk = TextChunk(
                     chunk_id=f"{doc_id}-chunk{chunk_counter:04d}",
                     page_num=page.page_num,
-                    text=chunk_text,
+                    text=cleaned_text,  # Use cleaned text without [time: X-Y] markers
                     start_offset=char_start,
                     end_offset=char_end,
                     word_count=len(chunk_words),
+                    start_time=start_time,  # Extracted timestamp or None
+                    end_time=end_time,  # Extracted timestamp or None
                 )
 
                 chunks.append(chunk)

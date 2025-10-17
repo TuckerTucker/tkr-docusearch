@@ -23,28 +23,28 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
     Extract [time: X-Y] timestamp markers from text.
 
     Args:
-        text: Text potentially containing [time: START-END] marker at beginning
+        text: Text potentially containing one or more [time: START-END] markers
 
     Returns:
         Tuple of (start_time, end_time, cleaned_text):
-        - start_time: float seconds or None if not found/invalid
-        - end_time: float seconds or None if not found/invalid
-        - cleaned_text: text with timestamp marker removed
+        - start_time: float seconds from FIRST marker or None if not found/invalid
+        - end_time: float seconds from LAST marker or None if not found/invalid
+        - cleaned_text: text with ALL timestamp markers removed
 
     Parsing Rules:
-        - Marker must be at start of text (after optional whitespace)
         - Format: [time: <float>-<float>]
         - Both timestamps must be valid floats
         - end_time must be > start_time
         - start_time must be >= 0.0
+        - If multiple markers: use first marker's start, last marker's end
         - If invalid, return (None, None, original_text)
 
     Examples:
         >>> extract_timestamps_from_text("[time: 1.5-3.2] Hello")
         (1.5, 3.2, "Hello")
 
-        >>> extract_timestamps_from_text("[time: 0.62-3.96]  Multiple spaces")
-        (0.62, 3.96, "Multiple spaces")
+        >>> extract_timestamps_from_text("Text [time: 1.5-3.2] middle [time: 4.0-6.0] end")
+        (1.5, 6.0, "Text  middle  end")
 
         >>> extract_timestamps_from_text("No timestamp here")
         (None, None, "No timestamp here")
@@ -52,18 +52,22 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
         >>> extract_timestamps_from_text("[time: 5.0-2.0] Invalid")
         (None, None, "[time: 5.0-2.0] Invalid")
     """
-    # Match [time: X-Y] at start of text (don't consume trailing whitespace)
-    pattern = r"^\s*\[time:\s*([\d.]+)-([\d.]+)\]"
-    match = re.match(pattern, text)
+    # Match ALL [time: X-Y] markers anywhere in text
+    pattern = r"\[time:\s*([\d.]+)-([\d.]+)\]"
+    matches = list(re.finditer(pattern, text))
 
-    if not match:
-        # No timestamp marker found
+    if not matches:
+        # No timestamp markers found
         return (None, None, text)
 
     try:
-        # Parse timestamps
-        start_time = float(match.group(1))
-        end_time = float(match.group(2))
+        # Parse FIRST marker for start_time
+        first_match = matches[0]
+        start_time = float(first_match.group(1))
+
+        # Parse LAST marker for end_time
+        last_match = matches[-1]
+        end_time = float(last_match.group(2))
 
         # Validate timestamps
         if start_time < 0.0:
@@ -74,10 +78,14 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
             logger.warning(f"Malformed timestamp in text (invalid_duration): {text[:50]}...")
             return (None, None, text)
 
-        # Remove timestamp marker from text (preserve trailing whitespace)
-        cleaned_text = text[match.end() :]
+        # Remove ALL timestamp markers from text
+        cleaned_text = re.sub(pattern, "", text)
+        # Clean up multiple spaces left by removal
+        cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
 
-        logger.debug(f"Extracted timestamp: {start_time:.2f}-{end_time:.2f}")
+        logger.debug(
+            f"Extracted timestamp: {start_time:.2f}-{end_time:.2f} (from {len(matches)} markers)"
+        )
         return (start_time, end_time, cleaned_text)
 
     except (ValueError, IndexError) as e:
