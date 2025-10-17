@@ -333,7 +333,10 @@ class DocumentProcessor:
 
                         logger.info(f"Generating VTT for audio file: {filename}")
 
-                        vtt_content = generate_vtt(parsed_doc.text_chunks, filename)
+                        # Pass pages to enable fine-grained caption extraction
+                        vtt_content = generate_vtt(
+                            parsed_doc.text_chunks, filename, pages=parsed_doc.pages
+                        )
                         vtt_path = save_vtt(doc_id, vtt_content)
 
                         # Store VTT path in metadata

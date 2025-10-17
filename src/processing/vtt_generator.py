@@ -6,6 +6,7 @@ with word-level timestamps. VTT files are used for displaying captions/subtitles
 in HTML5 audio/video players.
 
 Wave 1 - Integration Contract IC-002
+Wave 2 - Enhanced with fine-grained caption extraction from [time: X-Y] markers
 """
 
 import logging
@@ -13,7 +14,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from .types import TextChunk
+from .types import Page, TextChunk
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,47 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
 
 
+def extract_all_timestamp_markers(text: str) -> List[tuple]:
+    """
+    Extract ALL [time: X-Y] markers and their associated text from transcript.
+
+    Args:
+        text: Original transcript text with [time: X-Y] markers
+
+    Returns:
+        List of (start_time, end_time, caption_text) tuples
+
+    Example:
+        >>> text = "[time: 0.5-3.2] Hello. [time: 3.2-5.0] World."
+        >>> extract_all_timestamp_markers(text)
+        [(0.5, 3.2, "Hello."), (3.2, 5.0, "World.")]
+    """
+    captions = []
+
+    # Pattern to match [time: X-Y] followed by text until next marker or end
+    # Captures: (start_time)-(end_time) and text until next [time: or end of string
+    pattern = r"\[time:\s*([\d.]+)-([\d.]+)\]\s*([^\[]+?)(?=\[time:|$)"
+
+    matches = re.finditer(pattern, text, re.DOTALL)
+
+    for match in matches:
+        try:
+            start_time = float(match.group(1))
+            end_time = float(match.group(2))
+            caption_text = match.group(3).strip()
+
+            # Validate
+            if start_time < 0 or end_time <= start_time or not caption_text:
+                continue
+
+            captions.append((start_time, end_time, caption_text))
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Failed to parse timestamp marker: {e}")
+            continue
+
+    return captions
+
+
 def validate_vtt(vtt_content: str) -> bool:
     """
     Validate VTT content format.
@@ -88,13 +130,17 @@ def validate_vtt(vtt_content: str) -> bool:
     return has_timestamp
 
 
-def generate_vtt(chunks: List[TextChunk], filename: str) -> str:
+def generate_vtt(chunks: List[TextChunk], filename: str, pages: Optional[List[Page]] = None) -> str:
     """
     Generate WebVTT content from text chunks with timestamps.
+
+    Wave 2: If pages provided (audio), extracts ALL [time: X-Y] markers for
+    fine-grained captions. Otherwise falls back to chunk-level timestamps.
 
     Args:
         chunks: List of TextChunk objects with start_time/end_time
         filename: Original filename (for metadata comment)
+        pages: Optional list of Page objects with original transcript text
 
     Returns:
         Complete VTT file content as string
@@ -121,45 +167,64 @@ def generate_vtt(chunks: List[TextChunk], filename: str) -> str:
         vtt_lines.append(f"NOTE Generated from {filename}")
         vtt_lines.append("")
 
-        # 3. Filter chunks with timestamps
-        timestamped_chunks = [
-            c for c in chunks if c.start_time is not None and c.end_time is not None
-        ]
+        # 3. Determine caption source: fine-grained (pages) or chunk-level
+        captions = []
 
-        if not timestamped_chunks:
-            raise EmptyChunkError(f"No chunks with timestamps in {filename}")
+        if pages and len(pages) > 0:
+            # Wave 2: Extract ALL [time: X-Y] markers from original transcript
+            logger.info("Extracting fine-grained captions from transcript markers")
 
-        logger.info(
-            f"Generating VTT from {len(timestamped_chunks)}/{len(chunks)} chunks "
-            f"with timestamps"
-        )
+            # For audio, original transcript is in pages[0].text
+            original_text = pages[0].text
 
-        # 4. Generate cues
+            # Extract all timestamp markers and their text
+            captions = extract_all_timestamp_markers(original_text)
+
+            if not captions:
+                logger.warning("No timestamp markers found in transcript, falling back to chunks")
+
+        # Fallback: Use chunk-level timestamps if no fine-grained captions
+        if not captions:
+            logger.info("Using chunk-level timestamps for VTT generation")
+            timestamped_chunks = [
+                c for c in chunks if c.start_time is not None and c.end_time is not None
+            ]
+
+            if not timestamped_chunks:
+                raise EmptyChunkError(f"No chunks with timestamps in {filename}")
+
+            # Convert chunks to caption tuples
+            for chunk in timestamped_chunks:
+                captions.append((chunk.start_time, chunk.end_time, chunk.text))
+
+        logger.info(f"Generating VTT from {len(captions)} captions")
+
+        # 4. Generate cues from captions
         cue_number = 1
-        for chunk in timestamped_chunks:
-            # Validate text first (before adding any lines)
-            text = chunk.text.strip()
+        for start_time, end_time, text in captions:
+            # Validate text first
+            text = text.strip()
             if not text:
-                logger.warning(f"Skipping chunk {chunk.chunk_id}: empty text")
+                logger.warning(f"Skipping caption {cue_number}: empty text")
                 continue
 
             # Validate timestamps
-            if chunk.end_time <= chunk.start_time:
+            if end_time <= start_time:
                 logger.warning(
-                    f"Skipping chunk {chunk.chunk_id}: invalid timestamps "
-                    f"(start={chunk.start_time}, end={chunk.end_time})"
+                    f"Skipping caption {cue_number}: invalid timestamps "
+                    f"(start={start_time}, end={end_time})"
                 )
                 continue
 
             # Format timestamps
             try:
-                start = format_timestamp(chunk.start_time)
-                end = format_timestamp(chunk.end_time)
+                start = format_timestamp(start_time)
+                end = format_timestamp(end_time)
             except InvalidTimestampError as e:
-                logger.warning(f"Skipping chunk {chunk.chunk_id}: {e}")
+                logger.warning(f"Skipping caption {cue_number}: {e}")
                 continue
 
-            # Now add the cue (only if all validations pass)
+            # Add the cue
             # Cue identifier (optional but recommended)
             vtt_lines.append(str(cue_number))
             cue_number += 1

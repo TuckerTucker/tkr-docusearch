@@ -105,15 +105,24 @@ class SmartChunker:
                 # Determine primary page
                 page_num = context.page_nums[0] if context.page_nums else 1
 
+                # Extract timestamps from text (audio only)
+                from src.processing.text_processor import extract_timestamps_from_text
+
+                start_time, end_time, cleaned_text = extract_timestamps_from_text(base_chunk.text)
+                if start_time is not None:
+                    logger.info(f"[SMART CHUNKER] Extracted {start_time}-{end_time} from chunk")
+
                 # Create enhanced TextChunk
                 chunk = TextChunk(
                     chunk_id=f"{doc_id}-chunk{idx:04d}",
                     page_num=page_num,
-                    text=base_chunk.text,
+                    text=cleaned_text,  # Use cleaned text without [time: X-Y] markers
                     start_offset=0,  # HybridChunker doesn't provide char offsets
-                    end_offset=len(base_chunk.text),
-                    word_count=len(base_chunk.text.split()),
+                    end_offset=len(cleaned_text),
+                    word_count=len(cleaned_text.split()),
                     context=context,
+                    start_time=start_time,  # Extracted timestamp or None
+                    end_time=end_time,  # Extracted timestamp or None
                 )
                 chunks.append(chunk)
 
