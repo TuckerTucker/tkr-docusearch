@@ -12,7 +12,8 @@ Usage:
 
 import logging
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class MockEmbeddingEngine:
         model_name: str = "nomic-ai/colnomic-embed-multimodal-7b",
         device: str = "mps",
         embedding_dim: int = 768,
-        simulate_latency: bool = True
+        simulate_latency: bool = True,
     ):
         """
         Initialize mock embedding engine.
@@ -50,8 +51,7 @@ class MockEmbeddingEngine:
         self.is_loaded = True
 
         logger.info(
-            f"Initialized MockEmbeddingEngine (dim={embedding_dim}, "
-            f"latency={simulate_latency})"
+            f"Initialized MockEmbeddingEngine (dim={embedding_dim}, " f"latency={simulate_latency})"
         )
 
     def embed_query(self, query: str) -> Dict[str, Any]:
@@ -103,14 +103,14 @@ class MockEmbeddingEngine:
             "cls_token": cls_token,
             "seq_length": seq_length,
             "input_type": "text",
-            "processing_time_ms": processing_time
+            "processing_time_ms": processing_time,
         }
 
     def score_multi_vector(
         self,
         query_embeddings: np.ndarray,
         document_embeddings: List[np.ndarray],
-        use_gpu: bool = True
+        use_gpu: bool = True,
     ) -> Dict[str, Any]:
         """
         Mock late interaction scoring using MaxSim algorithm.
@@ -158,7 +158,7 @@ class MockEmbeddingEngine:
         return {
             "scores": scores,
             "scoring_time_ms": scoring_time,
-            "num_candidates": len(document_embeddings)
+            "num_candidates": len(document_embeddings),
         }
 
     def _maxsim_score(self, query_emb: np.ndarray, doc_emb: np.ndarray) -> float:
@@ -198,7 +198,7 @@ class MockEmbeddingEngine:
             "memory_allocated_mb": 0.0,
             "is_loaded": self.is_loaded,
             "cache_dir": "/models",
-            "is_mock": True
+            "is_mock": True,
         }
 
 
@@ -217,7 +217,7 @@ class MockStorageClient:
         port: int = 8000,
         visual_collection: str = "visual_collection",
         text_collection: str = "text_collection",
-        simulate_latency: bool = True
+        simulate_latency: bool = True,
     ):
         """
         Initialize mock storage client.
@@ -256,7 +256,7 @@ class MockStorageClient:
             "Product-Roadmap.pdf",
             "Legal-Contract.pdf",
             "Marketing-Report.pdf",
-            "Technical-Specs.pdf"
+            "Technical-Specs.pdf",
         ]
 
         for i, (doc_id, filename) in enumerate(zip(doc_ids, filenames)):
@@ -279,8 +279,8 @@ class MockStorageClient:
                         "embedding_shape": f"({seq_length}, 768)",
                         "timestamp": "2023-10-06T15:30:00Z",
                         "source_path": f"/data/uploads/{filename}",
-                        "file_size": 1024 * (i + 1) * 100
-                    }
+                        "file_size": 1024 * (i + 1) * 100,
+                    },
                 }
 
             # Text embeddings (10 chunks per document)
@@ -305,8 +305,8 @@ class MockStorageClient:
                         "text_preview": f"Sample text from {filename} chunk {chunk_id}...",
                         "word_count": 250,
                         "timestamp": "2023-10-06T15:30:00Z",
-                        "source_path": f"/data/uploads/{filename}"
-                    }
+                        "source_path": f"/data/uploads/{filename}",
+                    },
                 }
 
     def _generate_mock_embedding(self, seq_length: int, seed: int = None) -> np.ndarray:
@@ -325,7 +325,7 @@ class MockStorageClient:
         self,
         query_embedding: np.ndarray,
         n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Mock Stage 1 search: Fast retrieval using representative vectors.
@@ -353,13 +353,15 @@ class MockStorageClient:
             # Compute cosine similarity with representative vector
             score = self._cosine_similarity(query_embedding, data["representative_vector"])
 
-            candidates.append({
-                "id": emb_id,
-                "score": float(score),
-                "metadata": data["metadata"],
-                "representative_vector": data["representative_vector"].tolist(),
-                "full_embeddings": data["embeddings"]  # Include for Stage 2
-            })
+            candidates.append(
+                {
+                    "id": emb_id,
+                    "score": float(score),
+                    "metadata": data["metadata"],
+                    "representative_vector": data["representative_vector"].tolist(),
+                    "full_embeddings": data["embeddings"],  # Include for Stage 2
+                }
+            )
 
         # Sort by score and return top-n
         candidates.sort(key=lambda x: x["score"], reverse=True)
@@ -369,14 +371,16 @@ class MockStorageClient:
         if self.simulate_latency:
             time.sleep(0.1)
 
-        logger.debug(f"Visual search returned {len(results)} results in {(time.time()-start_time)*1000:.1f}ms")
+        logger.debug(
+            f"Visual search returned {len(results)} results in {(time.time()-start_time)*1000:.1f}ms"
+        )
         return results
 
     def search_text(
         self,
         query_embedding: np.ndarray,
         n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Mock Stage 1 search for text collection."""
         start_time = time.time()
@@ -394,13 +398,15 @@ class MockStorageClient:
             # Compute cosine similarity with representative vector
             score = self._cosine_similarity(query_embedding, data["representative_vector"])
 
-            candidates.append({
-                "id": emb_id,
-                "score": float(score),
-                "metadata": data["metadata"],
-                "representative_vector": data["representative_vector"].tolist(),
-                "full_embeddings": data["embeddings"]  # Include for Stage 2
-            })
+            candidates.append(
+                {
+                    "id": emb_id,
+                    "score": float(score),
+                    "metadata": data["metadata"],
+                    "representative_vector": data["representative_vector"].tolist(),
+                    "full_embeddings": data["embeddings"],  # Include for Stage 2
+                }
+            )
 
         # Sort by score and return top-n
         candidates.sort(key=lambda x: x["score"], reverse=True)
@@ -410,7 +416,9 @@ class MockStorageClient:
         if self.simulate_latency:
             time.sleep(0.1)
 
-        logger.debug(f"Text search returned {len(results)} results in {(time.time()-start_time)*1000:.1f}ms")
+        logger.debug(
+            f"Text search returned {len(results)} results in {(time.time()-start_time)*1000:.1f}ms"
+        )
         return results
 
     def _matches_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
@@ -448,5 +456,5 @@ class MockStorageClient:
             "text_count": len(self._text_store),
             "total_documents": len(unique_docs),
             "storage_size_mb": 0.0,
-            "is_mock": True
+            "is_mock": True,
         }

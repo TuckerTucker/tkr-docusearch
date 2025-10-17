@@ -6,7 +6,8 @@ circular imports.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from PIL import Image
 
 from src.storage.metadata_schema import ChunkContext
@@ -59,7 +60,7 @@ class TextChunk:
     word_count: int
     context: Optional[ChunkContext] = None
     start_time: Optional[float] = None  # Seconds from start (audio only)
-    end_time: Optional[float] = None    # Seconds from start (audio only)
+    end_time: Optional[float] = None  # Seconds from start (audio only)
 
 
 @dataclass

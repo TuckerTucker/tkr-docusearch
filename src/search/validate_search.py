@@ -9,17 +9,16 @@ Usage:
     python3 src/search/validate_search.py
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 
 # Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,7 @@ def test_basic_search():
 
     # Test hybrid search
     response = engine.search(
-        query="quarterly revenue growth",
-        n_results=10,
-        search_mode="hybrid",
-        enable_reranking=True
+        query="quarterly revenue growth", n_results=10, search_mode="hybrid", enable_reranking=True
     )
 
     # Validate response
@@ -92,16 +88,10 @@ def test_filters():
     engine = SearchEngine(storage, embedding)
 
     # Filter by filename
-    response = engine.search(
-        query="test",
-        filters={"filename": "Q3-2023-Earnings.pdf"}
-    )
+    response = engine.search(query="test", filters={"filename": "Q3-2023-Earnings.pdf"})
 
     if response["results"]:
-        assert all(
-            r["filename"] == "Q3-2023-Earnings.pdf"
-            for r in response["results"]
-        )
+        assert all(r["filename"] == "Q3-2023-Earnings.pdf" for r in response["results"])
         logger.info(f"✓ Filename filter: {len(response['results'])} results")
     else:
         logger.info("✓ Filename filter: 0 results (valid)")
@@ -126,6 +116,7 @@ def test_mock_contracts():
     # Test MockStorageClient
     storage = MockStorageClient()
     import numpy as np
+
     query_emb = np.random.randn(768).astype(np.float32)
 
     visual_results = storage.search_visual(query_emb, n_results=10)
@@ -146,21 +137,14 @@ def test_two_stage_pipeline():
     engine = SearchEngine(storage, embedding)
 
     # With re-ranking
-    response_with = engine.search(
-        query="test",
-        enable_reranking=True,
-        rerank_candidates=50
-    )
+    response_with = engine.search(query="test", enable_reranking=True, rerank_candidates=50)
 
     assert response_with["reranked_count"] > 0
     assert response_with["stage2_time_ms"] > 0
     logger.info("✓ Stage 2 re-ranking enabled")
 
     # Without re-ranking
-    response_without = engine.search(
-        query="test",
-        enable_reranking=False
-    )
+    response_without = engine.search(query="test", enable_reranking=False)
 
     assert response_without["reranked_count"] == 0
     assert response_without["stage2_time_ms"] == 0

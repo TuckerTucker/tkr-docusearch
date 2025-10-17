@@ -5,30 +5,28 @@ This module provides compression and decompression for storing large
 multi-vector embeddings in ChromaDB metadata fields (max 2MB per entry).
 """
 
-import gzip
 import base64
+import gzip
 import json
-import numpy as np
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
+import numpy as np
 
 # ============================================================================
 # Exception Classes
 # ============================================================================
 
+
 class CompressionError(Exception):
     """Base exception for compression operations."""
-    pass
 
 
 class MarkdownTooLargeError(CompressionError):
     """Markdown exceeds size limit."""
-    pass
 
 
 class CorruptedDataError(CompressionError):
     """Compressed data is corrupted."""
-    pass
 
 
 def compress_embeddings(embeddings: np.ndarray) -> str:
@@ -55,15 +53,13 @@ def compress_embeddings(embeddings: np.ndarray) -> str:
     compressed_bytes = gzip.compress(embeddings_bytes, compresslevel=6)
 
     # Encode as base64 string
-    encoded = base64.b64encode(compressed_bytes).decode('utf-8')
+    encoded = base64.b64encode(compressed_bytes).decode("utf-8")
 
     return encoded
 
 
 def decompress_embeddings(
-    compressed_str: str,
-    shape: Tuple[int, int],
-    dtype: np.dtype = np.float32
+    compressed_str: str, shape: Tuple[int, int], dtype: np.dtype = np.float32
 ) -> np.ndarray:
     """Decompress embeddings from base64 + gzip format.
 
@@ -83,7 +79,7 @@ def decompress_embeddings(
         True
     """
     # Decode from base64
-    compressed_bytes = base64.b64decode(compressed_str.encode('utf-8'))
+    compressed_bytes = base64.b64decode(compressed_str.encode("utf-8"))
 
     # Decompress with gzip
     embeddings_bytes = gzip.decompress(compressed_bytes)
@@ -107,7 +103,7 @@ def estimate_compressed_size(embeddings: np.ndarray) -> int:
         Estimated compressed size in bytes
     """
     compressed = compress_embeddings(embeddings)
-    return len(compressed.encode('utf-8'))
+    return len(compressed.encode("utf-8"))
 
 
 def compression_ratio(embeddings: np.ndarray) -> float:
@@ -154,14 +150,14 @@ def compress_structure_metadata(metadata_dict: Dict[str, Any]) -> str:
         True
     """
     # Convert dict to JSON string
-    json_str = json.dumps(metadata_dict, separators=(',', ':'))  # Compact JSON
-    json_bytes = json_str.encode('utf-8')
+    json_str = json.dumps(metadata_dict, separators=(",", ":"))  # Compact JSON
+    json_bytes = json_str.encode("utf-8")
 
     # Compress with gzip
     compressed_bytes = gzip.compress(json_bytes, compresslevel=6)
 
     # Encode as base64
-    encoded = base64.b64encode(compressed_bytes).decode('utf-8')
+    encoded = base64.b64encode(compressed_bytes).decode("utf-8")
 
     return encoded
 
@@ -184,13 +180,13 @@ def decompress_structure_metadata(compressed_str: str) -> Dict[str, Any]:
         True
     """
     # Decode from base64
-    compressed_bytes = base64.b64decode(compressed_str.encode('utf-8'))
+    compressed_bytes = base64.b64decode(compressed_str.encode("utf-8"))
 
     # Decompress with gzip
     json_bytes = gzip.decompress(compressed_bytes)
 
     # Parse JSON
-    json_str = json_bytes.decode('utf-8')
+    json_str = json_bytes.decode("utf-8")
     metadata_dict = json.loads(json_str)
 
     return metadata_dict
@@ -229,10 +225,10 @@ def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
             sanitized[key] = value
         # Convert lists to JSON string
         elif isinstance(value, list):
-            sanitized[key] = json.dumps(value, separators=(',', ':'))
+            sanitized[key] = json.dumps(value, separators=(",", ":"))
         # Convert dicts to JSON string
         elif isinstance(value, dict):
-            sanitized[key] = json.dumps(value, separators=(',', ':'))
+            sanitized[key] = json.dumps(value, separators=(",", ":"))
         # Convert other types to string representation
         else:
             sanitized[key] = str(value)
@@ -243,6 +239,7 @@ def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
 # ============================================================================
 # Markdown Compression
 # ============================================================================
+
 
 def compress_markdown(markdown: str) -> str:
     """Compress markdown text for efficient storage.
@@ -270,20 +267,18 @@ def compress_markdown(markdown: str) -> str:
         True
     """
     # Check size limit (10MB)
-    markdown_bytes = markdown.encode('utf-8')
+    markdown_bytes = markdown.encode("utf-8")
     size_mb = len(markdown_bytes) / (1024 * 1024)
 
     if size_mb > 10.0:
-        raise MarkdownTooLargeError(
-            f"Markdown size {size_mb:.2f}MB exceeds limit of 10MB"
-        )
+        raise MarkdownTooLargeError(f"Markdown size {size_mb:.2f}MB exceeds limit of 10MB")
 
     try:
         # Compress with gzip (level 6 balances speed and compression)
         compressed_bytes = gzip.compress(markdown_bytes, compresslevel=6)
 
         # Encode as base64 string
-        encoded = base64.b64encode(compressed_bytes).decode('utf-8')
+        encoded = base64.b64encode(compressed_bytes).decode("utf-8")
 
         return encoded
 
@@ -313,7 +308,7 @@ def decompress_markdown(compressed: str) -> str:
     """
     try:
         # Decode from base64
-        compressed_bytes = base64.b64decode(compressed.encode('utf-8'))
+        compressed_bytes = base64.b64decode(compressed.encode("utf-8"))
 
         # Decompress with gzip
         markdown_bytes = gzip.decompress(compressed_bytes)
@@ -326,7 +321,7 @@ def decompress_markdown(compressed: str) -> str:
             )
 
         # Decode to string
-        markdown = markdown_bytes.decode('utf-8')
+        markdown = markdown_bytes.decode("utf-8")
 
         return markdown
 

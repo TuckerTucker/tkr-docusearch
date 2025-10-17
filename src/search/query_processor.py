@@ -11,7 +11,8 @@ Usage:
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -39,9 +40,7 @@ class QueryProcessor:
         self.embedding_engine = embedding_engine
         self.max_query_length = max_query_length
 
-        logger.info(
-            f"Initialized QueryProcessor (max_length={max_query_length})"
-        )
+        logger.info(f"Initialized QueryProcessor (max_length={max_query_length})")
 
     def process_query(self, query: str) -> Dict[str, Any]:
         """
@@ -79,7 +78,7 @@ class QueryProcessor:
                 "embeddings": embedding_output["embeddings"],
                 "cls_token": embedding_output["cls_token"],
                 "seq_length": embedding_output["seq_length"],
-                "processing_time_ms": embedding_output["processing_time_ms"]
+                "processing_time_ms": embedding_output["processing_time_ms"],
             }
 
         except Exception as e:
@@ -141,7 +140,7 @@ class QueryProcessor:
                 f"Query exceeds {self.max_query_length} words, truncating from "
                 f"{len(words)} words"
             )
-            query = " ".join(words[:self.max_query_length])
+            query = " ".join(words[: self.max_query_length])
 
         return query
 
@@ -160,16 +159,12 @@ class QueryProcessor:
             ValueError: If embedding is invalid
         """
         if embeddings.ndim != 2:
-            raise ValueError(
-                f"Embeddings must be 2D array, got shape {embeddings.shape}"
-            )
+            raise ValueError(f"Embeddings must be 2D array, got shape {embeddings.shape}")
 
         seq_length, dim = embeddings.shape
 
         if dim != expected_dim:
-            raise ValueError(
-                f"Embeddings must have dimension {expected_dim}, got {dim}"
-            )
+            raise ValueError(f"Embeddings must have dimension {expected_dim}, got {dim}")
 
         if seq_length == 0:
             raise ValueError("Embeddings cannot have zero sequence length")
@@ -182,4 +177,3 @@ class QueryProcessor:
 
 class QueryProcessingError(Exception):
     """Exception raised when query processing fails."""
-    pass

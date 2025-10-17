@@ -10,15 +10,11 @@ Contract: status-api.contract.md
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
 
-from .status_models import (
-    ProcessingStatus,
-    QueueResponse,
-    ErrorResponse,
-)
+from fastapi import APIRouter, HTTPException, Query
+
 from .status_manager import StatusManager
+from .status_models import ErrorResponse, ProcessingStatus, QueueResponse
 
 logger = logging.getLogger(__name__)
 

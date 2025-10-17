@@ -10,6 +10,7 @@ contracts exactly as specified in:
 
 import sys
 from pathlib import Path
+
 import numpy as np
 from PIL import Image
 
@@ -17,12 +18,12 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from processing import (
+    BatchEmbeddingOutput,
     DocumentProcessor,
     MockEmbeddingEngine,
     MockStorageClient,
-    BatchEmbeddingOutput,
     ProcessingStatus,
-    StorageConfirmation
+    StorageConfirmation,
 )
 
 
@@ -37,7 +38,7 @@ def validate_embedding_interface():
 
     # Validate embed_images
     print("\n[1] Testing embed_images()...")
-    images = [Image.new('RGB', (1024, 1024)) for _ in range(3)]
+    images = [Image.new("RGB", (1024, 1024)) for _ in range(3)]
     result = engine.embed_images(images, batch_size=4)
 
     assert isinstance(result, BatchEmbeddingOutput), "Wrong return type"
@@ -63,7 +64,7 @@ def validate_embedding_interface():
     print("\n[2] Testing embed_texts()...")
     texts = [
         "This is a sample text chunk with approximately 250 words. " * 30,
-        "Another chunk with different content. " * 25
+        "Another chunk with different content. " * 25,
     ]
     result = engine.embed_texts(texts, batch_size=8)
 
@@ -86,8 +87,14 @@ def validate_embedding_interface():
     info = engine.get_model_info()
 
     required_fields = [
-        "model_name", "device", "dtype", "quantization",
-        "memory_allocated_mb", "is_loaded", "cache_dir", "mock"
+        "model_name",
+        "device",
+        "dtype",
+        "quantization",
+        "memory_allocated_mb",
+        "is_loaded",
+        "cache_dir",
+        "mock",
     ]
     for field in required_fields:
         assert field in info, f"Missing field: {field}"
@@ -112,24 +119,17 @@ def validate_storage_interface():
         host="chromadb",
         port=8000,
         visual_collection="visual_collection",
-        text_collection="text_collection"
+        text_collection="text_collection",
     )
     print(f"✓ Client initialized: {client.host}:{client.port}")
 
     # Validate add_visual_embedding
     print("\n[1] Testing add_visual_embedding()...")
     visual_emb = np.random.randn(100, 768).astype(np.float32)
-    metadata = {
-        "filename": "test.pdf",
-        "page": 1,
-        "source_path": "/uploads/test.pdf"
-    }
+    metadata = {"filename": "test.pdf", "page": 1, "source_path": "/uploads/test.pdf"}
 
     embedding_id = client.add_visual_embedding(
-        doc_id="test-doc-123",
-        page=1,
-        full_embeddings=visual_emb,
-        metadata=metadata
+        doc_id="test-doc-123", page=1, full_embeddings=visual_emb, metadata=metadata
     )
 
     assert embedding_id == "test-doc-123-page001", "Wrong ID format"
@@ -144,14 +144,11 @@ def validate_storage_interface():
         "chunk_id": 0,
         "page": 1,
         "text_preview": "Sample text preview...",
-        "word_count": 250
+        "word_count": 250,
     }
 
     embedding_id = client.add_text_embedding(
-        doc_id="test-doc-123",
-        chunk_id=0,
-        full_embeddings=text_emb,
-        metadata=metadata
+        doc_id="test-doc-123", chunk_id=0, full_embeddings=text_emb, metadata=metadata
     )
 
     assert embedding_id == "test-doc-123-chunk0000", "Wrong ID format"
@@ -162,10 +159,7 @@ def validate_storage_interface():
     print("\n[3] Testing get_collection_stats()...")
     stats = client.get_collection_stats()
 
-    required_fields = [
-        "visual_count", "text_count", "total_documents",
-        "storage_size_mb", "mock"
-    ]
+    required_fields = ["visual_count", "text_count", "total_documents", "storage_size_mb", "mock"]
     for field in required_fields:
         assert field in stats, f"Missing field: {field}"
 
@@ -188,16 +182,10 @@ def validate_storage_interface():
     # Validate get_full_embeddings
     print("\n[5] Testing get_full_embeddings()...")
     client.add_visual_embedding(
-        doc_id="test-doc-456",
-        page=1,
-        full_embeddings=visual_emb,
-        metadata={}
+        doc_id="test-doc-456", page=1, full_embeddings=visual_emb, metadata={}
     )
 
-    retrieved = client.get_full_embeddings(
-        embedding_id="test-doc-456-page001",
-        collection="visual"
-    )
+    retrieved = client.get_full_embeddings(embedding_id="test-doc-456-page001", collection="visual")
 
     assert np.array_equal(visual_emb, retrieved), "Embeddings don't match"
     print(f"  ✓ Retrieved embeddings match original")
@@ -233,16 +221,13 @@ def validate_processing_interface():
         storage_client=storage,
         parser_config={"render_dpi": 150},
         visual_batch_size=4,
-        text_batch_size=8
+        text_batch_size=8,
     )
 
     print("✓ DocumentProcessor initialized")
 
     # Validate data structures exist
     print("\n[1] Validating data structures...")
-    from processing.docling_parser import ParsedDocument, Page, TextChunk
-    from processing.visual_processor import VisualEmbeddingResult
-    from processing.text_processor import TextEmbeddingResult
 
     print("  ✓ ParsedDocument")
     print("  ✓ Page")
@@ -259,13 +244,21 @@ def validate_processing_interface():
         filename="test.pdf",
         status="parsing",
         progress=0.1,
-        stage="Parsing document"
+        stage="Parsing document",
     )
 
     required_fields = [
-        "doc_id", "filename", "status", "progress", "stage",
-        "current_page", "total_pages", "elapsed_seconds",
-        "estimated_remaining_seconds", "error_message", "timestamp"
+        "doc_id",
+        "filename",
+        "status",
+        "progress",
+        "stage",
+        "current_page",
+        "total_pages",
+        "elapsed_seconds",
+        "estimated_remaining_seconds",
+        "error_message",
+        "timestamp",
     ]
     for field in required_fields:
         assert hasattr(status, field), f"Missing field: {field}"
@@ -279,7 +272,7 @@ def validate_processing_interface():
         visual_ids=["test-123-page001"],
         text_ids=["test-123-chunk0000"],
         total_size_bytes=1024,
-        timestamp="2025-10-06T00:00:00Z"
+        timestamp="2025-10-06T00:00:00Z",
     )
 
     required_fields = ["doc_id", "visual_ids", "text_ids", "total_size_bytes", "timestamp"]
@@ -290,8 +283,6 @@ def validate_processing_interface():
 
     # Validate error classes exist
     print("\n[4] Validating error classes...")
-    from processing import ProcessingError, EmbeddingError, StorageError
-    from processing.docling_parser import ParsingError
 
     print("  ✓ ProcessingError")
     print("  ✓ ParsingError")
@@ -362,6 +353,7 @@ def main():
     except Exception as e:
         print(f"\n❌ UNEXPECTED ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

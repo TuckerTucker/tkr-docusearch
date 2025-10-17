@@ -30,7 +30,7 @@
   --secondary: oklch(0.8846 0.0302 85.5655);
   --secondary-foreground: oklch(0.4313 0.0300 64.9288);
   --muted: oklch(0.9239 0.0190 83.0636);
-  --muted-foreground: oklch(0.5391 0.0387 71.1655);
+  --muted-foreground: oklch(0.4700 0.0350 71.1655);
   --accent: oklch(0.8348 0.0426 88.8064);
   --accent-foreground: oklch(0.3760 0.0225 64.3434);
   --destructive: oklch(0.5471 0.1438 32.9149);
@@ -59,7 +59,7 @@
   --color-border-focus: var(--ring);
   --color-text-primary: var(--foreground);
   --color-text-secondary: var(--muted-foreground);
-  --color-text-tertiary: oklch(0.6391 0.0487 71.1655);
+  --color-text-tertiary: oklch(0.5400 0.0400 71.1655);
   --color-success: var(--success);
   --color-success-light: oklch(0.85 0.08 145);
   --color-warning: var(--warning);
@@ -1369,4 +1369,79 @@ body {
 /* Dark mode support (future enhancement) */
 @media (prefers-color-scheme: dark) {
   /* Will be implemented in future iteration */
+}
+
+/* ============================================
+   Upload Modal - Keyboard Accessible File Input
+   ============================================ */
+
+/* Hide the default file input visually but keep it accessible */
+.upload-modal__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Style the label as a button */
+.upload-modal__file-button {
+  display: inline-block;
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-6);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary);
+  background-color: var(--color-bg-surface);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.upload-modal__file-button:hover {
+  color: var(--primary-foreground);
+  background-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.upload-modal__file-button:active {
+  transform: translateY(0);
+}
+
+/* Focus styles for keyboard navigation (WCAG 2.1 AA compliance) */
+.upload-modal__file-input:focus + .upload-modal__file-button {
+  outline: 3px solid var(--color-border-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Dark mode adjustments */
+.dark .upload-modal__file-button {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: var(--card);
+}
+
+.dark .upload-modal__file-button:hover {
+  color: var(--primary-foreground);
+  background-color: var(--primary);
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+  .upload-modal__file-button {
+    border-width: 3px;
+  }
+
+  .upload-modal__file-input:focus + .upload-modal__file-button {
+    outline-width: 4px;
+  }
 }

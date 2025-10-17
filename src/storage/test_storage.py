@@ -13,36 +13,35 @@ Tests cover:
 - Collection management
 """
 
-import pytest
+from unittest.mock import Mock, patch
+
 import numpy as np
-from unittest.mock import Mock, MagicMock, patch, call
-from datetime import datetime
+import pytest
 
 from .chroma_client import (
     ChromaClient,
-    StorageError,
     ChromaDBConnectionError,
+    DocumentNotFoundError,
     EmbeddingValidationError,
     MetadataCompressionError,
-    DocumentNotFoundError,
 )
 from .collection_manager import CollectionManager
 from .compression import (
     compress_embeddings,
+    compression_ratio,
     decompress_embeddings,
     estimate_compressed_size,
-    compression_ratio,
 )
-
 
 # ============================================================================
 # Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_chroma_client():
     """Mock ChromaDB HttpClient."""
-    with patch('chromadb.HttpClient') as mock:
+    with patch("chromadb.HttpClient") as mock:
         client = mock.return_value
         client.heartbeat.return_value = None
         yield mock
@@ -54,12 +53,12 @@ def mock_collection():
     collection = Mock()
     collection.count.return_value = 0
     collection.add.return_value = None
-    collection.get.return_value = {'ids': [], 'metadatas': [], 'embeddings': []}
+    collection.get.return_value = {"ids": [], "metadatas": [], "embeddings": []}
     collection.query.return_value = {
-        'ids': [[]],
-        'distances': [[]],
-        'metadatas': [[]],
-        'embeddings': [[]]
+        "ids": [[]],
+        "distances": [[]],
+        "metadatas": [[]],
+        "embeddings": [[]],
     }
     collection.delete.return_value = None
     return collection
@@ -68,7 +67,7 @@ def mock_collection():
 @pytest.fixture
 def chroma_client(mock_chroma_client, mock_collection):
     """Initialize ChromaClient with mocked dependencies."""
-    with patch.object(ChromaClient, '_get_or_create_collection', return_value=mock_collection):
+    with patch.object(ChromaClient, "_get_or_create_collection", return_value=mock_collection):
         client = ChromaClient(host="localhost", port=8000)
         return client
 
@@ -76,11 +75,7 @@ def chroma_client(mock_chroma_client, mock_collection):
 @pytest.fixture
 def sample_visual_metadata():
     """Sample visual embedding metadata."""
-    return {
-        "filename": "test.pdf",
-        "source_path": "/data/test.pdf",
-        "file_size": 1024000
-    }
+    return {"filename": "test.pdf", "source_path": "/data/test.pdf", "file_size": 1024000}
 
 
 @pytest.fixture
@@ -91,7 +86,7 @@ def sample_text_metadata():
         "page": 1,
         "source_path": "/data/test.pdf",
         "text_preview": "This is a test document preview...",
-        "word_count": 150
+        "word_count": 150,
     }
 
 
@@ -104,6 +99,7 @@ def sample_embeddings():
 # ============================================================================
 # Compression Tests
 # ============================================================================
+
 
 class TestCompression:
     """Test compression utilities."""
@@ -163,12 +159,13 @@ class TestCompression:
 # ChromaClient Initialization Tests
 # ============================================================================
 
+
 class TestChromaClientInit:
     """Test ChromaClient initialization."""
 
     def test_successful_connection(self, mock_chroma_client, mock_collection):
         """Test successful ChromaDB connection."""
-        with patch.object(ChromaClient, '_get_or_create_collection', return_value=mock_collection):
+        with patch.object(ChromaClient, "_get_or_create_collection", return_value=mock_collection):
             client = ChromaClient(host="localhost", port=8000)
 
             assert client.host == "localhost"
@@ -191,7 +188,7 @@ class TestChromaClientInit:
         mock_collection = Mock()
         mock_client.create_collection.return_value = mock_collection
 
-        client = ChromaClient()
+        ChromaClient()
 
         # Should attempt to create both collections
         assert mock_client.create_collection.call_count == 2
@@ -201,14 +198,12 @@ class TestChromaClientInit:
 # Embedding Storage Tests
 # ============================================================================
 
+
 class TestEmbeddingStorage:
     """Test embedding storage operations."""
 
     def test_add_visual_embedding_success(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata
     ):
         """Test successful visual embedding storage."""
         doc_id = "test-doc-123"
@@ -218,17 +213,14 @@ class TestEmbeddingStorage:
             doc_id=doc_id,
             page=page,
             full_embeddings=sample_embeddings,
-            metadata=sample_visual_metadata
+            metadata=sample_visual_metadata,
         )
 
         assert embedding_id == f"{doc_id}-page{page:03d}"
         assert chroma_client._visual_collection.add.called
 
     def test_add_text_embedding_success(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_text_metadata
+        self, chroma_client, sample_embeddings, sample_text_metadata
     ):
         """Test successful text embedding storage."""
         doc_id = "test-doc-123"
@@ -238,7 +230,7 @@ class TestEmbeddingStorage:
             doc_id=doc_id,
             chunk_id=chunk_id,
             full_embeddings=sample_embeddings,
-            metadata=sample_text_metadata
+            metadata=sample_text_metadata,
         )
 
         assert embedding_id == f"{doc_id}-chunk{chunk_id:04d}"
@@ -252,7 +244,7 @@ class TestEmbeddingStorage:
                 doc_id="test",
                 page=1,
                 full_embeddings=np.random.randn(768),
-                metadata=sample_visual_metadata
+                metadata=sample_visual_metadata,
             )
 
         # Wrong dimension
@@ -261,7 +253,7 @@ class TestEmbeddingStorage:
                 doc_id="test",
                 page=1,
                 full_embeddings=np.random.randn(100, 512),
-                metadata=sample_visual_metadata
+                metadata=sample_visual_metadata,
             )
 
     def test_missing_required_metadata(self, chroma_client, sample_embeddings):
@@ -272,35 +264,30 @@ class TestEmbeddingStorage:
                 doc_id="test",
                 page=1,
                 full_embeddings=sample_embeddings,
-                metadata={"source_path": "/data/test.pdf"}
+                metadata={"source_path": "/data/test.pdf"},
             )
         assert "filename" in str(exc_info.value)
 
-    def test_metadata_structure(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
-    ):
+    def test_metadata_structure(self, chroma_client, sample_embeddings, sample_visual_metadata):
         """Test metadata structure is correctly built."""
         chroma_client.add_visual_embedding(
             doc_id="test-doc",
             page=1,
             full_embeddings=sample_embeddings,
-            metadata=sample_visual_metadata
+            metadata=sample_visual_metadata,
         )
 
         # Get the metadata passed to ChromaDB
         call_args = chroma_client._visual_collection.add.call_args
-        stored_metadata = call_args[1]['metadatas'][0]
+        stored_metadata = call_args[1]["metadatas"][0]
 
         # Verify required fields
-        assert stored_metadata['doc_id'] == "test-doc"
-        assert stored_metadata['page'] == 1
-        assert stored_metadata['type'] == "visual"
-        assert 'full_embeddings' in stored_metadata
-        assert 'timestamp' in stored_metadata
-        assert stored_metadata['seq_length'] == 100
+        assert stored_metadata["doc_id"] == "test-doc"
+        assert stored_metadata["page"] == 1
+        assert stored_metadata["type"] == "visual"
+        assert "full_embeddings" in stored_metadata
+        assert "timestamp" in stored_metadata
+        assert stored_metadata["seq_length"] == 100
 
     def test_cls_token_extraction(self, chroma_client, sample_embeddings, sample_visual_metadata):
         """Test CLS token is correctly extracted."""
@@ -308,22 +295,19 @@ class TestEmbeddingStorage:
             doc_id="test",
             page=1,
             full_embeddings=sample_embeddings,
-            metadata=sample_visual_metadata
+            metadata=sample_visual_metadata,
         )
 
         # Get the embedding passed to ChromaDB
         call_args = chroma_client._visual_collection.add.call_args
-        stored_embedding = call_args[1]['embeddings'][0]
+        stored_embedding = call_args[1]["embeddings"][0]
 
         # Should be the first token
         expected_cls = sample_embeddings[0].tolist()
         np.testing.assert_allclose(stored_embedding, expected_cls, rtol=1e-6)
 
     def test_image_paths_stored_when_provided(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata
     ):
         """Test that image paths are stored in metadata when provided (Wave 1)."""
         image_path = "/page_images/test-doc-123/page001.png"
@@ -335,22 +319,19 @@ class TestEmbeddingStorage:
             full_embeddings=sample_embeddings,
             metadata=sample_visual_metadata,
             image_path=image_path,
-            thumb_path=thumb_path
+            thumb_path=thumb_path,
         )
 
         # Get the metadata passed to ChromaDB
         call_args = chroma_client._visual_collection.add.call_args
-        stored_metadata = call_args[1]['metadatas'][0]
+        stored_metadata = call_args[1]["metadatas"][0]
 
         # Verify image paths are in metadata
-        assert stored_metadata['image_path'] == image_path
-        assert stored_metadata['thumb_path'] == thumb_path
+        assert stored_metadata["image_path"] == image_path
+        assert stored_metadata["thumb_path"] == thumb_path
 
     def test_image_paths_optional_backward_compatibility(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata
     ):
         """Test that image paths are optional for backward compatibility (Wave 1)."""
         # Call without image paths (old behavior)
@@ -358,22 +339,19 @@ class TestEmbeddingStorage:
             doc_id="test-doc",
             page=1,
             full_embeddings=sample_embeddings,
-            metadata=sample_visual_metadata
+            metadata=sample_visual_metadata,
         )
 
         # Get the metadata passed to ChromaDB
         call_args = chroma_client._visual_collection.add.call_args
-        stored_metadata = call_args[1]['metadatas'][0]
+        stored_metadata = call_args[1]["metadatas"][0]
 
         # Verify image paths are not present (backward compatibility)
-        assert 'image_path' not in stored_metadata
-        assert 'thumb_path' not in stored_metadata
+        assert "image_path" not in stored_metadata
+        assert "thumb_path" not in stored_metadata
 
     def test_image_paths_partial_provision(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata
     ):
         """Test that only provided image paths are stored (Wave 1)."""
         # Only provide image_path, not thumb_path
@@ -384,21 +362,22 @@ class TestEmbeddingStorage:
             page=1,
             full_embeddings=sample_embeddings,
             metadata=sample_visual_metadata,
-            image_path=image_path
+            image_path=image_path,
         )
 
         # Get the metadata passed to ChromaDB
         call_args = chroma_client._visual_collection.add.call_args
-        stored_metadata = call_args[1]['metadatas'][0]
+        stored_metadata = call_args[1]["metadatas"][0]
 
         # Verify only image_path is present
-        assert stored_metadata['image_path'] == image_path
-        assert 'thumb_path' not in stored_metadata
+        assert stored_metadata["image_path"] == image_path
+        assert "thumb_path" not in stored_metadata
 
 
 # ============================================================================
 # Search Tests
 # ============================================================================
+
 
 class TestSearch:
     """Test search operations."""
@@ -409,23 +388,17 @@ class TestSearch:
 
         # Mock search results
         chroma_client._visual_collection.query.return_value = {
-            'ids': [['doc1-page001', 'doc2-page001']],
-            'distances': [[0.1, 0.2]],
-            'metadatas': [[
-                {'doc_id': 'doc1', 'page': 1},
-                {'doc_id': 'doc2', 'page': 1}
-            ]],
-            'embeddings': [[
-                [0.1] * 768,
-                [0.2] * 768
-            ]]
+            "ids": [["doc1-page001", "doc2-page001"]],
+            "distances": [[0.1, 0.2]],
+            "metadatas": [[{"doc_id": "doc1", "page": 1}, {"doc_id": "doc2", "page": 1}]],
+            "embeddings": [[[0.1] * 768, [0.2] * 768]],
         }
 
         results = chroma_client.search_visual(query_embedding, n_results=10)
 
         assert len(results) == 2
-        assert results[0]['id'] == 'doc1-page001'
-        assert 0 <= results[0]['score'] <= 1  # Similarity score
+        assert results[0]["id"] == "doc1-page001"
+        assert 0 <= results[0]["score"] <= 1  # Similarity score
 
     def test_text_search_success(self, chroma_client):
         """Test successful text search."""
@@ -433,16 +406,16 @@ class TestSearch:
 
         # Mock search results
         chroma_client._text_collection.query.return_value = {
-            'ids': [['doc1-chunk0000']],
-            'distances': [[0.15]],
-            'metadatas': [[{'doc_id': 'doc1', 'chunk_id': 0}]],
-            'embeddings': [[[0.1] * 768]]
+            "ids": [["doc1-chunk0000"]],
+            "distances": [[0.15]],
+            "metadatas": [[{"doc_id": "doc1", "chunk_id": 0}]],
+            "embeddings": [[[0.1] * 768]],
         }
 
         results = chroma_client.search_text(query_embedding, n_results=10)
 
         assert len(results) == 1
-        assert results[0]['id'] == 'doc1-chunk0000'
+        assert results[0]["id"] == "doc1-chunk0000"
 
     def test_search_with_filters(self, chroma_client):
         """Test search with metadata filters."""
@@ -453,17 +426,17 @@ class TestSearch:
 
         # Verify filters were passed
         call_args = chroma_client._visual_collection.query.call_args
-        assert call_args[1]['where'] == filters
+        assert call_args[1]["where"] == filters
 
     def test_search_empty_results(self, chroma_client):
         """Test search with no results."""
         query_embedding = np.random.randn(768).astype(np.float32)
 
         chroma_client._visual_collection.query.return_value = {
-            'ids': [[]],
-            'distances': [[]],
-            'metadatas': [[]],
-            'embeddings': [[]]
+            "ids": [[]],
+            "distances": [[]],
+            "metadatas": [[]],
+            "embeddings": [[]],
         }
 
         results = chroma_client.search_visual(query_embedding)
@@ -474,6 +447,7 @@ class TestSearch:
 # Full Embedding Retrieval Tests
 # ============================================================================
 
+
 class TestFullEmbeddingRetrieval:
     """Test full embedding retrieval for re-ranking."""
 
@@ -483,11 +457,10 @@ class TestFullEmbeddingRetrieval:
         compressed = compress_embeddings(sample_embeddings)
 
         chroma_client._visual_collection.get.return_value = {
-            'ids': [embedding_id],
-            'metadatas': [{
-                'full_embeddings': compressed,
-                'embedding_shape': f"{sample_embeddings.shape}"
-            }]
+            "ids": [embedding_id],
+            "metadatas": [
+                {"full_embeddings": compressed, "embedding_shape": f"{sample_embeddings.shape}"}
+            ],
         }
 
         restored = chroma_client.get_full_embeddings(embedding_id, collection="visual")
@@ -496,10 +469,7 @@ class TestFullEmbeddingRetrieval:
 
     def test_get_full_embeddings_not_found(self, chroma_client):
         """Test retrieval of non-existent embedding."""
-        chroma_client._visual_collection.get.return_value = {
-            'ids': [],
-            'metadatas': []
-        }
+        chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
 
         with pytest.raises(DocumentNotFoundError):
             chroma_client.get_full_embeddings("nonexistent", collection="visual")
@@ -507,8 +477,8 @@ class TestFullEmbeddingRetrieval:
     def test_get_full_embeddings_corrupted_metadata(self, chroma_client):
         """Test handling of corrupted metadata."""
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['doc1'],
-            'metadatas': [{'full_embeddings': None}]  # Missing data
+            "ids": ["doc1"],
+            "metadatas": [{"full_embeddings": None}],  # Missing data
         }
 
         with pytest.raises(MetadataCompressionError):
@@ -519,6 +489,7 @@ class TestFullEmbeddingRetrieval:
 # Document Deletion Tests
 # ============================================================================
 
+
 class TestDocumentDeletion:
     """Test document deletion operations."""
 
@@ -528,12 +499,12 @@ class TestDocumentDeletion:
 
         # Mock visual embeddings for this doc
         chroma_client._visual_collection.get.return_value = {
-            'ids': [f"{doc_id}-page001", f"{doc_id}-page002"]
+            "ids": [f"{doc_id}-page001", f"{doc_id}-page002"]
         }
 
         # Mock text embeddings for this doc
         chroma_client._text_collection.get.return_value = {
-            'ids': [f"{doc_id}-chunk0000", f"{doc_id}-chunk0001", f"{doc_id}-chunk0002"]
+            "ids": [f"{doc_id}-chunk0000", f"{doc_id}-chunk0001", f"{doc_id}-chunk0002"]
         }
 
         visual_count, text_count = chroma_client.delete_document(doc_id)
@@ -545,8 +516,8 @@ class TestDocumentDeletion:
 
     def test_delete_nonexistent_document(self, chroma_client):
         """Test deletion of non-existent document."""
-        chroma_client._visual_collection.get.return_value = {'ids': []}
-        chroma_client._text_collection.get.return_value = {'ids': []}
+        chroma_client._visual_collection.get.return_value = {"ids": []}
+        chroma_client._text_collection.get.return_value = {"ids": []}
 
         visual_count, text_count = chroma_client.delete_document("nonexistent")
 
@@ -558,6 +529,7 @@ class TestDocumentDeletion:
 # Collection Statistics Tests
 # ============================================================================
 
+
 class TestCollectionStats:
     """Test collection statistics."""
 
@@ -567,24 +539,25 @@ class TestCollectionStats:
         chroma_client._text_collection.count.return_value = 30
 
         chroma_client._visual_collection.get.return_value = {
-            'metadatas': [
-                {'doc_id': 'doc1'},
-                {'doc_id': 'doc2'},
-                {'doc_id': 'doc1'},  # Duplicate doc_id
+            "metadatas": [
+                {"doc_id": "doc1"},
+                {"doc_id": "doc2"},
+                {"doc_id": "doc1"},  # Duplicate doc_id
             ]
         }
 
         stats = chroma_client.get_collection_stats()
 
-        assert stats['visual_count'] == 10
-        assert stats['text_count'] == 30
-        assert stats['total_documents'] == 2  # Unique doc_ids
-        assert 'storage_size_mb' in stats
+        assert stats["visual_count"] == 10
+        assert stats["text_count"] == 30
+        assert stats["total_documents"] == 2  # Unique doc_ids
+        assert "storage_size_mb" in stats
 
 
 # ============================================================================
 # Collection Manager Tests
 # ============================================================================
+
 
 class TestCollectionManager:
     """Test collection management operations."""
@@ -597,39 +570,43 @@ class TestCollectionManager:
         chroma_client._text_collection.count.return_value = 15
 
         chroma_client._visual_collection.get.return_value = {
-            'metadatas': [{
-                'doc_id': 'test',
-                'page': 1,
-                'type': 'visual',
-                'full_embeddings': 'test',
-                'seq_length': 100,
-                'embedding_shape': '(100, 768)',
-                'timestamp': '2024-01-01T00:00:00',
-                'filename': 'test.pdf',
-                'source_path': '/data/test.pdf'
-            }]
+            "metadatas": [
+                {
+                    "doc_id": "test",
+                    "page": 1,
+                    "type": "visual",
+                    "full_embeddings": "test",
+                    "seq_length": 100,
+                    "embedding_shape": "(100, 768)",
+                    "timestamp": "2024-01-01T00:00:00",
+                    "filename": "test.pdf",
+                    "source_path": "/data/test.pdf",
+                }
+            ]
         }
 
         chroma_client._text_collection.get.return_value = {
-            'metadatas': [{
-                'doc_id': 'test',
-                'chunk_id': 0,
-                'page': 1,
-                'type': 'text',
-                'full_embeddings': 'test',
-                'seq_length': 64,
-                'embedding_shape': '(64, 768)',
-                'timestamp': '2024-01-01T00:00:00',
-                'filename': 'test.pdf',
-                'source_path': '/data/test.pdf'
-            }]
+            "metadatas": [
+                {
+                    "doc_id": "test",
+                    "chunk_id": 0,
+                    "page": 1,
+                    "type": "text",
+                    "full_embeddings": "test",
+                    "seq_length": 64,
+                    "embedding_shape": "(64, 768)",
+                    "timestamp": "2024-01-01T00:00:00",
+                    "filename": "test.pdf",
+                    "source_path": "/data/test.pdf",
+                }
+            ]
         }
 
         report = manager.validate_collections()
 
-        assert report['status'] == 'healthy'
-        assert report['visual_collection']['exists'] is True
-        assert report['text_collection']['exists'] is True
+        assert report["status"] == "healthy"
+        assert report["visual_collection"]["exists"] is True
+        assert report["text_collection"]["exists"] is True
 
     def test_reset_collection(self, chroma_client):
         """Test collection reset."""
@@ -637,13 +614,13 @@ class TestCollectionManager:
 
         chroma_client._visual_collection.count.return_value = 5
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['id1', 'id2', 'id3', 'id4', 'id5']
+            "ids": ["id1", "id2", "id3", "id4", "id5"]
         }
 
         report = manager.reset_collection("visual", confirm=True)
 
-        assert report['status'] == 'success'
-        assert 'visual' in report['collections_reset']
+        assert report["status"] == "success"
+        assert "visual" in report["collections_reset"]
         assert chroma_client._visual_collection.delete.called
 
     def test_reset_requires_confirmation(self, chroma_client):
@@ -660,36 +637,32 @@ class TestCollectionManager:
         manager = CollectionManager(chroma_client)
 
         chroma_client._visual_collection.get.return_value = {
-            'metadatas': [
+            "metadatas": [
                 {
-                    'doc_id': 'doc1',
-                    'filename': 'test1.pdf',
-                    'timestamp': '2024-01-01T00:00:00',
-                    'source_path': '/data/test1.pdf'
+                    "doc_id": "doc1",
+                    "filename": "test1.pdf",
+                    "timestamp": "2024-01-01T00:00:00",
+                    "source_path": "/data/test1.pdf",
                 },
                 {
-                    'doc_id': 'doc2',
-                    'filename': 'test2.pdf',
-                    'timestamp': '2024-01-02T00:00:00',
-                    'source_path': '/data/test2.pdf'
-                }
+                    "doc_id": "doc2",
+                    "filename": "test2.pdf",
+                    "timestamp": "2024-01-02T00:00:00",
+                    "source_path": "/data/test2.pdf",
+                },
             ]
         }
 
         chroma_client._text_collection.get.return_value = {
-            'metadatas': [
-                {'doc_id': 'doc1'},
-                {'doc_id': 'doc1'},
-                {'doc_id': 'doc2'}
-            ]
+            "metadatas": [{"doc_id": "doc1"}, {"doc_id": "doc1"}, {"doc_id": "doc2"}]
         }
 
         docs = manager.get_document_list()
 
         assert len(docs) == 2
-        assert docs[0]['doc_id'] == 'doc2'  # Sorted by timestamp, newest first
-        assert docs[0]['text_chunks'] == 1
-        assert docs[1]['text_chunks'] == 2
+        assert docs[0]["doc_id"] == "doc2"  # Sorted by timestamp, newest first
+        assert docs[0]["text_chunks"] == 1
+        assert docs[1]["text_chunks"] == 2
 
     def test_get_orphaned_embeddings(self, chroma_client):
         """Test orphaned embedding detection."""
@@ -697,91 +670,82 @@ class TestCollectionManager:
 
         # Valid metadata
         valid_metadata = {
-            'doc_id': 'doc1',
-            'page': 1,
-            'type': 'visual',
-            'full_embeddings': 'test',
-            'seq_length': 100,
-            'embedding_shape': '(100, 768)',
-            'timestamp': '2024-01-01',
-            'filename': 'test.pdf',
-            'source_path': '/data/test.pdf'
+            "doc_id": "doc1",
+            "page": 1,
+            "type": "visual",
+            "full_embeddings": "test",
+            "seq_length": 100,
+            "embedding_shape": "(100, 768)",
+            "timestamp": "2024-01-01",
+            "filename": "test.pdf",
+            "source_path": "/data/test.pdf",
         }
 
         # Invalid metadata (missing fields)
         invalid_metadata = {
-            'doc_id': 'doc2',
-            'type': 'visual'
+            "doc_id": "doc2",
+            "type": "visual",
             # Missing required fields
         }
 
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['valid-id', 'invalid-id'],
-            'metadatas': [valid_metadata, invalid_metadata]
+            "ids": ["valid-id", "invalid-id"],
+            "metadatas": [valid_metadata, invalid_metadata],
         }
 
-        chroma_client._text_collection.get.return_value = {
-            'ids': [],
-            'metadatas': []
-        }
+        chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
 
         orphans = manager.get_orphaned_embeddings()
 
-        assert orphans['count'] == 1
-        assert 'invalid-id' in orphans['visual_orphans']
+        assert orphans["count"] == 1
+        assert "invalid-id" in orphans["visual_orphans"]
 
     def test_cleanup_orphaned_embeddings(self, chroma_client):
         """Test orphaned embedding cleanup."""
         manager = CollectionManager(chroma_client)
 
         # Mock orphaned embeddings
-        with patch.object(manager, 'get_orphaned_embeddings') as mock_orphans:
+        with patch.object(manager, "get_orphaned_embeddings") as mock_orphans:
             mock_orphans.return_value = {
-                'visual_orphans': ['orphan1', 'orphan2'],
-                'text_orphans': ['orphan3'],
-                'count': 3
+                "visual_orphans": ["orphan1", "orphan2"],
+                "text_orphans": ["orphan3"],
+                "count": 3,
             }
 
             report = manager.cleanup_orphaned_embeddings(confirm=True)
 
-            assert report['status'] == 'success'
-            assert report['visual_deleted'] == 2
-            assert report['text_deleted'] == 1
-            assert report['total_deleted'] == 3
+            assert report["status"] == "success"
+            assert report["visual_deleted"] == 2
+            assert report["text_deleted"] == 1
+            assert report["total_deleted"] == 3
 
     def test_export_collection_metadata(self, chroma_client):
         """Test metadata export."""
         manager = CollectionManager(chroma_client)
 
-        visual_metadata = [{'doc_id': 'doc1', 'page': 1}]
-        text_metadata = [{'doc_id': 'doc1', 'chunk_id': 0}]
+        visual_metadata = [{"doc_id": "doc1", "page": 1}]
+        text_metadata = [{"doc_id": "doc1", "chunk_id": 0}]
 
-        chroma_client._visual_collection.get.return_value = {
-            'metadatas': visual_metadata
-        }
-        chroma_client._text_collection.get.return_value = {
-            'metadatas': text_metadata
-        }
+        chroma_client._visual_collection.get.return_value = {"metadatas": visual_metadata}
+        chroma_client._text_collection.get.return_value = {"metadatas": text_metadata}
 
         export = manager.export_collection_metadata(collection="all")
 
-        assert export['visual'] == visual_metadata
-        assert export['text'] == text_metadata
-        assert 'export_timestamp' in export
+        assert export["visual"] == visual_metadata
+        assert export["text"] == text_metadata
+        assert "export_timestamp" in export
 
 
 # ============================================================================
 # Integration Tests
 # ============================================================================
 
+
 class TestIntegration:
     """Integration tests combining multiple operations."""
 
     def test_end_to_end_visual_workflow(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata
     ):
         """Test complete visual embedding workflow."""
         # Store embedding
@@ -789,7 +753,7 @@ class TestIntegration:
             doc_id="test-doc",
             page=1,
             full_embeddings=sample_embeddings,
-            metadata=sample_visual_metadata
+            metadata=sample_visual_metadata,
         )
 
         assert embedding_id == "test-doc-page001"
@@ -797,14 +761,18 @@ class TestIntegration:
         # Mock search to return this embedding
         compressed = compress_embeddings(sample_embeddings)
         chroma_client._visual_collection.query.return_value = {
-            'ids': [[embedding_id]],
-            'distances': [[0.1]],
-            'metadatas': [[{
-                'doc_id': 'test-doc',
-                'full_embeddings': compressed,
-                'embedding_shape': f"{sample_embeddings.shape}"
-            }]],
-            'embeddings': [[sample_embeddings[0].tolist()]]
+            "ids": [[embedding_id]],
+            "distances": [[0.1]],
+            "metadatas": [
+                [
+                    {
+                        "doc_id": "test-doc",
+                        "full_embeddings": compressed,
+                        "embedding_shape": f"{sample_embeddings.shape}",
+                    }
+                ]
+            ],
+            "embeddings": [[sample_embeddings[0].tolist()]],
         }
 
         # Search
@@ -812,26 +780,21 @@ class TestIntegration:
         results = chroma_client.search_visual(query, n_results=10)
 
         assert len(results) == 1
-        assert results[0]['id'] == embedding_id
+        assert results[0]["id"] == embedding_id
 
         # Retrieve full embeddings
         chroma_client._visual_collection.get.return_value = {
-            'ids': [embedding_id],
-            'metadatas': [{
-                'full_embeddings': compressed,
-                'embedding_shape': f"{sample_embeddings.shape}"
-            }]
+            "ids": [embedding_id],
+            "metadatas": [
+                {"full_embeddings": compressed, "embedding_shape": f"{sample_embeddings.shape}"}
+            ],
         }
 
         full_emb = chroma_client.get_full_embeddings(embedding_id, collection="visual")
         np.testing.assert_allclose(full_emb, sample_embeddings, rtol=1e-6)
 
     def test_multi_document_storage_and_deletion(
-        self,
-        chroma_client,
-        sample_embeddings,
-        sample_visual_metadata,
-        sample_text_metadata
+        self, chroma_client, sample_embeddings, sample_visual_metadata, sample_text_metadata
     ):
         """Test storing multiple documents and deleting one."""
         # Store multiple documents
@@ -843,7 +806,7 @@ class TestIntegration:
                 doc_id=doc_id,
                 page=1,
                 full_embeddings=sample_embeddings,
-                metadata=sample_visual_metadata
+                metadata=sample_visual_metadata,
             )
 
             # Text embeddings
@@ -851,16 +814,12 @@ class TestIntegration:
                 doc_id=doc_id,
                 chunk_id=0,
                 full_embeddings=sample_embeddings,
-                metadata=sample_text_metadata
+                metadata=sample_text_metadata,
             )
 
         # Delete one document
-        chroma_client._visual_collection.get.return_value = {
-            'ids': ['doc1-page001']
-        }
-        chroma_client._text_collection.get.return_value = {
-            'ids': ['doc1-chunk0000']
-        }
+        chroma_client._visual_collection.get.return_value = {"ids": ["doc1-page001"]}
+        chroma_client._text_collection.get.return_value = {"ids": ["doc1-chunk0000"]}
 
         visual_count, text_count = chroma_client.delete_document("doc1")
 

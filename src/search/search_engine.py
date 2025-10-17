@@ -24,10 +24,11 @@ Usage:
 
 import logging
 import time
-from typing import List, Dict, Any, Optional, Literal
+from typing import Any, Dict, List, Literal, Optional
+
 import numpy as np
 
-from .query_processor import QueryProcessor, QueryProcessingError
+from .query_processor import QueryProcessingError, QueryProcessor
 from .result_ranker import ResultRanker
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class SearchEngine:
         storage_client,
         embedding_engine,
         default_n_results: int = 10,
-        default_candidates: int = 100
+        default_candidates: int = 100,
     ):
         """
         Initialize search engine.
@@ -74,7 +75,7 @@ class SearchEngine:
             "total_queries": 0,
             "stage1_times": [],
             "stage2_times": [],
-            "total_times": []
+            "total_times": [],
         }
 
         logger.info(
@@ -89,7 +90,7 @@ class SearchEngine:
         search_mode: Literal["hybrid", "visual_only", "text_only"] = "hybrid",
         filters: Optional[Dict[str, Any]] = None,
         enable_reranking: bool = True,
-        rerank_candidates: Optional[int] = None
+        rerank_candidates: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Execute two-stage semantic search.
@@ -143,21 +144,18 @@ class SearchEngine:
                 query_embedding=query_cls,
                 search_mode=search_mode,
                 filters=filters,
-                n_candidates=rerank_candidates
+                n_candidates=rerank_candidates,
             )
             stage1_time = (time.time() - stage1_start) * 1000
 
-            logger.info(
-                f"Stage 1 retrieved {len(candidates)} candidates in {stage1_time:.1f}ms"
-            )
+            logger.info(f"Stage 1 retrieved {len(candidates)} candidates in {stage1_time:.1f}ms")
 
             # Step 3: Stage 2 - Late interaction re-ranking (optional)
             stage2_time = 0.0
             if enable_reranking and candidates:
                 stage2_start = time.time()
                 candidates = self._stage2_reranking(
-                    query_embeddings=query_embeddings,
-                    candidates=candidates
+                    query_embeddings=query_embeddings, candidates=candidates
                 )
                 stage2_time = (time.time() - stage2_start) * 1000
 
@@ -187,7 +185,7 @@ class SearchEngine:
                 "stage2_time_ms": stage2_time,
                 "total_time_ms": total_time,
                 "candidates_retrieved": len(candidates),
-                "reranked_count": len(candidates) if enable_reranking else 0
+                "reranked_count": len(candidates) if enable_reranking else 0,
             }
 
             logger.info(
@@ -210,7 +208,7 @@ class SearchEngine:
         query_embedding: np.ndarray,
         search_mode: str,
         filters: Optional[Dict[str, Any]],
-        n_candidates: int
+        n_candidates: int,
     ) -> List[Dict[str, Any]]:
         """
         Stage 1: Fast approximate retrieval using representative vectors.
@@ -233,17 +231,13 @@ class SearchEngine:
             # Query collections based on mode
             if search_mode in ["hybrid", "visual_only"]:
                 visual_results = self.storage.search_visual(
-                    query_embedding=query_embedding,
-                    n_results=n_candidates,
-                    filters=filters
+                    query_embedding=query_embedding, n_results=n_candidates, filters=filters
                 )
                 logger.debug(f"Visual search returned {len(visual_results)} candidates")
 
             if search_mode in ["hybrid", "text_only"]:
                 text_results = self.storage.search_text(
-                    query_embedding=query_embedding,
-                    n_results=n_candidates,
-                    filters=filters
+                    query_embedding=query_embedding, n_results=n_candidates, filters=filters
                 )
                 logger.debug(f"Text search returned {len(text_results)} candidates")
 
@@ -253,7 +247,7 @@ class SearchEngine:
                     visual_results=visual_results,
                     text_results=text_results,
                     n_results=n_candidates * 2,  # Keep more for Stage 2
-                    deduplicate=False  # Don't deduplicate yet
+                    deduplicate=False,  # Don't deduplicate yet
                 )
             else:
                 candidates = visual_results + text_results
@@ -265,9 +259,7 @@ class SearchEngine:
             raise RetrievalError(f"Stage 1 retrieval failed: {e}") from e
 
     def _stage2_reranking(
-        self,
-        query_embeddings: np.ndarray,
-        candidates: List[Dict[str, Any]]
+        self, query_embeddings: np.ndarray, candidates: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
         Stage 2: Precise re-ranking using late interaction.
@@ -308,15 +300,15 @@ class SearchEngine:
             scoring_output = self.embedding.score_multi_vector(
                 query_embeddings=query_embeddings,
                 document_embeddings=document_embeddings,
-                use_gpu=True
+                use_gpu=True,
             )
 
             late_interaction_scores = scoring_output["scores"]
 
             # Update candidate scores and re-rank
             reranked_candidates = self.result_ranker.rank_by_late_interaction(
-                candidates=candidates[:len(late_interaction_scores)],
-                late_interaction_scores=late_interaction_scores
+                candidates=candidates[: len(late_interaction_scores)],
+                late_interaction_scores=late_interaction_scores,
             )
 
             return reranked_candidates
@@ -330,7 +322,7 @@ class SearchEngine:
         self,
         visual_results: List[Dict[str, Any]],
         text_results: List[Dict[str, Any]],
-        n_results: int
+        n_results: int,
     ) -> List[Dict[str, Any]]:
         """
         Merge and rank visual + text results.
@@ -353,7 +345,7 @@ class SearchEngine:
             visual_results=visual_results,
             text_results=text_results,
             n_results=n_results,
-            deduplicate=True
+            deduplicate=True,
         )
 
     def _format_result(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
@@ -399,7 +391,7 @@ class SearchEngine:
                 "avg_stage1_ms": 0.0,
                 "avg_stage2_ms": 0.0,
                 "avg_total_ms": 0.0,
-                "p95_total_ms": 0.0
+                "p95_total_ms": 0.0,
             }
 
         return {
@@ -407,25 +399,21 @@ class SearchEngine:
             "avg_stage1_ms": np.mean(self._stats["stage1_times"]),
             "avg_stage2_ms": np.mean(self._stats["stage2_times"]),
             "avg_total_ms": np.mean(self._stats["total_times"]),
-            "p95_total_ms": np.percentile(self._stats["total_times"], 95)
+            "p95_total_ms": np.percentile(self._stats["total_times"], 95),
         }
 
 
 class SearchError(Exception):
     """Base exception for search operations."""
-    pass
 
 
 class RetrievalError(SearchError):
     """Stage 1 retrieval failed."""
-    pass
 
 
 class RerankingError(SearchError):
     """Stage 2 re-ranking failed."""
-    pass
 
 
 class ResultFormattingError(SearchError):
     """Failed to format results."""
-    pass

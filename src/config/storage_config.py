@@ -4,8 +4,8 @@ Storage configuration for ChromaDB.
 This module defines configuration for ChromaDB connection and collections.
 """
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 
 @dataclass
@@ -22,18 +22,18 @@ class StorageConfig:
     """
 
     # Connection
-    host: str = os.getenv('CHROMA_HOST', 'chromadb')
-    port: int = int(os.getenv('CHROMA_PORT', '8001'))
+    host: str = os.getenv("CHROMA_HOST", "chromadb")
+    port: int = int(os.getenv("CHROMA_PORT", "8001"))
 
     # Collections
-    visual_collection: str = os.getenv('VISUAL_COLLECTION', 'visual_collection')
-    text_collection: str = os.getenv('TEXT_COLLECTION', 'text_collection')
+    visual_collection: str = os.getenv("VISUAL_COLLECTION", "visual_collection")
+    text_collection: str = os.getenv("TEXT_COLLECTION", "text_collection")
 
     # Batch operations
-    batch_size: int = int(os.getenv('CHROMA_BATCH_SIZE', '100'))
+    batch_size: int = int(os.getenv("CHROMA_BATCH_SIZE", "100"))
 
     # Persistence
-    persist_directory: str = os.getenv('CHROMA_DATA', '/chroma/chroma')
+    persist_directory: str = os.getenv("CHROMA_DATA", "/chroma/chroma")
 
     @property
     def connection_string(self) -> str:
@@ -60,13 +60,13 @@ class StorageConfig:
             Configuration as dictionary
         """
         return {
-            'host': self.host,
-            'port': self.port,
-            'connection_string': self.connection_string,
-            'visual_collection': self.visual_collection,
-            'text_collection': self.text_collection,
-            'batch_size': self.batch_size,
-            'persist_directory': self.persist_directory,
+            "host": self.host,
+            "port": self.port,
+            "connection_string": self.connection_string,
+            "visual_collection": self.visual_collection,
+            "text_collection": self.text_collection,
+            "batch_size": self.batch_size,
+            "persist_directory": self.persist_directory,
         }
 
     def __repr__(self) -> str:

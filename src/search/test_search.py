@@ -14,20 +14,18 @@ Usage:
     pytest src/search/test_search.py::TestSearchEngine -v
 """
 
-import pytest
 import numpy as np
-import time
-from typing import Dict, Any
+import pytest
 
-from .search_engine import SearchEngine, SearchError, RetrievalError
-from .query_processor import QueryProcessor, QueryProcessingError
-from .result_ranker import ResultRanker
 from .mocks import MockEmbeddingEngine, MockStorageClient
-
+from .query_processor import QueryProcessor
+from .result_ranker import ResultRanker
+from .search_engine import SearchEngine
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_embedding_engine():
@@ -48,7 +46,7 @@ def search_engine(mock_storage_client, mock_embedding_engine):
         storage_client=mock_storage_client,
         embedding_engine=mock_embedding_engine,
         default_n_results=10,
-        default_candidates=100
+        default_candidates=100,
     )
 
 
@@ -67,6 +65,7 @@ def result_ranker():
 # ============================================================================
 # Test MockEmbeddingEngine
 # ============================================================================
+
 
 class TestMockEmbeddingEngine:
     """Test mock embedding engine implementation."""
@@ -106,10 +105,7 @@ class TestMockEmbeddingEngine:
         result1 = mock_embedding_engine.embed_query(query)
         result2 = mock_embedding_engine.embed_query(query)
 
-        np.testing.assert_array_almost_equal(
-            result1["embeddings"],
-            result2["embeddings"]
-        )
+        np.testing.assert_array_almost_equal(result1["embeddings"], result2["embeddings"])
 
     def test_score_multi_vector(self, mock_embedding_engine):
         """Test late interaction scoring."""
@@ -118,8 +114,7 @@ class TestMockEmbeddingEngine:
         doc_emb2 = np.random.randn(80, 768).astype(np.float32)
 
         result = mock_embedding_engine.score_multi_vector(
-            query_embeddings=query_emb,
-            document_embeddings=[doc_emb1, doc_emb2]
+            query_embeddings=query_emb, document_embeddings=[doc_emb1, doc_emb2]
         )
 
         assert "scores" in result
@@ -134,8 +129,7 @@ class TestMockEmbeddingEngine:
 
         with pytest.raises(ValueError, match="must have shape"):
             mock_embedding_engine.score_multi_vector(
-                query_embeddings=query_emb,
-                document_embeddings=[doc_emb_wrong]
+                query_embeddings=query_emb, document_embeddings=[doc_emb_wrong]
             )
 
     def test_get_model_info(self, mock_embedding_engine):
@@ -150,6 +144,7 @@ class TestMockEmbeddingEngine:
 # ============================================================================
 # Test MockStorageClient
 # ============================================================================
+
 
 class TestMockStorageClient:
     """Test mock storage client implementation."""
@@ -167,10 +162,7 @@ class TestMockStorageClient:
         """Test visual collection search."""
         query_emb = np.random.randn(768).astype(np.float32)
 
-        results = mock_storage_client.search_visual(
-            query_embedding=query_emb,
-            n_results=10
-        )
+        results = mock_storage_client.search_visual(query_embedding=query_emb, n_results=10)
 
         assert len(results) <= 10
         assert all("id" in r for r in results)
@@ -182,10 +174,7 @@ class TestMockStorageClient:
         """Test text collection search."""
         query_emb = np.random.randn(768).astype(np.float32)
 
-        results = mock_storage_client.search_text(
-            query_embedding=query_emb,
-            n_results=10
-        )
+        results = mock_storage_client.search_text(query_embedding=query_emb, n_results=10)
 
         assert len(results) <= 10
         assert all(r["metadata"]["type"] == "text" for r in results)
@@ -196,15 +185,10 @@ class TestMockStorageClient:
 
         # Filter by filename
         results = mock_storage_client.search_visual(
-            query_embedding=query_emb,
-            n_results=10,
-            filters={"filename": "Q3-2023-Earnings.pdf"}
+            query_embedding=query_emb, n_results=10, filters={"filename": "Q3-2023-Earnings.pdf"}
         )
 
-        assert all(
-            r["metadata"]["filename"] == "Q3-2023-Earnings.pdf"
-            for r in results
-        )
+        assert all(r["metadata"]["filename"] == "Q3-2023-Earnings.pdf" for r in results)
 
     def test_search_invalid_shape(self, mock_storage_client):
         """Test invalid query shape raises error."""
@@ -217,6 +201,7 @@ class TestMockStorageClient:
 # ============================================================================
 # Test QueryProcessor
 # ============================================================================
+
 
 class TestQueryProcessor:
     """Test query processing module."""
@@ -270,6 +255,7 @@ class TestQueryProcessor:
 # Test ResultRanker
 # ============================================================================
 
+
 class TestResultRanker:
     """Test result ranking module."""
 
@@ -285,9 +271,7 @@ class TestResultRanker:
         ]
 
         merged = result_ranker.merge_results(
-            visual_results=visual_results,
-            text_results=text_results,
-            n_results=10
+            visual_results=visual_results, text_results=text_results, n_results=10
         )
 
         assert len(merged) > 0
@@ -305,10 +289,7 @@ class TestResultRanker:
         ]
 
         merged = result_ranker.merge_results(
-            visual_results=visual_results,
-            text_results=text_results,
-            n_results=10,
-            deduplicate=True
+            visual_results=visual_results, text_results=text_results, n_results=10, deduplicate=True
         )
 
         # Should keep only highest scoring result per doc
@@ -325,8 +306,7 @@ class TestResultRanker:
         new_scores = [0.95, 0.85, 0.90]
 
         reranked = result_ranker.rank_by_late_interaction(
-            candidates=candidates,
-            late_interaction_scores=new_scores
+            candidates=candidates, late_interaction_scores=new_scores
         )
 
         # Check re-ranking
@@ -348,8 +328,8 @@ class TestResultRanker:
                 "filename": "test.pdf",
                 "page": 1,
                 "source_path": "/data/test.pdf",
-                "timestamp": "2023-10-06T15:30:00Z"
-            }
+                "timestamp": "2023-10-06T15:30:00Z",
+            },
         }
 
         result = result_ranker.format_search_result(candidate)
@@ -366,6 +346,7 @@ class TestResultRanker:
 # Test SearchEngine
 # ============================================================================
 
+
 class TestSearchEngine:
     """Test main search engine."""
 
@@ -380,7 +361,7 @@ class TestSearchEngine:
             query="quarterly revenue growth",
             n_results=10,
             search_mode="hybrid",
-            enable_reranking=True
+            enable_reranking=True,
         )
 
         assert "results" in response
@@ -396,11 +377,7 @@ class TestSearchEngine:
 
     def test_search_visual_only(self, search_engine):
         """Test visual-only search mode."""
-        response = search_engine.search(
-            query="bar chart",
-            n_results=5,
-            search_mode="visual_only"
-        )
+        response = search_engine.search(query="bar chart", n_results=5, search_mode="visual_only")
 
         assert response["search_mode"] == "visual_only"
         assert len(response["results"]) <= 5
@@ -409,9 +386,7 @@ class TestSearchEngine:
     def test_search_text_only(self, search_engine):
         """Test text-only search mode."""
         response = search_engine.search(
-            query="contract terms",
-            n_results=5,
-            search_mode="text_only"
+            query="contract terms", n_results=5, search_mode="text_only"
         )
 
         assert response["search_mode"] == "text_only"
@@ -421,22 +396,14 @@ class TestSearchEngine:
     def test_search_with_filters(self, search_engine):
         """Test search with metadata filters."""
         response = search_engine.search(
-            query="revenue",
-            n_results=10,
-            filters={"filename": "Q3-2023-Earnings.pdf"}
+            query="revenue", n_results=10, filters={"filename": "Q3-2023-Earnings.pdf"}
         )
 
-        assert all(
-            r["filename"] == "Q3-2023-Earnings.pdf"
-            for r in response["results"]
-        )
+        assert all(r["filename"] == "Q3-2023-Earnings.pdf" for r in response["results"])
 
     def test_search_without_reranking(self, search_engine):
         """Test search without Stage 2 re-ranking."""
-        response = search_engine.search(
-            query="test",
-            enable_reranking=False
-        )
+        response = search_engine.search(query="test", enable_reranking=False)
 
         assert response["stage2_time_ms"] == 0.0
         assert response["reranked_count"] == 0
@@ -453,10 +420,7 @@ class TestSearchEngine:
 
     def test_search_results_sorted(self, search_engine):
         """Test results are sorted by score."""
-        response = search_engine.search(
-            query="revenue growth",
-            n_results=10
-        )
+        response = search_engine.search(query="revenue growth", n_results=10)
 
         scores = [r["score"] for r in response["results"]]
         assert scores == sorted(scores, reverse=True)
@@ -480,15 +444,13 @@ class TestSearchEngine:
 # Performance Tests
 # ============================================================================
 
+
 class TestPerformance:
     """Test performance targets."""
 
     def test_stage1_latency(self, search_engine):
         """Test Stage 1 retrieval meets latency target (<200ms)."""
-        response = search_engine.search(
-            query="test query",
-            enable_reranking=False
-        )
+        response = search_engine.search(query="test query", enable_reranking=False)
 
         # Note: Mock has simulate_latency=False, so this tests algorithm only
         # Real implementation should meet <200ms target
@@ -499,7 +461,7 @@ class TestPerformance:
         response = search_engine.search(
             query="test query",
             enable_reranking=True,
-            rerank_candidates=50  # Smaller batch for faster test
+            rerank_candidates=50,  # Smaller batch for faster test
         )
 
         # Real implementation should meet <100ms for 100 candidates
@@ -508,9 +470,7 @@ class TestPerformance:
     def test_total_latency_hybrid(self, search_engine):
         """Test total hybrid search meets latency target (<500ms)."""
         response = search_engine.search(
-            query="test query",
-            search_mode="hybrid",
-            enable_reranking=True
+            query="test query", search_mode="hybrid", enable_reranking=True
         )
 
         # Real implementation should meet <500ms target
@@ -520,6 +480,7 @@ class TestPerformance:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for end-to-end workflows."""
@@ -532,7 +493,7 @@ class TestIntegration:
             n_results=10,
             search_mode="hybrid",
             filters={"filename": "Q3-2023-Earnings.pdf"},
-            enable_reranking=True
+            enable_reranking=True,
         )
 
         # Validate response structure
@@ -561,7 +522,7 @@ class TestIntegration:
             "revenue growth",
             "product categories",
             "financial metrics",
-            "quarterly earnings"
+            "quarterly earnings",
         ]
 
         for query in queries:

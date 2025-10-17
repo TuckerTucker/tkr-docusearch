@@ -8,7 +8,6 @@ Provider: storage-agent
 Consumers: worker-webhook
 """
 
-from pathlib import Path
 import logging
 import re
 
@@ -20,21 +19,22 @@ logger = logging.getLogger(__name__)
 MARKDOWN_DIR = PROJECT_ROOT / "data" / "markdown"
 
 # Validation pattern for doc_id
-DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
+DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
 
 
 # ============================================================================
 # Exception Classes
 # ============================================================================
 
+
 class MarkdownStorageError(Exception):
     """Base exception for markdown storage operations."""
-    pass
 
 
 # ============================================================================
 # Core Functions
 # ============================================================================
+
 
 def delete_document_markdown(doc_id: str) -> bool:
     """
@@ -152,6 +152,7 @@ def cleanup_orphaned_markdown(max_age_days: int = 7) -> int:
         return 0
 
     import time
+
     deleted_count = 0
     cutoff_time = time.time() - (max_age_days * 86400)  # 86400 seconds per day
 

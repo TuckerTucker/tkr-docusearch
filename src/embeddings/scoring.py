@@ -5,9 +5,10 @@ This module implements the MaxSim (Maximum Similarity) scoring algorithm
 for multi-vector embeddings as used in ColBERT and ColPali.
 """
 
-import numpy as np
-from typing import List
 import logging
+from typing import List
+
+import numpy as np
 
 try:
     from embeddings.exceptions import ScoringError
@@ -17,10 +18,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def maxsim_score(
-    query_embeddings: np.ndarray,
-    doc_embeddings: np.ndarray
-) -> float:
+def maxsim_score(query_embeddings: np.ndarray, doc_embeddings: np.ndarray) -> float:
     """
     Compute MaxSim score between query and document.
 
@@ -50,7 +48,9 @@ def maxsim_score(
             raise ValueError(f"Expected dimension 128 or 768, got {dim_q}")
 
         # Normalize embeddings (L2 norm)
-        query_norm = query_embeddings / (np.linalg.norm(query_embeddings, axis=1, keepdims=True) + 1e-8)
+        query_norm = query_embeddings / (
+            np.linalg.norm(query_embeddings, axis=1, keepdims=True) + 1e-8
+        )
         doc_norm = doc_embeddings / (np.linalg.norm(doc_embeddings, axis=1, keepdims=True) + 1e-8)
 
         # Compute similarity matrix (Q x D)
@@ -71,9 +71,7 @@ def maxsim_score(
 
 
 def batch_maxsim_scores(
-    query_embeddings: np.ndarray,
-    document_embeddings: List[np.ndarray],
-    use_gpu: bool = True
+    query_embeddings: np.ndarray, document_embeddings: List[np.ndarray], use_gpu: bool = True
 ) -> List[float]:
     """
     Compute MaxSim scores for a query against multiple documents.

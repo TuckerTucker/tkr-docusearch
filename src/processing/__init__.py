@@ -11,34 +11,18 @@ For Wave 2, this uses mock implementations of embedding and storage agents.
 Wave 3 will integrate real implementations.
 """
 
+from .docling_parser import DoclingParser, Page, ParsedDocument, ParsingError, TextChunk
+from .mocks import BatchEmbeddingOutput, MockEmbeddingEngine, MockStorageClient
 from .processor import (
     DocumentProcessor,
+    EmbeddingError,
+    ProcessingError,
     ProcessingStatus,
     StorageConfirmation,
-    ProcessingError,
-    EmbeddingError,
-    StorageError
+    StorageError,
 )
-from .docling_parser import (
-    DoclingParser,
-    ParsedDocument,
-    Page,
-    TextChunk,
-    ParsingError
-)
-from .visual_processor import (
-    VisualProcessor,
-    VisualEmbeddingResult
-)
-from .text_processor import (
-    TextProcessor,
-    TextEmbeddingResult
-)
-from .mocks import (
-    MockEmbeddingEngine,
-    MockStorageClient,
-    BatchEmbeddingOutput
-)
+from .text_processor import TextEmbeddingResult, TextProcessor
+from .visual_processor import VisualEmbeddingResult, VisualProcessor
 
 __all__ = [
     # Main processor

@@ -10,34 +10,18 @@ Tests cover:
 - Error handling
 """
 
-import pytest
-import numpy as np
-from pathlib import Path
-from PIL import Image
-import tempfile
 import os
+import tempfile
 
-from .processor import (
-    DocumentProcessor,
-    ProcessingStatus,
-    ProcessingError,
-    EmbeddingError,
-    StorageError
-)
-from .docling_parser import (
-    DoclingParser,
-    Page,
-    TextChunk,
-    ParsingError
-)
-from .visual_processor import VisualProcessor
+import numpy as np
+import pytest
+from PIL import Image
+
+from .docling_parser import DoclingParser, Page, TextChunk
+from .mocks import BatchEmbeddingOutput, MockEmbeddingEngine, MockStorageClient
+from .processor import DocumentProcessor
 from .text_processor import TextProcessor
-from .mocks import (
-    MockEmbeddingEngine,
-    MockStorageClient,
-    BatchEmbeddingOutput
-)
-
+from .visual_processor import VisualProcessor
 
 # ============================================================================
 # Mock Tests
@@ -63,7 +47,7 @@ class TestMockEmbeddingEngine:
     def test_embed_images_single(self):
         """Test single image embedding."""
         # Create test image
-        img = Image.new('RGB', (1024, 1024), color='white')
+        img = Image.new("RGB", (1024, 1024), color="white")
         images = [img]
 
         result = self.engine.embed_images(images, batch_size=4)
@@ -87,7 +71,7 @@ class TestMockEmbeddingEngine:
     def test_embed_images_batch(self):
         """Test batch image embedding."""
         # Create batch of images
-        images = [Image.new('RGB', (1024, 1024), color='white') for _ in range(5)]
+        images = [Image.new("RGB", (1024, 1024), color="white") for _ in range(5)]
 
         result = self.engine.embed_images(images, batch_size=4)
 
@@ -132,7 +116,7 @@ class TestMockEmbeddingEngine:
         texts = [
             "First chunk of text with some content.",
             "Second chunk of text with different content.",
-            "Third chunk with more sample text."
+            "Third chunk with more sample text.",
         ]
 
         result = self.engine.embed_texts(texts, batch_size=8)
@@ -149,7 +133,7 @@ class TestMockEmbeddingEngine:
 
     def test_processing_time_simulation(self):
         """Test processing time is simulated realistically."""
-        images = [Image.new('RGB', (1024, 1024)) for _ in range(3)]
+        images = [Image.new("RGB", (1024, 1024)) for _ in range(3)]
         result = self.engine.embed_images(images)
 
         # Should simulate ~6s per image
@@ -162,10 +146,7 @@ class TestMockStorageClient:
 
     def setup_method(self):
         """Initialize mock client."""
-        self.client = MockStorageClient(
-            host="chromadb",
-            port=8000
-        )
+        self.client = MockStorageClient(host="chromadb", port=8000)
 
     def test_initialization(self):
         """Test client initializes correctly."""
@@ -186,7 +167,7 @@ class TestMockStorageClient:
             doc_id="test-doc-123",
             page=1,
             full_embeddings=embeddings,
-            metadata={"filename": "test.pdf"}
+            metadata={"filename": "test.pdf"},
         )
 
         # Validate ID format
@@ -205,7 +186,7 @@ class TestMockStorageClient:
             doc_id="test-doc-123",
             chunk_id=0,
             full_embeddings=embeddings,
-            metadata={"filename": "test.pdf", "text_preview": "Sample text"}
+            metadata={"filename": "test.pdf", "text_preview": "Sample text"},
         )
 
         # Validate ID format
@@ -222,10 +203,7 @@ class TestMockStorageClient:
 
         with pytest.raises(ValueError, match="Invalid embedding shape"):
             self.client.add_visual_embedding(
-                doc_id="test",
-                page=1,
-                full_embeddings=bad_embeddings,
-                metadata={}
+                doc_id="test", page=1, full_embeddings=bad_embeddings, metadata={}
             )
 
         # Wrong dimension (512 instead of 768)
@@ -233,10 +211,7 @@ class TestMockStorageClient:
 
         with pytest.raises(ValueError, match="Invalid embedding dimension"):
             self.client.add_visual_embedding(
-                doc_id="test",
-                page=1,
-                full_embeddings=bad_embeddings,
-                metadata={}
+                doc_id="test", page=1, full_embeddings=bad_embeddings, metadata={}
             )
 
     def test_delete_document(self):
@@ -248,19 +223,19 @@ class TestMockStorageClient:
             doc_id=doc_id,
             page=1,
             full_embeddings=np.random.randn(100, 768).astype(np.float32),
-            metadata={}
+            metadata={},
         )
         self.client.add_visual_embedding(
             doc_id=doc_id,
             page=2,
             full_embeddings=np.random.randn(100, 768).astype(np.float32),
-            metadata={}
+            metadata={},
         )
         self.client.add_text_embedding(
             doc_id=doc_id,
             chunk_id=0,
             full_embeddings=np.random.randn(64, 768).astype(np.float32),
-            metadata={}
+            metadata={},
         )
 
         # Delete document
@@ -280,17 +255,11 @@ class TestMockStorageClient:
         original_embeddings = np.random.randn(100, 768).astype(np.float32)
 
         embedding_id = self.client.add_visual_embedding(
-            doc_id=doc_id,
-            page=1,
-            full_embeddings=original_embeddings,
-            metadata={}
+            doc_id=doc_id, page=1, full_embeddings=original_embeddings, metadata={}
         )
 
         # Retrieve embeddings
-        retrieved = self.client.get_full_embeddings(
-            embedding_id=embedding_id,
-            collection="visual"
-        )
+        retrieved = self.client.get_full_embeddings(embedding_id=embedding_id, collection="visual")
 
         # Should be identical
         assert np.array_equal(original_embeddings, retrieved)
@@ -322,18 +291,11 @@ class TestDoclingParser:
         # Create mock page
         text = " ".join([f"word{i}" for i in range(300)])  # 300 words
         page = Page(
-            page_num=1,
-            image=Image.new('RGB', (100, 100)),
-            width=100,
-            height=100,
-            text=text
+            page_num=1, image=Image.new("RGB", (100, 100)), width=100, height=100, text=text
         )
 
         chunks = self.parser._chunk_text(
-            pages=[page],
-            doc_id="test-doc",
-            chunk_size_words=100,
-            chunk_overlap_words=20
+            pages=[page], doc_id="test-doc", chunk_size_words=100, chunk_overlap_words=20
         )
 
         # Should create multiple chunks
@@ -354,18 +316,11 @@ class TestDoclingParser:
         """Test chunk overlap is correct."""
         text = " ".join([f"word{i}" for i in range(200)])
         page = Page(
-            page_num=1,
-            image=Image.new('RGB', (100, 100)),
-            width=100,
-            height=100,
-            text=text
+            page_num=1, image=Image.new("RGB", (100, 100)), width=100, height=100, text=text
         )
 
         chunks = self.parser._chunk_text(
-            pages=[page],
-            doc_id="test",
-            chunk_size_words=100,
-            chunk_overlap_words=25
+            pages=[page], doc_id="test", chunk_size_words=100, chunk_overlap_words=25
         )
 
         # Second chunk should start 75 words after first (100 - 25 overlap)
@@ -397,10 +352,7 @@ class TestVisualProcessor:
     def setup_method(self):
         """Initialize components."""
         self.engine = MockEmbeddingEngine()
-        self.processor = VisualProcessor(
-            embedding_engine=self.engine,
-            batch_size=4
-        )
+        self.processor = VisualProcessor(embedding_engine=self.engine, batch_size=4)
 
     def test_process_pages(self):
         """Test page processing."""
@@ -408,10 +360,10 @@ class TestVisualProcessor:
         pages = [
             Page(
                 page_num=i,
-                image=Image.new('RGB', (1024, 1024)),
+                image=Image.new("RGB", (1024, 1024)),
                 width=1024,
                 height=1024,
-                text=f"Page {i} text"
+                text=f"Page {i} text",
             )
             for i in range(1, 6)
         ]
@@ -437,8 +389,7 @@ class TestVisualProcessor:
     def test_get_processing_stats(self):
         """Test statistics generation."""
         pages = [
-            Page(i, Image.new('RGB', (1024, 1024)), 1024, 1024, f"Page {i}")
-            for i in range(1, 4)
+            Page(i, Image.new("RGB", (1024, 1024)), 1024, 1024, f"Page {i}") for i in range(1, 4)
         ]
 
         results = self.processor.process_pages(pages, doc_id="test")
@@ -457,10 +408,7 @@ class TestTextProcessor:
     def setup_method(self):
         """Initialize components."""
         self.engine = MockEmbeddingEngine()
-        self.processor = TextProcessor(
-            embedding_engine=self.engine,
-            batch_size=8
-        )
+        self.processor = TextProcessor(embedding_engine=self.engine, batch_size=8)
 
     def test_process_chunks(self):
         """Test chunk processing."""
@@ -472,7 +420,7 @@ class TestTextProcessor:
                 text=f"This is chunk {i} with sample text content.",
                 start_offset=i * 50,
                 end_offset=(i + 1) * 50,
-                word_count=8
+                word_count=8,
             )
             for i in range(5)
         ]
@@ -505,7 +453,7 @@ class TestTextProcessor:
                 text=f"Chunk {i} text content goes here.",
                 start_offset=0,
                 end_offset=100,
-                word_count=6
+                word_count=6,
             )
             for i in range(3)
         ]
@@ -532,7 +480,7 @@ class TestDocumentProcessor:
             storage_client=self.storage,
             parser_config={"render_dpi": 150},
             visual_batch_size=4,
-            text_batch_size=8
+            text_batch_size=8,
         )
 
     def test_initialization(self):
@@ -564,8 +512,8 @@ class TestDocumentProcessor:
         try:
             # Create a simple test file
             # This will use mock parser if PyMuPDF not available
-            img = Image.new('RGB', (1024, 1024), color='white')
-            img.save(temp_path.replace('.pdf', '.png'))
+            img = Image.new("RGB", (1024, 1024), color="white")
+            img.save(temp_path.replace(".pdf", ".png"))
 
             # Process should work even with mock parser
             # (actual PDF processing requires PyMuPDF)
@@ -574,7 +522,7 @@ class TestDocumentProcessor:
             # Cleanup
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
-            png_path = temp_path.replace('.pdf', '.png')
+            png_path = temp_path.replace(".pdf", ".png")
             if os.path.exists(png_path):
                 os.unlink(png_path)
 
@@ -603,14 +551,13 @@ class TestEndToEndProcessing:
         self.engine = MockEmbeddingEngine()
         self.storage = MockStorageClient()
         self.processor = DocumentProcessor(
-            embedding_engine=self.engine,
-            storage_client=self.storage
+            embedding_engine=self.engine, storage_client=self.storage
         )
 
     def test_mock_validation(self):
         """Validate mocks match contract specifications."""
         # Test embedding output structure
-        images = [Image.new('RGB', (1024, 1024))]
+        images = [Image.new("RGB", (1024, 1024))]
         result = self.engine.embed_images(images)
 
         assert isinstance(result, BatchEmbeddingOutput)
@@ -624,7 +571,7 @@ class TestEndToEndProcessing:
             doc_id="test",
             page=1,
             full_embeddings=result.embeddings[0],
-            metadata={"filename": "test.pdf"}
+            metadata={"filename": "test.pdf"},
         )
 
         assert embedding_id == "test-page001"
@@ -632,7 +579,7 @@ class TestEndToEndProcessing:
     def test_mock_contract_compliance(self):
         """Test mocks comply with integration contracts."""
         # Verify BatchEmbeddingOutput has required fields
-        images = [Image.new('RGB', (1024, 1024))]
+        images = [Image.new("RGB", (1024, 1024))]
         output = self.engine.embed_images(images)
 
         required_fields = ["embeddings", "cls_tokens", "seq_lengths", "input_type"]
@@ -644,7 +591,7 @@ class TestEndToEndProcessing:
             "add_visual_embedding",
             "add_text_embedding",
             "get_collection_stats",
-            "delete_document"
+            "delete_document",
         ]
         for method in storage_methods:
             assert hasattr(self.storage, method)

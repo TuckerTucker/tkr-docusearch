@@ -4,9 +4,10 @@ Test audio placeholder functionality.
 Verify that audio files without album art get a placeholder image.
 """
 
-import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 from src.processing.audio_metadata import AudioMetadata, save_album_art
 
 
@@ -22,18 +23,12 @@ def test_placeholder_created_for_audio_without_album_art(tmp_path):
     placeholder_file.write_text("<svg>test placeholder</svg>")
 
     # Create AudioMetadata without album art
-    metadata = AudioMetadata(
-        has_album_art=False,
-        album_art_data=None
-    )
+    metadata = AudioMetadata(has_album_art=False, album_art_data=None)
 
     # Execute: Save album art (should use placeholder)
     doc_id = "test-audio-123"
     result_path = save_album_art(
-        doc_id=doc_id,
-        metadata=metadata,
-        base_dir=str(base_dir),
-        use_placeholder=True
+        doc_id=doc_id, metadata=metadata, base_dir=str(base_dir), use_placeholder=True
     )
 
     # Verify: Placeholder was copied
@@ -60,18 +55,13 @@ def test_actual_album_art_saved_instead_of_placeholder(tmp_path):
     # Create AudioMetadata WITH album art
     album_art_data = b"\xff\xd8\xff\xe0"  # JPEG header
     metadata = AudioMetadata(
-        has_album_art=True,
-        album_art_data=album_art_data,
-        album_art_mime="image/jpeg"
+        has_album_art=True, album_art_data=album_art_data, album_art_mime="image/jpeg"
     )
 
     # Execute: Save album art (should use actual art)
     doc_id = "test-audio-456"
     result_path = save_album_art(
-        doc_id=doc_id,
-        metadata=metadata,
-        base_dir=str(base_dir),
-        use_placeholder=True
+        doc_id=doc_id, metadata=metadata, base_dir=str(base_dir), use_placeholder=True
     )
 
     # Verify: Actual album art was saved (not placeholder)
@@ -91,18 +81,12 @@ def test_no_placeholder_when_disabled(tmp_path):
     base_dir = tmp_path / "images"
 
     # Create AudioMetadata without album art
-    metadata = AudioMetadata(
-        has_album_art=False,
-        album_art_data=None
-    )
+    metadata = AudioMetadata(has_album_art=False, album_art_data=None)
 
     # Execute: Save album art with placeholder disabled
     doc_id = "test-audio-789"
     result_path = save_album_art(
-        doc_id=doc_id,
-        metadata=metadata,
-        base_dir=str(base_dir),
-        use_placeholder=False
+        doc_id=doc_id, metadata=metadata, base_dir=str(base_dir), use_placeholder=False
     )
 
     # Verify: No file was created
@@ -118,18 +102,12 @@ def test_placeholder_integration_with_real_file():
         pytest.skip("Placeholder file not found - run from project root")
 
     # Create metadata without album art
-    metadata = AudioMetadata(
-        has_album_art=False,
-        album_art_data=None
-    )
+    metadata = AudioMetadata(has_album_art=False, album_art_data=None)
 
     # Save with real placeholder
     doc_id = "integration-test-audio"
     result_path = save_album_art(
-        doc_id=doc_id,
-        metadata=metadata,
-        base_dir="data/images",
-        use_placeholder=True
+        doc_id=doc_id, metadata=metadata, base_dir="data/images", use_placeholder=True
     )
 
     # Verify

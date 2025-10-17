@@ -9,8 +9,9 @@ import os
 from pathlib import Path
 from typing import Set, Tuple
 
-
-DEFAULT_FORMATS = "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp"
+DEFAULT_FORMATS = (
+    "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp"
+)
 
 
 def get_supported_extensions() -> Set[str]:
@@ -63,7 +64,10 @@ def validate_file_type(file_path: str) -> Tuple[bool, str]:
     supported = get_supported_extensions()
 
     if extension not in supported:
-        return False, f"Unsupported file type: {extension}. Supported: {', '.join(sorted(supported))}"
+        return (
+            False,
+            f"Unsupported file type: {extension}. Supported: {', '.join(sorted(supported))}",
+        )
 
     return True, ""
 

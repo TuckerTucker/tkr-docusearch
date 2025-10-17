@@ -10,20 +10,19 @@ Coverage:
 - Integration: End-to-end album art display
 """
 
-import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch
-import tempfile
-import shutil
+
+import pytest
+from fastapi.testclient import TestClient
 
 # Import the FastAPI app
 from src.processing.worker_webhook import app as worker_app
 
-
 # ============================================================================
 # Backend Unit Tests
 # ============================================================================
+
 
 class TestCoverEndpoint:
     """Test the GET /documents/{doc_id}/cover endpoint."""
@@ -47,10 +46,11 @@ class TestCoverEndpoint:
 
         # Create a fake JPEG cover image
         cover_jpg = images_dir / "cover.jpg"
-        cover_jpg.write_bytes(b"\xFF\xD8\xFF\xE0\x00\x10JFIF")  # JPEG header
+        cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")  # JPEG header
 
         # Patch the Path to use our temp directory
         with patch("src.processing.documents_api.Path") as mock_path:
+
             def path_side_effect(path_str):
                 if path_str == "data/images":
                     return tmp_path / "images"
@@ -64,6 +64,7 @@ class TestCoverEndpoint:
         tmp_path, images_dir = temp_images_dir
 
         with patch("src.processing.documents_api.Path") as mock_path:
+
             def path_side_effect(path_str):
                 if path_str == "data/images":
                     return tmp_path / "images"
@@ -108,9 +109,10 @@ class TestCoverEndpoint:
 
         # Test JPEG
         cover_jpg = images_dir / "cover.jpg"
-        cover_jpg.write_bytes(b"\xFF\xD8\xFF\xE0\x00\x10JFIF")
+        cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
 
         with patch("src.processing.documents_api.Path") as mock_path:
+
             def path_side_effect(path_str):
                 if path_str == "data/images":
                     return tmp_path / "images"
@@ -151,25 +153,24 @@ class TestMetadataExtension:
 
             # Mock visual collection
             mock_visual = Mock()
-            mock_visual.get.return_value = {
-                "ids": [],
-                "metadatas": []
-            }
+            mock_visual.get.return_value = {"ids": [], "metadatas": []}
             mock_client._visual_collection = mock_visual
 
             # Mock text collection
             mock_text = Mock()
             mock_text.get.return_value = {
                 "ids": ["chunk_0"],
-                "metadatas": [{
-                    "doc_id": "test-doc-12345678",
-                    "filename": "test_audio.mp3",
-                    "timestamp": "2025-10-15T10:00:00Z",
-                    "chunk_id": 0,
-                    "text_preview": "Test audio content",
-                    "has_timestamps": True,
-                    "vtt_available": True
-                }]
+                "metadatas": [
+                    {
+                        "doc_id": "test-doc-12345678",
+                        "filename": "test_audio.mp3",
+                        "timestamp": "2025-10-15T10:00:00Z",
+                        "chunk_id": 0,
+                        "text_preview": "Test audio content",
+                        "has_timestamps": True,
+                        "vtt_available": True,
+                    }
+                ],
             }
             mock_client._text_collection = mock_text
 
@@ -183,9 +184,10 @@ class TestMetadataExtension:
         images_dir.mkdir(parents=True)
 
         cover_jpg = images_dir / "cover.jpg"
-        cover_jpg.write_bytes(b"\xFF\xD8\xFF\xE0\x00\x10JFIF")
+        cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
 
         with patch("src.processing.documents_api.Path") as mock_path:
+
             def path_side_effect(path_str):
                 if path_str == "data/images":
                     return tmp_path / "images"
@@ -222,22 +224,21 @@ class TestMetadataExtension:
             mock_visual = Mock()
             mock_visual.get.return_value = {
                 "ids": ["page_0"],
-                "metadatas": [{
-                    "doc_id": test_doc_id,
-                    "filename": "test.pdf",
-                    "timestamp": "2025-10-15T10:00:00Z",
-                    "page": 1,
-                    "image_path": f"data/page_images/{test_doc_id}/page001.png"
-                }]
+                "metadatas": [
+                    {
+                        "doc_id": test_doc_id,
+                        "filename": "test.pdf",
+                        "timestamp": "2025-10-15T10:00:00Z",
+                        "page": 1,
+                        "image_path": f"data/page_images/{test_doc_id}/page001.png",
+                    }
+                ],
             }
             mock_client._visual_collection = mock_visual
 
             # Mock text collection
             mock_text = Mock()
-            mock_text.get.return_value = {
-                "ids": [],
-                "metadatas": []
-            }
+            mock_text.get.return_value = {"ids": [], "metadatas": []}
             mock_client._text_collection = mock_text
 
             mock_get.return_value = mock_client
@@ -253,6 +254,7 @@ class TestMetadataExtension:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestIntegration:
     """Integration tests for the complete album art pipeline."""
@@ -274,7 +276,6 @@ class TestIntegration:
         5. Verify UI displays album art (manual test)
         """
         # TODO: Implement once full processing pipeline is integrated
-        pass
 
     @pytest.mark.skip(reason="Requires full processing pipeline and ChromaDB")
     def test_full_pipeline_without_art(self, client):
@@ -288,7 +289,6 @@ class TestIntegration:
         5. Verify UI displays default SVG fallback (manual test)
         """
         # TODO: Implement once full processing pipeline is integrated
-        pass
 
     @pytest.mark.skip(reason="Requires full processing pipeline")
     def test_multiple_audio_formats(self, client):
@@ -301,7 +301,6 @@ class TestIntegration:
         4. Verify WAV does not have album art
         """
         # TODO: Implement once full processing pipeline is integrated
-        pass
 
     @pytest.mark.skip(reason="Requires full processing pipeline")
     def test_large_album_art(self, client):
@@ -314,7 +313,6 @@ class TestIntegration:
         4. Verify browser handles large image gracefully
         """
         # TODO: Implement once full processing pipeline is integrated
-        pass
 
     @pytest.mark.skip(reason="Requires full processing pipeline")
     def test_album_art_formats(self, client):
@@ -327,12 +325,12 @@ class TestIntegration:
         4. Verify both display correctly in UI
         """
         # TODO: Implement once full processing pipeline is integrated
-        pass
 
 
 # ============================================================================
 # Performance Tests
 # ============================================================================
+
 
 class TestPerformance:
     """Performance tests for album art serving."""
@@ -352,4 +350,3 @@ class TestPerformance:
         3. Verify latency < 50ms (local file serving)
         """
         # TODO: Implement once production environment is ready
-        pass

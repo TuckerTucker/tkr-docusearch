@@ -8,11 +8,11 @@ This module provides configuration classes for all system components:
 """
 
 from .model_config import ModelConfig
-from .storage_config import StorageConfig
 from .processing_config import ProcessingConfig
+from .storage_config import StorageConfig
 
 __all__ = [
-    'ModelConfig',
-    'StorageConfig',
-    'ProcessingConfig',
+    "ModelConfig",
+    "StorageConfig",
+    "ProcessingConfig",
 ]

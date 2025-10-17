@@ -38,22 +38,21 @@ Performance Targets:
 - Total hybrid search: <500ms
 """
 
-from .search_engine import SearchEngine, SearchError, RetrievalError, RerankingError
-from .query_processor import QueryProcessor, QueryProcessingError
+from .query_processor import QueryProcessingError, QueryProcessor
 from .result_ranker import ResultRanker
+from .search_engine import RerankingError, RetrievalError, SearchEngine, SearchError
 
 __all__ = [
     # Main classes
-    'SearchEngine',
-    'QueryProcessor',
-    'ResultRanker',
-
+    "SearchEngine",
+    "QueryProcessor",
+    "ResultRanker",
     # Exceptions
-    'SearchError',
-    'RetrievalError',
-    'RerankingError',
-    'QueryProcessingError',
+    "SearchError",
+    "RetrievalError",
+    "RerankingError",
+    "QueryProcessingError",
 ]
 
-__version__ = '1.0.0'
-__author__ = 'DocuSearch Team'
+__version__ = "1.0.0"
+__author__ = "DocuSearch Team"

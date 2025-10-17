@@ -11,21 +11,22 @@ This script demonstrates the main workflows:
 NOTE: Wave 2 uses mock implementations. Install ColPali for production use.
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
 
-from embeddings import ColPaliEngine
-from config import ModelConfig
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from PIL import Image
-import numpy as np
+
+from config import ModelConfig
+from embeddings import ColPaliEngine
 
 
 def example_basic_initialization():
     """Example 1: Basic engine initialization."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 1: Basic Initialization")
-    print("="*70)
+    print("=" * 70)
 
     # Initialize with defaults
     engine = ColPaliEngine()
@@ -41,9 +42,9 @@ def example_basic_initialization():
 
 def example_custom_config():
     """Example 2: Custom configuration."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 2: Custom Configuration")
-    print("="*70)
+    print("=" * 70)
 
     # Create custom config
     config = ModelConfig(
@@ -51,7 +52,7 @@ def example_custom_config():
         device="cpu",  # Force CPU
         precision="int8",  # Use quantization
         batch_size_visual=2,
-        batch_size_text=4
+        batch_size_text=4,
     )
 
     # Initialize engine with custom config
@@ -67,9 +68,9 @@ def example_custom_config():
 
 def example_image_embedding():
     """Example 3: Embedding images."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 3: Image Embedding")
-    print("="*70)
+    print("=" * 70)
 
     engine = ColPaliEngine(device="cpu", precision="fp16")
 
@@ -88,15 +89,15 @@ def example_image_embedding():
     print(f"  Input type: {result['input_type']}")
     print(f"  CLS tokens shape: {result['cls_tokens'].shape}")
     print(f"\nPer-image details:")
-    for i, (emb, seq_len) in enumerate(zip(result['embeddings'], result['seq_lengths'])):
+    for i, (emb, seq_len) in enumerate(zip(result["embeddings"], result["seq_lengths"])):
         print(f"  Image {i+1}: {emb.shape} ({seq_len} tokens)")
 
 
 def example_text_embedding():
     """Example 4: Embedding text."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 4: Text Embedding")
-    print("="*70)
+    print("=" * 70)
 
     engine = ColPaliEngine(device="cpu", precision="fp16")
 
@@ -104,7 +105,7 @@ def example_text_embedding():
     texts = [
         "Quarterly revenue increased by 25% year-over-year, driven by strong growth in enterprise sales.",
         "The company's financial performance exceeded expectations with record earnings.",
-        "Market conditions remain favorable for continued expansion in Q2."
+        "Market conditions remain favorable for continued expansion in Q2.",
     ]
 
     # Embed texts
@@ -115,16 +116,16 @@ def example_text_embedding():
     print(f"  Input type: {result['input_type']}")
     print(f"  CLS tokens shape: {result['cls_tokens'].shape}")
     print(f"\nPer-chunk details:")
-    for i, (emb, seq_len) in enumerate(zip(result['embeddings'], result['seq_lengths'])):
+    for i, (emb, seq_len) in enumerate(zip(result["embeddings"], result["seq_lengths"])):
         print(f"  Chunk {i+1}: {emb.shape} ({seq_len} tokens)")
         print(f"    Text: {texts[i][:60]}...")
 
 
 def example_query_embedding():
     """Example 5: Embedding search query."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 5: Query Embedding")
-    print("="*70)
+    print("=" * 70)
 
     engine = ColPaliEngine(device="cpu", precision="fp16")
 
@@ -143,9 +144,9 @@ def example_query_embedding():
 
 def example_late_interaction_scoring():
     """Example 6: Late interaction scoring with MaxSim."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 6: Late Interaction Scoring (MaxSim)")
-    print("="*70)
+    print("=" * 70)
 
     engine = ColPaliEngine(device="cpu", precision="fp16")
 
@@ -173,9 +174,7 @@ def example_late_interaction_scoring():
 
     # Score documents against query
     score_result = engine.score_multi_vector(
-        query_result['embeddings'],
-        doc_result['embeddings'],
-        use_gpu=True
+        query_result["embeddings"], doc_result["embeddings"], use_gpu=True
     )
 
     print(f"\nScoring results:")
@@ -183,7 +182,7 @@ def example_late_interaction_scoring():
     print(f"  Candidates scored: {score_result['num_candidates']}")
 
     # Rank documents by score
-    ranked = sorted(enumerate(score_result['scores']), key=lambda x: x[1], reverse=True)
+    ranked = sorted(enumerate(score_result["scores"]), key=lambda x: x[1], reverse=True)
 
     print(f"\nRanked results:")
     for rank, (doc_idx, score) in enumerate(ranked, 1):
@@ -192,9 +191,9 @@ def example_late_interaction_scoring():
 
 def example_end_to_end_workflow():
     """Example 7: Complete end-to-end workflow."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Example 7: End-to-End Search Workflow")
-    print("="*70)
+    print("=" * 70)
 
     # Initialize engine with INT8 for faster processing
     print("\nInitializing engine with INT8 quantization...")
@@ -204,26 +203,29 @@ def example_end_to_end_workflow():
     print("\n1. Processing documents...")
 
     # Create dummy document pages (visual)
-    doc_pages = [Image.new("RGB", (1024, 1024), color=c)
-                 for c in ["white", "lightgray", "silver"]]
+    doc_pages = [Image.new("RGB", (1024, 1024), color=c) for c in ["white", "lightgray", "silver"]]
 
     # Embed document pages
     page_embeddings = engine.embed_images(doc_pages, batch_size=2)
-    print(f"   Embedded {len(doc_pages)} pages in {page_embeddings['batch_processing_time_ms']:.0f}ms")
+    print(
+        f"   Embedded {len(doc_pages)} pages in {page_embeddings['batch_processing_time_ms']:.0f}ms"
+    )
 
     # Extract text content (in production, from OCR/PDF)
     text_chunks = [
         "Financial summary showing revenue and profit trends.",
         "Quarterly performance metrics and KPIs.",
-        "Strategic initiatives for market expansion."
+        "Strategic initiatives for market expansion.",
     ]
 
     # Embed text content
     text_embeddings = engine.embed_texts(text_chunks, batch_size=2)
-    print(f"   Embedded {len(text_chunks)} text chunks in {text_embeddings['batch_processing_time_ms']:.0f}ms")
+    print(
+        f"   Embedded {len(text_chunks)} text chunks in {text_embeddings['batch_processing_time_ms']:.0f}ms"
+    )
 
     # Combine all embeddings
-    all_embeddings = page_embeddings['embeddings'] + text_embeddings['embeddings']
+    all_embeddings = page_embeddings["embeddings"] + text_embeddings["embeddings"]
 
     # Search
     print("\n2. Processing search query...")
@@ -233,15 +235,11 @@ def example_end_to_end_workflow():
 
     # Score and rank
     print("\n3. Scoring and ranking results...")
-    scores = engine.score_multi_vector(
-        query_result['embeddings'],
-        all_embeddings,
-        use_gpu=True
-    )
+    scores = engine.score_multi_vector(query_result["embeddings"], all_embeddings, use_gpu=True)
     print(f"   Scored {scores['num_candidates']} items in {scores['scoring_time_ms']:.0f}ms")
 
     # Display top results
-    ranked = sorted(enumerate(scores['scores']), key=lambda x: x[1], reverse=True)
+    ranked = sorted(enumerate(scores["scores"]), key=lambda x: x[1], reverse=True)
     print(f"\nTop 3 results for '{query}':")
     for rank, (idx, score) in enumerate(ranked[:3], 1):
         item_type = "Page" if idx < len(doc_pages) else "Text"
@@ -258,11 +256,13 @@ def example_end_to_end_workflow():
 
 def main():
     """Run all examples."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ColPali Embeddings Module - Example Usage")
-    print("="*70)
+    print("=" * 70)
     print("\nNOTE: Wave 2 uses mock implementations.")
-    print("Install ColPali for production: pip install git+https://github.com/illuin-tech/colpali.git")
+    print(
+        "Install ColPali for production: pip install git+https://github.com/illuin-tech/colpali.git"
+    )
 
     try:
         example_basic_initialization()
@@ -273,15 +273,16 @@ def main():
         example_late_interaction_scoring()
         example_end_to_end_workflow()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("All examples completed successfully!")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -6,18 +6,14 @@ Tests thread-safe status management, model validation, and lifecycle operations.
 Contract: status-manager.contract.md
 """
 
-import pytest
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Any
+
+import pytest
 
 from .status_manager import StatusManager
-from .status_models import (
-    ProcessingStatus,
-    ProcessingStatusEnum,
-    QueueItem,
-)
+from .status_models import ProcessingStatus, ProcessingStatusEnum, QueueItem
 
 
 @pytest.fixture
@@ -96,9 +92,7 @@ class TestStatusManagerBasics:
     def test_update_nonexistent_raises_error(self, status_manager):
         """Test updating nonexistent document raises KeyError."""
         with pytest.raises(KeyError, match="not found"):
-            status_manager.update_status(
-                "nonexistent" + "0" * 54, status="parsing", progress=0.1
-            )
+            status_manager.update_status("nonexistent" + "0" * 54, status="parsing", progress=0.1)
 
     def test_update_invalid_progress_raises_error(self, status_manager):
         """Test updating with invalid progress raises ValueError."""
@@ -134,8 +128,7 @@ class TestStatusManagerLists:
 
         assert len(active) == 2
         assert all(
-            s.status
-            not in [ProcessingStatusEnum.COMPLETED, ProcessingStatusEnum.FAILED]
+            s.status not in [ProcessingStatusEnum.COMPLETED, ProcessingStatusEnum.FAILED]
             for s in active
         )
 
@@ -284,9 +277,7 @@ class TestStatusManagerThreadSafety:
 
         def update_worker():
             for i in range(100):
-                status_manager.update_status(
-                    doc_id, status="parsing", progress=0.1
-                )
+                status_manager.update_status(doc_id, status="parsing", progress=0.1)
 
         # Create multiple threads
         threads = [threading.Thread(target=update_worker) for _ in range(10)]
@@ -312,13 +303,11 @@ class TestStatusManagerThreadSafety:
 
         def read_worker():
             for _ in range(100):
-                all_statuses = status_manager.list_all()
+                status_manager.list_all()
                 # Just verify no exceptions
 
         # Create threads
-        create_threads = [
-            threading.Thread(target=create_worker, args=(i,)) for i in range(5)
-        ]
+        create_threads = [threading.Thread(target=create_worker, args=(i,)) for i in range(5)]
         read_threads = [threading.Thread(target=read_worker) for _ in range(3)]
 
         all_threads = create_threads + read_threads

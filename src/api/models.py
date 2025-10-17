@@ -4,39 +4,27 @@ API request/response models for DocuSearch.
 Defines Pydantic models for type-safe API communication.
 """
 
-from typing import Optional, List, Dict, Any, Literal
-from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional
 
+from pydantic import BaseModel, Field
 
 # ============================================================================
 # Search Models
 # ============================================================================
 
+
 class SearchRequest(BaseModel):
     """Request model for document search."""
 
-    query: str = Field(
-        ...,
-        min_length=1,
-        max_length=1000,
-        description="Search query text"
-    )
-    n_results: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Number of results to return"
-    )
+    query: str = Field(..., min_length=1, max_length=1000, description="Search query text")
+    n_results: int = Field(default=10, ge=1, le=100, description="Number of results to return")
     search_mode: Literal["visual", "text", "hybrid"] = Field(
         default="hybrid",
-        description="Search mode: visual (images only), text (text only), or hybrid (both)"
+        description="Search mode: visual (images only), text (text only), or hybrid (both)",
     )
     min_score: Optional[float] = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="Minimum similarity score threshold"
+        default=None, ge=0.0, le=1.0, description="Minimum similarity score threshold"
     )
 
     class Config:
@@ -45,7 +33,7 @@ class SearchRequest(BaseModel):
                 "query": "revenue growth Q3 2024",
                 "n_results": 10,
                 "search_mode": "hybrid",
-                "min_score": 0.5
+                "min_score": 0.5,
             }
         }
 
@@ -68,7 +56,7 @@ class SearchResult(BaseModel):
                 "page_num": 5,
                 "score": 0.87,
                 "text_preview": "Revenue grew by 23% in Q3...",
-                "metadata": {"filename": "report.pdf", "upload_date": "2024-01-15"}
+                "metadata": {"filename": "report.pdf", "upload_date": "2024-01-15"},
             }
         }
 
@@ -89,7 +77,7 @@ class SearchResponse(BaseModel):
                 "results": [],
                 "total_results": 15,
                 "search_time_ms": 239.5,
-                "search_mode": "hybrid"
+                "search_mode": "hybrid",
             }
         }
 
@@ -97,6 +85,7 @@ class SearchResponse(BaseModel):
 # ============================================================================
 # Upload Models
 # ============================================================================
+
 
 class UploadResponse(BaseModel):
     """Response model for document upload."""
@@ -116,7 +105,7 @@ class UploadResponse(BaseModel):
                 "filename": "financial-report.pdf",
                 "file_size_bytes": 2048576,
                 "status": "queued",
-                "message": "Document queued for processing"
+                "message": "Document queued for processing",
             }
         }
 
@@ -126,15 +115,9 @@ class ProcessingStatus(BaseModel):
 
     doc_id: str = Field(..., description="Document ID")
     status: Literal["queued", "processing", "completed", "failed"] = Field(
-        ...,
-        description="Processing status"
+        ..., description="Processing status"
     )
-    progress: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Processing progress (0-1)"
-    )
+    progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Processing progress (0-1)")
     pages_processed: Optional[int] = Field(None, description="Number of pages processed")
     total_pages: Optional[int] = Field(None, description="Total pages in document")
     error: Optional[str] = Field(None, description="Error message if failed")
@@ -151,7 +134,7 @@ class ProcessingStatus(BaseModel):
                 "total_pages": 10,
                 "error": None,
                 "started_at": "2024-01-15T10:30:00Z",
-                "completed_at": None
+                "completed_at": None,
             }
         }
 
@@ -160,14 +143,12 @@ class ProcessingStatus(BaseModel):
 # Status Models
 # ============================================================================
 
+
 class ComponentHealth(BaseModel):
     """Health status for a system component."""
 
     name: str = Field(..., description="Component name")
-    status: Literal["healthy", "unhealthy", "degraded"] = Field(
-        ...,
-        description="Health status"
-    )
+    status: Literal["healthy", "unhealthy", "degraded"] = Field(..., description="Health status")
     message: Optional[str] = Field(None, description="Status message")
     latency_ms: Optional[float] = Field(None, description="Response latency in milliseconds")
 
@@ -177,7 +158,7 @@ class ComponentHealth(BaseModel):
                 "name": "chromadb",
                 "status": "healthy",
                 "message": "Connected and responsive",
-                "latency_ms": 5.2
+                "latency_ms": 5.2,
             }
         }
 
@@ -196,7 +177,7 @@ class SystemStats(BaseModel):
                 "total_documents": 42,
                 "total_pages": 523,
                 "total_text_chunks": 1847,
-                "index_size_mb": 128.5
+                "index_size_mb": 128.5,
             }
         }
 
@@ -205,8 +186,7 @@ class StatusResponse(BaseModel):
     """Response model for system status."""
 
     system_status: Literal["healthy", "degraded", "unhealthy"] = Field(
-        ...,
-        description="Overall system status"
+        ..., description="Overall system status"
     )
     components: List[ComponentHealth] = Field(..., description="Component health status")
     stats: SystemStats = Field(..., description="System statistics")
@@ -218,7 +198,7 @@ class StatusResponse(BaseModel):
                 "system_status": "healthy",
                 "components": [],
                 "stats": {},
-                "uptime_seconds": 3600.5
+                "uptime_seconds": 3600.5,
             }
         }
 
@@ -232,17 +212,14 @@ class HealthResponse(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "status": "ok",
-                "timestamp": "2024-01-15T10:30:00Z",
-                "version": "1.0.0"
-            }
+            "example": {"status": "ok", "timestamp": "2024-01-15T10:30:00Z", "version": "1.0.0"}
         }
 
 
 # ============================================================================
 # Error Models
 # ============================================================================
+
 
 class ErrorResponse(BaseModel):
     """Error response model."""
@@ -256,6 +233,6 @@ class ErrorResponse(BaseModel):
             "example": {
                 "error": "ValidationError",
                 "message": "Invalid search query",
-                "detail": "Query must be at least 1 character long"
+                "detail": "Query must be at least 1 character long",
             }
         }

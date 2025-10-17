@@ -9,16 +9,15 @@ Consumers: image-agent, parser-agent, api-agent
 Contract: integration-contracts/01-image-config.contract.md
 """
 
-from pathlib import Path
-import os
 import logging
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigurationError(Exception):
     """Raised when image storage configuration is invalid."""
-    pass
 
 
 # Base directory for page images
@@ -75,9 +74,7 @@ def validate_config() -> None:
 
     # Verify it's a directory
     if not PAGE_IMAGE_DIR.is_dir():
-        raise ConfigurationError(
-            f"PAGE_IMAGE_DIR is not a directory: {PAGE_IMAGE_DIR}"
-        )
+        raise ConfigurationError(f"PAGE_IMAGE_DIR is not a directory: {PAGE_IMAGE_DIR}")
 
     # Check write permissions
     test_file = PAGE_IMAGE_DIR / ".write_test"
@@ -86,9 +83,7 @@ def validate_config() -> None:
         test_file.unlink()
         logger.debug(f"PAGE_IMAGE_DIR write permission verified: {PAGE_IMAGE_DIR}")
     except PermissionError as e:
-        raise ConfigurationError(
-            f"No write permission to PAGE_IMAGE_DIR: {PAGE_IMAGE_DIR}"
-        ) from e
+        raise ConfigurationError(f"No write permission to PAGE_IMAGE_DIR: {PAGE_IMAGE_DIR}") from e
     except Exception as e:
         logger.warning(f"Could not verify write permissions: {e}")
 

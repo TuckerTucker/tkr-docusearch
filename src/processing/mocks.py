@@ -6,10 +6,10 @@ for independent Wave 2 development. These will be replaced with real
 implementations in Wave 3.
 """
 
-import uuid
 import logging
-from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple
+
 import numpy as np
 from PIL import Image
 
@@ -43,7 +43,7 @@ class MockEmbeddingEngine:
         self,
         model_name: str = "nomic-ai/colnomic-embed-multimodal-7b",
         device: str = "mps",
-        **kwargs
+        **kwargs,
     ):
         """Initialize mock embedding engine.
 
@@ -56,11 +56,7 @@ class MockEmbeddingEngine:
         self.device = device
         logger.info(f"Initialized MockEmbeddingEngine (device={device})")
 
-    def embed_images(
-        self,
-        images: List[Image.Image],
-        batch_size: int = 4
-    ) -> BatchEmbeddingOutput:
+    def embed_images(self, images: List[Image.Image], batch_size: int = 4) -> BatchEmbeddingOutput:
         """Generate mock multi-vector embeddings for images.
 
         Args:
@@ -104,14 +100,10 @@ class MockEmbeddingEngine:
             cls_tokens=cls_tokens,
             seq_lengths=seq_lengths,
             input_type="visual",
-            batch_processing_time_ms=simulated_time_ms
+            batch_processing_time_ms=simulated_time_ms,
         )
 
-    def embed_texts(
-        self,
-        texts: List[str],
-        batch_size: int = 8
-    ) -> BatchEmbeddingOutput:
+    def embed_texts(self, texts: List[str], batch_size: int = 8) -> BatchEmbeddingOutput:
         """Generate mock multi-vector embeddings for texts.
 
         Args:
@@ -155,7 +147,7 @@ class MockEmbeddingEngine:
             cls_tokens=cls_tokens,
             seq_lengths=seq_lengths,
             input_type="text",
-            batch_processing_time_ms=simulated_time_ms
+            batch_processing_time_ms=simulated_time_ms,
         )
 
     def get_model_info(self) -> Dict[str, Any]:
@@ -172,7 +164,7 @@ class MockEmbeddingEngine:
             "memory_allocated_mb": 0.0,
             "is_loaded": True,
             "cache_dir": "/models",
-            "mock": True
+            "mock": True,
         }
 
     def clear_cache(self):
@@ -197,7 +189,7 @@ class MockStorageClient:
         host: str = "chromadb",
         port: int = 8000,
         visual_collection: str = "visual_collection",
-        text_collection: str = "text_collection"
+        text_collection: str = "text_collection",
     ):
         """Initialize mock storage client.
 
@@ -216,17 +208,10 @@ class MockStorageClient:
         self._visual_store: Dict[str, Dict[str, Any]] = {}
         self._text_store: Dict[str, Dict[str, Any]] = {}
 
-        logger.info(
-            f"Initialized MockStorageClient "
-            f"(host={host}, port={port}, mock=True)"
-        )
+        logger.info(f"Initialized MockStorageClient " f"(host={host}, port={port}, mock=True)")
 
     def add_visual_embedding(
-        self,
-        doc_id: str,
-        page: int,
-        full_embeddings: np.ndarray,
-        metadata: Dict[str, Any]
+        self, doc_id: str, page: int, full_embeddings: np.ndarray, metadata: Dict[str, Any]
     ) -> str:
         """Store mock visual embedding.
 
@@ -245,16 +230,13 @@ class MockStorageClient:
         # Validate shape
         if len(full_embeddings.shape) != 2:
             raise ValueError(
-                f"Invalid embedding shape: {full_embeddings.shape}. "
-                "Expected (seq_length, 768)"
+                f"Invalid embedding shape: {full_embeddings.shape}. " "Expected (seq_length, 768)"
             )
 
         seq_length, dim = full_embeddings.shape
         # Support both real ColPali (128) and mock (768) dimensions
         if dim not in [128, 768]:
-            raise ValueError(
-                f"Invalid embedding dimension: {dim}. Expected 128 or 768"
-            )
+            raise ValueError(f"Invalid embedding dimension: {dim}. Expected 128 or 768")
 
         # Generate ID
         embedding_id = f"{doc_id}-page{page:03d}"
@@ -266,22 +248,15 @@ class MockStorageClient:
             "page": page,
             "full_embeddings": full_embeddings,
             "seq_length": seq_length,
-            "metadata": metadata
+            "metadata": metadata,
         }
 
-        logger.debug(
-            f"Stored visual embedding: {embedding_id} "
-            f"(shape={full_embeddings.shape})"
-        )
+        logger.debug(f"Stored visual embedding: {embedding_id} " f"(shape={full_embeddings.shape})")
 
         return embedding_id
 
     def add_text_embedding(
-        self,
-        doc_id: str,
-        chunk_id: int,
-        full_embeddings: np.ndarray,
-        metadata: Dict[str, Any]
+        self, doc_id: str, chunk_id: int, full_embeddings: np.ndarray, metadata: Dict[str, Any]
     ) -> str:
         """Store mock text embedding.
 
@@ -300,16 +275,13 @@ class MockStorageClient:
         # Validate shape
         if len(full_embeddings.shape) != 2:
             raise ValueError(
-                f"Invalid embedding shape: {full_embeddings.shape}. "
-                "Expected (seq_length, 768)"
+                f"Invalid embedding shape: {full_embeddings.shape}. " "Expected (seq_length, 768)"
             )
 
         seq_length, dim = full_embeddings.shape
         # Support both real ColPali (128) and mock (768) dimensions
         if dim not in [128, 768]:
-            raise ValueError(
-                f"Invalid embedding dimension: {dim}. Expected 128 or 768"
-            )
+            raise ValueError(f"Invalid embedding dimension: {dim}. Expected 128 or 768")
 
         # Generate ID
         embedding_id = f"{doc_id}-chunk{chunk_id:04d}"
@@ -321,13 +293,10 @@ class MockStorageClient:
             "chunk_id": chunk_id,
             "full_embeddings": full_embeddings,
             "seq_length": seq_length,
-            "metadata": metadata
+            "metadata": metadata,
         }
 
-        logger.debug(
-            f"Stored text embedding: {embedding_id} "
-            f"(shape={full_embeddings.shape})"
-        )
+        logger.debug(f"Stored text embedding: {embedding_id} " f"(shape={full_embeddings.shape})")
 
         return embedding_id
 
@@ -347,7 +316,7 @@ class MockStorageClient:
             "text_count": len(self._text_store),
             "total_documents": len(all_docs),
             "storage_size_mb": 0.0,  # Mock - no actual storage
-            "mock": True
+            "mock": True,
         }
 
     def delete_document(self, doc_id: str) -> Tuple[int, int]:
@@ -360,61 +329,40 @@ class MockStorageClient:
             Tuple of (visual_count, text_count) deleted
         """
         # Delete visual embeddings
-        visual_ids = [
-            eid for eid, item in self._visual_store.items()
-            if item["doc_id"] == doc_id
-        ]
+        visual_ids = [eid for eid, item in self._visual_store.items() if item["doc_id"] == doc_id]
         for eid in visual_ids:
             del self._visual_store[eid]
 
         # Delete text embeddings
-        text_ids = [
-            eid for eid, item in self._text_store.items()
-            if item["doc_id"] == doc_id
-        ]
+        text_ids = [eid for eid, item in self._text_store.items() if item["doc_id"] == doc_id]
         for eid in text_ids:
             del self._text_store[eid]
 
         logger.info(
-            f"Deleted document {doc_id}: "
-            f"{len(visual_ids)} visual, {len(text_ids)} text"
+            f"Deleted document {doc_id}: " f"{len(visual_ids)} visual, {len(text_ids)} text"
         )
 
         return len(visual_ids), len(text_ids)
 
     def search_visual(
-        self,
-        query_embedding: np.ndarray,
-        n_results: int = 100,
-        filters: Dict[str, Any] = None
+        self, query_embedding: np.ndarray, n_results: int = 100, filters: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
         """Mock visual search (not implemented for Wave 2).
 
         This will be implemented in Wave 3 for search-agent.
         """
-        raise NotImplementedError(
-            "Search functionality will be implemented in Wave 3"
-        )
+        raise NotImplementedError("Search functionality will be implemented in Wave 3")
 
     def search_text(
-        self,
-        query_embedding: np.ndarray,
-        n_results: int = 100,
-        filters: Dict[str, Any] = None
+        self, query_embedding: np.ndarray, n_results: int = 100, filters: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
         """Mock text search (not implemented for Wave 2).
 
         This will be implemented in Wave 3 for search-agent.
         """
-        raise NotImplementedError(
-            "Search functionality will be implemented in Wave 3"
-        )
+        raise NotImplementedError("Search functionality will be implemented in Wave 3")
 
-    def get_full_embeddings(
-        self,
-        embedding_id: str,
-        collection: str = "visual"
-    ) -> np.ndarray:
+    def get_full_embeddings(self, embedding_id: str, collection: str = "visual") -> np.ndarray:
         """Retrieve mock full embeddings.
 
         Args:

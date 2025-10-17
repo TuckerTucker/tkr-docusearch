@@ -14,19 +14,14 @@ and behavior without requiring full ColPali installation.
 """
 
 import unittest
+
 import numpy as np
 from PIL import Image
-from typing import List
 
-from .colpali_wrapper import ColPaliEngine
-from .types import EmbeddingOutput, BatchEmbeddingOutput, ScoringOutput
-from .exceptions import (
-    EmbeddingGenerationError,
-    ScoringError,
-    ModelLoadError
-)
-from .scoring import maxsim_score, validate_embedding_shape
-from ..config.model_config import ModelConfig
+from config.model_config import ModelConfig
+from embeddings.colpali_wrapper import ColPaliEngine
+from embeddings.exceptions import ScoringError
+from embeddings.scoring import maxsim_score, validate_embedding_shape
 
 
 class TestModelLoading(unittest.TestCase):
@@ -46,7 +41,7 @@ class TestModelLoading(unittest.TestCase):
             device="cpu",
             precision="int8",
             batch_size_visual=2,
-            batch_size_text=4
+            batch_size_text=4,
         )
         engine = ColPaliEngine(config=config)
         self.assertEqual(engine.config.device, "cpu")
@@ -126,10 +121,7 @@ class TestImageEmbedding(unittest.TestCase):
         result = self.engine.embed_images([image])
 
         # CLS token should match first token of embeddings
-        np.testing.assert_array_almost_equal(
-            result["cls_tokens"][0],
-            result["embeddings"][0][0]
-        )
+        np.testing.assert_array_almost_equal(result["cls_tokens"][0], result["embeddings"][0][0])
 
 
 class TestTextEmbedding(unittest.TestCase):
@@ -155,7 +147,7 @@ class TestTextEmbedding(unittest.TestCase):
         texts = [
             "First document about revenue growth.",
             "Second document about quarterly earnings.",
-            "Third document about financial performance."
+            "Third document about financial performance.",
         ]
 
         result = self.engine.embed_texts(texts, batch_size=2)
@@ -246,8 +238,7 @@ class TestLateInteractionScoring(unittest.TestCase):
 
         # Score
         score_result = self.engine.score_multi_vector(
-            query_result["embeddings"],
-            doc_result["embeddings"]
+            query_result["embeddings"], doc_result["embeddings"]
         )
 
         self.assertIsInstance(score_result, dict)
@@ -270,13 +261,12 @@ class TestLateInteractionScoring(unittest.TestCase):
         docs = [
             "Revenue increased by 20% this quarter.",
             "The company showed strong growth.",
-            "Unrelated content about weather."
+            "Unrelated content about weather.",
         ]
         doc_result = self.engine.embed_texts(docs)
 
         score_result = self.engine.score_multi_vector(
-            query_result["embeddings"],
-            doc_result["embeddings"]
+            query_result["embeddings"], doc_result["embeddings"]
         )
 
         self.assertEqual(len(score_result["scores"]), 3)
@@ -317,8 +307,7 @@ class TestLateInteractionScoring(unittest.TestCase):
         doc_result = self.engine.embed_texts(docs)
 
         score_result = self.engine.score_multi_vector(
-            query_result["embeddings"],
-            doc_result["embeddings"]
+            query_result["embeddings"], doc_result["embeddings"]
         )
 
         # Should be fast (mock should be <1s for 10 docs)
@@ -394,16 +383,13 @@ class TestConfigurationEdgeCases(unittest.TestCase):
         info_int8 = engine_int8.get_model_info()
 
         # INT8 should use roughly half the memory of FP16
-        self.assertLess(
-            info_int8["memory_allocated_mb"],
-            info_fp16["memory_allocated_mb"]
-        )
+        self.assertLess(info_int8["memory_allocated_mb"], info_fp16["memory_allocated_mb"])
 
 
 def run_tests():
     """Run all tests."""
-    unittest.main(argv=[''], verbosity=2, exit=False)
+    unittest.main(argv=[""], verbosity=2, exit=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_tests()

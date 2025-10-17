@@ -5,33 +5,31 @@ Watches the uploads directory and processes documents automatically.
 Extracts text, generates embeddings, and stores in ChromaDB.
 """
 
-import logging
-import time
-import os
-from pathlib import Path
-from typing import List, Optional
-from datetime import datetime
 import hashlib
+import logging
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
+from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent
+
+from ..config.processing_config import ProcessingConfig
 
 # Import core components
 from ..embeddings import ColPaliEngine
-from ..storage import ChromaClient
 from ..processing import DocumentProcessor
 from ..processing.docling_parser import DoclingParser
-from ..config.processing_config import ProcessingConfig
+from ..storage import ChromaClient
 from .file_validator import validate_file_type
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('/data/logs/worker.log')
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("/data/logs/worker.log")],
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +51,7 @@ processing_status = {}
 # ============================================================================
 # File System Event Handler
 # ============================================================================
+
 
 class DocumentUploadHandler(FileSystemEventHandler):
     """Handles new document uploads."""
@@ -83,7 +82,7 @@ class DocumentUploadHandler(FileSystemEventHandler):
             return
 
         # Skip temp files
-        if file_path.name.startswith('.') or file_path.name.startswith('~'):
+        if file_path.name.startswith(".") or file_path.name.startswith("~"):
             return
 
         logger.info(f"New upload detected: {file_path}")
@@ -105,7 +104,7 @@ class DocumentUploadHandler(FileSystemEventHandler):
         doc_id = None
         try:
             # Generate doc ID from file hash
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 content = f.read()
                 doc_id = hashlib.md5(content).hexdigest()[:12]
 
@@ -115,7 +114,7 @@ class DocumentUploadHandler(FileSystemEventHandler):
                 "status": "parsing",
                 "progress": 0.0,
                 "started_at": datetime.now().isoformat(),
-                "error": None
+                "error": None,
             }
 
             logger.info(f"Processing document: {file_path.name} (ID: {doc_id})")
@@ -127,14 +126,16 @@ class DocumentUploadHandler(FileSystemEventHandler):
             # DocumentProcessor handles parsing, embedding, and storage
             result = self.processor.process_document(
                 file_path=str(file_path),
-                status_callback=lambda status: self._update_processing_status(doc_id, status)
+                status_callback=lambda status: self._update_processing_status(doc_id, status),
             )
 
             if not result or result.status.lower() != "completed":
                 error_msg = result.error if result else "Unknown error"
                 raise ValueError(f"Document processing failed: {error_msg}")
 
-            logger.info(f"Processed {file_path.name}: {result.pages_processed} pages, {result.text_chunks_processed} text chunks")
+            logger.info(
+                f"Processed {file_path.name}: {result.pages_processed} pages, {result.text_chunks_processed} text chunks"
+            )
 
             # Update status to completed
             processing_status[doc_id]["status"] = "completed"
@@ -171,6 +172,7 @@ class DocumentUploadHandler(FileSystemEventHandler):
 # ============================================================================
 # Worker Main Function
 # ============================================================================
+
 
 def process_existing_files(handler: DocumentUploadHandler, uploads_dir: Path):
     """
@@ -222,24 +224,17 @@ def main():
     try:
         # Initialize embedding engine
         logger.info(f"Loading ColPali model (device={DEVICE}, precision={PRECISION})...")
-        embedding_engine = ColPaliEngine(
-            device=DEVICE,
-            precision=PRECISION
-        )
+        embedding_engine = ColPaliEngine(device=DEVICE, precision=PRECISION)
         logger.info("✓ ColPali model loaded")
 
         # Initialize storage client
         logger.info(f"Connecting to ChromaDB ({CHROMA_HOST}:{CHROMA_PORT})...")
-        storage_client = ChromaClient(
-            host=CHROMA_HOST,
-            port=CHROMA_PORT
-        )
+        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
         logger.info("✓ ChromaDB connected")
 
         # Initialize document processor
         document_processor = DocumentProcessor(
-            embedding_engine=embedding_engine,
-            storage_client=storage_client
+            embedding_engine=embedding_engine, storage_client=storage_client
         )
         logger.info("✓ Document processor initialized")
 
@@ -252,10 +247,7 @@ def main():
         return 1
 
     # Create event handler
-    event_handler = DocumentUploadHandler(
-        processor=document_processor,
-        parser=parser
-    )
+    event_handler = DocumentUploadHandler(processor=document_processor, parser=parser)
 
     # Process existing files
     process_existing_files(event_handler, UPLOADS_DIR)
@@ -288,6 +280,7 @@ def main():
 # Status API (Optional)
 # ============================================================================
 
+
 def get_processing_status(doc_id: Optional[str] = None):
     """
     Get processing status.
@@ -299,15 +292,11 @@ def get_processing_status(doc_id: Optional[str] = None):
         Processing status dict
     """
     if doc_id:
-        return processing_status.get(doc_id, {
-            "status": "not_found",
-            "error": f"No processing record for document {doc_id}"
-        })
+        return processing_status.get(
+            doc_id, {"status": "not_found", "error": f"No processing record for document {doc_id}"}
+        )
 
-    return {
-        "total": len(processing_status),
-        "documents": processing_status
-    }
+    return {"total": len(processing_status), "documents": processing_status}
 
 
 # ============================================================================

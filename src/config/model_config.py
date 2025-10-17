@@ -5,9 +5,9 @@ This module defines configuration for the ColQwen2_5 model including
 device selection, precision, and batch sizes.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Literal
-import os
 
 
 @dataclass
@@ -25,27 +25,27 @@ class ModelConfig:
     """
 
     # Model selection
-    name: str = os.getenv('MODEL_NAME', 'vidore/colpali-v1.2')
-    precision: Literal['fp16', 'int8'] = os.getenv('MODEL_PRECISION', 'fp16')  # type: ignore
+    name: str = os.getenv("MODEL_NAME", "vidore/colpali-v1.2")
+    precision: Literal["fp16", "int8"] = os.getenv("MODEL_PRECISION", "fp16")  # type: ignore
 
     # Device selection
-    device: Literal['mps', 'cuda', 'cpu'] = os.getenv('DEVICE', 'mps')  # type: ignore
+    device: Literal["mps", "cuda", "cpu"] = os.getenv("DEVICE", "mps")  # type: ignore
 
     # Batch sizes
-    batch_size_visual: int = int(os.getenv('BATCH_SIZE_VISUAL', '4'))
-    batch_size_text: int = int(os.getenv('BATCH_SIZE_TEXT', '8'))
+    batch_size_visual: int = int(os.getenv("BATCH_SIZE_VISUAL", "4"))
+    batch_size_text: int = int(os.getenv("BATCH_SIZE_TEXT", "8"))
 
     # Cache directory
-    cache_dir: str = os.getenv('MODELS_CACHE', '/models')
+    cache_dir: str = os.getenv("MODELS_CACHE", "/models")
 
     # Auto-detect device if specified device unavailable
     auto_fallback: bool = True
 
     def __post_init__(self):
         """Validate configuration and detect available device."""
-        if self.precision not in ['fp16', 'int8']:
+        if self.precision not in ["fp16", "int8"]:
             raise ValueError(f"Invalid precision: {self.precision}. Must be 'fp16' or 'int8'")
-        if self.device not in ['mps', 'cuda', 'cpu']:
+        if self.device not in ["mps", "cuda", "cpu"]:
             raise ValueError(f"Invalid device: {self.device}. Must be 'mps', 'cuda', or 'cpu'")
 
         # Check device availability and fallback
@@ -62,17 +62,19 @@ class ModelConfig:
             import torch
 
             # Check requested device
-            if self.device == 'mps' and torch.backends.mps.is_available():
-                return 'mps'
-            elif self.device == 'cuda' and torch.cuda.is_available():
-                return 'cuda'
+            if self.device == "mps" and torch.backends.mps.is_available():
+                return "mps"
+            elif self.device == "cuda" and torch.cuda.is_available():
+                return "cuda"
             else:
-                if self.device != 'cpu':
-                    print(f"Warning: Requested device '{self.device}' not available, falling back to CPU")
-                return 'cpu'
+                if self.device != "cpu":
+                    print(
+                        f"Warning: Requested device '{self.device}' not available, falling back to CPU"
+                    )
+                return "cpu"
         except ImportError:
             print("Warning: PyTorch not available, using CPU device")
-            return 'cpu'
+            return "cpu"
 
     @property
     def memory_estimate_gb(self) -> float:
@@ -82,7 +84,7 @@ class ModelConfig:
             Estimated memory in GB
         """
         base_model_size = 14.0  # ColNomic 7B ~14GB FP16
-        if self.precision == 'int8':
+        if self.precision == "int8":
             return base_model_size / 2  # ~7GB INT8
         return base_model_size
 
@@ -93,7 +95,7 @@ class ModelConfig:
         Returns:
             True if INT8 quantization enabled
         """
-        return self.precision == 'int8'
+        return self.precision == "int8"
 
     def to_dict(self) -> dict:
         """Convert configuration to dictionary.
@@ -102,14 +104,14 @@ class ModelConfig:
             Configuration as dictionary
         """
         return {
-            'name': self.name,
-            'precision': self.precision,
-            'device': self.device,
-            'batch_size_visual': self.batch_size_visual,
-            'batch_size_text': self.batch_size_text,
-            'cache_dir': self.cache_dir,
-            'memory_estimate_gb': self.memory_estimate_gb,
-            'is_quantized': self.is_quantized,
+            "name": self.name,
+            "precision": self.precision,
+            "device": self.device,
+            "batch_size_visual": self.batch_size_visual,
+            "batch_size_text": self.batch_size_text,
+            "cache_dir": self.cache_dir,
+            "memory_estimate_gb": self.memory_estimate_gb,
+            "is_quantized": self.is_quantized,
         }
 
     def __repr__(self) -> str:
