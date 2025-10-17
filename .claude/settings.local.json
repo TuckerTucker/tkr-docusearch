@@ -98,7 +98,10 @@
       "Bash(git merge:*)",
       "Bash(git rm:*)",
       "Bash(git restore:*)",
-      "WebFetch(domain:arxiv.org)"
+      "WebFetch(domain:arxiv.org)",
+      "Bash(./scripts/start-research-api.sh:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",

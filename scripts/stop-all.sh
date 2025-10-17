@@ -33,6 +33,7 @@ NC='\033[0m'
 
 FORCE_MODE="${1:-}"
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
+RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 COMPOSE_DIR="${PROJECT_ROOT}/docker"
 
 # ============================================================================
@@ -123,6 +124,67 @@ stop_native_worker() {
     fi
 }
 
+stop_research_api() {
+    echo -e "\n${CYAN}Stopping research API...${NC}\n"
+
+    # Check PID file
+    if [ -f "$RESEARCH_PID_FILE" ]; then
+        local research_pid=$(cat "$RESEARCH_PID_FILE")
+
+        if ps -p "$research_pid" > /dev/null 2>&1; then
+            print_status "Research API PID" "info" "Found: $research_pid"
+
+            if [ "$FORCE_MODE" = "--force" ]; then
+                print_status "Research API" "warn" "Force killing (SIGKILL)"
+                kill -9 "$research_pid" 2>/dev/null || true
+            else
+                print_status "Research API" "info" "Gracefully stopping (SIGTERM)"
+                kill "$research_pid" 2>/dev/null || true
+
+                # Wait up to 10 seconds for graceful shutdown
+                local count=0
+                while ps -p "$research_pid" > /dev/null 2>&1 && [ $count -lt 10 ]; do
+                    sleep 1
+                    count=$((count + 1))
+                done
+
+                # Force kill if still running
+                if ps -p "$research_pid" > /dev/null 2>&1; then
+                    print_status "Research API" "warn" "Graceful shutdown timed out, force killing"
+                    kill -9 "$research_pid" 2>/dev/null || true
+                fi
+            fi
+
+            # Verify stopped
+            if ps -p "$research_pid" > /dev/null 2>&1; then
+                print_status "Research API" "error" "Failed to stop (PID: $research_pid)"
+            else
+                print_status "Research API" "ok" "Stopped"
+            fi
+        else
+            print_status "Research API" "info" "Not running (stale PID file)"
+        fi
+
+        rm -f "$RESEARCH_PID_FILE"
+        print_status "Research PID file" "ok" "Cleaned up"
+    else
+        print_status "Research API" "info" "No PID file found (may not be running)"
+    fi
+
+    # Check for orphaned research API processes
+    local orphaned_pids=$(pgrep -f "src/api/research.py" || true)
+    if [ -n "$orphaned_pids" ]; then
+        print_status "Orphaned research APIs" "warn" "Found: $orphaned_pids"
+
+        if [ "$FORCE_MODE" = "--force" ]; then
+            pkill -9 -f "src/api/research.py" || true
+            print_status "Orphaned research APIs" "ok" "Killed"
+        else
+            echo -e "\n  ${YELLOW}Run with --force to kill orphaned research APIs${NC}"
+        fi
+    fi
+}
+
 stop_docker_services() {
     echo -e "\n${CYAN}Stopping Docker services...${NC}\n"
 
@@ -177,8 +239,8 @@ stop_docker_services() {
 check_ports() {
     echo -e "\n${CYAN}Checking ports...${NC}\n"
 
-    local ports=("8000" "8001" "8002")
-    local port_names=("Copyparty" "ChromaDB" "Worker")
+    local ports=("8000" "8001" "8002" "8004")
+    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API")
     local ports_in_use=false
 
     for i in "${!ports[@]}"; do
@@ -208,6 +270,11 @@ cleanup_logs() {
         print_status "Worker log" "info" "Saved (${log_size}): logs/worker-native.log"
     fi
 
+    if [ -f "logs/research-api.log" ]; then
+        local log_size=$(du -h logs/research-api.log | cut -f1)
+        print_status "Research API log" "info" "Saved (${log_size}): logs/research-api.log"
+    fi
+
     # Show recent Docker logs
     cd "$COMPOSE_DIR"
     local compose_logs=$(docker-compose logs --tail=0 2>/dev/null || echo "")
@@ -230,7 +297,7 @@ show_summary() {
     if [ "$FORCE_MODE" != "--force" ]; then
         echo -e "\n${CYAN}Troubleshooting:${NC}"
         echo -e "  ${GREEN}→${NC} Force stop: ${YELLOW}./scripts/stop-all.sh --force${NC}"
-        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :8000,8001,8002${NC}"
+        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :8000,8001,8002,8004${NC}"
     fi
 
     echo ""
@@ -249,11 +316,12 @@ ${YELLOW}Options:${NC}
 
 ${YELLOW}What gets stopped:${NC}
   1. Native worker process (if running)
-  2. Docker containers:
+  2. Research API process (if running)
+  3. Docker containers:
      - docusearch-copyparty (Copyparty upload server)
      - docusearch-chromadb (ChromaDB vector database)
      - docusearch-worker (Worker, if in Docker mode)
-  3. Cleanup:
+  4. Cleanup:
      - PID files
      - Orphaned processes
 
@@ -266,10 +334,13 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Troubleshooting:${NC}
   # Check what's running on DocuSearch ports
-  lsof -i :8000,8001,8002
+  lsof -i :8000,8001,8002,8004
 
   # Manually kill worker
   pkill -f worker_webhook.py
+
+  # Manually kill research API
+  pkill -f src/api/research.py
 
   # Force remove Docker containers
   docker rm -f \$(docker ps -aq --filter "name=docusearch")
@@ -313,6 +384,7 @@ else
 fi
 
 stop_native_worker
+stop_research_api
 stop_docker_services
 check_ports
 cleanup_logs

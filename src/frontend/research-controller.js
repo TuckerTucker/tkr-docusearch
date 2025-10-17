@@ -13,9 +13,8 @@ let currentView = 'detailed';
 let currentResponse = null;
 
 // API endpoint
-const API_BASE = window.location.origin.includes('localhost:8000')
-    ? 'http://localhost:8003'  // Standalone research API
-    : window.location.origin;  // Integrated API
+// Frontend is served on port 8002 (worker), Research API is on port 8004
+const API_BASE = 'http://localhost:8004';
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {

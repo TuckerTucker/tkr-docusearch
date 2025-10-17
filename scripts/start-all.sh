@@ -79,8 +79,8 @@ check_docker() {
 }
 
 check_ports() {
-    local ports=("8000" "8001" "8002")
-    local port_names=("Copyparty" "ChromaDB" "Worker")
+    local ports=("8000" "8001" "8002" "8004")
+    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API")
 
     for i in "${!ports[@]}"; do
         local port="${ports[$i]}"
@@ -179,15 +179,38 @@ start_native_worker() {
     fi
 }
 
+start_research_api() {
+    echo -e "\n${CYAN}Starting Research API...${NC}\n"
+
+    if [ ! -d ".venv-native" ]; then
+        echo -e "${YELLOW}Virtual environment not found. Skipping Research API.${NC}"
+        return
+    fi
+
+    # Start research API
+    ./scripts/start-research-api.sh
+
+    # Check if started
+    if [ -f ".research-api.pid" ]; then
+        local api_pid=$(cat ".research-api.pid")
+        print_status "Research API" "ok" "Running on http://localhost:8004 (PID: $api_pid)"
+    else
+        print_status "Research API" "warn" "Failed to start (check logs/research-api.log)"
+    fi
+}
+
 show_summary() {
     echo -e "\n${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} Upload UI:     ${BLUE}http://localhost:8000${NC}"
+    echo -e "  ${GREEN}→${NC} Copyparty:     ${BLUE}http://localhost:8000${NC} (File upload)"
     echo -e "  ${GREEN}→${NC} ChromaDB:      ${BLUE}http://localhost:8001${NC}"
     echo -e "  ${GREEN}→${NC} Worker API:    ${BLUE}http://localhost:8002${NC}"
+    echo -e "  ${GREEN}→${NC} Frontend UI:   ${BLUE}http://localhost:8002/frontend${NC}"
     echo -e "  ${GREEN}→${NC} Worker Status: ${BLUE}http://localhost:8002/status${NC}"
+    echo -e "  ${GREEN}→${NC} Research API:  ${BLUE}http://localhost:8004${NC}"
+    echo -e "  ${GREEN}→${NC} Research UI:   ${BLUE}http://localhost:8002/frontend/research.html${NC}"
 
     if [ "$MODE" = "gpu" ]; then
         echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU${NC}"
@@ -310,8 +333,10 @@ start_docker_services
 
 if [ "$MODE" = "gpu" ]; then
     start_native_worker
+    start_research_api
 elif [ "$MODE" = "docker-only" ]; then
     print_status "Worker" "info" "Skipped (--docker-only mode)"
+    print_status "Research API" "info" "Skipped (--docker-only mode)"
 fi
 
 # Show summary

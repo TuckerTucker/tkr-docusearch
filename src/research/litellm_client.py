@@ -20,7 +20,6 @@ class LLMError(Exception):
     """Base exception for LLM client errors"""
 
 
-
 class RateLimitError(LLMError):
     """API rate limit exceeded"""
 
@@ -33,15 +32,12 @@ class TimeoutError(LLMError):
     """Request timeout"""
 
 
-
 class InvalidModelError(LLMError):
     """Model not supported or invalid config"""
 
 
-
 class AuthenticationError(LLMError):
     """API key missing or invalid"""
-
 
 
 class ContextLengthError(LLMError):
@@ -196,8 +192,8 @@ class LiteLLMClient:
             "timeout": kwargs.get("timeout", self.config.timeout),
         }
 
-        # Override model if specified
-        if "model" in kwargs:
+        # Override model if specified (and not None)
+        if "model" in kwargs and kwargs["model"] is not None:
             params["model"] = kwargs["model"]
 
         # Add API base for local models

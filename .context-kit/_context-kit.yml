@@ -377,9 +377,9 @@ ops:
     debug: {docker: "./scripts/start-all.sh --docker-only", worker: "export LOG_LEVEL=DEBUG && ./scripts/run-worker-native.sh run"}
     monitor: {status: ./scripts/status.sh, json: "./scripts/status.sh --json", worker: "tail -f logs/worker-native.log", docker: "docker-compose -f docker/docker-compose.yml logs -f", gpu: "sudo powermetrics --samplers gpu_power -i 1000"}
 
-  urls: {ui: "http://localhost:8000", chromadb: "http://localhost:8001", worker: "http://localhost:8002", status: "http://localhost:8002/status", health: "http://localhost:8002/health", research: "http://localhost:8000/research.html"}
+  urls: {copyparty: "http://localhost:8000", chromadb: "http://localhost:8001", worker: "http://localhost:8002", frontend: "http://localhost:8002/frontend", status: "http://localhost:8002/status", health: "http://localhost:8002/health", research_api: "http://localhost:8003", research_ui: "http://localhost:8002/frontend/research.html"}
 
-  ports: &ports {copyparty: 8000, chromadb: 8001, worker: 8002}
+  ports: &ports {copyparty: 8000, chromadb: 8001, worker: 8002, research_api: 8003}
 
   targets:
     proc: {img: "2.3s/img (✓ 2.6x faster)", txt: "0.24s/chunk (✓ 25x faster)"}
