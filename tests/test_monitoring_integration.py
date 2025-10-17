@@ -10,11 +10,12 @@ Tests:
 """
 
 import asyncio
-import websockets
 import json
 import sys
-import requests
 from pathlib import Path
+
+import requests
+import websockets
 
 
 class MonitoringTester:
@@ -38,18 +39,17 @@ class MonitoringTester:
         print(f"Listening for messages (max {duration}s)...")
         try:
             while True:
-                message = await asyncio.wait_for(
-                    self.websocket.recv(),
-                    timeout=duration
-                )
+                message = await asyncio.wait_for(self.websocket.recv(), timeout=duration)
                 data = json.loads(message)
                 self.messages.append(data)
 
                 # Categorize messages
                 if data.get("type") == "status_update":
                     self.status_updates.append(data)
-                    print(f"  Status: {data.get('status')} - {data.get('stage')} "
-                          f"({data.get('progress', 0) * 100:.0f}%)")
+                    print(
+                        f"  Status: {data.get('status')} - {data.get('stage')} "
+                        f"({data.get('progress', 0) * 100:.0f}%)"
+                    )
                 elif data.get("type") == "log":
                     self.log_messages.append(data)
                     print(f"  Log [{data.get('level')}]: {data.get('message')}")
@@ -63,20 +63,14 @@ class MonitoringTester:
         """Submit a document for processing."""
         print(f"\nSubmitting document: {file_path}")
 
-        payload = {
-            "file_path": str(file_path),
-            "filename": file_path.name
-        }
+        payload = {"file_path": str(file_path), "filename": file_path.name}
 
-        response = requests.post(
-            "http://localhost:8002/process",
-            json=payload
-        )
+        response = requests.post("http://localhost:8002/process", json=payload)
 
         if response.status_code == 200:
             data = response.json()
             print(f"✓ Document queued: {data.get('doc_id')}")
-            return data.get('doc_id')
+            return data.get("doc_id")
         else:
             print(f"✗ Failed to submit: {response.status_code}")
             print(f"  {response.text}")
@@ -95,9 +89,11 @@ class MonitoringTester:
         if self.status_updates:
             print("Status progression:")
             for update in self.status_updates:
-                print(f"  - {update.get('status'):12} | "
-                      f"{update.get('stage'):20} | "
-                      f"{update.get('progress', 0) * 100:5.1f}%")
+                print(
+                    f"  - {update.get('status'):12} | "
+                    f"{update.get('stage'):20} | "
+                    f"{update.get('progress', 0) * 100:5.1f}%"
+                )
             print()
 
         if self.log_messages:
@@ -105,8 +101,8 @@ class MonitoringTester:
             print()
 
         # Verify we got expected messages
-        has_started = any(u.get('stage') == 'started' for u in self.status_updates)
-        has_completed = any(u.get('status') == 'completed' for u in self.status_updates)
+        has_started = any(u.get("stage") == "started" for u in self.status_updates)
+        has_completed = any(u.get("status") == "completed" for u in self.status_updates)
 
         print("Verification:")
         print(f"  {'✓' if has_started else '✗'} Received start message")
@@ -181,6 +177,7 @@ async def main():
     except Exception as e:
         print(f"✗ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
     finally:
