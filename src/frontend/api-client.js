@@ -104,4 +104,37 @@ export class DocumentsAPIClient {
   getImageUrl(docId, filename) {
     return `${this.baseUrl}/images/${docId}/${filename}`;
   }
+
+  /**
+   * Get processing queue
+   *
+   * @param {Object} options - Query options
+   * @param {string} [options.status=null] - Filter by status (queued, parsing, embedding_visual, etc.)
+   * @param {number} [options.limit=100] - Maximum results (1-1000)
+   * @returns {Promise<Object>} Response with queue items and statistics
+   */
+  async getProcessingQueue({ status = null, limit = 100 } = {}) {
+    const params = new URLSearchParams();
+    params.set('limit', Math.min(Math.max(limit, 1), 1000).toString());
+
+    if (status) {
+      params.set('status', status);
+    }
+
+    const url = `${this.baseUrl}/status/queue?${params.toString()}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to get processing queue:', error);
+      throw error;
+    }
+  }
 }

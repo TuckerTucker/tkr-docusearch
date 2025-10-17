@@ -173,32 +173,97 @@ export class LibraryManager {
     try {
       this.showLoadingState();
 
-      const response = await this.apiClient.listDocuments(this.currentQuery);
+      // Fetch both completed documents and processing queue
+      const [docsResponse, queueResponse] = await Promise.all([
+        this.apiClient.listDocuments(this.currentQuery),
+        this.apiClient.getProcessingQueue({ limit: 100 })
+      ]);
 
       // Clear grid and all tracking maps
       this.grid.innerHTML = '';
       this.documentCards.clear();
       this.tempDocs.clear();
 
+      // Create a map of filename to full queue item (status + progress info)
+      // NOTE: Using filename as key because doc_id formats differ between APIs
+      // (status uses SHA-256, documents uses UUID)
+      const statusMap = new Map();
+      queueResponse.queue.forEach(item => {
+        statusMap.set(item.filename, item);
+      });
+
+      // Merge completed documents with their status
+      const completedDocs = docsResponse.documents.map(doc => {
+        const queueItem = statusMap.get(doc.filename);
+        return {
+          ...doc,
+          status: queueItem?.status || 'completed',
+          processingStatus: queueItem ? {
+            status: queueItem.status,
+            progress: queueItem.progress,
+            stage: this.getStageDescription(queueItem.status)
+          } : null
+        };
+      });
+
+      // Add processing documents that aren't in completed list yet
+      const completedFilenames = new Set(completedDocs.map(d => d.filename));
+      const processingDocs = queueResponse.queue
+        .filter(item => !completedFilenames.has(item.filename) && item.status !== 'completed')
+        .map(item => ({
+          doc_id: item.doc_id,
+          filename: item.filename,
+          date_added: item.timestamp,
+          status: item.status,
+          processingStatus: {
+            status: item.status,
+            progress: item.progress,
+            stage: this.getStageDescription(item.status)
+          },
+          page_count: 0,
+          chunk_count: 0,
+          collections: [],
+          has_images: false,
+          first_page_thumb: null
+        }));
+
+      // Combine all documents (processing docs first, then completed)
+      let allDocuments = [...processingDocs, ...completedDocs];
+
       // Filter by file type (client-side)
-      let documents = response.documents;
       if (this.currentQuery.file_types.length < 4) {
-        documents = documents.filter(doc => {
+        allDocuments = allDocuments.filter(doc => {
           const ext = doc.filename.split('.').pop().toLowerCase();
           return this.currentQuery.file_types.includes(ext) ||
                  (this.currentQuery.file_types.includes('audio') && ['mp3', 'wav', 'm4a', 'flac'].includes(ext));
         });
       }
 
+      // Sort: Processing documents first (by most recent), then completed documents (by date_added)
+      allDocuments.sort((a, b) => {
+        const aIsProcessing = a.status !== 'completed';
+        const bIsProcessing = b.status !== 'completed';
+
+        // Processing documents always come first
+        if (aIsProcessing && !bIsProcessing) return -1;
+        if (!aIsProcessing && bIsProcessing) return 1;
+
+        // Within same category, sort by date (most recent first)
+        const aDate = new Date(a.date_added);
+        const bDate = new Date(b.date_added);
+        return bDate - aDate;
+      });
+
       // Render documents
-      if (documents.length === 0) {
+      if (allDocuments.length === 0) {
         this.showEmptyState();
       } else {
-        this.renderDocuments(documents);
+        this.renderDocuments(allDocuments);
       }
 
-      // Update pagination
-      this.filterBar.updatePaginationDisplay(response.total);
+      // Update pagination (use total from completed docs + active processing)
+      const totalCount = docsResponse.total + queueResponse.active;
+      this.filterBar.updatePaginationDisplay(totalCount);
 
     } catch (error) {
       console.error('Failed to load documents:', error);
@@ -206,6 +271,37 @@ export class LibraryManager {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Get human-readable stage description
+   * @param {string} status - Backend status
+   * @returns {string} Human-readable stage
+   */
+  getStageDescription(status) {
+    const stageMap = {
+      'queued': 'Queued for processing...',
+      'parsing': 'Parsing document...',
+      'embedding_visual': 'Generating visual embeddings...',
+      'embedding_text': 'Generating text embeddings...',
+      'storing': 'Storing in database...',
+      'completed': 'Completed',
+      'failed': 'Failed'
+    };
+    return stageMap[status] || 'Processing...';
+  }
+
+  /**
+   * Map backend processing status to frontend card state
+   * @param {string} status - Backend status (queued, parsing, embedding_visual, etc.)
+   * @returns {string} Frontend state (loading, processing, completed, failed)
+   */
+  mapStatusToState(status) {
+    if (!status || status === 'completed') return 'completed';
+    if (status === 'failed') return 'failed';
+    if (status === 'queued') return 'loading';
+    // All active processing states map to 'processing'
+    return 'processing';
   }
 
   /**
@@ -217,12 +313,15 @@ export class LibraryManager {
     const fragment = document.createDocumentFragment();
 
     documents.forEach(doc => {
+      const state = this.mapStatusToState(doc.status);
+
       const card = createDocumentCard({
         filename: doc.filename,
         thumbnailUrl: doc.first_page_thumb ? `http://localhost:8002${doc.first_page_thumb}` : '',
         dateAdded: new Date(doc.date_added),
-        detailsUrl: `details.html?id=${doc.doc_id}`,
-        state: 'completed'
+        detailsUrl: state === 'completed' ? `details.html?id=${doc.doc_id}` : '#',
+        state: state,
+        processingStatus: doc.processingStatus || null
       });
 
       this.documentCards.set(doc.doc_id, card);
