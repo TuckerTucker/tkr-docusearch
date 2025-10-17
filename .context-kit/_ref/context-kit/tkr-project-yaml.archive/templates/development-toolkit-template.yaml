@@ -26,7 +26,7 @@ structure:
     ".context-kit/_ref/": "Reference documentation and templates"
     ".context-kit/_specs/": "Project specifications and requirements"
     "setup": "Main setup script (self-destructing after execution)"
-  
+
   find_patterns:
     agent: ".claude/agents/{agent-name}.md"
     command: ".claude/commands/{command-name}.md"
@@ -56,7 +56,7 @@ stack:
   visualization: "ReactFlow with custom node types and layouts"
   routing: "URL hash-based view switching with browser navigation"
   security: "Path allowlist validation with input sanitization"
-  
+
   key_libs:
     - "@modelcontextprotocol/sdk@^0.5.0": "AI model integration protocol"
     - "react@^19.1.1": "Modern React with concurrent features"
@@ -76,7 +76,7 @@ integrations:
     entry: "src/mcp/server.ts"
     db_path: ".context-kit/knowledge-graph/knowledge-graph.db"
     storage: "SQLite+FTS5 with entity/relation/observation tables"
-  
+
   # ReactFlow UI Integration
   ui_viz:
     type: "ReactFlow with Vite dev server"
@@ -86,14 +86,14 @@ integrations:
     node_types: [module, component, pattern, agent, technology, workflow, architecture_pattern, command, config, database, project]
     edge_types: [contains, implements, uses, depends_on, built_with, powered_by]
     routing: "Hash-based navigation (#graph, #logs)"
-    
+
   # Claude Code Agent Integration
   claude_code:
     agents: ".claude/agents/"
     commands: ".claude/commands/"
     config: ".claude/settings.local.json"
     permissions: ["Read", "Write", "Task", "Bash(node:*)", "Bash(npm:*)", "mcp__context-kit__*", "mcp__context7__resolve-library-id"]
-    
+
   external_services:
     - service: "External Service Name"
       purpose: "Service purpose"
@@ -105,19 +105,19 @@ architecture:
     - "Agent specialization with consolidation workflows"
     - "Self-destructing setup for clean installation"
     - "Security-first design with path validation"
-  
+
   agent_architecture:
     specialization: "Multiple specialized analyzers (structure, ui, api, code, dependency)"
     consolidation: "Single consolidator agent synthesizes all findings"
     workflow: "Parallel analysis → Sequential consolidation → Output generation"
     communication: "File-based communication through analysis outputs"
-  
+
   mcp_architecture:
     transport: "STDIO with JSON schema validation"
     security: "Path allowlist with traversal protection"
     storage: "JSONL line-delimited JSON for efficiency"
     memory_management: "Incremental updates with graceful degradation"
-  
+
   security_architecture:
     input_validation: "JSON schema validation for all tool inputs"
     path_security: "Allowlist-based directory access control"
@@ -127,27 +127,27 @@ task_locations:
   add_new_agent:
     files: [".claude/agents/{agent-name}.md"]
     pattern: "Define purpose → List tools → Set responsibilities"
-    
+
   setup_project:
     files: ["setup", ".context-kit/scripts/setup-{service}-mcp"]
     pattern: "Run setup → Configure paths → Install MCP servers"
-    
+
   analyze_codebase:
     files: [".claude/commands/project-yaml.md"]
     pattern: "Run /project-yaml command → Generate consolidated YAML"
-    
+
   create_mcp_server:
     files: [".context-kit/mcp-{service}/", ".claude/settings.local.json"]
     pattern: "Setup MCP server → Configure Claude → Create tools"
-    
+
   add_mcp_tool:
     files: [".context-kit/knowledge-graph/src/mcp/server.ts"]
     pattern: "Define tool schema → Implement handler → Add to server tools array"
-  
+
   modify_ui:
     files: [".context-kit/knowledge-graph/src/ui/"]
     pattern: "Edit React components → Update styles.css → Test ReactFlow visualization"
-  
+
   run_ui_dev:
     files: [".context-kit/knowledge-graph/"]
     pattern: "cd .context-kit/knowledge-graph → npm run dev → Open localhost:42001"
@@ -156,24 +156,24 @@ when_creating:
   new_agent:
     check_patterns: ".claude/agents/project-yaml-consolidator.md"
     follow_structure: "Purpose → Tools → Instructions → Best practices"
-    
+
   new_script:
     example: ".context-kit/scripts/setup-context-kit-mcp"
     pattern: "Source utils → Validate inputs → Execute with error handling"
-    
+
   new_command:
     location: ".claude/commands/"
     pattern: "Define invocation → Set parameters → Document usage"
     example: ".claude/commands/project-yaml.md"
-    
+
   new_mcp_tool:
     example: ".context-kit/knowledge-graph/src/mcp/server.ts"
     pattern: "Define tool schema → Implement handler → Add to tools array"
-  
+
   new_react_component:
     example: ".context-kit/knowledge-graph/src/ui/components/"
     pattern: "Props interface → functional component → styling → integration"
-  
+
   new_reactflow_layout:
     example: ".context-kit/knowledge-graph/src/ui/services/KnowledgeGraphService.ts"
     pattern: "Data transformation → layout algorithm → ReactFlow nodes/edges"
@@ -201,7 +201,7 @@ common_patterns:
   security_first: "Validate all inputs and prevent directory traversal"
   ui_component_creation: "React functional components with TypeScript interfaces"
   data_viz: "ReactFlow with custom node types, dynamic legend and export capabilities"
-  mcp_tool_definition: "JSON schema validation with comprehensive error handling" 
+  mcp_tool_definition: "JSON schema validation with comprehensive error handling"
   project_analysis: "Run /project-yaml command for updated synthesis analysis"
   incremental_updates: "Update context incrementally based on git diff analysis"
   state_management: "Lift state up for cross-component communication"
@@ -220,12 +220,12 @@ toolkit_config:
       context7: 42200                        # Context7 MCP server
       analysis_dashboard: 42300              # Analysis visualization
       development_server: 42400             # Development tools server
-    
+
     conflict_resolution:
       auto_increment: true                   # Auto-find next available port
       check_script: ".context-kit/scripts/check-ports.sh"
       fallback_range: "42950-42999"
-  
+
   # Agent workflow configuration
   agent_workflows:
     project_analysis:
@@ -233,7 +233,7 @@ toolkit_config:
       parallel_execution: ["structure", "ui", "api", "code", "dependency"]
       consolidation_agent: "project-yaml-consolidator"
       output_location: ".context-kit/_context-kit.yml"
-  
+
   # MCP server configuration
   mcp_servers:
     knowledge_graph:
@@ -243,7 +243,7 @@ toolkit_config:
       ui_dev_server: "npm run dev:ui (port 42001)"
       api_server: "npm run serve (port 42003)"
       database: "SQLite+FTS5 with knowledge-graph.db"
-    
+
     context7:
       location: "External service"
       setup_script: ".context-kit/scripts/context7_mcp_add"
@@ -257,14 +257,14 @@ security:
     allowed_paths: [".context-kit/", ".claude/", "package.json", "README.md"]
     sanitization: "Remove/escape path traversal attempts and dangerous characters"
     validation_rules: ["No parent directory references", "Alphanumeric plus safe chars only"]
-  
+
   # MCP server security
   mcp_security:
     transport: "STDIO with JSON schema validation"
     path_traversal_protection: "Allowlist validation with safe path resolution"
     error_handling: "Comprehensive try-catch with safe fallbacks"
     sensitive_data: "No secrets or credentials in responses"
-  
+
   # Agent security
   agent_security:
     tool_restrictions: "Agents limited to safe tools only"
@@ -277,12 +277,12 @@ testing:
     unit_tests: "Test each agent's core functionality"
     integration_tests: "Test agent workflows and consolidation"
     validation_tests: "Test output format and content validation"
-  
+
   mcp_testing:
     tool_validation: "Test each MCP tool with various inputs"
     security_testing: "Test path validation and input sanitization"
     error_handling: "Test graceful degradation and error responses"
-  
+
   workflow_testing:
     setup_process: "Test complete setup and installation"
     project_analysis: "Test full project analysis workflow"

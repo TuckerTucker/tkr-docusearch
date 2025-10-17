@@ -55,12 +55,12 @@ data:
   key2:
     property: "value"
     count: 42
-    
+
 # Use YAML anchors for repeated structures if applicable
 common_config: &defaults
   setting1: "value"
   setting2: true
-  
+
 instance1:
   <<: *defaults
   specific: "override"
@@ -82,13 +82,13 @@ _meta:
   version: "1.0"
   git_commit: "abc123"
   changed_files: ["src/component.ts", "docs/readme.md"]
-  
+
 # Track what changed since last run
 incremental:
   added: ["new-feature"]
   modified: ["existing-component"]
   removed: ["deprecated-api"]
-  
+
 # Main analysis data
 data:
   # ... existing structure
@@ -128,13 +128,13 @@ If using abbreviated keys for compression, document them here:
 common_patterns: &patterns
   format: "typescript"
   framework: "react"
-  
+
 # Reference anchors to reduce duplication
 components:
   Button:
     <<: *patterns
     specific: "override"
-    
+
 # Compact arrays when appropriate
 file_types: ["ts", "tsx", "js", "jsx"]
 

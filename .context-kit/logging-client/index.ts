@@ -366,7 +366,7 @@ export class TkrLogger {
    */
   createExpressMiddleware() {
     const logger = this;
-    
+
     return {
       requestLogger: (req: any, res: any, next: Function) => {
         const start = Date.now();
@@ -415,7 +415,7 @@ export class TkrLogger {
    */
   createReactComponents() {
     const logger = this;
-    
+
     return {
       // Error Boundary component factory (requires React to be available)
       createErrorBoundary: () => {
@@ -433,7 +433,7 @@ export class TkrLogger {
       // Hook for component lifecycle logging
       useLogging: (componentName: string) => {
         const componentLogger = logger.child(`React.${componentName}`);
-        
+
         // This would need to be called within a React component with hooks available
         return {
           componentLogger,

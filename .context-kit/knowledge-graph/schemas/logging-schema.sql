@@ -60,7 +60,7 @@ CREATE INDEX idx_log_aggregations_period ON log_aggregations(period, period_star
 
 -- Full-text search for log messages and data
 CREATE VIRTUAL TABLE log_entries_fts USING fts5(
-  message, 
+  message,
   service,
   component,
   data,
@@ -69,14 +69,14 @@ CREATE VIRTUAL TABLE log_entries_fts USING fts5(
 
 -- FTS sync triggers
 CREATE TRIGGER log_entries_fts_insert AFTER INSERT ON log_entries BEGIN
-  INSERT INTO log_entries_fts(message, service, component, data) 
+  INSERT INTO log_entries_fts(message, service, component, data)
   VALUES (new.message, new.service, new.component, new.data);
 END;
 
 CREATE TRIGGER log_entries_fts_update AFTER UPDATE ON log_entries BEGIN
-  UPDATE log_entries_fts 
-  SET message = new.message, service = new.service, 
-      component = new.component, data = new.data 
+  UPDATE log_entries_fts
+  SET message = new.message, service = new.service,
+      component = new.component, data = new.data
   WHERE rowid = new.rowid;
 END;
 
@@ -88,7 +88,7 @@ END;
 
 -- Recent errors across all services
 CREATE VIEW recent_errors AS
-SELECT 
+SELECT
   l.timestamp,
   l.level,
   l.message,
@@ -105,7 +105,7 @@ ORDER BY l.timestamp DESC;
 
 -- Service health summary
 CREATE VIEW service_health AS
-SELECT 
+SELECT
   s.name as service,
   s.type,
   COUNT(CASE WHEN l.level = 'ERROR' THEN 1 END) as error_count,
@@ -119,7 +119,7 @@ GROUP BY s.id;
 
 -- Trace flow analysis
 CREATE VIEW trace_flows AS
-SELECT 
+SELECT
   l.trace_id,
   l.span_id,
   l.timestamp,
@@ -134,7 +134,7 @@ ORDER BY l.trace_id, l.timestamp;
 
 -- Log level distribution by service
 CREATE VIEW log_level_distribution AS
-SELECT 
+SELECT
   s.name as service,
   l.level,
   COUNT(*) as count,
@@ -147,7 +147,7 @@ ORDER BY s.name, l.level;
 
 -- Error rate trends (hourly)
 CREATE VIEW error_rate_trends AS
-SELECT 
+SELECT
   s.name as service,
   datetime(
     (l.timestamp / 3600) * 3600, 'unixepoch'
@@ -155,7 +155,7 @@ SELECT
   COUNT(CASE WHEN l.level IN ('ERROR', 'FATAL') THEN 1 END) as error_count,
   COUNT(*) as total_count,
   ROUND(
-    COUNT(CASE WHEN l.level IN ('ERROR', 'FATAL') THEN 1 END) * 100.0 / COUNT(*), 
+    COUNT(CASE WHEN l.level IN ('ERROR', 'FATAL') THEN 1 END) * 100.0 / COUNT(*),
     2
   ) as error_rate_percent
 FROM log_sources s

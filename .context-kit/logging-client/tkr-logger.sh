@@ -40,10 +40,10 @@ tkr_log() {
     if [ -z "$metadata" ]; then
         metadata="{}"
     fi
-    
+
     # Create timestamp
     local timestamp=$(date +%s)
-    
+
     # Convert level to uppercase (compatible with older shells)
     local level_upper=$(echo "$level" | tr '[:lower:]' '[:upper:]')
 
@@ -63,13 +63,13 @@ tkr_log() {
 }
 EOF
 )
-    
+
     # Send log (fail silently)
     curl -s -X POST "$TKR_LOG_URL/api/logs" \
         -H "Content-Type: application/json" \
         -d "$json_payload" \
         2>/dev/null || true
-    
+
     # Also log to console
     echo "[$level_upper] $TKR_LOG_SERVICE/$component: $escaped_message" >&2
 }

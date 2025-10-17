@@ -13,11 +13,11 @@ Environment variables from copyparty:
 - src: original filename
 """
 
+import json
 import os
 import sys
-import json
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 # Configuration
@@ -48,38 +48,37 @@ def trigger_deletion(file_path: str, filename: str) -> bool:
 
     # Prepare request
     url = f"http://{WORKER_HOST}:{WORKER_PORT}/delete"
-    data = {
-        "file_path": file_path,
-        "filename": filename
-    }
+    data = {"file_path": file_path, "filename": filename}
 
     try:
         # Send POST request to worker
         req = urllib.request.Request(
             url,
-            data=json.dumps(data).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
+            data=json.dumps(data).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
 
         with urllib.request.urlopen(req, timeout=10) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            doc_id = result.get('doc_id', 'unknown')
-            visual_deleted = result.get('visual_deleted', 0)
-            text_deleted = result.get('text_deleted', 0)
-            page_images_deleted = result.get('page_images_deleted', 0)
-            cover_art_deleted = result.get('cover_art_deleted', 0)
-            markdown_deleted = result.get('markdown_deleted', False)
-            temp_dirs_cleaned = result.get('temp_dirs_cleaned', 0)
+            result = json.loads(response.read().decode("utf-8"))
+            doc_id = result.get("doc_id", "unknown")
+            visual_deleted = result.get("visual_deleted", 0)
+            text_deleted = result.get("text_deleted", 0)
+            page_images_deleted = result.get("page_images_deleted", 0)
+            cover_art_deleted = result.get("cover_art_deleted", 0)
+            markdown_deleted = result.get("markdown_deleted", False)
+            temp_dirs_cleaned = result.get("temp_dirs_cleaned", 0)
 
             print(f"Deletion completed for {filename} (doc_id: {doc_id[:8]}...)")
             print(f"  ChromaDB: {visual_deleted} visual + {text_deleted} text embeddings")
-            print(f"  Filesystem: {page_images_deleted} images, {cover_art_deleted} cover art, "
-                  f"{'1' if markdown_deleted else '0'} markdown, {temp_dirs_cleaned} temp dirs")
+            print(
+                f"  Filesystem: {page_images_deleted} images, {cover_art_deleted} cover art, "
+                f"{'1' if markdown_deleted else '0'} markdown, {temp_dirs_cleaned} temp dirs"
+            )
             return True
 
     except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8') if e.fp else ''
+        error_body = e.read().decode("utf-8") if e.fp else ""
         print(f"HTTP error triggering deletion: {e.code} {e.reason}", file=sys.stderr)
         print(f"Response: {error_body}", file=sys.stderr)
         return False

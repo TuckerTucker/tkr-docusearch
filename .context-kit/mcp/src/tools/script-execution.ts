@@ -17,16 +17,16 @@ export function setupScriptExecutionTools(
       inputSchema: {
         type: 'object',
         properties: {
-          module: { 
-            type: 'string', 
-            description: 'Module directory (e.g., "knowledge-graph", "mcp")' 
+          module: {
+            type: 'string',
+            description: 'Module directory (e.g., "knowledge-graph", "mcp")'
           },
-          script: { 
-            type: 'string', 
-            description: 'npm script name (e.g., "dev", "build", "test")' 
+          script: {
+            type: 'string',
+            description: 'npm script name (e.g., "dev", "build", "test")'
           },
-          args: { 
-            type: 'array', 
+          args: {
+            type: 'array',
             items: { type: 'string' },
             description: 'Additional arguments to pass to the script'
           }
@@ -40,9 +40,9 @@ export function setupScriptExecutionTools(
       inputSchema: {
         type: 'object',
         properties: {
-          module: { 
-            type: 'string', 
-            description: 'Specific module to list scripts for (optional)' 
+          module: {
+            type: 'string',
+            description: 'Specific module to list scripts for (optional)'
           }
         }
       }
@@ -79,7 +79,7 @@ export function setupScriptExecutionTools(
   // Register tool handlers
   toolHandlers.set('run_script', async (args) => {
     const { module, script, args: scriptArgs = [] } = args;
-    
+
     try {
       const result = await executeScript({
         module,
@@ -110,10 +110,10 @@ export function setupScriptExecutionTools(
 
   toolHandlers.set('list_available_scripts', async (args) => {
     const { module } = args;
-    
+
     try {
       const scripts = await listAvailableScripts(projectRoot, module);
-      
+
       let output = 'Available npm scripts:\n\n';
       scripts.forEach(script => {
         output += `${script.module}:\n`;
@@ -213,10 +213,10 @@ async function executeScript(config: ScriptExecutionConfig): Promise<{
   error: string;
 }> {
   const { module, script, args = [], workingDirectory = process.cwd() } = config;
-  
+
   // Construct the working directory for the module
   const moduleDir = join(workingDirectory, '_project', module);
-  
+
   return new Promise((resolve, reject) => {
     const child = spawn('npm', ['run', script, ...args], {
       cwd: moduleDir,
@@ -257,20 +257,20 @@ async function executeScript(config: ScriptExecutionConfig): Promise<{
 
 async function listAvailableScripts(projectRoot: string, specificModule?: string): Promise<ScriptInfo[]> {
   const scripts: ScriptInfo[] = [];
-  
+
   // Find all package.json files in _project subdirectories
-  const pattern = specificModule 
+  const pattern = specificModule
     ? `.context-kit/${specificModule}/package.json`
     : '.context-kit/*/package.json';
-    
+
   const packageJsonFiles = await glob(pattern, { cwd: projectRoot });
-  
+
   for (const packageJsonPath of packageJsonFiles) {
     try {
       const fullPath = join(projectRoot, packageJsonPath);
       const packageJson = JSON.parse(readFileSync(fullPath, 'utf-8'));
       const moduleName = packageJsonPath.split('/')[1]; // Extract module name
-      
+
       if (packageJson.scripts) {
         Object.entries(packageJson.scripts).forEach(([scriptName, command]) => {
           scripts.push({
@@ -285,7 +285,7 @@ async function listAvailableScripts(projectRoot: string, specificModule?: string
       console.error(`Failed to read ${packageJsonPath}:`, error);
     }
   }
-  
+
   return scripts;
 }
 
@@ -295,7 +295,7 @@ async function checkPorts(ports: number[]): Promise<Array<{
   process?: string;
 }>> {
   const results = [];
-  
+
   for (const port of ports) {
     try {
       const result = await checkSinglePort(port);
@@ -308,7 +308,7 @@ async function checkPorts(ports: number[]): Promise<Array<{
       });
     }
   }
-  
+
   return results;
 }
 

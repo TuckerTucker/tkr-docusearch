@@ -208,19 +208,19 @@ repos:
     hooks:
       - id: flake8
         args: [--max-line-length=100, --max-complexity=10]
-  
+
   - repo: https://github.com/psf/black
     rev: 24.0.0
     hooks:
       - id: black
         args: [--line-length=100]
-  
+
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.0
     hooks:
       - id: isort
         args: [--profile=black]
-  
+
   - repo: local
     hooks:
       - id: radon-cc

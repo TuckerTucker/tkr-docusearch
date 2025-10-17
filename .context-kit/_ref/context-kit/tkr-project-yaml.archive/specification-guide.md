@@ -38,7 +38,7 @@ structure:
       - "utils/": "Pure utility functions"
     - "tests/": "Test files parallel to src structure"
     - "docs/": "Human documentation (if relevant to code)"
-  
+
   find_patterns:
     component: "src/components/{complexity}/{ComponentName}.tsx"
     page: "src/pages/{PageName}.tsx"
@@ -60,13 +60,13 @@ patterns:
   import_conventions: "ES6 modules, relative imports for same directory"
   data_flow: "Props down, events up, centralized state for cross-cutting"
   testing_pattern: "Unit for logic, integration for features, E2E for flows"
-  
+
   # ReactFlow visualization patterns
   reactflow_patterns: "Custom node types, dynamic layouts, interactive controls"
   url_routing: "Hash-based navigation with browser history support"
   component_separation: "Props-based communication, single responsibility"
   state_management: "Centralized in App component, props-based distribution"
-  
+
   # Agent Architecture Patterns
   agent_architecture: "specialized analyzers with consolidation pattern"
   security_model: "path validation with allowlist protection"
@@ -85,12 +85,12 @@ stack:
   state: "React useState + Context + URL hash routing"
   testing: "Vitest + React Testing Library"
   visualization: "ReactFlow with custom node types and layouts"
-  
+
   # MCP and Security Context
   protocol: "MCP (Model Context Protocol) over STDIO"
   persistence: "SQLite+FTS5 full-text search with database storage"
   security: "Path allowlist validation with input sanitization"
-  
+
   key_libs:
     - "react@^19.1.1": "Modern React with concurrent features"
     - "reactflow@^11.11.4": "Interactive graph visualization"
@@ -111,12 +111,12 @@ integrations:
     type: "JWT with refresh"
     location: "src/auth/"
     entry: "src/auth/AuthProvider.tsx"
-    
+
   api:
     type: "REST with React Query"
     location: "src/api/"
     client: "src/api/client.ts"
-    
+
   # MCP (Model Context Protocol) Integration Pattern
   ai_models:
     type: "MCP protocol over STDIO"
@@ -130,14 +130,14 @@ integrations:
       api_port: "42003 (HTTP API server)"
       layouts: [circular, grid, hierarchical]
       routing: "Hash-based navigation (#graph, #logs)"
-    
+
   # Claude Code Agent Integration
   claude_code:
     agents: ".claude/agents/"
     commands: ".claude/commands/"
     config: ".claude/settings.local.json"
     permissions: ["Read", "Write", "Task", "mcp__*"]
-    
+
   external:
     - service: "Stripe"
       location: "src/payments/"
@@ -152,30 +152,30 @@ when_creating:
     check_patterns: ".context-kit/knowledge-graph/src/ui/components/"
     follow_structure: "Props interface → functional component → export"
     modern_patterns: "React 19 hooks, props-based state, URL hash routing"
-    
+
   new_reactflow_component:
     example: ".context-kit/knowledge-graph/src/ui/components/NodeTypes.tsx"
     pattern: "Custom node types → ReactFlow integration → event handling"
-    
+
   new_ui_view:
     location: ".context-kit/knowledge-graph/src/ui/App.tsx"
     routing: "URL hash-based navigation with browser history"
     pattern: "View component with centralized state management"
-    
+
   new_reactflow_layout:
     example: ".context-kit/knowledge-graph/src/ui/services/KnowledgeGraphService.ts"
     pattern: "Data transformation → Layout algorithm → ReactFlow nodes/edges"
-    
+
   # Agent and MCP Patterns
   new_agent:
     check_patterns: ".claude/agents/project-yaml-consolidator.md"
     follow_structure: "Purpose → Tools → Instructions → Best practices"
-    
+
   new_mcp_tool:
     example: ".context-kit/knowledge-graph/src/mcp/server.ts"
     pattern: "Define tool schema → Implement handler → Add to server tools array"
     storage: "SQLite operations with entity/relation management"
-    
+
   new_command:
     location: ".claude/commands/"
     pattern: "Define invocation → Set parameters → Document usage"
@@ -225,7 +225,7 @@ file_locations:
   story: "{name}.stories.tsx → src/components/{category}/{name}.stories.tsx"
   agent: "{agent-name}.md → .claude/agents/{agent-name}.md"
   mcp_tool: "{tool}.ts → .context-kit/mcp-{service}/{tool}.ts"
-  
+
 # Wildcard consolidation for file patterns
 structure_patterns:
   "**/components/**/*.tsx": "ui_components"
@@ -242,32 +242,32 @@ task_locations:
   add_new_react_view:
     files: [".context-kit/knowledge-graph/src/ui/App.tsx"]
     pattern: "Add view state → Update URL routing → Create view component"
-    
+
   modify_reactflow_visualization:
     files: [".context-kit/knowledge-graph/src/ui/services/KnowledgeGraphService.ts"]
     pattern: "Update data transformation → Modify layout → Update node types"
-    
+
   create_ui_component:
     files: [".context-kit/knowledge-graph/src/ui/components/", ".context-kit/knowledge-graph/src/ui/styles.css"]
     pattern: "Component → Props interface → Styling → Integration"
-    
+
   modify_sqlite_schema:
     files: [".context-kit/core/src/database/index.ts", ".context-kit/knowledge-graph/schemas/"]
     pattern: "Update schema → Migration script → Update types → Test"
-    
+
   # Agent and Project Analysis Tasks
   add_new_agent:
     files: [".claude/agents/{agent-name}.md"]
     pattern: "Define purpose → List tools → Set responsibilities"
-    
+
   analyze_codebase:
     files: [".claude/commands/project-yaml.md"]
     pattern: "Run /project-yaml command → Generate consolidated YAML"
-    
+
   setup_knowledge_graph:
     files: [".context-kit/knowledge-graph/", ".claude/settings.local.json"]
     pattern: "Setup MCP server → Configure Claude → Create entities/relations"
-    
+
   run_ui_dev:
     files: [".context-kit/knowledge-graph/"]
     pattern: "cd .context-kit/knowledge-graph → npm run dev → Open localhost:42001"
@@ -282,13 +282,13 @@ common_patterns:
   state_management: "Centralized state in App component, props-based distribution"
   url_routing: "Hash-based navigation with browser history support"
   component_communication: "Props down, callbacks up, centralized event handling"
-  
+
   # ReactFlow Patterns
   reactflow_integration: "Custom node types, dynamic layouts, interactive controls"
   node_visualization: "Color-coded node types with icons and semantic styling"
   graph_interaction: "Click handlers, search/filter, detail panels"
   layout_algorithms: "Circular, grid, hierarchical positioning with dynamic sizing"
-  
+
   # Agent and MCP Patterns
   agent_invocation: "Use Task tool with specific agent parameters"
   path_validation: "Always validate against allowlist in MCP server"
@@ -346,7 +346,7 @@ structure:
     ".claude/commands/": "Custom Claude Code commands (project-yaml, security-review)"
     ".context-kit/mcp-knowledge-graph/": "MCP server for persistent AI memory (TypeScript)"
     ".context-kit/scripts/": "Setup and utility automation scripts (Bash)"
-    
+
   find_patterns:
     agent: ".claude/agents/{agent-name}.md"
     command: ".claude/commands/{command-name}.md"
@@ -369,7 +369,7 @@ integrations:
     location: ".context-kit/mcp-knowledge-graph/"
     entry: "index.ts"
     memory_path: "$HOME/.claude-memory/knowledge-graph.jsonl"
-    
+
   claude_code:
     agents: ".claude/agents/"
     commands: ".claude/commands/"
@@ -378,7 +378,7 @@ integrations:
 architecture:
   core_patterns:
     - "MCP server architecture for persistent AI memory"
-    - "Agent specialization with consolidation workflows" 
+    - "Agent specialization with consolidation workflows"
     - "Security-first design with path validation"
 
 semantic_keys:

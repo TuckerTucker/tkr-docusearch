@@ -47,21 +47,21 @@ CREATE INDEX idx_observations_key ON observations(entity_id, key);
 
 -- Full-text search on observations
 CREATE VIRTUAL TABLE observations_fts USING fts5(
-  entity_id, 
-  key, 
-  value, 
+  entity_id,
+  key,
+  value,
   content=observations
 );
 
 -- Triggers to keep FTS in sync
 CREATE TRIGGER observations_ai AFTER INSERT ON observations BEGIN
-  INSERT INTO observations_fts(entity_id, key, value) 
+  INSERT INTO observations_fts(entity_id, key, value)
   VALUES (new.entity_id, new.key, new.value);
 END;
 
 CREATE TRIGGER observations_au AFTER UPDATE ON observations BEGIN
-  UPDATE observations_fts 
-  SET key = new.key, value = new.value 
+  UPDATE observations_fts
+  SET key = new.key, value = new.value
   WHERE entity_id = new.entity_id AND rowid = new.rowid;
 END;
 
@@ -71,7 +71,7 @@ END;
 
 -- Views for common queries
 CREATE VIEW entity_details AS
-SELECT 
+SELECT
   e.id,
   e.type,
   e.name,
@@ -83,7 +83,7 @@ GROUP BY e.id;
 
 -- State mutations view for app state tracking
 CREATE VIEW state_mutations AS
-SELECT 
+SELECT
   a.name as action,
   a.data->>'$.trigger' as trigger,
   s.name as store,
@@ -95,7 +95,7 @@ WHERE a.type = 'Action' AND s.type = 'Store';
 
 -- Component relationships view
 CREATE VIEW component_relationships AS
-SELECT 
+SELECT
   c1.name as component,
   r.type as relationship_type,
   c2.name as related_component,
@@ -107,7 +107,7 @@ WHERE c1.type = 'Component' AND c2.type = 'Component';
 
 -- Workflow trace view for complex flows
 CREATE VIEW workflow_flows AS
-SELECT 
+SELECT
   w.name as workflow,
   p.name as phase,
   a.name as action,

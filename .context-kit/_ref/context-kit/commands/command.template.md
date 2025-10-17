@@ -18,7 +18,7 @@ Detailed explanation of the command's purpose, use cases, and value proposition.
 - DEBUG: Enable verbose output (default: false)
 
 ## Steps
-1. **Step Name**: 
+1. **Step Name**:
    - Detailed sub-step explanation
    - What happens at this stage
    - Expected outcomes

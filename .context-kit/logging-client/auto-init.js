@@ -10,7 +10,7 @@ let serviceName = 'UnknownService';
 try {
   const fs = require('fs');
   const path = require('path');
-  
+
   // Look for package.json starting from current directory
   let currentDir = process.cwd();
   while (currentDir !== path.dirname(currentDir)) {

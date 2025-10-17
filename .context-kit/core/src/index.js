@@ -27,13 +27,13 @@ export const getCoreModuleInfo = () => ({
     buildTime: new Date().toISOString()
 });
 // Re-export key utilities
-export { 
+export {
 // Configuration
-config, ConfigManager, 
+config, ConfigManager,
 // ID generation
-IdGenerator, generateEntityId, generateRelationId, generateLogId, 
+IdGenerator, generateEntityId, generateRelationId, generateLogId,
 // Validation
-ValidationUtils, validateEntity, validateRelation, 
+ValidationUtils, validateEntity, validateRelation,
 // Logging
 createLogger, logger, timeOperation } from './utils/index.js';
 //# sourceMappingURL=index.js.map

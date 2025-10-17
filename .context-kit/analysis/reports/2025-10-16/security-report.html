@@ -327,7 +327,7 @@
         <!-- Executive Summary -->
         <section>
             <h2>Executive Summary</h2>
-            
+
             <div class="summary-stats">
                 <div class="stat-box">
                     <div class="label">Total Findings</div>
@@ -398,8 +398,8 @@
 
                 <h4>Description</h4>
                 <p>
-                    Multiple FastAPI applications have CORS configured with <code>allow_origins=["*"]</code>, which allows any origin to make requests to the API. 
-                    Combined with <code>allow_credentials=True</code>, this creates a critical security vulnerability allowing any malicious website to make 
+                    Multiple FastAPI applications have CORS configured with <code>allow_origins=["*"]</code>, which allows any origin to make requests to the API.
+                    Combined with <code>allow_credentials=True</code>, this creates a critical security vulnerability allowing any malicious website to make
                     authenticated requests on behalf of users.
                 </p>
 
@@ -427,7 +427,7 @@
                         <li>Remove <code>allow_credentials=True</code> or ensure origins are explicitly whitelisted</li>
                         <li>Use environment variables to configure allowed origins for different environments</li>
                     </ol>
-                    
+
                     <h4>Secure Configuration Example</h4>
                     <pre><code># In .env file
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
@@ -467,8 +467,8 @@ app.add_middleware(
 
                 <h4>Description</h4>
                 <p>
-                    The code uses Python's <code>eval()</code> function to parse embedding shape strings from metadata. 
-                    If an attacker can control the metadata stored in ChromaDB, they could inject arbitrary Python code that 
+                    The code uses Python's <code>eval()</code> function to parse embedding shape strings from metadata.
+                    If an attacker can control the metadata stored in ChromaDB, they could inject arbitrary Python code that
                     would be executed when the data is retrieved.
                 </p>
 
@@ -492,7 +492,7 @@ if shape_str:
                         <li>Alternatively, use regex or string parsing to extract the dimensions</li>
                         <li>Add input validation to ensure the shape_str matches expected format</li>
                     </ol>
-                    
+
                     <h4>Secure Implementation</h4>
                     <pre><code>import ast
 import re
@@ -533,8 +533,8 @@ else:
 
                 <h4>Description</h4>
                 <p>
-                    The slide renderer service uses <code>subprocess.run()</code> to execute external commands (LibreOffice, pdftoppm, ImageMagick) 
-                    with file paths that could potentially be manipulated. While the code uses Path objects which provides some protection, 
+                    The slide renderer service uses <code>subprocess.run()</code> to execute external commands (LibreOffice, pdftoppm, ImageMagick)
+                    with file paths that could potentially be manipulated. While the code uses Path objects which provides some protection,
                     there's no explicit validation of the file paths to prevent directory traversal or command injection.
                 </p>
 
@@ -569,7 +569,7 @@ else:
                         <li>Implement rate limiting to prevent DoS attacks</li>
                         <li>Use absolute paths and validate against whitelist of allowed directories</li>
                     </ol>
-                    
+
                     <h4>Secure Implementation</h4>
                     <pre><code>from pathlib import Path
 import os
@@ -579,19 +579,19 @@ ALLOWED_UPLOAD_DIR = Path("/data/uploads").resolve()
 def validate_file_path(file_path: str) -> Path:
     """Validate that file path is within allowed directory."""
     path = Path(file_path).resolve()
-    
+
     # Check if path is within allowed directory
     if not str(path).startswith(str(ALLOWED_UPLOAD_DIR)):
         raise ValueError("File path outside allowed directory")
-    
+
     # Check for directory traversal attempts
     if ".." in file_path:
         raise ValueError("Directory traversal detected")
-    
+
     # Verify file exists and is a regular file
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"File not found: {file_path}")
-    
+
     return path
 
 @app.post("/render", response_model=RenderResponse)
@@ -619,8 +619,8 @@ async def render_slides(request: RenderRequest):
 
                 <h4>Description</h4>
                 <p>
-                    The Copyparty admin password is set to "changeme" in both the production <code>.env</code> file and the template. 
-                    While the environment file indicates this should be changed in production, having a weak default password in a 
+                    The Copyparty admin password is set to "changeme" in both the production <code>.env</code> file and the template.
+                    While the environment file indicates this should be changed in production, having a weak default password in a
                     committed configuration file is a security risk.
                 </p>
 
@@ -650,7 +650,7 @@ COPYPARTY_PASSWORD=changeme
                         <li>Implement password complexity requirements (minimum 16 characters, mixed case, special chars)</li>
                         <li>Consider using environment-specific secrets management (AWS Secrets Manager, HashiCorp Vault, etc.)</li>
                     </ol>
-                    
+
                     <h4>Secure Configuration</h4>
                     <pre><code># .env.template
 COPYPARTY_PASSWORD=  # REQUIRED: Generate strong password (min 16 chars)
@@ -691,7 +691,7 @@ fi</code></pre>
 
                 <h4>Description</h4>
                 <p>
-                    The FastAPI applications do not implement critical security headers that protect against common web attacks. 
+                    The FastAPI applications do not implement critical security headers that protect against common web attacks.
                     No evidence of the following headers being set:
                 </p>
                 <ul>
@@ -709,7 +709,7 @@ fi</code></pre>
                         <li>Configure appropriate CSP policy for the application</li>
                         <li>Enable HSTS for production deployments</li>
                     </ol>
-                    
+
                     <h4>Implementation</h4>
                     <pre><code>from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -718,20 +718,20 @@ from starlette.requests import Request
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
+
         # HSTS - Enforce HTTPS (production only)
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
+
         # Prevent clickjacking
         response.headers["X-Frame-Options"] = "DENY"
-        
+
         # Prevent MIME-sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
-        
+
         # XSS Protection (legacy but still useful)
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        
+
         # Content Security Policy
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
@@ -742,7 +742,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "connect-src 'self'; "
             "frame-ancestors 'none'"
         )
-        
+
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)</code></pre>
@@ -765,8 +765,8 @@ app.add_middleware(SecurityHeadersMiddleware)</code></pre>
 
                 <h4>Description</h4>
                 <p>
-                    MD5 is used to generate document IDs from file content. While MD5 is acceptable for non-cryptographic purposes like 
-                    generating unique identifiers, it should not be used for security-critical operations. The current usage appears to be 
+                    MD5 is used to generate document IDs from file content. While MD5 is acceptable for non-cryptographic purposes like
+                    generating unique identifiers, it should not be used for security-critical operations. The current usage appears to be
                     for document identification rather than security, but using a deprecated algorithm is still a concern.
                 </p>
 
@@ -775,8 +775,8 @@ app.add_middleware(SecurityHeadersMiddleware)</code></pre>
 
                 <h4>Recommendation</h4>
                 <p>
-                    For document ID generation (non-security purpose), this usage is acceptable but consider upgrading to SHA-256 for 
-                    consistency and future-proofing. If this hash is ever used for integrity verification or security purposes, it must 
+                    For document ID generation (non-security purpose), this usage is acceptable but consider upgrading to SHA-256 for
+                    consistency and future-proofing. If this hash is ever used for integrity verification or security purposes, it must
                     be changed immediately.
                 </p>
 
@@ -787,7 +787,7 @@ app.add_middleware(SecurityHeadersMiddleware)</code></pre>
                         <li>Ensure backward compatibility if document IDs are already stored</li>
                         <li>Document that this is for identification, not security</li>
                     </ol>
-                    
+
                     <h4>Updated Implementation</h4>
                     <pre><code>import hashlib
 
@@ -816,7 +816,7 @@ doc_id = secrets.token_hex(16)</code></pre>
 
                 <h4>Description</h4>
                 <p>
-                    The root <code>.env</code> file has <code>LOG_LEVEL=DEBUG</code>, which may expose sensitive information in logs. 
+                    The root <code>.env</code> file has <code>LOG_LEVEL=DEBUG</code>, which may expose sensitive information in logs.
                     Additionally, <code>DEV_MODE=true</code> is set in docker/.env which could enable debug features in production if deployed incorrectly.
                 </p>
 
@@ -837,7 +837,7 @@ doc_id = secrets.token_hex(16)</code></pre>
                         <li>Add log sanitization to remove sensitive data (passwords, tokens, API keys)</li>
                         <li>Implement log rotation to prevent disk space exhaustion</li>
                     </ol>
-                    
+
                     <h4>Environment-Specific Configuration</h4>
                     <pre><code># .env.production
 LOG_LEVEL=WARNING
@@ -881,14 +881,14 @@ logging.basicConfig(level=getattr(logging, log_level))</code></pre>
 
                 <h4>Description</h4>
                 <p>
-                    Several internal processing endpoints (webhook, slide renderer) do not implement authentication. While these services 
-                    appear to be designed for internal communication within Docker network, they should still implement some form of 
+                    Several internal processing endpoints (webhook, slide renderer) do not implement authentication. While these services
+                    appear to be designed for internal communication within Docker network, they should still implement some form of
                     authentication to prevent unauthorized access if network isolation is compromised.
                 </p>
 
                 <h4>Recommendation</h4>
                 <p>
-                    For development and local deployment, the current setup may be acceptable if services are properly isolated. 
+                    For development and local deployment, the current setup may be acceptable if services are properly isolated.
                     For production deployment, consider:
                 </p>
                 <ul>
@@ -917,7 +917,7 @@ def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="API key not configured"
         )
-    
+
     if not secrets.compare_digest(api_key, INTERNAL_API_KEY):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -935,12 +935,12 @@ async def process_document(request: ProcessRequest):
         <!-- Dependency Analysis -->
         <section>
             <h2>Dependency Security Analysis</h2>
-            
+
             <h3>Installed Packages: 220+</h3>
             <p>
                 The project has a substantial dependency tree with 220+ installed packages. Key security-relevant dependencies:
             </p>
-            
+
             <h4>Security-Positive Dependencies</h4>
             <ul>
                 <li><strong>bcrypt 5.0.0</strong> - Strong password hashing (good)</li>
@@ -1014,10 +1014,10 @@ safety check --json</code></pre>
         <!-- Summary -->
         <section>
             <h2>Summary & Next Steps</h2>
-            
+
             <p>
-                The tkr-docusearch codebase has a generally sound security posture but requires immediate attention to critical 
-                CORS misconfiguration and unsafe eval() usage. The findings are typical for a development/MVP project transitioning 
+                The tkr-docusearch codebase has a generally sound security posture but requires immediate attention to critical
+                CORS misconfiguration and unsafe eval() usage. The findings are typical for a development/MVP project transitioning
                 to production readiness.
             </p>
 
@@ -1067,8 +1067,8 @@ safety check --json</code></pre>
 
             <h3>Conclusion</h3>
             <p>
-                No evidence of active exploitation or malicious code was found. The identified vulnerabilities are related to 
-                configuration and coding practices that need to be addressed before production deployment. With the recommended 
+                No evidence of active exploitation or malicious code was found. The identified vulnerabilities are related to
+                configuration and coding practices that need to be addressed before production deployment. With the recommended
                 fixes implemented, the application will have a strong security foundation.
             </p>
         </section>

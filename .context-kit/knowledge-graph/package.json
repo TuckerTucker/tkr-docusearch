@@ -12,7 +12,7 @@
     "dev:api": "tsx watch src/api/http-server-simple.ts",
     "serve": "tsx src/api/http-server-simple.ts",
     "services:start": "./scripts/manage-ports.sh start",
-    "services:stop": "./scripts/manage-ports.sh stop", 
+    "services:stop": "./scripts/manage-ports.sh stop",
     "services:restart": "./scripts/manage-ports.sh restart",
     "services:status": "./scripts/manage-ports.sh status",
     "test:simple": "node -e \"const kg = require('./dist/core/knowledge-graph-simple.js'); console.log('Simple knowledge graph loaded successfully');\"",

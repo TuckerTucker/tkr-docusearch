@@ -90,13 +90,13 @@ Write your analysis findings to `.context-kit/analysis/port-consistency-output.y
 port_consistency_analysis:
   timestamp: "2024-XX-XXTXX:XX:XXZ"
   status: "completed"  # completed | failed | warnings
-  
+
   current_allocation:
     total_ports: 12
     compliant: 8
     non_compliant: 4
     conflicts: 1
-    
+
   port_inventory:
     allocated:
       - port: 42000
@@ -107,26 +107,26 @@ port_consistency_analysis:
         service: "logging_api"
         status: "compliant"
         location: ".context-kit/_context-kit.yml"
-        
+
   issues_found:
     - type: "duplicate_port"
       port: 42001
       service: "mcp_server"
       description: "Port already allocated to knowledge graph server"
       files: ["docker-compose.yml", ".context-kit/_context-kit.yml"]
-      
+
   changes_made:
     - file: "docker-compose.yml"
       type: "port_update"
       old_port: 42001
       new_port: 42002
       service: "logging_api"
-      
+
   validation:
     script_run: true
     script_result: "PASS"
     remaining_conflicts: []
-    
+
   recommendations:
     - "Migrate remaining legacy services to 42xxx range"
     - "Add port validation to CI/CD pipeline"

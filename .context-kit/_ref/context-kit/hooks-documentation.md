@@ -101,7 +101,7 @@ The following permissions were added to `.claude/settings.local.json`:
     "allow": [
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(nohup:*)", 
+      "Bash(nohup:*)",
       "Bash(pgrep:*)",
       "Bash(kill:*)",
       "Bash(sleep:*)",

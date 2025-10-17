@@ -56,7 +56,7 @@ Generate a YAML file with this structure:
 # Project directory structure
 root:
   _count: 156
-  _types: 
+  _types:
     ts: 45
     tsx: 38
     css: 12

@@ -95,7 +95,7 @@ npm run dev:api
 ### First Steps - ✅ Working
 
 1. **Access the UI**: Open http://localhost:42001
-2. **Switch to Logs**: Click "📝 System Logs" in the header 
+2. **Switch to Logs**: Click "📝 System Logs" in the header
 3. **View Mock Data**: See realistic sample logs (automatic fallback if no real logs)
 4. **Test Filters**: Try different service and level filters
 5. **Test API**: Try `curl "http://localhost:42003/api/logs/stream?format=text"`
@@ -324,7 +324,7 @@ import json
 
 # Get recent error logs
 def get_recent_errors():
-    response = requests.get('http://localhost:42003/api/logs/stream', 
+    response = requests.get('http://localhost:42003/api/logs/stream',
                           params={'level': 'ERROR', 'timeWindow': 3600, 'format': 'json'})
     return response.json()['data']
 
@@ -333,7 +333,7 @@ def search_logs(query, service=None):
     params = {'q': query, 'format': 'json'}
     if service:
         params['service'] = service
-    
+
     response = requests.get('http://localhost:42003/api/logs/search', params=params)
     return response.json()['data']
 
@@ -375,7 +375,7 @@ def get_service_health(time_window=3600):
   level: "ERROR",
   message: "Payment processing failed",
   service: "PaymentService",
-  component: "StripeHandler", 
+  component: "StripeHandler",
   data: {
     orderId: "order-12345",
     amount: 99.99,
@@ -409,7 +409,7 @@ logger.info("Request received", {
 // Include in downstream service calls
 logger.info("Calling user service", {
   traceId,
-  spanId: "gateway-span-2", 
+  spanId: "gateway-span-2",
   targetService: "UserService",
   endpoint: "/users/12345"
 });
@@ -441,10 +441,10 @@ logger.error("User lookup failed", {
 // Regular health monitoring
 setInterval(async () => {
   const health = await getServiceHealth(300); // Last 5 minutes
-  
+
   for (const service of health) {
     const errorRate = service.error_count / service.total_logs;
-    
+
     if (errorRate > 0.1) { // 10% error rate
       logger.warn("High error rate detected", {
         service: service.service,
@@ -464,7 +464,7 @@ logger.info("Order completed", {
   service: "OrderService",
   data: {
     orderId: "order-12345",
-    customerId: "cust-67890", 
+    customerId: "cust-67890",
     amount: 99.99,
     processingTime: 850,
     paymentMethod: "credit_card"

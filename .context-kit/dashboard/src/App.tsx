@@ -1631,7 +1631,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">TKR Dashboard</h1>
             {usingMockData && (
-               
+
               <span className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900 rounded-full border border-orange-200 dark:border-orange-800">
                 Using Mock Data
               </span>

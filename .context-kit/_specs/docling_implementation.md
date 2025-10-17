@@ -1,4 +1,4 @@
- Implementation Plan: Real Docling Integration 
+ Implementation Plan: Real Docling Integration
   (Wholesale Replacement)
 
   Goal: Replace current format-specific parsers with
@@ -147,7 +147,7 @@
   - Stop all services: ./scripts/stop-all.sh
   - Remove old containers and images
   - Delete ChromaDB data: rm -rf data/chroma_db/*
-  - Rebuild worker: docker-compose build --no-cache 
+  - Rebuild worker: docker-compose build --no-cache
   processing-worker
   - Start services: ./scripts/start-all.sh
 

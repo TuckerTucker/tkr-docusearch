@@ -60,17 +60,17 @@ export function setupDevelopmentTools(
       inputSchema: {
         type: 'object',
         properties: {
-          module: { 
-            type: 'string', 
+          module: {
+            type: 'string',
             description: 'Module to start dev server for',
             default: 'knowledge-graph'
           },
-          port: { 
-            type: 'number', 
-            description: 'Port to run on (optional)' 
+          port: {
+            type: 'number',
+            description: 'Port to run on (optional)'
           },
-          detached: { 
-            type: 'boolean', 
+          detached: {
+            type: 'boolean',
             description: 'Run in detached mode',
             default: true
           }
@@ -83,8 +83,8 @@ export function setupDevelopmentTools(
       inputSchema: {
         type: 'object',
         properties: {
-          module: { 
-            type: 'string', 
+          module: {
+            type: 'string',
             description: 'Module to build',
             default: 'knowledge-graph'
           }
@@ -97,18 +97,18 @@ export function setupDevelopmentTools(
       inputSchema: {
         type: 'object',
         properties: {
-          module: { 
-            type: 'string', 
+          module: {
+            type: 'string',
             description: 'Module to test',
             default: 'knowledge-graph'
           },
-          watch: { 
-            type: 'boolean', 
+          watch: {
+            type: 'boolean',
             description: 'Run tests in watch mode',
             default: false
           },
-          coverage: { 
-            type: 'boolean', 
+          coverage: {
+            type: 'boolean',
             description: 'Generate coverage report',
             default: false
           }
@@ -121,9 +121,9 @@ export function setupDevelopmentTools(
       inputSchema: {
         type: 'object',
         properties: {
-          service: { 
-            type: 'string', 
-            description: 'Specific service to stop (optional)' 
+          service: {
+            type: 'string',
+            description: 'Specific service to stop (optional)'
           }
         }
       }
@@ -353,19 +353,19 @@ export function setupDevelopmentTools(
 }
 
 async function startDevServer(
-  projectRoot: string, 
-  module: string, 
-  port?: number, 
+  projectRoot: string,
+  module: string,
+  port?: number,
   detached: boolean = true
 ): Promise<{ output: string; process?: ChildProcess }> {
   const moduleDir = join(projectRoot, '_project', module);
-  
+
   // Determine the dev script command
   let script = 'dev:ui'; // Default for knowledge-graph
   if (module === 'mcp') {
     script = 'dev';
   }
-  
+
   const args = ['run', script];
   if (port) {
     args.push('--', '--port', port.toString());
@@ -425,7 +425,7 @@ async function buildUI(projectRoot: string, module: string): Promise<{
   error: string;
 }> {
   const moduleDir = join(projectRoot, '_project', module);
-  
+
   return new Promise((resolve, reject) => {
     const child = spawn('npm', ['run', 'build:ui'], {
       cwd: moduleDir,
@@ -458,8 +458,8 @@ async function buildUI(projectRoot: string, module: string): Promise<{
 }
 
 async function runTests(
-  projectRoot: string, 
-  module: string, 
+  projectRoot: string,
+  module: string,
   options: { watch?: boolean; coverage?: boolean }
 ): Promise<{
   exitCode: number;
@@ -467,14 +467,14 @@ async function runTests(
   error: string;
 }> {
   const moduleDir = join(projectRoot, '_project', module);
-  
+
   let script = 'test';
   if (options.watch) {
     script = 'test:watch';
   } else if (options.coverage) {
     script = 'test:coverage';
   }
-  
+
   return new Promise((resolve, reject) => {
     const child = spawn('npm', ['run', script], {
       cwd: moduleDir,

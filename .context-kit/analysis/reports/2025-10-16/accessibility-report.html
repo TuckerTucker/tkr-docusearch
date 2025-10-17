@@ -17,26 +17,26 @@
             --text-secondary: #6b7280;
             --border: #e5e7eb;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: var(--text);
             background: var(--bg-secondary);
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -44,17 +44,17 @@
             margin: -2rem -2rem 2rem;
             border-radius: 0 0 1rem 1rem;
         }
-        
+
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
         }
-        
+
         .header p {
             font-size: 1.1rem;
             opacity: 0.95;
         }
-        
+
         .score-card {
             background: white;
             border-radius: 1rem;
@@ -62,14 +62,14 @@
             margin-bottom: 2rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         .score-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
         }
-        
+
         .score-circle {
             width: 150px;
             height: 150px;
@@ -82,38 +82,38 @@
             background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
             color: white;
         }
-        
+
         .score-details {
             flex: 1;
             margin-left: 2rem;
         }
-        
+
         .score-breakdown {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-top: 1.5rem;
         }
-        
+
         .score-item {
             padding: 1rem;
             background: var(--bg-secondary);
             border-radius: 0.5rem;
             border-left: 4px solid var(--primary);
         }
-        
+
         .score-item.critical {
             border-left-color: var(--critical);
         }
-        
+
         .score-item.warning {
             border-left-color: var(--warning);
         }
-        
+
         .score-item.info {
             border-left-color: var(--success);
         }
-        
+
         .section {
             background: white;
             border-radius: 1rem;
@@ -121,7 +121,7 @@
             margin-bottom: 2rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        
+
         .section h2 {
             font-size: 1.75rem;
             margin-bottom: 1.5rem;
@@ -129,13 +129,13 @@
             border-bottom: 2px solid var(--border);
             padding-bottom: 0.5rem;
         }
-        
+
         .section h3 {
             font-size: 1.25rem;
             margin: 1.5rem 0 1rem;
             color: var(--text);
         }
-        
+
         .violation {
             background: var(--bg-secondary);
             border-left: 4px solid var(--error);
@@ -143,28 +143,28 @@
             margin: 1rem 0;
             border-radius: 0.5rem;
         }
-        
+
         .violation.warning {
             border-left-color: var(--warning);
         }
-        
+
         .violation.info {
             border-left-color: var(--success);
         }
-        
+
         .violation-header {
             display: flex;
             justify-content: space-between;
             align-items: start;
             margin-bottom: 1rem;
         }
-        
+
         .violation-title {
             font-weight: 600;
             font-size: 1.1rem;
             color: var(--text);
         }
-        
+
         .severity-badge {
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
@@ -173,15 +173,15 @@
             background: var(--critical);
             color: white;
         }
-        
+
         .severity-badge.warning {
             background: var(--warning);
         }
-        
+
         .severity-badge.info {
             background: var(--success);
         }
-        
+
         .code-block {
             background: #1f2937;
             color: #f9fafb;
@@ -192,7 +192,7 @@
             font-family: 'Courier New', monospace;
             font-size: 0.875rem;
         }
-        
+
         .file-ref {
             display: inline-block;
             background: var(--primary);
@@ -203,7 +203,7 @@
             font-family: 'Courier New', monospace;
             margin: 0.25rem 0;
         }
-        
+
         .recommendation {
             background: #dbeafe;
             border-left: 4px solid var(--primary);
@@ -211,27 +211,27 @@
             margin: 1rem 0;
             border-radius: 0.5rem;
         }
-        
+
         .recommendation strong {
             color: var(--primary);
         }
-        
+
         ul, ol {
             margin-left: 1.5rem;
             margin-top: 0.5rem;
         }
-        
+
         li {
             margin: 0.5rem 0;
         }
-        
+
         .quick-action-buttons {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
             margin-top: 1rem;
         }
-        
+
         .quick-action-btn {
             display: inline-flex;
             align-items: center;
@@ -246,13 +246,13 @@
             border: none;
             cursor: pointer;
         }
-        
+
         .quick-action-btn:hover {
             background: #1d4ed8;
             transform: translateY(-2px);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         .wcag-criterion {
             background: white;
             border: 1px solid var(--border);
@@ -260,46 +260,46 @@
             margin: 0.5rem 0;
             border-radius: 0.5rem;
         }
-        
+
         .wcag-criterion code {
             background: var(--bg-secondary);
             padding: 0.125rem 0.375rem;
             border-radius: 0.25rem;
             font-size: 0.875rem;
         }
-        
+
         .status-pass {
             color: var(--success);
             font-weight: 600;
         }
-        
+
         .status-fail {
             color: var(--error);
             font-weight: 600;
         }
-        
+
         .status-partial {
             color: var(--warning);
             font-weight: 600;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 1rem 0;
         }
-        
+
         th, td {
             padding: 0.75rem;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
-        
+
         th {
             background: var(--bg-secondary);
             font-weight: 600;
         }
-        
+
         .footer {
             text-align: center;
             padding: 2rem;
@@ -325,7 +325,7 @@
                     <p style="font-size: 1.1rem; margin-top: 0.5rem;">The application shows <strong>moderate accessibility</strong> with good semantic HTML structure and ARIA usage, but requires improvements in keyboard navigation, color contrast, and comprehensive screen reader support.</p>
                 </div>
             </div>
-            
+
             <div class="score-breakdown">
                 <div class="score-item critical">
                     <div style="font-size: 2rem; font-weight: bold; color: var(--critical);">8</div>
@@ -349,7 +349,7 @@
         <!-- WCAG 2.1 AA Compliance Status -->
         <div class="section">
             <h2>WCAG 2.1 Level AA Compliance Status</h2>
-            
+
             <h3>Perceivable (Principle 1)</h3>
             <table>
                 <tr>
@@ -495,7 +495,7 @@
         <!-- Semantic HTML Analysis -->
         <div class="section">
             <h2>Semantic HTML Structure</h2>
-            
+
             <div class="violation info">
                 <div class="violation-header">
                     <div class="violation-title">✓ Excellent Landmark Usage</div>
@@ -572,7 +572,7 @@
         <!-- ARIA Implementation Review -->
         <div class="section">
             <h2>ARIA Implementation</h2>
-            
+
             <div class="violation info">
                 <div class="violation-header">
                     <div class="violation-title">✓ Excellent ARIA Landmark Labels</div>
@@ -592,7 +592,7 @@
                 </div>
                 <p>Active navigation links correctly use <code>aria-current="page"</code>:</p>
                 <span class="file-ref">src/frontend/index.html:21</span>
-                <div class="code-block">&lt;a href="/frontend" class="header__nav-link header__nav-link--active" 
+                <div class="code-block">&lt;a href="/frontend" class="header__nav-link header__nav-link--active"
    aria-current="page"&gt;
     Library
 &lt;/a&gt;</div>
@@ -606,9 +606,9 @@
                 <p>Dynamic content updates lack proper screen reader announcements:</p>
                 <span class="file-ref">src/frontend/index.html:53-56</span>
                 <div class="code-block">&lt;!-- Only connection status has aria-live --&gt;
-&lt;span id="connection-status" 
-      class="connection-status connection-status--disconnected" 
-      role="status" 
+&lt;span id="connection-status"
+      class="connection-status connection-status--disconnected"
+      role="status"
       aria-live="polite"&gt;
     Disconnected
 &lt;/span&gt;</div>
@@ -649,11 +649,11 @@
                 </div>
                 <p>Preview modal has proper ARIA but may lack focus management:</p>
                 <span class="file-ref">data/copyparty/www/search.html:195</span>
-                <div class="code-block">&lt;div id="preview-modal" 
-     class="modal" 
-     hidden 
-     role="dialog" 
-     aria-labelledby="preview-title" 
+                <div class="code-block">&lt;div id="preview-modal"
+     class="modal"
+     hidden
+     role="dialog"
+     aria-labelledby="preview-title"
      aria-modal="true"&gt;
     &lt;div class="modal-overlay" aria-hidden="true"&gt;&lt;/div&gt;
     ...
@@ -694,10 +694,10 @@ hideModal() {
                 </div>
                 <p>Toggle filters button has aria-expanded but implementation may be incomplete:</p>
                 <span class="file-ref">data/copyparty/www/search.html:84-89</span>
-                <div class="code-block">&lt;button type="button" 
-        id="toggle-filters" 
-        class="btn btn-secondary" 
-        aria-expanded="false" 
+                <div class="code-block">&lt;button type="button"
+        id="toggle-filters"
+        class="btn btn-secondary"
+        aria-expanded="false"
         aria-controls="filters-panel"&gt;
     &lt;span class="btn-text"&gt;Filters&lt;/span&gt;
     &lt;span class="btn-icon" aria-hidden="true"&gt;▼&lt;/span&gt;
@@ -734,7 +734,7 @@ hideModal() {
         <!-- Keyboard Navigation Assessment -->
         <div class="section">
             <h2>Keyboard Navigation</h2>
-            
+
             <div class="violation info">
                 <div class="violation-header">
                     <div class="violation-title">✓ Excellent Keyboard Support for Slideshow</div>
@@ -816,10 +816,10 @@ dropZone.addEventListener('drop', (e) => {
                 <div class="recommendation">
                     <strong>Recommendation:</strong> Add a keyboard-accessible file input:
                     <div class="code-block">&lt;div class="upload-modal__drop-zone"&gt;
-    &lt;input 
-        type="file" 
-        id="file-input" 
-        multiple 
+    &lt;input
+        type="file"
+        id="file-input"
+        multiple
         accept=".pdf,.docx,.mp3,.wav"
         style="display: none"
     /&gt;
@@ -922,7 +922,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
         <!-- Color Contrast Analysis -->
         <div class="section">
             <h2>Color Contrast Issues</h2>
-            
+
             <div class="violation">
                 <div class="violation-header">
                     <div class="violation-title">Secondary Text Contrast Failure</div>
@@ -1024,7 +1024,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
         <!-- Screen Reader Compatibility -->
         <div class="section">
             <h2>Screen Reader Compatibility</h2>
-            
+
             <div class="violation info">
                 <div class="violation-header">
                     <div class="violation-title">✓ Good Image Alt Text</div>
@@ -1254,7 +1254,7 @@ announce('Search completed. Found 5 results.');
         <!-- Prioritized Recommendations -->
         <div class="section">
             <h2>Prioritized Remediation Roadmap</h2>
-            
+
             <h3>🔴 Critical Priority (Immediate)</h3>
             <ol>
                 <li><strong>Fix color contrast violations</strong>
@@ -1331,7 +1331,7 @@ announce('Search completed. Found 5 results.');
         <!-- Testing Recommendations -->
         <div class="section">
             <h2>Testing Recommendations</h2>
-            
+
             <h3>Automated Testing Tools</h3>
             <ul>
                 <li><strong>axe DevTools</strong> - Browser extension for automated accessibility testing</li>
@@ -1418,7 +1418,7 @@ announce('Search completed. Found 5 results.');
         <!-- Summary -->
         <div class="section">
             <h2>Summary and Next Steps</h2>
-            
+
             <p>The tkr-docusearch application demonstrates a <strong>solid foundation</strong> in accessibility with excellent semantic HTML structure, proper ARIA landmark usage, and good keyboard navigation for key components like the slideshow. However, significant improvements are needed to achieve full WCAG 2.1 Level AA compliance.</p>
 
             <h3>Key Strengths</h3>

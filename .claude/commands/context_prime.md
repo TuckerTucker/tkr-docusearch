@@ -23,11 +23,11 @@ This command provides instant project context by reading the AI-optimized _conte
 1. **Read Primary Source**:
    - Load `.context-kit/_context-kit.yml` as the authoritative project context
    - Parse structured sections: project, structure, patterns, stack, integrations, architecture
-   
+
 2. **Optional Supplementary Context**:
    - Main `README.md` if _context-kit.yml is missing or incomplete
    - Package.json/requirements.txt for dependency context
-   
+
 3. **Section Filtering** (if SECTION specified):
    - Extract only the requested section from _context-kit.yml
    - Useful for focused context when working on specific areas

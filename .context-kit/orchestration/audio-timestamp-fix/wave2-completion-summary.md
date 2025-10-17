@@ -75,7 +75,7 @@ pytest src/processing/test_timestamp_extraction.py -v
 
 ```
 ============================= test session starts ==============================
-src/processing/test_timestamp_extraction.py::TestTimestampExtraction ... 
+src/processing/test_timestamp_extraction.py::TestTimestampExtraction ...
 ============================== 30 passed in 4.40s ==============================
 ```
 

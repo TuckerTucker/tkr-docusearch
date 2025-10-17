@@ -187,22 +187,22 @@ app.get('/users', (req, res) => {
 ```typescript
 import { createTkrLogger } from './.context-kit/logging-client/index.js';
 
-const logger = createTkrLogger({ 
-  service: 'ReactApp', 
-  serviceType: 'frontend' 
+const logger = createTkrLogger({
+  service: 'ReactApp',
+  serviceType: 'frontend'
 });
 
 // Log component lifecycle
 function MyComponent() {
   const componentLogger = logger.child('MyComponent');
-  
+
   useEffect(() => {
     componentLogger.info('Component mounted');
     return () => {
       componentLogger.info('Component unmounted');
     };
   }, []);
-  
+
   // ... component logic
 }
 ```
@@ -219,7 +219,7 @@ class TkrLogger:
         self.service = service
         self.service_type = service_type
         self.base_url = base_url
-    
+
     def log(self, level, message, metadata=None, component='Main'):
         try:
             requests.post(f'{self.base_url}/api/logs', json={
@@ -233,10 +233,10 @@ class TkrLogger:
             })
         except:
             pass  # Fail silently
-    
+
     def info(self, message, metadata=None, component='Main'):
         self.log('info', message, metadata, component)
-    
+
     def error(self, message, metadata=None, component='Main'):
         self.log('error', message, metadata, component)
 

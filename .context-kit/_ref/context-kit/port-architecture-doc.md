@@ -117,13 +117,13 @@ development:
     services:
       dashboard: 42001    # Vite dev server
       api_server: 42003       # HTTP API server
-    
+
   mcp_servers:
     project_kit:
       protocol: "STDIO"
       location: ".context-kit/mcp/"
       tools: "mcp__context-kit__*"
-    
+
     context7:
       protocol: "STDIO"  
       location: "external"
@@ -154,7 +154,7 @@ services:
     environment:
       - PORT=42001
       - VITE_API_URL=http://localhost:42003
-  
+
   api_server:
     image: node:18
     working_dir: /app/.context-kit/knowledge-graph
@@ -216,18 +216,18 @@ development:
       web_app: 42200         # Future: Main web application
       dev_server: 42300      # Future: Development server
       testing: 42900         # Temporary test services
-    
+
     conflict_resolution:
       auto_increment: true   # Auto-find next available port
       check_script: ".context-kit/scripts/check-ports.sh"
       fallback_range: "42950-42999"
-  
+
   mcp_servers:
     project_kit:
       protocol: "STDIO"
       entry: ".context-kit/mcp/dist/server.js"
       tools_prefix: "mcp__context-kit__"
-    
+
     context7:
       protocol: "STDIO"
       external: true
@@ -240,15 +240,15 @@ For production deployment, use nginx to map services to standard ports:
 ```nginx
 server {
     listen 80;
-    
+
     location / {
         proxy_pass http://localhost:42001;  # Dashboard UI server
     }
-    
+
     location /api {
         proxy_pass http://localhost:42003;  # API server
     }
-    
+
     location /ws {
         proxy_pass http://localhost:42500;
         proxy_http_version 1.1;

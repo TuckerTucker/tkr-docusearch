@@ -12,15 +12,15 @@ echo "🔍 TKR Port Management - Checking ports ${UI_PORT}, ${API_PORT}, ${MCP_P
 kill_port() {
     local port=$1
     local service_name=$2
-    
+
     echo "🔍 Checking port $port for $service_name..."
     local pid=$(lsof -ti :$port)
-    
+
     if [ -n "$pid" ]; then
         echo "❌ Port $port is in use by PID $pid - killing..."
         kill -9 $pid 2>/dev/null || true
         sleep 1
-        
+
         # Verify it's dead
         if lsof -ti :$port >/dev/null 2>&1; then
             echo "⚠️  Failed to kill process on port $port"
@@ -35,16 +35,16 @@ kill_port() {
 
 start_services() {
     echo "🚀 Starting services..."
-    
+
     # Start API server in background
     echo "📡 Starting Knowledge Graph API on port $API_PORT..."
     npm run dev:api > api.log 2>&1 &
     API_PID=$!
     echo "API Server PID: $API_PID"
-    
+
     # Give it a moment to start
     sleep 2
-    
+
     # Check if API started successfully
     if curl -s "http://localhost:$API_PORT/health" >/dev/null; then
         echo "✅ API Server is healthy on port $API_PORT"
@@ -54,7 +54,7 @@ start_services() {
         tail -10 api.log
         return 1
     fi
-    
+
     echo "🎯 UI Server should be running on port $UI_PORT"
     echo "📋 Services status:"
     echo "   UI:  http://localhost:$UI_PORT (Vite)"
@@ -64,13 +64,13 @@ start_services() {
 stop_services() {
     echo "🛑 Stopping all TKR services..."
     kill_port $UI_PORT "UI Server"
-    kill_port $API_PORT "API Server" 
+    kill_port $API_PORT "API Server"
     kill_port $MCP_PORT "MCP Server"
-    
+
     # Clean up any tsx processes
     pkill -f "tsx.*knowledge-graph" || true
     pkill -f "vite" || true
-    
+
     echo "✅ All services stopped"
 }
 

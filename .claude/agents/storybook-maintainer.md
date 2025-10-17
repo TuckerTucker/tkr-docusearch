@@ -69,7 +69,7 @@ Provide your maintenance report in the following format:
 ### Summary
 - Total stories processed: [number]
 - Stories removed: [number]
-- Stories added: [number] 
+- Stories added: [number]
 - Stories updated: [number]
 
 ### Removed Stories

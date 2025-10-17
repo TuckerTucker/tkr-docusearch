@@ -192,34 +192,45 @@ def get_chroma_client() -> ChromaClient:
         )
 
 
-def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) -> Dict[str, Dict]:
-    """Aggregate document information from ChromaDB metadata.
+def _create_empty_document(doc_id: str, filename: str, timestamp: str) -> Dict[str, Any]:
+    """Create empty document structure.
 
     Args:
-        visual_metadata: List of visual embedding metadata
-        text_metadata: List of text embedding metadata
+        doc_id: Document identifier
+        filename: Original filename
+        timestamp: Document timestamp
 
     Returns:
-        Dictionary mapping doc_id to aggregated document info
+        Empty document dictionary
     """
-    documents = {}
+    return {
+        "doc_id": doc_id,
+        "filename": filename,
+        "date_added": timestamp,
+        "pages": [],
+        "chunks": [],
+        "collections": [],
+        "has_images": False,
+    }
 
-    # Process visual embeddings
+
+def _process_visual_metadata(documents: Dict[str, Dict], visual_metadata: List[Dict]) -> None:
+    """Process visual embeddings and update documents dict.
+
+    Args:
+        documents: Documents dictionary to update
+        visual_metadata: List of visual embedding metadata
+    """
     for item in visual_metadata:
         doc_id = item.get("doc_id")
         if not doc_id:
             continue
 
+        # Initialize document if needed
         if doc_id not in documents:
-            documents[doc_id] = {
-                "doc_id": doc_id,
-                "filename": item.get("filename", "unknown"),
-                "date_added": item.get("timestamp", ""),
-                "pages": [],
-                "chunks": [],
-                "collections": [],
-                "has_images": False,
-            }
+            documents[doc_id] = _create_empty_document(
+                doc_id, item.get("filename", "unknown"), item.get("timestamp", "")
+            )
 
         # Add page info
         page_num = item.get("page")
@@ -233,40 +244,71 @@ def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) 
                 }
             )
 
+        # Track if document has images
         if item.get("image_path") or item.get("thumb_path"):
             documents[doc_id]["has_images"] = True
 
+        # Add visual collection
         if "visual" not in documents[doc_id]["collections"]:
             documents[doc_id]["collections"].append("visual")
 
-    # Process text embeddings
+
+def _process_text_metadata(documents: Dict[str, Dict], text_metadata: List[Dict]) -> None:
+    """Process text embeddings and update documents dict.
+
+    Args:
+        documents: Documents dictionary to update
+        text_metadata: List of text embedding metadata
+    """
     for item in text_metadata:
         doc_id = item.get("doc_id")
         if not doc_id:
             continue
 
+        # Initialize document if needed
         if doc_id not in documents:
-            documents[doc_id] = {
-                "doc_id": doc_id,
-                "filename": item.get("filename", "unknown"),
-                "date_added": item.get("timestamp", ""),
-                "pages": [],
-                "chunks": [],
-                "collections": [],
-                "has_images": False,
-            }
+            documents[doc_id] = _create_empty_document(
+                doc_id, item.get("filename", "unknown"), item.get("timestamp", "")
+            )
 
         # Add chunk info
         chunk_id = item.get("chunk_id")
         if chunk_id is not None:
             documents[doc_id]["chunks"].append({"chunk_id": f"chunk_{chunk_id}", "metadata": item})
 
+        # Add text collection
         if "text" not in documents[doc_id]["collections"]:
             documents[doc_id]["collections"].append("text")
 
-    # Sort pages by page number
+
+def _sort_document_pages(documents: Dict[str, Dict]) -> None:
+    """Sort pages by page number for all documents.
+
+    Args:
+        documents: Documents dictionary to update
+    """
     for doc_id in documents:
         documents[doc_id]["pages"].sort(key=lambda p: p["page_number"])
+
+
+def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) -> Dict[str, Dict]:
+    """Aggregate document information from ChromaDB metadata.
+
+    Args:
+        visual_metadata: List of visual embedding metadata
+        text_metadata: List of text embedding metadata
+
+    Returns:
+        Dictionary mapping doc_id to aggregated document info
+    """
+    documents: Dict[str, Dict] = {}
+
+    # Process visual and text embeddings
+    _process_visual_metadata(documents, visual_metadata)
+    _process_text_metadata(documents, text_metadata)
+
+    # Sort pages by page number
+    _sort_document_pages(documents)
 
     return documents
 
@@ -340,6 +382,101 @@ async def get_supported_formats():
     return SupportedFormatsResponse(extensions=extensions, groups=groups)
 
 
+def _apply_search_filter(doc_list: List[Dict], search: Optional[str]) -> List[Dict]:
+    """Filter documents by filename search.
+
+    Args:
+        doc_list: List of documents to filter
+        search: Search string (case-insensitive)
+
+    Returns:
+        Filtered list of documents
+    """
+    if not search:
+        return doc_list
+
+    search_lower = search.lower()
+    return [doc for doc in doc_list if search_lower in doc["filename"].lower()]
+
+
+def _sort_documents(doc_list: List[Dict], sort_by: str) -> None:
+    """Sort documents in-place by specified criteria.
+
+    Args:
+        doc_list: List of documents to sort
+        sort_by: Sort order (newest_first, oldest_first, name_asc, name_desc)
+    """
+    if sort_by == "name_asc":
+        doc_list.sort(key=lambda d: d["filename"].lower())
+    elif sort_by == "name_desc":
+        doc_list.sort(key=lambda d: d["filename"].lower(), reverse=True)
+    elif sort_by == "oldest_first":
+        doc_list.sort(key=lambda d: d["date_added"])
+    else:  # newest_first (default)
+        doc_list.sort(key=lambda d: d["date_added"], reverse=True)
+
+
+def _resolve_document_thumbnail(doc: Dict) -> Optional[str]:
+    """Resolve thumbnail URL for document.
+
+    Args:
+        doc: Document dictionary
+
+    Returns:
+        Thumbnail URL or None
+    """
+    # Check for page thumbnail (PDF, DOCX, PPTX)
+    if doc["pages"] and doc["has_images"]:
+        first_page = doc["pages"][0]
+        if first_page.get("thumb_path"):
+            thumb_path = first_page["thumb_path"]
+            if "/" in thumb_path:
+                parts = thumb_path.split("/")
+                if len(parts) >= 2:
+                    doc_id_part = parts[-2]
+                    filename_part = parts[-1]
+                    return f"/images/{doc_id_part}/{filename_part}"
+
+    # Check for album art (audio files)
+    images_dir = Path("data/images") / doc["doc_id"]
+    if images_dir.exists():
+        for ext in ["jpg", "jpeg", "png"]:
+            cover_file = images_dir / f"cover.{ext}"
+            if cover_file.exists():
+                return f"/documents/{doc['doc_id']}/cover"
+
+    return None
+
+
+def _convert_to_response_items(doc_list: List[Dict]) -> List[DocumentListItem]:
+    """Convert document dictionaries to response items.
+
+    Args:
+        doc_list: List of document dictionaries
+
+    Returns:
+        List of DocumentListItem objects
+    """
+    response_docs = []
+    for doc in doc_list:
+        first_page_thumb = _resolve_document_thumbnail(doc)
+
+        response_docs.append(
+            DocumentListItem(
+                doc_id=doc["doc_id"],
+                filename=doc["filename"],
+                page_count=len(doc["pages"]),
+                chunk_count=len(doc["chunks"]),
+                date_added=doc["date_added"],
+                collections=doc["collections"],
+                has_images=doc["has_images"],
+                first_page_thumb=first_page_thumb,
+            )
+        )
+
+    return response_docs
+
+
 @router.get(
     "/documents",
     response_model=DocumentListResponse,
@@ -347,10 +484,12 @@ async def get_supported_formats():
     description="Get a paginated list of all stored documents with metadata",
 )
 async def list_documents(
-    limit: int = Query(50, ge=1, le=100, description="Number of results to return"),
-    offset: int = Query(0, ge=0, description="Pagination offset"),
-    search: Optional[str] = Query(None, description="Filter by filename (case-insensitive)"),
-    sort_by: str = Query(
+    limit: int = Query(50, ge=1, le=100, description="Number of results to return"),  # noqa: B008
+    offset: int = Query(0, ge=0, description="Pagination offset"),  # noqa: B008
+    search: Optional[str] = Query(  # noqa: B008
+        None, description="Filter by filename (case-insensitive)"
+    ),
+    sort_by: str = Query(  # noqa: B008
         "newest_first", description="Sort order: newest_first, oldest_first, name_asc, name_desc"
     ),
 ):
@@ -380,23 +519,10 @@ async def list_documents(
             visual_data.get("metadatas", []), text_data.get("metadatas", [])
         )
 
-        # Convert to list
+        # Convert to list and apply filters/sorting
         doc_list = list(documents.values())
-
-        # Apply search filter
-        if search:
-            search_lower = search.lower()
-            doc_list = [doc for doc in doc_list if search_lower in doc["filename"].lower()]
-
-        # Apply sorting
-        if sort_by == "name_asc":
-            doc_list.sort(key=lambda d: d["filename"].lower())
-        elif sort_by == "name_desc":
-            doc_list.sort(key=lambda d: d["filename"].lower(), reverse=True)
-        elif sort_by == "oldest_first":
-            doc_list.sort(key=lambda d: d["date_added"])
-        else:  # newest_first (default)
-            doc_list.sort(key=lambda d: d["date_added"], reverse=True)
+        doc_list = _apply_search_filter(doc_list, search)
+        _sort_documents(doc_list, sort_by)
 
         # Get total before pagination
         total = len(doc_list)
@@ -405,46 +531,7 @@ async def list_documents(
         doc_list = doc_list[offset : offset + limit]
 
         # Convert to response format
-        response_docs = []
-        for doc in doc_list:
-            first_page_thumb = None
-
-            # Check for page thumbnail (PDF, DOCX, PPTX)
-            if doc["pages"] and doc["has_images"]:
-                first_page = doc["pages"][0]
-                if first_page.get("thumb_path"):
-                    # Convert to URL format
-                    thumb_path = first_page["thumb_path"]
-                    # Extract doc_id and filename from path
-                    if "/" in thumb_path:
-                        parts = thumb_path.split("/")
-                        if len(parts) >= 2:
-                            doc_id_part = parts[-2]
-                            filename_part = parts[-1]
-                            first_page_thumb = f"/images/{doc_id_part}/{filename_part}"
-
-            # Check for album art (audio files)
-            if not first_page_thumb:
-                images_dir = Path("data/images") / doc["doc_id"]
-                if images_dir.exists():
-                    for ext in ["jpg", "jpeg", "png"]:
-                        cover_file = images_dir / f"cover.{ext}"
-                        if cover_file.exists():
-                            first_page_thumb = f"/documents/{doc['doc_id']}/cover"
-                            break
-
-            response_docs.append(
-                DocumentListItem(
-                    doc_id=doc["doc_id"],
-                    filename=doc["filename"],
-                    page_count=len(doc["pages"]),
-                    chunk_count=len(doc["chunks"]),
-                    date_added=doc["date_added"],
-                    collections=doc["collections"],
-                    has_images=doc["has_images"],
-                    first_page_thumb=first_page_thumb,
-                )
-            )
+        response_docs = _convert_to_response_items(doc_list)
 
         return DocumentListResponse(
             documents=response_docs, total=total, limit=limit, offset=offset
@@ -460,6 +547,139 @@ async def list_documents(
                 "details": {"message": str(e)},
             },
         )
+
+
+def _convert_path_to_url(path: Optional[str]) -> Optional[str]:
+    """Convert file path to URL format.
+
+    Args:
+        path: File path with directory structure
+
+    Returns:
+        URL path or None
+    """
+    if not path or "/" not in path:
+        return path
+
+    parts = path.split("/")
+    if len(parts) >= 2:
+        return f"/images/{parts[-2]}/{parts[-1]}"
+
+    return path
+
+
+def _build_page_list(visual_data: Dict, visual_ids: List[str]) -> List[PageInfo]:
+    """Build list of page information from visual data.
+
+    Args:
+        visual_data: Visual collection data from ChromaDB
+        visual_ids: List of visual embedding IDs
+
+    Returns:
+        List of PageInfo objects sorted by page number
+    """
+    pages = []
+    visual_metadatas = visual_data.get("metadatas", [])
+
+    for idx, metadata in enumerate(visual_metadatas):
+        page_num = metadata.get("page")
+        image_path = _convert_path_to_url(metadata.get("image_path"))
+        thumb_path = _convert_path_to_url(metadata.get("thumb_path"))
+
+        pages.append(
+            PageInfo(
+                page_number=page_num,
+                image_path=image_path,
+                thumb_path=thumb_path,
+                embedding_id=visual_ids[idx],
+            )
+        )
+
+    pages.sort(key=lambda p: p.page_number)
+    return pages
+
+
+def _build_chunk_list(text_data: Dict, text_ids: List[str]) -> List[ChunkInfo]:
+    """Build list of chunk information from text data.
+
+    Args:
+        text_data: Text collection data from ChromaDB
+        text_ids: List of text embedding IDs
+
+    Returns:
+        List of ChunkInfo objects
+    """
+    chunks = []
+    text_metadatas = text_data.get("metadatas", [])
+
+    for idx, metadata in enumerate(text_metadatas):
+        chunk_id = metadata.get("chunk_id", idx)
+        text_content = metadata.get("full_text") or metadata.get("text_preview", "")
+        start_time = metadata.get("start_time")
+        end_time = metadata.get("end_time")
+        has_timestamps = metadata.get("has_timestamps", False)
+
+        chunks.append(
+            ChunkInfo(
+                chunk_id=f"chunk_{chunk_id}",
+                text_content=text_content,
+                embedding_id=text_ids[idx],
+                start_time=start_time,
+                end_time=end_time,
+                has_timestamps=has_timestamps,
+            )
+        )
+
+    return chunks
+
+
+def _extract_document_metadata(
+    visual_metadatas: List[Dict], text_metadatas: List[Dict]
+) -> tuple[str, str, Optional[Dict]]:
+    """Extract filename, date, and raw metadata.
+
+    Args:
+        visual_metadatas: Visual metadata list
+        text_metadatas: Text metadata list
+
+    Returns:
+        Tuple of (filename, date_added, raw_metadata)
+    """
+    filename = "unknown"
+    date_added = ""
+    raw_metadata = None
+
+    if visual_metadatas:
+        filename = visual_metadatas[0].get("filename", filename)
+        date_added = visual_metadatas[0].get("timestamp", date_added)
+        raw_metadata = visual_metadatas[0]
+    elif text_metadatas:
+        filename = text_metadatas[0].get("filename", filename)
+        date_added = text_metadatas[0].get("timestamp", date_added)
+        raw_metadata = text_metadatas[0]
+
+    return filename, date_added, raw_metadata
+
+
+def _check_album_art_availability(doc_id: str) -> tuple[bool, Optional[str]]:
+    """Check if album art exists for document.
+
+    Args:
+        doc_id: Document identifier
+
+    Returns:
+        Tuple of (has_album_art, album_art_url)
+    """
+    images_dir = Path("data/images") / doc_id
+    if not images_dir.exists():
+        return False, None
+
+    for ext in ["jpg", "jpeg", "png"]:
+        cover_file = images_dir / f"cover.{ext}"
+        if cover_file.exists():
+            return True, f"/documents/{doc_id}/cover"
+
+    return False, None
 
 
 @router.get(
@@ -494,16 +714,14 @@ async def get_document(doc_id: str):
     try:
         client = get_chroma_client()
 
-        # Query visual collection
+        # Query visual and text collections
         visual_data = client._visual_collection.get(where={"doc_id": doc_id})
-
-        # Query text collection
         text_data = client._text_collection.get(where={"doc_id": doc_id})
 
-        # Check if document exists
         visual_ids = visual_data.get("ids", [])
         text_ids = text_data.get("ids", [])
 
+        # Check if document exists
         if not visual_ids and not text_ids:
             raise HTTPException(
                 status_code=404,
@@ -514,72 +732,18 @@ async def get_document(doc_id: str):
                 },
             )
 
-        # Build pages list
-        pages = []
+        # Build pages and chunks
+        pages = _build_page_list(visual_data, visual_ids)
+        chunks = _build_chunk_list(text_data, text_ids)
+
+        # Extract document metadata
         visual_metadatas = visual_data.get("metadatas", [])
-        for idx, metadata in enumerate(visual_metadatas):
-            page_num = metadata.get("page")
-            image_path = metadata.get("image_path")
-            thumb_path = metadata.get("thumb_path")
-
-            # Convert paths to URLs
-            if image_path and "/" in image_path:
-                parts = image_path.split("/")
-                if len(parts) >= 2:
-                    image_path = f"/images/{parts[-2]}/{parts[-1]}"
-
-            if thumb_path and "/" in thumb_path:
-                parts = thumb_path.split("/")
-                if len(parts) >= 2:
-                    thumb_path = f"/images/{parts[-2]}/{parts[-1]}"
-
-            pages.append(
-                PageInfo(
-                    page_number=page_num,
-                    image_path=image_path,
-                    thumb_path=thumb_path,
-                    embedding_id=visual_ids[idx],
-                )
-            )
-
-        # Sort pages by page number
-        pages.sort(key=lambda p: p.page_number)
-
-        # Build chunks list
-        chunks = []
         text_metadatas = text_data.get("metadatas", [])
-        for idx, metadata in enumerate(text_metadatas):
-            chunk_id = metadata.get("chunk_id", idx)
-            # Use full_text if available, fallback to text_preview for backwards compatibility
-            text_content = metadata.get("full_text") or metadata.get("text_preview", "")
+        filename, date_added, raw_metadata = _extract_document_metadata(
+            visual_metadatas, text_metadatas
+        )
 
-            # Get timestamp fields (Wave 1)
-            start_time = metadata.get("start_time")
-            end_time = metadata.get("end_time")
-            has_timestamps = metadata.get("has_timestamps", False)
-
-            chunks.append(
-                ChunkInfo(
-                    chunk_id=f"chunk_{chunk_id}",
-                    text_content=text_content,
-                    embedding_id=text_ids[idx],
-                    start_time=start_time,
-                    end_time=end_time,
-                    has_timestamps=has_timestamps,
-                )
-            )
-
-        # Get document metadata
-        filename = "unknown"
-        date_added = ""
-
-        if visual_metadatas:
-            filename = visual_metadatas[0].get("filename", filename)
-            date_added = visual_metadatas[0].get("timestamp", date_added)
-        elif text_metadatas:
-            filename = text_metadatas[0].get("filename", filename)
-            date_added = text_metadatas[0].get("timestamp", date_added)
-
+        # Build collections list
         has_images = any(p.image_path or p.thumb_path for p in pages)
         collections = []
         if visual_ids:
@@ -587,14 +751,7 @@ async def get_document(doc_id: str):
         if text_ids:
             collections.append("text")
 
-        # Get raw metadata from first chunk (includes audio metadata)
-        raw_metadata = None
-        if text_metadatas:
-            raw_metadata = text_metadatas[0]
-        elif visual_metadatas:
-            raw_metadata = visual_metadatas[0]
-
-        # Check for VTT and markdown availability (Wave 2)
+        # Check availability flags
         vtt_available = raw_metadata.get("vtt_available", False) if raw_metadata else False
         markdown_available = (
             raw_metadata.get("markdown_available", False) if raw_metadata else False
@@ -602,20 +759,7 @@ async def get_document(doc_id: str):
         has_word_timestamps = (
             raw_metadata.get("has_word_timestamps", False) if raw_metadata else False
         )
-
-        # Check for album art availability (Wave 5)
-        has_album_art = False
-        album_art_url = None
-
-        # Check if cover art file exists
-        images_dir = Path("data/images") / doc_id
-        if images_dir.exists():
-            for ext in ["jpg", "jpeg", "png"]:
-                cover_file = images_dir / f"cover.{ext}"
-                if cover_file.exists():
-                    has_album_art = True
-                    album_art_url = f"/documents/{doc_id}/cover"
-                    break
+        has_album_art, album_art_url = _check_album_art_availability(doc_id)
 
         return DocumentDetail(
             doc_id=doc_id,
@@ -986,6 +1130,95 @@ async def get_cover(doc_id: str):
     )
 
 
+def _validate_image_request(doc_id: str, filename: str) -> None:
+    """Validate document ID and filename for image requests.
+
+    Args:
+        doc_id: Document identifier to validate
+        filename: Image filename to validate
+
+    Raises:
+        HTTPException: 403 if validation fails
+    """
+    if not validate_doc_id(doc_id):
+        logger.warning(f"Invalid doc_id format: {doc_id}")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id},
+            },
+        )
+
+    if not validate_filename(filename):
+        logger.warning(f"Invalid filename format: {filename}")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Invalid filename format",
+                "code": "INVALID_FILENAME",
+                "details": {"filename": filename},
+            },
+        )
+
+
+def _find_image_in_directories(doc_id: str, filename: str) -> Optional[Path]:
+    """Search for image in multiple directories with security checks.
+
+    Args:
+        doc_id: Document identifier
+        filename: Image filename to find
+
+    Returns:
+        Path to image file or None if not found
+    """
+    search_dirs = [
+        Path(PAGE_IMAGE_DIR) / doc_id,  # data/page_images/{doc_id}/
+        Path("data/images") / doc_id,  # data/images/{doc_id}/
+    ]
+
+    for search_dir in search_dirs:
+        candidate_path = search_dir / filename
+
+        try:
+            resolved_path = candidate_path.resolve()
+            resolved_dir = search_dir.resolve()
+
+            # Security: Prevent path traversal
+            if not str(resolved_path).startswith(str(resolved_dir)):
+                logger.error(f"Path traversal attempt: {resolved_path}")
+                continue
+
+            if resolved_path.exists():
+                return resolved_path
+
+        except Exception as e:
+            logger.debug(f"Path resolution failed for {search_dir}: {e}")
+            continue
+
+    return None
+
+
+def _get_image_content_type(filename: str) -> str:
+    """Determine content type from filename extension.
+
+    Args:
+        filename: Image filename
+
+    Returns:
+        MIME type string
+    """
+    if filename.endswith(".png"):
+        return "image/png"
+    elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
+        return "image/jpeg"
+    elif filename.endswith(".svg"):
+        return "image/svg+xml"
+    else:
+        return "application/octet-stream"
+
+
 @router.get(
     "/images/{doc_id}/{filename}",
     summary="Serve page image",
@@ -1012,61 +1245,13 @@ async def get_image(doc_id: str, filename: str):
     Raises:
         HTTPException: 403 for invalid paths, 404 if file not found
     """
-    # Validate doc_id
-    if not validate_doc_id(doc_id):
-        logger.warning(f"Invalid doc_id format: {doc_id}")
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "Invalid document ID format",
-                "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id},
-            },
-        )
+    # Validate request parameters
+    _validate_image_request(doc_id, filename)
 
-    # Validate filename
-    if not validate_filename(filename):
-        logger.warning(f"Invalid filename format: {filename}")
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "Invalid filename format",
-                "code": "INVALID_FILENAME",
-                "details": {"filename": filename},
-            },
-        )
+    # Find image in directories
+    image_path = _find_image_in_directories(doc_id, filename)
 
-    # Try both image directories: page_images (for PDFs) and images (for album art)
-    search_dirs = [
-        Path(PAGE_IMAGE_DIR) / doc_id,  # data/page_images/{doc_id}/
-        Path("data/images") / doc_id,  # data/images/{doc_id}/
-    ]
-
-    image_path = None
-    image_dir = None
-
-    for search_dir in search_dirs:
-        candidate_path = search_dir / filename
-
-        # Security: Verify the resolved path is within the expected directory
-        try:
-            resolved_path = candidate_path.resolve()
-            resolved_dir = search_dir.resolve()
-
-            if not str(resolved_path).startswith(str(resolved_dir)):
-                logger.error(f"Path traversal attempt: {resolved_path}")
-                continue
-
-            if resolved_path.exists():
-                image_path = resolved_path
-                image_dir = resolved_dir
-                break
-        except Exception as e:
-            logger.debug(f"Path resolution failed for {search_dir}: {e}")
-            continue
-
-    # If still no valid path found, raise 404
-    if not image_path or not image_dir:
+    if not image_path:
         logger.info(f"Image not found in any directory: {filename} for doc_id {doc_id}")
         raise HTTPException(
             status_code=404,
@@ -1077,17 +1262,9 @@ async def get_image(doc_id: str, filename: str):
             },
         )
 
-    # Determine content type
-    if filename.endswith(".png"):
-        media_type = "image/png"
-    elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
-        media_type = "image/jpeg"
-    elif filename.endswith(".svg"):
-        media_type = "image/svg+xml"
-    else:
-        media_type = "application/octet-stream"
+    # Determine content type and return file
+    media_type = _get_image_content_type(filename)
 
-    # Return file with caching headers
     return FileResponse(
         path=image_path,
         media_type=media_type,

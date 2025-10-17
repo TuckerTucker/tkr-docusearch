@@ -126,7 +126,7 @@ echo "📊 Summary:"
 print_status "success" "  Available ports: ${AVAILABLE[*]}"
 if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
     print_status "error" "  Conflicting ports: ${CONFLICTS[*]}"
-    
+
     if [[ "$FIX_CONFLICTS" == "true" ]]; then
         echo
         echo "🔧 Suggested alternatives:"
@@ -154,7 +154,7 @@ if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
                     RANGE_END=$((port + 50))
                     ;;
             esac
-            
+
             for ((alt_port=RANGE_START; alt_port<=RANGE_END; alt_port++)); do
                 if check_port "$alt_port"; then
                     echo "  Port $port → $alt_port"
@@ -163,13 +163,13 @@ if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
             done
         done
     fi
-    
+
     echo
     echo "💡 To resolve conflicts:"
     echo "  • Stop services using conflicting ports"
     echo "  • Update your _context-kit.yml with alternative ports"
     echo "  • Use --fix flag to see suggested alternatives"
-    
+
     exit 1
 else
     print_status "success" "  ✅ All ports are available!"

@@ -12,7 +12,7 @@ This document defines the specification for Claude Code agents in the tkr-contex
 ### Core Components
 
 1. **Metadata Header** (YAML frontmatter)
-2. **Purpose Statement** 
+2. **Purpose Statement**
 3. **Instructions Section**
 4. **Best Practices Section**
 5. **Output Format Section**
@@ -41,7 +41,7 @@ color: Color                  # Visual identifier: Red, Blue, Green, Yellow, Pur
 
 #### Field Specifications
 
-- **name**: 
+- **name**:
   - Format: kebab-case (lowercase, hyphen-separated)
   - Length: 3-30 characters
   - Must be unique within the project
@@ -258,7 +258,7 @@ data:
   deps: []    # dependencies
   struct: {}  # structure
   comp: []    # components
-  
+
 # Use anchors for repeated values
 colors: &base-colors
   primary: "#000"

@@ -685,7 +685,7 @@
             <!-- Detailed Recommendations -->
             <div class="section">
                 <h2>Implementation Recommendations</h2>
-                
+
                 <h3>1. GPU Memory Management Strategy</h3>
                 <div class="code-block">
 # src/embeddings/colpali_wrapper.py
@@ -694,11 +694,11 @@ def embed_images(self, images: List[Image.Image], batch_size: Optional[int] = No
         batch = images[i:i + batch_size]
         embeddings, seq_lengths = self.model.embed_batch(batch, "visual")
         all_embeddings.extend(embeddings)
-        
+
         # Clear cache every batch to prevent fragmentation
         if (i // batch_size) % 5 == 0:  # Every 5 batches
             self.clear_cache()
-    
+
     return BatchEmbeddingOutput(...)
                 </div>
 
@@ -712,13 +712,13 @@ class ChromaClient:
     def __init__(self, ...):
         self._decompression_cache = lru_cache(maxsize=1000)(self._decompress_embedding)
         self._executor = ThreadPoolExecutor(max_workers=4)
-    
+
     def _decompress_embedding(self, compressed_str, shape):
         return decompress_embeddings(compressed_str, shape)
-    
+
     def search_visual(self, query_embedding, n_results, filters):
         # ... retrieve candidates ...
-        
+
         # Batch decompress in parallel
         futures = []
         for candidate in candidates:
@@ -728,7 +728,7 @@ class ChromaClient:
                 eval(candidate['metadata']['embedding_shape'])
             )
             futures.append(future)
-        
+
         for candidate, future in zip(candidates, futures):
             candidate['full_embeddings'] = future.result()
                 </div>
@@ -744,10 +744,10 @@ def batch_maxsim_scores_gpu(
     device: str = "mps"
 ) -> List[float]:
     """GPU-accelerated batched MaxSim scoring."""
-    
+
     # Convert to tensors
     query_tensor = torch.from_numpy(query_embeddings).to(device)  # (Q, 768)
-    
+
     # Pad documents to same length and stack
     max_len = max(d.shape[0] for d in document_embeddings)
     padded_docs = []
@@ -755,20 +755,20 @@ def batch_maxsim_scores_gpu(
         pad_len = max_len - doc.shape[0]
         padded = np.pad(doc, ((0, pad_len), (0, 0)), mode='constant')
         padded_docs.append(padded)
-    
+
     docs_tensor = torch.from_numpy(np.stack(padded_docs)).to(device)  # (N, D, 768)
-    
+
     # Batched similarity computation
     # query: (1, Q, 768), docs: (N, D, 768) -> (N, Q, D)
     similarity = torch.matmul(
         query_tensor.unsqueeze(0),  # (1, Q, 768)
         docs_tensor.transpose(1, 2)  # (N, 768, D)
     )  # (N, Q, D)
-    
+
     # MaxSim: max over D, sum over Q
     max_sims = similarity.max(dim=2)[0]  # (N, Q)
     scores = max_sims.sum(dim=1)  # (N,)
-    
+
     return scores.cpu().tolist()
                 </div>
 
@@ -777,13 +777,13 @@ def batch_maxsim_scores_gpu(
 # src/storage/chroma_client.py
 def add_visual_embedding(self, doc_id, page, full_embeddings, metadata, ...):
     # ... prepare metadata ...
-    
+
     # Only serialize for debugging when needed
     if logger.isEnabledFor(logging.DEBUG):
         metadata_size_kb = len(json.dumps(complete_metadata)) / 1024
         if metadata_size_kb > 50:
             logger.debug(f"Large metadata: {metadata_size_kb:.1f}KB for {embedding_id}")
-    
+
     # Store in ChromaDB
     self._visual_collection.add(...)
                 </div>
@@ -793,7 +793,7 @@ def add_visual_embedding(self, doc_id, page, full_embeddings, metadata, ...):
             <div class="section">
                 <h2>Summary & Next Steps</h2>
                 <p>The tkr-docusearch codebase demonstrates strong architectural decisions with excellent performance metrics exceeding targets. However, several high-impact optimizations can further improve throughput and resource utilization:</p>
-                
+
                 <ul style="line-height: 2;">
                     <li><strong>Immediate Actions (Week 1):</strong> Implement GPU memory management, add batch decompression, guard debug serialization</li>
                     <li><strong>Short-term (Weeks 2-3):</strong> Migrate MaxSim to batched GPU computation, optimize metadata serialization</li>
@@ -820,7 +820,7 @@ def add_visual_embedding(self, doc_id, page, full_embeddings, metadata, ...):
                 alert(`Copy this command to Claude Code:\n\n${message}`);
             }
         }
-        
+
         // Add smooth scroll behavior
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

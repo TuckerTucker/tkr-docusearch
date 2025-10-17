@@ -100,7 +100,7 @@ CREATE INDEX idx_log_aggregations_period ON log_aggregations(period, period_star
 
 -- Full-text search for log messages and data
 CREATE VIRTUAL TABLE log_entries_fts USING fts5(
-  message, 
+  message,
   service,
   component,
   data,
@@ -109,14 +109,14 @@ CREATE VIRTUAL TABLE log_entries_fts USING fts5(
 
 -- FTS sync triggers
 CREATE TRIGGER log_entries_fts_insert AFTER INSERT ON log_entries BEGIN
-  INSERT INTO log_entries_fts(message, service, component, data) 
+  INSERT INTO log_entries_fts(message, service, component, data)
   VALUES (new.message, new.service, new.component, new.data);
 END;
 
 CREATE TRIGGER log_entries_fts_update AFTER UPDATE ON log_entries BEGIN
-  UPDATE log_entries_fts 
-  SET message = new.message, service = new.service, 
-      component = new.component, data = new.data 
+  UPDATE log_entries_fts
+  SET message = new.message, service = new.service,
+      component = new.component, data = new.data
   WHERE rowid = new.rowid;
 END;
 
@@ -130,7 +130,7 @@ END;
 ```sql
 -- Recent errors across all services
 CREATE VIEW recent_errors AS
-SELECT 
+SELECT
   l.timestamp,
   l.level,
   l.message,
@@ -147,7 +147,7 @@ ORDER BY l.timestamp DESC;
 
 -- Service health summary
 CREATE VIEW service_health AS
-SELECT 
+SELECT
   s.name as service,
   s.type,
   COUNT(CASE WHEN l.level = 'ERROR' THEN 1 END) as error_count,
@@ -161,7 +161,7 @@ GROUP BY s.id;
 
 -- Trace flow analysis
 CREATE VIEW trace_flows AS
-SELECT 
+SELECT
   l.trace_id,
   l.span_id,
   l.timestamp,
@@ -299,13 +299,13 @@ export class tkrLogger {
   private pinoLogger: pino.Logger;
 
   constructor(
-    kg: AppStateKGSimple, 
-    serviceName: string, 
+    kg: AppStateKGSimple,
+    serviceName: string,
     serviceType: 'frontend' | 'backend' | 'mcp' | 'system'
   ) {
     this.kg = kg;
     this.sourceId = this.ensureLogSource(serviceName, serviceType);
-    
+
     // Configure pino for dual output (console + database)
     this.pinoLogger = pino({
       level: 'debug',
@@ -321,10 +321,10 @@ export class tkrLogger {
   private ensureLogSource(name: string, type: string): string {
     // Check if source exists, create if not
     const existing = this.kg.query(
-      'SELECT id FROM log_sources WHERE name = ?', 
+      'SELECT id FROM log_sources WHERE name = ?',
       [name]
     );
-    
+
     if (existing.length > 0) {
       return existing[0].id;
     }
@@ -420,7 +420,7 @@ export class SqliteTransport extends Transform {
 
       this.kg.query(`
         INSERT INTO log_entries (
-          id, timestamp, level, message, source_id, service, 
+          id, timestamp, level, message, source_id, service,
           component, data, trace_id, span_id, user_id, session_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
@@ -453,8 +453,8 @@ export class SqliteTransport extends Transform {
       INSERT OR REPLACE INTO log_aggregations (
         id, period, period_start, source_id, level, count
       ) VALUES (
-        ?, ?, ?, ?, ?, 
-        COALESCE((SELECT count FROM log_aggregations 
+        ?, ?, ?, ?, ?,
+        COALESCE((SELECT count FROM log_aggregations
                   WHERE period = ? AND period_start = ? AND source_id = ? AND level = ?), 0) + 1
       )
     `, [
@@ -500,7 +500,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
 
   useEffect(() => {
     fetchLogs();
-    
+
     if (follow) {
       const interval = setInterval(fetchLogs, 2000); // Poll every 2 seconds
       return () => clearInterval(interval);
@@ -517,7 +517,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
 
       const response = await fetch(`http://localhost:42003/api/logs/stream?${params}`);
       const text = await response.text();
-      
+
       setLogText(text);
       setLoading(false);
       setError(null);
@@ -554,7 +554,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           {service && <span className="log-filter">Service: {service}</span>}
           {level && <span className="log-filter">Level: {level}</span>}
           <span className="log-filter">Window: {timeWindow}s</span>
-          <button 
+          <button
             className={`follow-toggle ${follow ? 'active' : ''}`}
             onClick={() => setFollow(!follow)}
           >
@@ -562,7 +562,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           </button>
         </div>
       </div>
-      
+
       <LazyLog
         text={logText}
         caseInsensitive
@@ -619,7 +619,7 @@ export const LogFilters: React.FC<LogFiltersProps> = ({
     <div className="log-filters">
       <div className="filter-group">
         <label htmlFor="service-filter">Service:</label>
-        <select 
+        <select
           id="service-filter"
           value={service || ''}
           onChange={(e) => onServiceChange(e.target.value)}
@@ -633,7 +633,7 @@ export const LogFilters: React.FC<LogFiltersProps> = ({
 
       <div className="filter-group">
         <label htmlFor="level-filter">Level:</label>
-        <select 
+        <select
           id="level-filter"
           value={level || ''}
           onChange={(e) => onLevelChange(e.target.value)}
@@ -648,7 +648,7 @@ export const LogFilters: React.FC<LogFiltersProps> = ({
 
       <div className="filter-group">
         <label htmlFor="time-filter">Time Window:</label>
-        <select 
+        <select
           id="time-filter"
           value={timeWindow}
           onChange={(e) => onTimeWindowChange(Number(e.target.value))}
@@ -779,7 +779,7 @@ describe('Centralized Logging', () => {
     server = new KnowledgeGraphMCPServer({
       databasePath: ':memory:'
     });
-    
+
     // Initialize with logging schema
     // ... schema setup
   });
@@ -854,7 +854,7 @@ PRAGMA foreign_keys = ON;
 INSERT INTO log_entries (
   id, timestamp, level, message, source_id, service, data
 )
-SELECT 
+SELECT
   'migrated_' || o.id,
   o.created_at,
   'INFO',
@@ -902,17 +902,17 @@ class BatchLogger {
 
     const entries = this.batch.splice(0);
     const placeholders = entries.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
-    
+
     const values = entries.flatMap(entry => [
       entry.id, entry.timestamp, entry.level, entry.message,
-      entry.source_id, entry.service, entry.component, 
+      entry.source_id, entry.service, entry.component,
       JSON.stringify(entry.data), entry.traceId, entry.spanId,
       entry.userId, entry.sessionId
     ]);
 
     this.kg.query(`
       INSERT INTO log_entries (
-        id, timestamp, level, message, source_id, service, 
+        id, timestamp, level, message, source_id, service,
         component, data, trace_id, span_id, user_id, session_id
       ) VALUES ${placeholders}
     `, values);
@@ -923,11 +923,11 @@ class BatchLogger {
 ### Log Retention Policy
 ```sql
 -- Automated cleanup for old logs
-DELETE FROM log_entries 
+DELETE FROM log_entries
 WHERE timestamp < (unixepoch() - 7 * 24 * 60 * 60); -- 7 days
 
 -- Keep aggregations longer
-DELETE FROM log_aggregations 
+DELETE FROM log_aggregations
 WHERE period_start < (unixepoch() - 30 * 24 * 60 * 60); -- 30 days
 ```
 

@@ -10,7 +10,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
@@ -18,7 +18,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 2rem;
         }
-        
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -27,14 +27,14 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 3rem 2rem;
             text-align: center;
         }
-        
+
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
@@ -43,26 +43,26 @@
             justify-content: center;
             gap: 1rem;
         }
-        
+
         .header .subtitle {
             font-size: 1.1rem;
             opacity: 0.9;
         }
-        
+
         .header .meta {
             margin-top: 1rem;
             font-size: 0.9rem;
             opacity: 0.8;
         }
-        
+
         .content {
             padding: 2rem;
         }
-        
+
         .section {
             margin-bottom: 3rem;
         }
-        
+
         .section h2 {
             color: #667eea;
             font-size: 1.8rem;
@@ -70,27 +70,27 @@
             padding-bottom: 0.5rem;
             border-bottom: 3px solid #667eea;
         }
-        
+
         .section h3 {
             color: #764ba2;
             font-size: 1.3rem;
             margin: 1.5rem 0 0.75rem 0;
         }
-        
+
         .executive-summary {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 2rem;
             border-radius: 8px;
             margin-bottom: 2rem;
         }
-        
+
         .score-card {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
             margin: 1.5rem 0;
         }
-        
+
         .score-item {
             background: white;
             padding: 1.5rem;
@@ -98,7 +98,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             text-align: center;
         }
-        
+
         .score-item .label {
             font-size: 0.9rem;
             color: #666;
@@ -106,46 +106,46 @@
             letter-spacing: 1px;
             margin-bottom: 0.5rem;
         }
-        
+
         .score-item .value {
             font-size: 2.5rem;
             font-weight: bold;
             margin: 0.5rem 0;
         }
-        
+
         .score-item .description {
             font-size: 0.85rem;
             color: #777;
         }
-        
+
         .score-excellent { color: #22c55e; }
         .score-good { color: #84cc16; }
         .score-moderate { color: #eab308; }
         .score-poor { color: #f97316; }
         .score-critical { color: #ef4444; }
-        
+
         .severity-critical { background: #fef2f2; border-left: 4px solid #ef4444; }
         .severity-major { background: #fefce8; border-left: 4px solid #eab308; }
         .severity-minor { background: #f0f9ff; border-left: 4px solid #3b82f6; }
-        
+
         .finding {
             margin: 1rem 0;
             padding: 1rem;
             border-radius: 6px;
         }
-        
+
         .finding-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.5rem;
         }
-        
+
         .finding-title {
             font-weight: bold;
             font-size: 1.05rem;
         }
-        
+
         .finding-location {
             font-family: 'Monaco', 'Courier New', monospace;
             font-size: 0.85rem;
@@ -154,13 +154,13 @@
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
         }
-        
+
         .finding-details {
             margin-top: 0.5rem;
             font-size: 0.9rem;
             color: #555;
         }
-        
+
         .code-block {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -172,35 +172,35 @@
             font-size: 0.85rem;
             line-height: 1.4;
         }
-        
+
         .line-number {
             color: #858585;
             margin-right: 1rem;
             user-select: none;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 1rem 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        
+
         thead {
             background: #667eea;
             color: white;
         }
-        
+
         th, td {
             padding: 1rem;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
         }
-        
+
         tbody tr:hover {
             background: #f9fafb;
         }
-        
+
         .badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -210,7 +210,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .badge-critical { background: #fee2e2; color: #991b1b; }
         .badge-major { background: #fef9c3; color: #854d0e; }
         .badge-minor { background: #dbeafe; color: #1e40af; }
@@ -219,14 +219,14 @@
         .badge-C { background: #fef9c3; color: #854d0e; }
         .badge-D { background: #fee2e2; color: #991b1b; }
         .badge-F { background: #fce7f3; color: #9f1239; }
-        
+
         .quick-action-buttons {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
             margin: 1.5rem 0;
         }
-        
+
         .quick-action-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -237,38 +237,38 @@
             transition: transform 0.2s, box-shadow 0.2s;
             display: inline-block;
         }
-        
+
         .quick-action-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
-        
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
             margin: 1rem 0;
         }
-        
+
         .stat-box {
             background: #f9fafb;
             padding: 1rem;
             border-radius: 6px;
             text-align: center;
         }
-        
+
         .stat-value {
             font-size: 1.8rem;
             font-weight: bold;
             color: #667eea;
         }
-        
+
         .stat-label {
             font-size: 0.85rem;
             color: #666;
             margin-top: 0.25rem;
         }
-        
+
         .recommendation {
             background: #f0fdf4;
             border-left: 4px solid #22c55e;
@@ -276,13 +276,13 @@
             margin: 1rem 0;
             border-radius: 4px;
         }
-        
+
         .recommendation-title {
             font-weight: bold;
             color: #166534;
             margin-bottom: 0.5rem;
         }
-        
+
         .footer {
             background: #f9fafb;
             padding: 2rem;
@@ -290,7 +290,7 @@
             color: #666;
             font-size: 0.9rem;
         }
-        
+
         .progress-bar {
             width: 100%;
             height: 30px;
@@ -299,7 +299,7 @@
             overflow: hidden;
             margin: 1rem 0;
         }
-        
+
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #22c55e 0%, #84cc16 100%);
@@ -324,7 +324,7 @@
                 Generated: 2025-10-16 | Python 3.13.3 | 70 Files Analyzed
             </div>
         </div>
-        
+
         <div class="content">
             <!-- Executive Summary -->
             <section class="section">
@@ -352,7 +352,7 @@
                             <div class="description">Rank A (Good)</div>
                         </div>
                     </div>
-                    
+
                     <h3>Severity Breakdown</h3>
                     <div class="score-card">
                         <div class="score-item">
@@ -378,7 +378,7 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- Quick Actions -->
             <section class="section">
                 <h2>Quick Actions</h2>
@@ -389,12 +389,12 @@
                     <a href="#recommendations" class="quick-action-btn">💡 Recommendations</a>
                 </div>
             </section>
-            
+
             <!-- Complexity Hotspots -->
             <section class="section" id="complexity">
                 <h2>1. Cyclomatic Complexity Hotspots</h2>
                 <p>Functions with cyclomatic complexity above threshold (CC > 10). High complexity indicates difficult to test and maintain code.</p>
-                
+
                 <div class="finding severity-critical">
                     <div class="finding-header">
                         <div class="finding-title">CRITICAL: DoclingParser._parse_with_docling</div>
@@ -408,7 +408,7 @@
                         Extract parsing logic into separate methods: _parse_pdf(), _parse_docx(), _parse_pptx(), _handle_asr_options(). Apply Strategy pattern for document type handling.
                     </div>
                 </div>
-                
+
                 <div class="finding severity-critical">
                     <div class="finding-header">
                         <div class="finding-title">CRITICAL: DocumentProcessor._store_embeddings</div>
@@ -422,7 +422,7 @@
                         Extract embedding storage logic into separate handler classes: VisualEmbeddingHandler, TextEmbeddingHandler. Use early returns to reduce nesting.
                     </div>
                 </div>
-                
+
                 <div class="finding severity-critical">
                     <div class="finding-header">
                         <div class="finding-title">CRITICAL: docling_to_pages</div>
@@ -436,7 +436,7 @@
                         Break into smaller functions: _extract_page_metadata(), _process_page_images(), _build_page_object(). Consider builder pattern for Page construction.
                     </div>
                 </div>
-                
+
                 <h3>High Complexity Functions (C-D Rank)</h3>
                 <table>
                     <thead>
@@ -522,12 +522,12 @@
                     </tbody>
                 </table>
             </section>
-            
+
             <!-- File Quality -->
             <section class="section">
                 <h2>2. File Length and Maintainability</h2>
                 <p>Large files (>500 LOC) may indicate Single Responsibility Principle violations.</p>
-                
+
                 <h3>Largest Files (Potential for Splitting)</h3>
                 <table>
                     <thead>
@@ -595,7 +595,7 @@
                         </tr>
                     </tbody>
                 </table>
-                
+
                 <div class="recommendation">
                     <div class="recommendation-title">Refactoring Recommendation:</div>
                     Files over 500 LOC should be evaluated for splitting. Consider:
@@ -607,12 +607,12 @@
                     </ul>
                 </div>
             </section>
-            
+
             <!-- PEP 8 Compliance -->
             <section class="section" id="pep8">
                 <h2>3. PEP 8 Compliance Analysis</h2>
                 <p>Total violations: 247 across 70 files. Below are the most common issues.</p>
-                
+
                 <div class="stats-grid">
                     <div class="stat-box">
                         <div class="stat-value">104</div>
@@ -639,7 +639,7 @@
                         <div class="stat-label">Redefinition (F811)</div>
                     </div>
                 </div>
-                
+
                 <h3>Top Violation: Unused Imports (F401)</h3>
                 <div class="finding severity-minor">
                     <div class="finding-details">
@@ -647,7 +647,7 @@
                     </div>
                     <div class="code-block">
 <span class="line-number">15:</span> from typing.Tuple imported but unused
-<span class="line-number">19:</span> 'time' imported but unused  
+<span class="line-number">19:</span> 'time' imported but unused
 <span class="line-number">20:</span> 'typing.Dict' imported but unused
 <span class="line-number">20:</span> 'typing.Any' imported but unused
                     </div>
@@ -656,7 +656,7 @@
                         Run automated cleanup: <code>autoflake --remove-all-unused-imports --in-place src/**/*.py</code>
                     </div>
                 </div>
-                
+
                 <h3>Second: Line Too Long (E501)</h3>
                 <div class="finding severity-minor">
                     <div class="finding-details">
@@ -672,7 +672,7 @@
                         Use Black formatter with --line-length 100 or break long lines using parentheses and backslashes.
                     </div>
                 </div>
-                
+
                 <h3>Critical: Bare Except (E722)</h3>
                 <div class="finding severity-major">
                     <div class="finding-header">
@@ -692,14 +692,14 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- Code Smells -->
             <section class="section" id="smells">
                 <h2>4. Code Smells and Anti-Patterns</h2>
-                
+
                 <h3>Long Parameter Lists</h3>
                 <p>No functions found with excessive parameters (>6). Good adherence to clean code principles.</p>
-                
+
                 <h3>TODO/FIXME Comments</h3>
                 <div class="finding severity-minor">
                     <div class="finding-details">
@@ -761,7 +761,7 @@
                         Convert TODOs into GitHub issues with proper tracking. Remove or implement the deferred work.
                     </div>
                 </div>
-                
+
                 <h3>Duplicate Code Detection</h3>
                 <p>Manual inspection suggests potential duplication in:</p>
                 <ul style="margin-left: 2rem; margin-top: 0.5rem;">
@@ -769,7 +769,7 @@
                     <li><strong>API handlers</strong>: Error handling patterns repeated across documents_api.py endpoints</li>
                     <li><strong>Metadata extraction</strong>: Similar patterns in audio_metadata.py and structure_extractor.py</li>
                 </ul>
-                
+
                 <h3>Import Organization</h3>
                 <div class="finding severity-minor">
                     <div class="finding-details">
@@ -781,14 +781,14 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- Function Quality -->
             <section class="section">
                 <h2>5. Function Quality Metrics</h2>
-                
+
                 <h3>Functions Exceeding Length Guidelines</h3>
                 <p>Functions over 50 lines may violate Single Responsibility Principle.</p>
-                
+
                 <table>
                     <thead>
                         <tr>
@@ -831,16 +831,16 @@
                     </tbody>
                 </table>
             </section>
-            
+
             <!-- Maintainability Index -->
             <section class="section">
                 <h2>6. Maintainability Index Distribution</h2>
                 <p>Maintainability Index ranges from 0 (unmaintainable) to 100 (perfectly maintainable). All files scored Rank A.</p>
-                
+
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: 73%">73% Average MI - GOOD</div>
                 </div>
-                
+
                 <h3>Files Needing Attention (MI < 40)</h3>
                 <table>
                     <thead>
@@ -920,18 +920,18 @@
                         </tr>
                     </tbody>
                 </table>
-                
+
                 <div class="recommendation">
                     <div class="recommendation-title">Note on Test Files:</div>
                     Lower MI scores in test files are acceptable as tests often have repetitive setup code and many assertions. Focus refactoring efforts on production code: docling_parser.py, documents_api.py, verify_implementation.py.
                 </div>
             </section>
-            
+
             <!-- Type Safety -->
             <section class="section">
                 <h2>7. Type Safety and Type Hints</h2>
                 <p>Python type hints (PEP 484) improve code documentation and enable static type checking.</p>
-                
+
                 <div class="stats-grid">
                     <div class="stat-box">
                         <div class="stat-value score-good">High</div>
@@ -950,17 +950,17 @@
                         <div class="stat-label">Unsafe Type Casts</div>
                     </div>
                 </div>
-                
+
                 <div class="recommendation">
                     <div class="recommendation-title">Recommendation:</div>
                     Codebase demonstrates excellent type safety practices with extensive use of Pydantic models and dataclasses. No 'any' types or unsafe casts detected. Consider running mypy for comprehensive type checking: <code>mypy src/ --strict</code>
                 </div>
             </section>
-            
+
             <!-- Recommendations -->
             <section class="section" id="recommendations">
                 <h2>8. Prioritized Refactoring Recommendations</h2>
-                
+
                 <h3>High Priority (Critical Impact)</h3>
                 <div class="finding severity-critical">
                     <div class="finding-title">1. Refactor DoclingParser._parse_with_docling (CC: 57)</div>
@@ -976,7 +976,7 @@
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="finding severity-critical">
                     <div class="finding-title">2. Refactor DocumentProcessor._store_embeddings (CC: 29)</div>
                     <div class="finding-details">
@@ -991,7 +991,7 @@
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="finding severity-critical">
                     <div class="finding-title">3. Fix Bare Except in model_loader.py:366</div>
                     <div class="finding-details">
@@ -1001,7 +1001,7 @@
                         Replace <code>except:</code> with specific exception handling or at minimum <code>except Exception as e:</code> with proper logging.
                     </div>
                 </div>
-                
+
                 <h3>Medium Priority (Quality Improvement)</h3>
                 <div class="finding severity-major">
                     <div class="finding-title">4. Split Large Files (>500 LOC)</div>
@@ -1011,7 +1011,7 @@
                         <strong>Files:</strong> docling_parser.py (1017), documents_api.py (981), chroma_client.py (912), worker_webhook.py (746), processor.py (741)
                     </div>
                 </div>
-                
+
                 <div class="finding severity-major">
                     <div class="finding-title">5. Remove Unused Imports (104 occurrences)</div>
                     <div class="finding-details">
@@ -1020,7 +1020,7 @@
                         <strong>Command:</strong> <code>autoflake --remove-all-unused-imports --in-place --recursive src/</code>
                     </div>
                 </div>
-                
+
                 <h3>Low Priority (Code Polish)</h3>
                 <div class="finding severity-minor">
                     <div class="finding-title">6. Fix Line Length Violations (60 occurrences)</div>
@@ -1030,7 +1030,7 @@
                         <strong>Command:</strong> <code>black src/ --line-length 100</code>
                     </div>
                 </div>
-                
+
                 <div class="finding severity-minor">
                     <div class="finding-title">7. Convert TODOs to Issues (8 items)</div>
                     <div class="finding-details">
@@ -1039,7 +1039,7 @@
                         <strong>Strategy:</strong> Create GitHub issues for each TODO and reference issue number in code comments.
                     </div>
                 </div>
-                
+
                 <div class="finding severity-minor">
                     <div class="finding-title">8. Organize Imports with isort (27 E402 violations)</div>
                     <div class="finding-details">
@@ -1049,16 +1049,16 @@
                     </div>
                 </div>
             </section>
-            
+
             <!-- Summary -->
             <section class="section">
                 <h2>9. Summary and Next Steps</h2>
-                
+
                 <div class="executive-summary">
                     <h3>Overall Assessment</h3>
                     <p><strong>Quality Score: 73/100 (Good - Maintainable)</strong></p>
                     <p>The tkr-docusearch codebase demonstrates generally good code quality with strong type safety practices and comprehensive test coverage. However, there are critical complexity hotspots that require immediate attention.</p>
-                    
+
                     <h3>Strengths</h3>
                     <ul style="margin-left: 2rem; margin-top: 0.5rem;">
                         <li>Excellent type safety with extensive use of Pydantic models and type hints</li>
@@ -1067,7 +1067,7 @@
                         <li>All files maintain Rank A maintainability index</li>
                         <li>No wildcard imports or unsafe type casts detected</li>
                     </ul>
-                    
+
                     <h3>Critical Areas for Improvement</h3>
                     <ul style="margin-left: 2rem; margin-top: 0.5rem;">
                         <li><strong>Complexity Hotspots:</strong> 3 functions with critical complexity (F57, D29, D29)</li>
@@ -1075,7 +1075,7 @@
                         <li><strong>Code Hygiene:</strong> 104 unused imports and 60 line length violations</li>
                         <li><strong>Technical Debt:</strong> 8 TODO comments indicate deferred work</li>
                     </ul>
-                    
+
                     <h3>Recommended Action Plan</h3>
                     <ol style="margin-left: 2rem; margin-top: 0.5rem; line-height: 1.8;">
                         <li><strong>Week 1:</strong> Refactor DoclingParser._parse_with_docling (highest risk)</li>
@@ -1084,7 +1084,7 @@
                         <li><strong>Week 4:</strong> Code hygiene - automated fixes (imports, formatting)</li>
                         <li><strong>Ongoing:</strong> Implement pre-commit hooks for flake8, black, isort</li>
                     </ol>
-                    
+
                     <h3>Automation Recommendations</h3>
                     <div class="code-block" style="margin-top: 1rem;">
 # Add to .pre-commit-config.yaml
@@ -1093,17 +1093,17 @@ repos:
     hooks:
       - id: flake8
         args: [--max-line-length=100]
-  
+
   - repo: https://github.com/psf/black
     hooks:
       - id: black
         args: [--line-length=100]
-  
+
   - repo: https://github.com/PyCQA/isort
     hooks:
       - id: isort
         args: [--profile=black]
-  
+
   - repo: https://github.com/PyCQA/pylint
     hooks:
       - id: pylint
@@ -1112,18 +1112,18 @@ repos:
                 </div>
             </section>
         </div>
-        
+
         <div class="footer">
             <p>Generated by Code Quality Agent (tkr-context-kit v3.6.0)</p>
             <p>Analysis Date: 2025-10-16 | Python 3.13.3 | 70 Files | 24,306 LOC</p>
             <p>Tools: radon, flake8, custom pattern analysis</p>
         </div>
     </div>
-    
+
     <script>
         // Add any interactive functionality here
         console.log('Code Quality Report Loaded');
-        
+
         // Highlight sections on hover
         document.querySelectorAll('.finding').forEach(el => {
             el.addEventListener('mouseenter', () => {

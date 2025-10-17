@@ -7,7 +7,7 @@
 _locate_utils_and_paths() {
     # Strategy 1: Use BASH_SOURCE to find this script's location
     local source="${BASH_SOURCE[0]}"
-    
+
     # Handle symlinks
     while [[ -h "$source" ]]; do
         local dir="$(cd -P "$(dirname "$source")" && pwd)"
@@ -15,10 +15,10 @@ _locate_utils_and_paths() {
         # If readlink gave us a relative path, make it absolute
         [[ $source != /* ]] && source="$dir/$source"
     done
-    
+
     # Get the absolute directory containing utils.sh
     local utils_dir="$(cd -P "$(dirname "$source")" && pwd)"
-    
+
     # Strategy 2: If that fails, try to find .context-kit/scripts from current location
     if [[ ! -f "$utils_dir/paths.sh" ]]; then
         # Search upward from current directory
@@ -31,7 +31,7 @@ _locate_utils_and_paths() {
             search_dir="$(dirname "$search_dir")"
         done
     fi
-    
+
     # Strategy 3: If still not found, try to find from script location
     if [[ ! -f "$utils_dir/paths.sh" ]]; then
         echo "ERROR: Cannot locate paths.sh. Tried:" >&2
@@ -39,14 +39,14 @@ _locate_utils_and_paths() {
         echo "  - Search from PWD: $(pwd)" >&2
         return 1
     fi
-    
+
     # Export the script directory and source paths.sh
     export SCRIPT_DIR="$utils_dir"
     if ! source "$utils_dir/paths.sh"; then
         echo "ERROR: Failed to source paths.sh from $utils_dir" >&2
         return 1
     fi
-    
+
     return 0
 }
 
@@ -60,18 +60,18 @@ fi
 validate_project_structure() {
     local required_paths=(
         "$PROJECT_ROOT"
-        "$SCRIPTS_DIR" 
+        "$SCRIPTS_DIR"
         "$KNOWLEDGE_GRAPH_DIR"
         "$PROJECT_CONFIG"
     )
-    
+
     for path in "${required_paths[@]}"; do
         if [[ ! -e "$path" ]]; then
             echo "ERROR: Required path not found: $path" >&2
             return 1
         fi
     done
-    
+
     return 0
 }
 
@@ -79,18 +79,18 @@ validate_project_structure() {
 resolve_path() {
     local relative_path="$1"
     local base_path="${2:-$PROJECT_ROOT}"
-    
+
     if [[ ! -d "$base_path" ]]; then
         echo "ERROR: Base path does not exist: $base_path" >&2
         return 1
     fi
-    
+
     local resolved="$(cd "$base_path" && cd "$relative_path" 2>/dev/null && pwd)"
     if [[ $? -ne 0 ]]; then
         echo "ERROR: Cannot resolve path: $relative_path from $base_path" >&2
         return 1
     fi
-    
+
     echo "$resolved"
 }
 
@@ -121,7 +121,7 @@ init_project_env() {
         echo "ERROR: get_project_paths function not available - paths.sh may not be sourced correctly" >&2
         return 1
     fi
-    
+
     # Initialize paths
     if ! get_project_paths; then
         echo "ERROR: Failed to initialize project paths" >&2
@@ -136,7 +136,7 @@ init_project_env() {
         debug_paths
         return 1
     fi
-    
+
     return 0
 }
 
@@ -150,7 +150,7 @@ print_status() {
     local status="$1"
     local message="$2"
     local color=""
-    
+
     case "$status" in
         "success") color='\033[0;32m' ;;  # Green
         "error")   color='\033[0;31m' ;;  # Red
@@ -158,6 +158,6 @@ print_status() {
         "info")    color='\033[0;36m' ;;  # Cyan
         *)         color='\033[0m' ;;     # No color
     esac
-    
+
     echo -e "${color}${message}\033[0m"
 }

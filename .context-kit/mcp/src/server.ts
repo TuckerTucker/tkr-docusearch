@@ -221,16 +221,16 @@ export class ProjectKitMCPServer {
 // CLI entry point
 if (import.meta.url === `file://${process.argv[1]}`) {
   const server = new ProjectKitMCPServer();
-  
+
   process.on('SIGINT', async () => {
     await server.stop();
     process.exit(0);
   });
-  
+
   process.on('SIGTERM', async () => {
     await server.stop();
     process.exit(0);
   });
-  
+
   server.start().catch(console.error);
 }

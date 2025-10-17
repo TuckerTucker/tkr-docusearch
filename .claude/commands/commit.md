@@ -80,4 +80,4 @@ Fixes #123
 - Context updates are included atomically with code changes when using 'context' argument
 - If context agents fail, proceed with commit but warn user
 - Large diffs may take time for context analysis
-- Knowledge graph updates are automatic via MCP server when context mode is used 
+- Knowledge graph updates are automatic via MCP server when context mode is used

@@ -14,20 +14,20 @@ project:
   author: "Team or Person Name"             # Required: Creator or team responsible
   timestamp: "YYYY-MM-DD"                   # Required: Date of last update
   status: "draft|in-progress|production-ready" # Required: Current status
-  
+
   # External systems and references - Links to related documentation
   references:
     design_system: "URL or reference"       # Optional: Link to your design system
     component_library: "URL or reference"   # Optional: Link to component library docs
     api_docs: "URL or reference"            # Optional: Link to API documentation
     architecture: "URL or reference"        # Optional: Link to architecture documentation
-  
+
   # Repository information - Details about the code repository
   repository:
     type: "git"                            # Optional: Version control system
     url: "Repository URL"                  # Optional: URL to the repository
     branch: "main"                         # Optional: Primary branch name
-  
+
   # Project infrastructure - Where the application is hosted/deployed
   infrastructure:
     hosting: "Provider name"               # Optional: Cloud/hosting provider
@@ -52,7 +52,7 @@ stack:
       - name: "Library name"
         version: "^1.0.0"                     # Use semver format
         purpose: "Why this library is used"
-  
+
   # Backend technology details
   backend:
     framework: "Framework name"               # Required if backend exists
@@ -62,23 +62,23 @@ stack:
       - type: "REST or GraphQL"
         base_url: "/api/v1"
         documentation: "URL to API docs"
-  
+
   # Deployment details
   deployment:
     strategy: "Deployment strategy"           # Optional: How the app is deployed
     bundling: "Bundling strategy"             # Optional: Code splitting approach
     cdn: "CDN if applicable"                  # Optional: CDN information
-  
+
   # Core technology details
   language: "TypeScript strict mode|JavaScript|Python" # Required: Primary language
   runtime: "Node.js|Browser|Python|Deno"    # Required: Runtime environment
   framework: "React|Vue|Angular|Express"     # Optional: Primary framework
   build: "Vite|Webpack|TypeScript compiler"  # Optional: Build system
-  
+
   # Key libraries with semantic purpose
   key_libs:
     - "@library/name@^1.0.0": "Purpose description" # Library with version and purpose
-  
+
   # Development configuration
   development:
     ports:
@@ -90,7 +90,7 @@ stack:
         dev_server: 42300                     # Development server
         dashboard: 42000                      # Optional: Admin/monitoring
         testing: 42900                        # Optional: Test services
-      
+
       conflict_resolution:                     # Optional: Port conflict handling
         auto_increment: true                  # Auto-find next available port
         check_script: "scripts/check-ports.sh" # Port availability checker
@@ -101,8 +101,8 @@ structure:
   key_paths:
     "src/": "Application source code"
     "tests/": "Test files parallel to src structure"
-    "docs/": "Human documentation (if relevant to code)" 
-    
+    "docs/": "Human documentation (if relevant to code)"
+
   find_patterns:
     component: "src/components/{category}/{ComponentName}.tsx"
     page: "src/pages/{PageName}.tsx"
@@ -115,7 +115,7 @@ patterns:
   directory_structure: "atomic-design|feature-based|domain-driven"
   import_conventions: "@/ for src/, relative for same module"
   error_handling: "comprehensive try-catch with graceful degradation"
-  
+
   # Agent Architecture Patterns (for development toolkits)
   agent_architecture: "specialized analyzers with consolidation pattern"
   security_model: "path validation with allowlist protection"
@@ -129,20 +129,20 @@ integrations:
     location: ".context-kit/mcp-{service-name}/"
     entry: "index.ts"
     memory_path: "$HOME/.claude-memory/{service}.jsonl"
-    
+
   # Claude Code Agent Integration
   claude_code:
     agents: ".claude/agents/"
     commands: ".claude/commands/"
     config: ".claude/settings.local.json"
     permissions: ["Read", "Write", "Task", "mcp__*"]
-    
+
   # API integrations
   api:
     type: "REST|GraphQL with React Query"
     location: "src/api/"
     client: "src/api/client.ts"
-    
+
   external_services:
     - service: "Service Name"
       purpose: "What it's used for"
@@ -154,12 +154,12 @@ architecture:
     - "MCP server architecture for persistent AI memory"
     - "Agent specialization with consolidation workflows"
     - "Security-first design with path validation"
-  
+
   ui_architecture:
     layout: "HTML templates with vanilla JS components"
     styling: "CSS custom properties with component scoping"
     interaction_patterns: "Class-based component architecture"
-  
+
   mcp_architecture:
     transport: "STDIO with JSON schema validation"
     security: "Path allowlist with traversal protection"
@@ -170,16 +170,16 @@ task_locations:
   add_new_component:
     files: ["src/components/{ComponentName}.tsx"]
     pattern: "Create component → Add tests → Update exports"
-    
+
   setup_project:
     files: ["setup", ".context-kit/scripts/"]
     pattern: "Run setup → Configure paths → Install dependencies"
-    
+
   # Agent and MCP Tasks
   add_new_agent:
     files: [".claude/agents/{agent-name}.md"]
     pattern: "Define purpose → List tools → Set responsibilities"
-    
+
   setup_mcp_server:
     files: [".context-kit/mcp-{service}/", ".claude/settings.local.json"]
     pattern: "Setup MCP server → Configure Claude → Create tools"
@@ -188,12 +188,12 @@ when_creating:
   new_component:
     check_patterns: "src/components/ui/Button.tsx"
     follow_structure: "Props interface → component → export"
-    
+
   # Agent and MCP Patterns
   new_agent:
     check_patterns: ".claude/agents/project-yaml-consolidator.md"
     follow_structure: "Purpose → Tools → Instructions → Best practices"
-    
+
   new_mcp_tool:
     example: ".context-kit/mcp-knowledge-graph/index.ts"
     pattern: "Define tool schema → Implement handler → Add to tools array"
@@ -232,7 +232,7 @@ global:
         warning: "#hexcode"
         error: "#hexcode"
         info: "#hexcode"
-    
+
     # Typography system
     typography:
       font_family: "Font stack"              # Required: Primary font family
@@ -242,7 +242,7 @@ global:
         regular: 400
         medium: 500
         bold: 700
-    
+
     # Spacing system
     spacing:
       base: "8px"                           # Required: Base spacing unit
@@ -252,7 +252,7 @@ global:
         md: "16px"   # 2x base
         lg: "24px"   # 3x base
         xl: "32px"   # 4x base
-    
+
     # Animation definitions
     animation:
       duration:
@@ -263,7 +263,7 @@ global:
         default: "cubic-bezier(0.4, 0, 0.2, 1)"
         in: "cubic-bezier(0.4, 0, 1, 1)"
         out: "cubic-bezier(0, 0, 0.2, 1)"
-  
+
   # Accessibility standards
   accessibility:
     compliance: "WCAG 2.1 AA"               # Required: Accessibility standard
@@ -275,7 +275,7 @@ global:
       style: "outline"                       # Required: Focus indicator style
       color: "#hexcode"
       width: "2px"
-  
+
   # Responsive design configuration
   responsive:
     breakpoints:                             # Required: Device breakpoints
@@ -286,7 +286,7 @@ global:
     container_widths:
       max_width: "1280px"
       padding: "16px"
-  
+
   # Error handling patterns
   error_handling:
     strategies:
@@ -334,19 +334,19 @@ data_flow:
     core_strategy: "Data management approach" # Required: Primary data strategy
     data_fetching: "Fetching mechanism"       # Required: How data is fetched
     state_updates: "State update pattern"     # Required: How state is updated
-  
+
   # Data sources
   sources:
     api:
       base_url: "https://api.example.com/v1"  # Optional: API base URL
       authentication: "Authentication method"  # Optional: Auth approach
-  
+
   # Caching strategy
   caching:
     strategy: "Cache strategy"                # Optional: How caching is handled
     invalidation:
       events: ["List of invalidation events"] # Optional: When cache is invalidated
-  
+
   # Real-time data handling
   real_time:
     strategy: "Real-time approach"           # Optional: Real-time data strategy
@@ -368,13 +368,13 @@ deployment:
       url: "Production URL"
       auto_deploy: false
       branch: "Branch name"
-  
+
   # Build process steps
   build_process:
     steps:                                   # Optional: Build pipeline steps
       - name: "Step name"
         command: "Command to execute"
-  
+
   # Monitoring configuration
   monitoring:
     services:                                # Optional: Monitoring tools
@@ -394,26 +394,26 @@ testing:
       branches: 75
       functions: 80
       lines: 80
-  
+
   # Integration testing configuration
   integration:
     framework: "Test framework"              # Required: Integration test framework
     key_flows:                               # Optional: Critical integration paths
       - "Flow description"
-  
+
   # End-to-end testing configuration
   e2e:
     framework: "Test framework"              # Required: E2E test framework
     critical_paths:                          # Optional: Critical user journeys
       - "Path description"
-  
+
   # Accessibility testing
   accessibility:
     tools:                                   # Optional: A11y testing tools
       - "Tool name"
     manual_checklist:                        # Optional: Manual checks
       - "Check description"
-  
+
   # Performance testing
   performance:
     tools:                                   # Optional: Performance testing tools
@@ -429,19 +429,19 @@ security:
     strategy: "Path allowlist validation with input sanitization" # Required for MCP servers
     allowed_paths: ["List of allowed directory paths"]            # Required: Path allowlist
     sanitization: "Remove/escape dangerous characters"            # Required: Input cleaning
-  
+
   # Authentication configuration
   authentication:
     method: "Auth method"                    # Required: Authentication approach
     session_duration: "12h"                  # Optional: Session timeout
     refresh_mechanism: "Refresh approach"    # Optional: Token refresh strategy
-  
+
   # Authorization configuration
   authorization:
     roles:                                   # Optional: User roles
       - name: "Role name"
         permissions: ["List of permissions"]
-  
+
   # Data protection
   data_protection:
     encryption:
@@ -451,13 +451,13 @@ security:
       fields:
         - name: "Field name"
           treatment: "Protection method"
-  
+
   # MCP Server Security
   mcp_security:
     transport: "STDIO with JSON schema validation"              # Required for MCP
     path_traversal_protection: "Allowlist validation"           # Required: Prevent directory traversal
     error_handling: "Comprehensive try-catch with safe fallbacks" # Required: Safe error handling
-  
+
   # Compliance standards
   compliance:
     standards:                               # Optional: Compliance requirements

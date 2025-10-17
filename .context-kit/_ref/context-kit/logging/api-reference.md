@@ -311,7 +311,7 @@ Log aggregations (hour):
     "last_occurrence": 1725302852
   },
   {
-    "service": "AuthService", 
+    "service": "AuthService",
     "level": "INFO",
     "count": 45,
     "first_occurrence": 1725299252,
@@ -347,7 +347,7 @@ Trace flow for trace-abc-123:
   {
     "timestamp": 1725302851,
     "service": "AuthService",
-    "component": "TokenValidator", 
+    "component": "TokenValidator",
     "message": "Token validation started",
     "level": "DEBUG",
     "span_id": "span-2"

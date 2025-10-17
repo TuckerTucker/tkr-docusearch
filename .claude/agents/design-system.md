@@ -91,7 +91,7 @@ tokens:
       md:
         $value: "1rem"
         $type: "dimension"
-    
+
 components:
   Button:
     props:
@@ -111,7 +111,7 @@ components:
       keyboard:
         - "Enter: activate"
         - "Space: activate"
-  
+
   Card:
     props:
       elevation: [0, 1, 2]

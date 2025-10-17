@@ -9,10 +9,11 @@ Usage:
     python scripts/cleanup_orphaned_docs.py [--dry-run]
 """
 
-import sys
 import argparse
-import requests
+import sys
 from pathlib import Path
+
+import requests
 
 WORKER_URL = "http://localhost:8002"
 UPLOADS_DIR = Path("data/uploads")
@@ -34,10 +35,7 @@ def file_exists_in_uploads(filename):
 
 def delete_document(filename, file_path):
     """Delete document via worker API."""
-    payload = {
-        "filename": filename,
-        "file_path": file_path
-    }
+    payload = {"filename": filename, "file_path": file_path}
     response = requests.post(f"{WORKER_URL}/delete", json=payload)
     response.raise_for_status()
     return response.json()
@@ -45,7 +43,9 @@ def delete_document(filename, file_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Cleanup orphaned documents")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted without deleting")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be deleted without deleting"
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -106,10 +106,14 @@ def main():
         print(f"Deleting: {filename} (doc_id: {doc_id[:16]}...)")
         try:
             result = delete_document(filename, file_path)
-            print(f"  ✓ ChromaDB: {result['visual_deleted']} visual + {result['text_deleted']} text embeddings")
-            print(f"  ✓ Filesystem: {result['page_images_deleted']} images, "
-                  f"{result['cover_art_deleted']} cover art, "
-                  f"{'1' if result.get('markdown_deleted') else '0'} markdown")
+            print(
+                f"  ✓ ChromaDB: {result['visual_deleted']} visual + {result['text_deleted']} text embeddings"
+            )
+            print(
+                f"  ✓ Filesystem: {result['page_images_deleted']} images, "
+                f"{result['cover_art_deleted']} cover art, "
+                f"{'1' if result.get('markdown_deleted') else '0'} markdown"
+            )
             deleted_count += 1
         except Exception as e:
             print(f"  ✗ Error: {e}")

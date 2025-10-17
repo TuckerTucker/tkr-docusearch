@@ -29,7 +29,7 @@ This guide explains how to integrate any project with the tkr-context-kit loggin
    cd .context-kit/knowledge-graph
    npm run dev:ui  # Start UI on port 42001 (minimal logging)
    # Open http://localhost:42001#logs
-   
+
    # Alternative UI logging options:
    # npm run dev:ui:verbose  # Full Vite logging
    # npm run dev:ui:quiet    # Warnings and errors only
@@ -100,7 +100,7 @@ const logger = createTkrLogger({
 // Middleware for request logging
 app.use((req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     logger.info(`${req.method} ${req.path} - ${res.statusCode}`, {
       method: req.method,
@@ -110,7 +110,7 @@ app.use((req, res, next) => {
       ip: req.ip
     }, 'HTTP');
   });
-  
+
   next();
 });
 
@@ -120,7 +120,7 @@ app.use((err, req, res, next) => {
     path: req.path,
     method: req.method
   }, 'ErrorHandler');
-  
+
   res.status(500).json({ error: 'Internal Server Error' });
 });
 ```
@@ -154,16 +154,16 @@ class ErrorBoundary extends React.Component {
 
 // Hook for component logging
 function useComponentLogger(componentName) {
-  const componentLogger = useMemo(() => 
-    logger.child(componentName), 
+  const componentLogger = useMemo(() =>
+    logger.child(componentName),
     [componentName]
   );
-  
+
   useEffect(() => {
     componentLogger.debug('Component mounted');
     return () => componentLogger.debug('Component unmounted');
   }, []);
-  
+
   return componentLogger;
 }
 ```
@@ -182,7 +182,7 @@ class TkrLogger:
         self.service = service
         self.service_type = service_type
         self.base_url = base_url
-    
+
     def _send_log(self, level, message, component='Main', metadata=None):
         try:
             payload = {
@@ -197,10 +197,10 @@ class TkrLogger:
             requests.post(f'{self.base_url}/api/logs', json=payload, timeout=1)
         except:
             pass  # Fail silently
-    
+
     def info(self, message, component='Main', **metadata):
         self._send_log('info', message, component, metadata)
-    
+
     def error(self, message, component='Main', exception=None, **metadata):
         if exception:
             metadata['error'] = {
@@ -215,8 +215,8 @@ logger = TkrLogger('FlaskApp', 'backend')
 
 @app.before_request
 def log_request():
-    logger.info(f'{request.method} {request.path}', 'HTTP', 
-                method=request.method, 
+    logger.info(f'{request.method} {request.path}', 'HTTP',
+                method=request.method,
                 path=request.path,
                 ip=request.remote_addr)
 
@@ -231,13 +231,13 @@ class TkrLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self.logger = TkrLogger('DjangoApp', 'backend')
-    
+
     def __call__(self, request):
         self.logger.info(f'{request.method} {request.path}', 'HTTP',
                         method=request.method,
                         path=request.path,
                         user=str(request.user))
-        
+
         response = self.get_response(request)
         return response
 ```
@@ -281,7 +281,7 @@ class TkrLogger
     @service_type = service_type
     @base_url = base_url
   end
-  
+
   def log(level, message, component = 'Main', metadata = {})
     payload = {
       level: level.upcase,
@@ -292,7 +292,7 @@ class TkrLogger
       metadata: metadata,
       timestamp: Time.now.to_i
     }
-    
+
     begin
       uri = URI("#{@base_url}/api/logs")
       http = Net::HTTP.new(uri.host, uri.port)
@@ -304,11 +304,11 @@ class TkrLogger
       # Fail silently
     end
   end
-  
+
   def info(message, component = 'Main', metadata = {})
     log('info', message, component, metadata)
   end
-  
+
   def error(message, component = 'Main', exception = nil, metadata = {})
     if exception
       metadata[:error] = {
@@ -324,20 +324,20 @@ end
 # Rails integration
 class ApplicationController < ActionController::Base
   before_action :log_request
-  
+
   rescue_from StandardError do |exception|
     logger.error('Request failed', 'ErrorHandler', exception,
                  path: request.path,
                  method: request.method)
     render json: { error: 'Internal Server Error' }, status: 500
   end
-  
+
   private
-  
+
   def logger
     @logger ||= TkrLogger.new('RailsApp', 'backend')
   end
-  
+
   def log_request
     logger.info("#{request.method} #{request.path}", 'HTTP',
                 method: request.method,
@@ -394,12 +394,12 @@ func (l *Logger) log(level, message, component string, metadata map[string]inter
         Metadata:    metadata,
         Timestamp:   time.Now().Unix(),
     }
-    
+
     data, err := json.Marshal(entry)
     if err != nil {
         return
     }
-    
+
     go func() {
         http.Post(l.BaseURL+"/api/logs", "application/json", bytes.NewReader(data))
     }()
@@ -427,15 +427,15 @@ func LoggingMiddleware(logger *Logger) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             start := time.Now()
-            
+
             logger.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path), "HTTP", map[string]interface{}{
                 "method": r.Method,
                 "path":   r.URL.Path,
                 "ip":     r.RemoteAddr,
             })
-            
+
             next.ServeHTTP(w, r)
-            
+
             logger.Info("Request completed", "HTTP", map[string]interface{}{
                 "duration": time.Since(start).Milliseconds(),
             })

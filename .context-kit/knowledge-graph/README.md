@@ -298,13 +298,13 @@ Execute custom SQL queries:
 // Find components by framework
 const reactComponents = kg.query(`
   SELECT name, data->>'$.props' as props
-  FROM entities 
+  FROM entities
   WHERE type = 'Component' AND data->>'$.framework' = 'React'
 `);
 
 // Analyze test coverage
 const coverage = kg.query(`
-  SELECT 
+  SELECT
     COUNT(DISTINCT c.id) as total_components,
     COUNT(DISTINCT t.to_id) as tested_components
   FROM entities c

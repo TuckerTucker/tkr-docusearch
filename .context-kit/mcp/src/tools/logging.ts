@@ -230,37 +230,37 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          level: { 
-            type: 'string', 
+          level: {
+            type: 'string',
             enum: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
-            description: 'Log level filter' 
+            description: 'Log level filter'
           },
-          service: { 
-            type: 'string', 
-            description: 'Service name filter' 
+          service: {
+            type: 'string',
+            description: 'Service name filter'
           },
-          component: { 
-            type: 'string', 
-            description: 'Component name filter' 
+          component: {
+            type: 'string',
+            description: 'Component name filter'
           },
-          traceId: { 
-            type: 'string', 
-            description: 'Trace ID for request correlation' 
+          traceId: {
+            type: 'string',
+            description: 'Trace ID for request correlation'
           },
-          timeWindow: { 
-            type: 'number', 
-            description: 'Time window in seconds (e.g., 3600 for last hour)' 
+          timeWindow: {
+            type: 'number',
+            description: 'Time window in seconds (e.g., 3600 for last hour)'
           },
-          startTime: { 
-            type: 'number', 
-            description: 'Unix timestamp for start time' 
+          startTime: {
+            type: 'number',
+            description: 'Unix timestamp for start time'
           },
-          endTime: { 
-            type: 'number', 
-            description: 'Unix timestamp for end time' 
+          endTime: {
+            type: 'number',
+            description: 'Unix timestamp for end time'
           },
-          limit: { 
-            type: 'number', 
+          limit: {
+            type: 'number',
             description: 'Maximum number of logs to return',
             default: 100
           }
@@ -275,21 +275,21 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          query: { 
-            type: 'string', 
-            description: 'Search query (supports AND, OR, NOT operators)' 
+          query: {
+            type: 'string',
+            description: 'Search query (supports AND, OR, NOT operators)'
           },
-          service: { 
-            type: 'string', 
-            description: 'Filter by service name' 
+          service: {
+            type: 'string',
+            description: 'Filter by service name'
           },
-          level: { 
+          level: {
             type: 'string',
             enum: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
-            description: 'Filter by log level' 
+            description: 'Filter by log level'
           },
-          limit: { 
-            type: 'number', 
+          limit: {
+            type: 'number',
             description: 'Maximum results to return',
             default: 50
           }
@@ -305,9 +305,9 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          traceId: { 
-            type: 'string', 
-            description: 'Trace ID to follow across services' 
+          traceId: {
+            type: 'string',
+            description: 'Trace ID to follow across services'
           }
         },
         required: ['traceId']
@@ -321,12 +321,12 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          service: { 
-            type: 'string', 
-            description: 'Specific service to check (optional)' 
+          service: {
+            type: 'string',
+            description: 'Specific service to check (optional)'
           },
-          timeWindow: { 
-            type: 'number', 
+          timeWindow: {
+            type: 'number',
             description: 'Time window in seconds (default: 3600)',
             default: 3600
           }
@@ -341,8 +341,8 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          timeWindow: { 
-            type: 'number', 
+          timeWindow: {
+            type: 'number',
             description: 'Time window in seconds (default: 86400 for 24 hours)',
             default: 86400
           }
@@ -357,8 +357,8 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          limit: { 
-            type: 'number', 
+          limit: {
+            type: 'number',
             description: 'Number of recent errors to return (default: 20)',
             default: 20
           }
@@ -393,8 +393,8 @@ export function setupLoggingTools(
       inputSchema: {
         type: 'object',
         properties: {
-          retentionDays: { 
-            type: 'number', 
+          retentionDays: {
+            type: 'number',
             description: 'Number of days to retain logs (default: 7)',
             default: 7
           }
