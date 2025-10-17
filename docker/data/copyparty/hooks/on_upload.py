@@ -13,19 +13,22 @@ Environment variables from copyparty:
 - src: original filename
 """
 
+import json
 import os
 import sys
-import json
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 # Configuration
 WORKER_HOST = os.getenv("WORKER_HOST", "processing-worker")
 WORKER_PORT = os.getenv("WORKER_PORT", "8002")
 
-# Load supported formats from environment
-_formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+# Load supported formats from environment (must match file_validator.py defaults)
+_formats_str = os.getenv(
+    "SUPPORTED_FORMATS",
+    "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp",
+)
 SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 
@@ -48,22 +51,19 @@ def trigger_processing(file_path: str, filename: str) -> bool:
 
     # Prepare request
     url = f"http://{WORKER_HOST}:{WORKER_PORT}/process"
-    data = {
-        "file_path": file_path,
-        "filename": filename
-    }
+    data = {"file_path": file_path, "filename": filename}
 
     try:
         # Send POST request to worker
         req = urllib.request.Request(
             url,
-            data=json.dumps(data).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
+            data=json.dumps(data).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
 
         with urllib.request.urlopen(req, timeout=5) as response:
-            result = json.loads(response.read().decode('utf-8'))
+            result = json.loads(response.read().decode("utf-8"))
             print(f"Processing triggered: {result.get('message', 'OK')}")
             return True
 
