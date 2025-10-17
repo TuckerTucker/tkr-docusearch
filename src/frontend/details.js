@@ -11,6 +11,7 @@ import { Slideshow } from './slideshow.js';
 import { AudioPlayer } from './audio-player.js';
 import { Accordion } from './accordion.js';
 import { applyEarlyTheme, initTheme } from './theme-toggle.js';
+import { initStyleSelector } from './style-selector.js';
 
 // Apply theme immediately to avoid flash
 applyEarlyTheme();
@@ -152,9 +153,11 @@ class DetailsPage {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
+        initStyleSelector();
         new DetailsPage();
     });
 } else {
     initTheme();
+    initStyleSelector();
     new DetailsPage();
 }

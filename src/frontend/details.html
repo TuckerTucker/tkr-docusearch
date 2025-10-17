@@ -122,6 +122,27 @@
     <footer class="footer" role="contentinfo">
         <div class="footer__container">
             <div class="footer__actions">
+                <!-- Style Selector -->
+                <div class="style-selector">
+                    <button
+                        id="style-selector-button"
+                        class="style-selector__button"
+                        aria-label="Select visual style"
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        title="Choose visual style">
+                        <svg class="style-selector__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                        </svg>
+                    </button>
+                    <div id="style-selector-dropdown" class="style-selector__dropdown" role="menu" aria-labelledby="style-selector-button">
+                        <ul class="style-selector__list">
+                            <!-- Options will be dynamically inserted here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Theme Toggle (Light/Dark) -->
                 <button
                     id="theme-toggle"
                     class="theme-toggle"
