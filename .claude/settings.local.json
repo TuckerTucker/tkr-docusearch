@@ -94,7 +94,8 @@
       "Bash(docker exec:*)",
       "Bash(cp:*)",
       "Bash(git checkout:*)",
-      "Bash(styles.css)"
+      "Bash(styles.css)",
+      "Bash(git merge:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
