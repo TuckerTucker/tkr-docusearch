@@ -322,6 +322,8 @@ async def list_documents(
         response_docs = []
         for doc in doc_list:
             first_page_thumb = None
+
+            # Check for page thumbnail (PDF, DOCX, PPTX)
             if doc["pages"] and doc["has_images"]:
                 first_page = doc["pages"][0]
                 if first_page.get("thumb_path"):
@@ -334,6 +336,16 @@ async def list_documents(
                             doc_id_part = parts[-2]
                             filename_part = parts[-1]
                             first_page_thumb = f"/images/{doc_id_part}/{filename_part}"
+
+            # Check for album art (audio files)
+            if not first_page_thumb:
+                images_dir = Path("data/images") / doc["doc_id"]
+                if images_dir.exists():
+                    for ext in ["jpg", "jpeg", "png"]:
+                        cover_file = images_dir / f"cover.{ext}"
+                        if cover_file.exists():
+                            first_page_thumb = f"/documents/{doc['doc_id']}/cover"
+                            break
 
             response_docs.append(
                 DocumentListItem(
