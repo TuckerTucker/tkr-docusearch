@@ -34,6 +34,9 @@ export class LibraryManager {
     this.grid = null;
     this.connectionStatus = null;
 
+    // Server configuration (single source of truth)
+    this.serverConfig = null;
+
     // State
     this.documentCards = new Map(); // doc_id → HTMLElement
     this.currentQuery = {
@@ -70,14 +73,35 @@ export class LibraryManager {
       return;
     }
 
-    // Initialize components
+    // Initialize API client first
     this.apiClient = new DocumentsAPIClient('http://localhost:8002');
 
+    // Fetch server configuration (single source of truth)
+    try {
+      this.serverConfig = await this.apiClient.getSupportedFormats();
+      console.log('✅ Server config loaded:', this.serverConfig);
+    } catch (error) {
+      console.error('⚠️ Failed to load server config, using fallback:', error);
+      // Fallback configuration if server is unavailable
+      this.serverConfig = {
+        extensions: ['.pdf', '.docx', '.pptx', '.mp3', '.wav', '.png', '.jpg', '.jpeg'],
+        groups: [
+          { id: 'pdf', label: 'PDF', extensions: ['.pdf'] },
+          { id: 'audio', label: 'Audio', extensions: ['.mp3', '.wav'] },
+          { id: 'office', label: 'Office Documents', extensions: ['.docx'] },
+          { id: 'presentations', label: 'Presentations', extensions: ['.pptx'] },
+          { id: 'images', label: 'Images', extensions: ['.png', '.jpg', '.jpeg'] }
+        ]
+      };
+    }
+
+    // Initialize components with server config
     this.filterBar = new FilterBar('#filter-bar');
 
     this.uploadModal = new UploadModal({
       copypartyUrl: 'http://localhost:8000',
-      uploadPath: '/'
+      uploadPath: '/',
+      supportedTypes: this.serverConfig.extensions
     });
     this.uploadModal.init();
 
@@ -240,12 +264,23 @@ export class LibraryManager {
       // Combine all documents (processing docs first, then completed)
       let allDocuments = [...processingDocs, ...completedDocs];
 
-      // Filter by file type (client-side)
-      if (this.currentQuery.file_types.length < 4) {
+      // Filter by file type (client-side) using server config
+      if (this.currentQuery.file_types.length > 0) {
         allDocuments = allDocuments.filter(doc => {
-          const ext = doc.filename.split('.').pop().toLowerCase();
-          return this.currentQuery.file_types.includes(ext) ||
-                 (this.currentQuery.file_types.includes('audio') && ['mp3', 'wav'].includes(ext));
+          const ext = `.${doc.filename.split('.').pop().toLowerCase()}`;
+
+          // Check if extension matches any selected group
+          for (const groupId of this.currentQuery.file_types) {
+            const group = this.serverConfig.groups.find(g => g.id === groupId);
+            if (group && group.extensions.includes(ext)) {
+              return true;
+            }
+            // Also support direct extension matching for backwards compatibility
+            if (ext === `.${groupId}`) {
+              return true;
+            }
+          }
+          return false;
         });
       }
 

@@ -10,6 +10,7 @@
 import { Slideshow } from './slideshow.js';
 import { AudioPlayer } from './audio-player.js';
 import { Accordion } from './accordion.js';
+import { DocumentsAPIClient } from './api-client.js';
 import { applyEarlyTheme, initTheme } from './theme-toggle.js';
 import { initStyleSelector } from './style-selector.js';
 
@@ -20,6 +21,8 @@ class DetailsPage {
     constructor() {
         this.docId = null;
         this.documentData = null;
+        this.serverConfig = null;
+        this.apiClient = null;
 
         this.slideshow = null;
         this.audioPlayer = null;
@@ -28,7 +31,7 @@ class DetailsPage {
         this.init();
     }
 
-    init() {
+    async init() {
         // Extract doc_id from URL query params
         const params = new URLSearchParams(window.location.search);
         this.docId = params.get('id');
@@ -38,8 +41,26 @@ class DetailsPage {
             return;
         }
 
+        // Initialize API client
+        this.apiClient = new DocumentsAPIClient('http://localhost:8002');
+
+        // Fetch server configuration
+        try {
+            this.serverConfig = await this.apiClient.getSupportedFormats();
+            console.log('✅ Server config loaded:', this.serverConfig);
+        } catch (error) {
+            console.error('⚠️ Failed to load server config, using fallback:', error);
+            // Fallback configuration
+            this.serverConfig = {
+                extensions: ['.pdf', '.docx', '.pptx', '.mp3', '.wav'],
+                groups: [
+                    { id: 'audio', label: 'Audio', extensions: ['.mp3', '.wav'] }
+                ]
+            };
+        }
+
         // Load document
-        this.loadDocument();
+        await this.loadDocument();
     }
 
     async loadDocument() {
@@ -79,9 +100,18 @@ class DetailsPage {
 
     initializeComponents() {
         const hasPages = this.documentData.pages && this.documentData.pages.length > 0;
-        // Check if document is audio by format_type or file extension
+
+        // Check if document is audio using server config
+        const audioGroup = this.serverConfig.groups.find(g => g.id === 'audio');
+        const audioExtensions = audioGroup ? audioGroup.extensions : ['.mp3', '.wav'];
+
+        // Extract file extension
+        const ext = this.documentData.filename
+            ? `.${this.documentData.filename.split('.').pop().toLowerCase()}`
+            : '';
+
         const isAudioFile = this.documentData.metadata.raw_metadata?.format_type === 'audio' ||
-                           this.documentData.filename?.match(/\.(mp3|wav)$/i);
+                           audioExtensions.includes(ext);
         const hasAudio = isAudioFile || this.documentData.metadata.has_timestamps;
         const hasChunks = this.documentData.chunks && this.documentData.chunks.length > 0;
 
