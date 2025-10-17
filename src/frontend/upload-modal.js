@@ -24,7 +24,13 @@ export class UploadModal {
   constructor(options = {}) {
     this.copypartyUrl = options.copypartyUrl || 'http://localhost:8000';
     this.uploadPath = options.uploadPath || '/uploads';
-    this.supportedTypes = options.supportedTypes || ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.mp3', '.wav', '.flac', '.m4a'];
+    // Must match file_validator.py DEFAULT_FORMATS
+    this.supportedTypes = options.supportedTypes || [
+      '.pdf', '.docx', '.doc', '.pptx', '.ppt',
+      '.xlsx', '.xls', '.html', '.xhtml', '.md', '.asciidoc', '.csv',
+      '.mp3', '.wav', '.flac', '.m4a', '.vtt',
+      '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'
+    ];
     this.maxFileSize = options.maxFileSize || 100 * 1024 * 1024; // 100MB
     this.auth = options.auth || { username: 'admin', password: 'admin' };
 
