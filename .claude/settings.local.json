@@ -97,7 +97,8 @@
       "Bash(styles.css)",
       "Bash(git merge:*)",
       "Bash(git rm:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "WebFetch(domain:arxiv.org)"
     ],
     "deny": [
       "Bash(rm -rf /)",
