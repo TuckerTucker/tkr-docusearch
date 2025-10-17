@@ -198,34 +198,43 @@ export class LibraryManager {
         return {
           ...doc,
           status: queueItem?.status || 'completed',
-          processingStatus: queueItem ? {
+          processingStatus: queueItem && queueItem.status !== 'completed' ? {
             status: queueItem.status,
             progress: queueItem.progress,
-            stage: this.getStageDescription(queueItem.status)
+            // Note: stage will be updated via WebSocket, queue doesn't include detailed stage
+            stage: null
           } : null
         };
       });
 
       // Add processing documents that aren't in completed list yet
       const completedFilenames = new Set(completedDocs.map(d => d.filename));
-      const processingDocs = queueResponse.queue
-        .filter(item => !completedFilenames.has(item.filename) && item.status !== 'completed')
-        .map(item => ({
-          doc_id: item.doc_id,
-          filename: item.filename,
-          date_added: item.timestamp,
-          status: item.status,
-          processingStatus: {
-            status: item.status,
-            progress: item.progress,
-            stage: this.getStageDescription(item.status)
-          },
-          page_count: 0,
-          chunk_count: 0,
-          collections: [],
-          has_images: false,
-          first_page_thumb: null
-        }));
+      const processingDocs = await Promise.all(
+        queueResponse.queue
+          .filter(item => !completedFilenames.has(item.filename) && item.status !== 'completed')
+          .map(async (item) => {
+            // Fetch detailed status to get the actual stage description
+            const detailedStatus = await this.apiClient.getProcessingStatus(item.doc_id);
+
+            return {
+              doc_id: item.doc_id,
+              filename: item.filename,
+              date_added: item.timestamp,
+              status: item.status,
+              processingStatus: {
+                status: item.status,
+                progress: item.progress,
+                // Use detailed stage from full status API, fallback to generic if not available
+                stage: detailedStatus?.stage || this.getStageDescription(item.status)
+              },
+              page_count: 0,
+              chunk_count: 0,
+              collections: [],
+              has_images: false,
+              first_page_thumb: null
+            };
+          })
+      );
 
       // Combine all documents (processing docs first, then completed)
       let allDocuments = [...processingDocs, ...completedDocs];
