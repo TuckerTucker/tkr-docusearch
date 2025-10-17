@@ -5,44 +5,45 @@ HTTP server that processes documents when triggered by copyparty webhook.
 Extracts text, generates embeddings, and stores in ChromaDB.
 """
 
-import logging
-import time
-import os
-from pathlib import Path
-from typing import Dict, Any, Optional
-from datetime import datetime
-import hashlib
 import asyncio
+import hashlib
+import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+import uvicorn
+from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import uvicorn
+
+from config.processing_config import EnhancedModeConfig, ProcessingConfig
 
 # Import core components
-from ..embeddings import ColPaliEngine
-from ..storage import ChromaClient
-from ..processing import DocumentProcessor
-from ..processing.docling_parser import DoclingParser
-from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
-from .file_validator import validate_file_type
-
-# Import status management components
-from .status_manager import StatusManager, get_status_manager
-from .status_api import router as status_router, set_status_manager
-
-# Import WebSocket broadcaster
-from .websocket_broadcaster import get_broadcaster
+from embeddings import ColPaliEngine
+from processing import DocumentProcessor
+from processing.cover_art_utils import delete_document_cover_art
+from processing.docling_parser import DoclingParser
 
 # Import documents API router (Wave 3)
-from .documents_api import router as documents_router
+from processing.documents_api import router as documents_router
+from processing.file_validator import validate_file_type
 
 # Import cleanup utilities
-from .image_utils import delete_document_images, cleanup_temp_directories
-from .cover_art_utils import delete_document_cover_art
-from ..storage.markdown_utils import delete_document_markdown
+from processing.image_utils import cleanup_temp_directories, delete_document_images
+from processing.status_api import router as status_router
+from processing.status_api import set_status_manager
+
+# Import status management components
+from processing.status_manager import StatusManager, get_status_manager
+
+# Import WebSocket broadcaster
+from processing.websocket_broadcaster import get_broadcaster
+from storage import ChromaClient
+from storage.markdown_utils import delete_document_markdown
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -50,11 +51,8 @@ os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler(LOG_FILE)],
 )
 
 logger = logging.getLogger(__name__)
@@ -92,13 +90,16 @@ _loop = None
 app = FastAPI(
     title="DocuSearch Processing Worker",
     description="Webhook-based document processing service",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Add CORS middleware
+# Add CORS middleware with environment-based whitelist
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:8001,http://localhost:8002"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=allowed_origins,  # Explicit whitelist from environment
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -109,7 +110,9 @@ app.include_router(status_router)
 
 # Mount documents API router (Wave 3)
 app.include_router(documents_router)
-logger.info("Mounted documents API: GET /documents, GET /documents/{doc_id}, GET /images/{doc_id}/{filename}")
+logger.info(
+    "Mounted documents API: GET /documents, GET /documents/{doc_id}, GET /images/{doc_id}/{filename}"
+)
 
 # Mount static files for monitor UI
 STATIC_DIR = Path(__file__).parent / "static"
@@ -140,14 +143,17 @@ else:
 # Request/Response Models
 # ============================================================================
 
+
 class ProcessRequest(BaseModel):
     """Request to process a document."""
+
     file_path: str
     filename: str
 
 
 class ProcessResponse(BaseModel):
     """Response from process request."""
+
     message: str
     doc_id: Optional[str] = None
     status: str
@@ -155,12 +161,14 @@ class ProcessResponse(BaseModel):
 
 class DeleteRequest(BaseModel):
     """Request to delete a document from ChromaDB."""
+
     file_path: str
     filename: str
 
 
 class DeleteResponse(BaseModel):
     """Response from delete request."""
+
     message: str
     doc_id: Optional[str] = None
     visual_deleted: int
@@ -174,6 +182,7 @@ class DeleteResponse(BaseModel):
 
 class StatusResponse(BaseModel):
     """Worker status response."""
+
     status: str
     processing_count: int
     total_processed: int
@@ -182,6 +191,7 @@ class StatusResponse(BaseModel):
 # ============================================================================
 # Processing Function
 # ============================================================================
+
 
 def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> Dict[str, Any]:
     """
@@ -204,14 +214,11 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
         # Check extension using file_validator
         valid, error = validate_file_type(str(path))
         if not valid:
-            return {
-                "status": "skipped",
-                "error": error
-            }
+            return {"status": "skipped", "error": error}
 
         # Generate doc ID from file hash (SHA-256) if not provided
         if doc_id is None:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 content = f.read()
                 doc_id = hashlib.sha256(content).hexdigest()
 
@@ -226,7 +233,7 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
             "started_at": start_time.isoformat(),
             "updated_at": start_time.isoformat(),
             "elapsed_time": 0.0,
-            "error": None
+            "error": None,
         }
 
         logger.info(f"Processing document: {filename} (ID: {doc_id})")
@@ -235,31 +242,27 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
         broadcaster = get_broadcaster()
         _broadcast_from_sync(
             broadcaster.broadcast_status_update(
-                doc_id=doc_id,
-                status="processing",
-                progress=0.0,
-                filename=filename,
-                stage="started"
+                doc_id=doc_id, status="processing", progress=0.0, filename=filename, stage="started"
             )
         )
         _broadcast_from_sync(
             broadcaster.broadcast_log_message(
-                level="INFO",
-                message=f"Started processing: {filename}",
-                doc_id=doc_id
+                level="INFO", message=f"Started processing: {filename}", doc_id=doc_id
             )
         )
 
         # Process document
         result = document_processor.process_document(
             file_path=file_path,
-            status_callback=lambda status: _update_processing_status(doc_id, status)
+            status_callback=lambda status: _update_processing_status(doc_id, status),
         )
 
         if not result or not result.doc_id:
             raise ValueError(f"Document processing failed: No result returned")
 
-        logger.info(f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}")
+        logger.info(
+            f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}"
+        )
 
         # Update status to completed
         completion_time = datetime.now()
@@ -286,15 +289,15 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
                 filename=filename,
                 stage="completed",
                 visual_embeddings=len(result.visual_ids),
-                text_embeddings=len(result.text_ids)
+                text_embeddings=len(result.text_ids),
             )
         )
         _broadcast_from_sync(
             broadcaster.broadcast_log_message(
                 level="INFO",
                 message=f"Completed processing: {filename} "
-                        f"(visual: {len(result.visual_ids)}, text: {len(result.text_ids)})",
-                doc_id=doc_id
+                f"(visual: {len(result.visual_ids)}, text: {len(result.text_ids)})",
+                doc_id=doc_id,
             )
         )
 
@@ -302,7 +305,7 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
             "status": "completed",
             "doc_id": result.doc_id,
             "visual_embeddings": len(result.visual_ids),
-            "text_embeddings": len(result.text_ids)
+            "text_embeddings": len(result.text_ids),
         }
 
     except Exception as e:
@@ -329,21 +332,16 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
                     progress=0.0,
                     filename=filename,
                     stage="failed",
-                    error=str(e)
+                    error=str(e),
                 )
             )
             _broadcast_from_sync(
                 broadcaster.broadcast_log_message(
-                    level="ERROR",
-                    message=f"Failed to process {filename}: {str(e)}",
-                    doc_id=doc_id
+                    level="ERROR", message=f"Failed to process {filename}: {str(e)}", doc_id=doc_id
                 )
             )
 
-        return {
-            "status": "failed",
-            "error": str(e)
-        }
+        return {"status": "failed", "error": str(e)}
 
 
 def _update_processing_status(doc_id: str, status):
@@ -353,7 +351,7 @@ def _update_processing_status(doc_id: str, status):
         start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
         elapsed = (update_time - start_time).total_seconds()
 
-        stage = status.stage if hasattr(status, 'stage') else status.status
+        stage = status.stage if hasattr(status, "stage") else status.status
         progress = status.progress
 
         processing_status[doc_id]["status"] = status.status
@@ -362,7 +360,9 @@ def _update_processing_status(doc_id: str, status):
         processing_status[doc_id]["updated_at"] = update_time.isoformat()
         processing_status[doc_id]["elapsed_time"] = elapsed
 
-        logger.info(f"📊 Status update callback: {doc_id[:8]}... stage={stage}, progress={progress:.1%}")
+        logger.info(
+            f"📊 Status update callback: {doc_id[:8]}... stage={stage}, progress={progress:.1%}"
+        )
 
         # Broadcast progress update to WebSocket clients
         broadcaster = get_broadcaster()
@@ -376,7 +376,7 @@ def _update_processing_status(doc_id: str, status):
                 status=status.status,
                 progress=progress,
                 filename=filename,
-                stage=stage
+                stage=stage,
             )
         )
 
@@ -394,7 +394,7 @@ def _broadcast_from_sync(coro):
 
     try:
         # Schedule coroutine in event loop from thread
-        future = asyncio.run_coroutine_threadsafe(coro, _loop)
+        asyncio.run_coroutine_threadsafe(coro, _loop)
         # Don't wait for result - fire and forget
     except Exception as e:
         logger.error(f"Failed to broadcast from sync context: {e}")
@@ -403,6 +403,7 @@ def _broadcast_from_sync(coro):
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
 
 @app.post("/process", response_model=ProcessResponse)
 async def process_document(request: ProcessRequest, background_tasks: BackgroundTasks):
@@ -420,7 +421,7 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 
     # Generate doc_id from file content hash (SHA-256)
     try:
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             content = f.read()
             doc_id = hashlib.sha256(content).hexdigest()
     except Exception as e:
@@ -430,22 +431,20 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     # Create status entry via StatusManager
     try:
         metadata = {
-            "format": file_path.suffix.lstrip('.').lower(),
+            "format": file_path.suffix.lstrip(".").lower(),
             "file_size": file_path.stat().st_size,
         }
         status_manager.create_status(doc_id, request.filename, metadata)
-    except ValueError as e:
+    except ValueError:
         # Document already exists
         logger.warning(f"Document {doc_id} already in status tracker")
 
     # Queue for background processing (pass doc_id to ensure consistency)
-    future = executor.submit(process_document_sync, request.file_path, request.filename, doc_id)
+    executor.submit(process_document_sync, request.file_path, request.filename, doc_id)
 
     # Return immediately with doc_id (processing continues in background)
     return ProcessResponse(
-        message=f"Document queued for processing",
-        doc_id=doc_id,
-        status="queued"
+        message=f"Document queued for processing", doc_id=doc_id, status="queued"
     )
 
 
@@ -480,20 +479,16 @@ async def delete_document(request: DeleteRequest):
 
         # Find doc_id by filename in visual collection
         visual_results = storage_client._visual_collection.get(
-            where={"filename": request.filename},
-            limit=1,
-            include=["metadatas"]
+            where={"filename": request.filename}, limit=1, include=["metadatas"]
         )
 
         # Try text collection if not found in visual
-        if not visual_results['ids']:
+        if not visual_results["ids"]:
             text_results = storage_client._text_collection.get(
-                where={"filename": request.filename},
-                limit=1,
-                include=["metadatas"]
+                where={"filename": request.filename}, limit=1, include=["metadatas"]
             )
-            if text_results['ids'] and text_results['metadatas']:
-                doc_id = text_results['metadatas'][0].get('doc_id')
+            if text_results["ids"] and text_results["metadatas"]:
+                doc_id = text_results["metadatas"][0].get("doc_id")
             else:
                 logger.warning(f"No embeddings found for filename: {request.filename}")
                 return DeleteResponse(
@@ -505,10 +500,10 @@ async def delete_document(request: DeleteRequest):
                     cover_art_deleted=0,
                     markdown_deleted=False,
                     temp_dirs_cleaned=0,
-                    status="not_found"
+                    status="not_found",
                 )
         else:
-            doc_id = visual_results['metadatas'][0].get('doc_id')
+            doc_id = visual_results["metadatas"][0].get("doc_id")
 
         logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
 
@@ -560,7 +555,9 @@ async def delete_document(request: DeleteRequest):
             # Continue - temp cleanup is not critical
 
         # Summary
-        total_filesystem_items = page_images_count + cover_art_count + (1 if markdown_deleted else 0) + temp_dirs_count
+        total_filesystem_items = (
+            page_images_count + cover_art_count + (1 if markdown_deleted else 0) + temp_dirs_count
+        )
         logger.info(
             f"✓ Comprehensive cleanup completed for {doc_id}: "
             f"ChromaDB={visual_count + text_count}, "
@@ -576,7 +573,7 @@ async def delete_document(request: DeleteRequest):
             cover_art_deleted=cover_art_count,
             markdown_deleted=markdown_deleted,
             temp_dirs_cleaned=temp_dirs_count,
-            status="success"
+            status="success",
         )
 
     except Exception as e:
@@ -591,9 +588,7 @@ async def get_status():
     total_processed = len(processing_status)
 
     return StatusResponse(
-        status="healthy",
-        processing_count=processing_count,
-        total_processed=total_processed
+        status="healthy", processing_count=processing_count, total_processed=total_processed
     )
 
 
@@ -636,6 +631,7 @@ async def websocket_endpoint(websocket: WebSocket):
 # Startup/Shutdown
 # ============================================================================
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
@@ -673,18 +669,12 @@ async def startup_event():
     try:
         # Initialize embedding engine
         logger.info(f"Loading ColPali model (device={DEVICE}, precision={PRECISION})...")
-        embedding_engine = ColPaliEngine(
-            device=DEVICE,
-            precision=PRECISION
-        )
+        embedding_engine = ColPaliEngine(device=DEVICE, precision=PRECISION)
         logger.info("✓ ColPali model loaded")
 
         # Initialize storage client
         logger.info(f"Connecting to ChromaDB ({CHROMA_HOST}:{CHROMA_PORT})...")
-        storage_client = ChromaClient(
-            host=CHROMA_HOST,
-            port=CHROMA_PORT
-        )
+        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
         logger.info("✓ ChromaDB connected")
 
         # Load enhanced mode configuration
@@ -701,7 +691,7 @@ async def startup_event():
         document_processor = DocumentProcessor(
             embedding_engine=embedding_engine,
             storage_client=storage_client,
-            enhanced_mode_config=enhanced_config
+            enhanced_mode_config=enhanced_config,
         )
         logger.info("✓ Document processor initialized (enhanced mode)")
 
@@ -732,14 +722,10 @@ async def shutdown_event():
 # Main Entry Point
 # ============================================================================
 
+
 def main():
     """Run the worker server."""
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=WORKER_PORT,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=WORKER_PORT, log_level="info")
 
 
 if __name__ == "__main__":

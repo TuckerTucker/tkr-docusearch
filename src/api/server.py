@@ -5,34 +5,31 @@ Provides REST API endpoints for document search, upload, and system monitoring.
 """
 
 import logging
+import os
 import time
 from datetime import datetime
-from typing import Optional
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import uvicorn
-
-from .models import (
-    SearchRequest,
-    SearchResponse,
-    SearchResult,
-    UploadResponse,
-    StatusResponse,
-    HealthResponse,
-    ComponentHealth,
-    SystemStats,
-    ProcessingStatus,
-    ErrorResponse
-)
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 # Import core components
 from ..embeddings import ColPaliEngine
-from ..storage import ChromaClient
-from ..search import SearchEngine
 from ..processing import DocumentProcessor
+from ..search import SearchEngine
+from ..storage import ChromaClient
+from .models import (
+    ComponentHealth,
+    HealthResponse,
+    ProcessingStatus,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+    StatusResponse,
+    SystemStats,
+    UploadResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +62,7 @@ _app_state = {
     "storage_client": None,
     "search_engine": None,
     "document_processor": None,
-    "start_time": None
+    "start_time": None,
 }
 
 
@@ -73,11 +70,12 @@ _app_state = {
 # Application Factory
 # ============================================================================
 
+
 def create_app(
     chroma_host: str = "localhost",
     chroma_port: int = 8001,
     device: str = "mps",
-    precision: str = "fp16"
+    precision: str = "fp16",
 ) -> FastAPI:
     """
     Create and configure FastAPI application.
@@ -96,13 +94,16 @@ def create_app(
         description=API_DESCRIPTION,
         version=API_VERSION,
         docs_url="/docs",
-        redoc_url="/redoc"
+        redoc_url="/redoc",
     )
 
-    # Configure CORS
+    # Configure CORS with environment-based whitelist
+    allowed_origins = os.getenv(
+        "ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:8001,http://localhost:8002"
+    ).split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=allowed_origins,  # Explicit whitelist from environment
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -118,31 +119,25 @@ def create_app(
         try:
             # Initialize embedding engine
             logger.info(f"Loading ColPali model (device={device}, precision={precision})...")
-            _app_state["embedding_engine"] = ColPaliEngine(
-                device=device,
-                precision=precision
-            )
+            _app_state["embedding_engine"] = ColPaliEngine(device=device, precision=precision)
             logger.info("✓ ColPali model loaded")
 
             # Initialize storage client
             logger.info(f"Connecting to ChromaDB ({chroma_host}:{chroma_port})...")
-            _app_state["storage_client"] = ChromaClient(
-                host=chroma_host,
-                port=chroma_port
-            )
+            _app_state["storage_client"] = ChromaClient(host=chroma_host, port=chroma_port)
             logger.info("✓ ChromaDB connected")
 
             # Initialize search engine
             _app_state["search_engine"] = SearchEngine(
                 storage_client=_app_state["storage_client"],
-                embedding_engine=_app_state["embedding_engine"]
+                embedding_engine=_app_state["embedding_engine"],
             )
             logger.info("✓ Search engine initialized")
 
             # Initialize document processor
             _app_state["document_processor"] = DocumentProcessor(
                 embedding_engine=_app_state["embedding_engine"],
-                storage_client=_app_state["storage_client"]
+                storage_client=_app_state["storage_client"],
             )
             logger.info("✓ Document processor initialized")
 
@@ -168,26 +163,23 @@ app = create_app()
 # Health Check Endpoints
 # ============================================================================
 
+
 @app.get(
     "/health",
     response_model=HealthResponse,
     summary="Health Check",
-    description="Simple health check endpoint"
+    description="Simple health check endpoint",
 )
 async def health_check():
     """Basic health check."""
-    return HealthResponse(
-        status="ok",
-        timestamp=datetime.now(),
-        version=API_VERSION
-    )
+    return HealthResponse(status="ok", timestamp=datetime.now(), version=API_VERSION)
 
 
 @app.get(
     "/status",
     response_model=StatusResponse,
     summary="System Status",
-    description="Detailed system status including component health and statistics"
+    description="Detailed system status including component health and statistics",
 )
 async def get_status():
     """Get detailed system status."""
@@ -195,17 +187,19 @@ async def get_status():
 
     # Check embedding engine
     if _app_state["embedding_engine"]:
-        components.append(ComponentHealth(
-            name="embedding_engine",
-            status="healthy",
-            message="ColPali model loaded and ready"
-        ))
+        components.append(
+            ComponentHealth(
+                name="embedding_engine", status="healthy", message="ColPali model loaded and ready"
+            )
+        )
     else:
-        components.append(ComponentHealth(
-            name="embedding_engine",
-            status="unhealthy",
-            message="Embedding engine not initialized"
-        ))
+        components.append(
+            ComponentHealth(
+                name="embedding_engine",
+                status="unhealthy",
+                message="Embedding engine not initialized",
+            )
+        )
 
     # Check storage client
     storage_status = "unhealthy"
@@ -223,12 +217,14 @@ async def get_status():
         except Exception as e:
             storage_message = f"Connection error: {str(e)}"
 
-    components.append(ComponentHealth(
-        name="chromadb",
-        status=storage_status,
-        message=storage_message,
-        latency_ms=storage_latency
-    ))
+    components.append(
+        ComponentHealth(
+            name="chromadb",
+            status=storage_status,
+            message=storage_message,
+            latency_ms=storage_latency,
+        )
+    )
 
     # Get statistics
     stats = SystemStats()
@@ -258,10 +254,7 @@ async def get_status():
         uptime = time.time() - _app_state["start_time"]
 
     return StatusResponse(
-        system_status=system_status,
-        components=components,
-        stats=stats,
-        uptime_seconds=uptime
+        system_status=system_status, components=components, stats=stats, uptime_seconds=uptime
     )
 
 
@@ -269,11 +262,12 @@ async def get_status():
 # Search Endpoints
 # ============================================================================
 
+
 @app.post(
     "/search",
     response_model=SearchResponse,
     summary="Search Documents",
-    description="Semantic search across indexed documents using ColPali embeddings"
+    description="Semantic search across indexed documents using ColPali embeddings",
 )
 async def search_documents(request: SearchRequest):
     """
@@ -284,10 +278,7 @@ async def search_documents(request: SearchRequest):
     2. Late interaction re-ranking with full multi-vectors (MaxSim)
     """
     if not _app_state["search_engine"]:
-        raise HTTPException(
-            status_code=503,
-            detail="Search engine not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Search engine not initialized")
 
     try:
         start_time = time.time()
@@ -297,7 +288,7 @@ async def search_documents(request: SearchRequest):
             query=request.query,
             n_results=request.n_results,
             search_mode=request.search_mode,
-            enable_reranking=True
+            enable_reranking=True,
         )
 
         search_time_ms = (time.time() - start_time) * 1000
@@ -305,14 +296,16 @@ async def search_documents(request: SearchRequest):
         # Convert to API response format
         results = []
         for result in response.get("results", []):
-            results.append(SearchResult(
-                doc_id=result.get("doc_id", ""),
-                chunk_id=result.get("chunk_id"),
-                page_num=result.get("page_num"),
-                score=result.get("score", 0.0),
-                text_preview=result.get("text", "")[:200] if result.get("text") else None,
-                metadata=result.get("metadata", {})
-            ))
+            results.append(
+                SearchResult(
+                    doc_id=result.get("doc_id", ""),
+                    chunk_id=result.get("chunk_id"),
+                    page_num=result.get("page_num"),
+                    score=result.get("score", 0.0),
+                    text_preview=result.get("text", "")[:200] if result.get("text") else None,
+                    metadata=result.get("metadata", {}),
+                )
+            )
 
         # Filter by minimum score if specified
         if request.min_score is not None:
@@ -323,34 +316,27 @@ async def search_documents(request: SearchRequest):
             results=results,
             total_results=len(results),
             search_time_ms=search_time_ms,
-            search_mode=request.search_mode
+            search_mode=request.search_mode,
         )
 
     except Exception as e:
         logger.error(f"Search error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Search failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
 @app.get(
     "/search",
     response_model=SearchResponse,
     summary="Search Documents (GET)",
-    description="Semantic search with query parameters (alternative to POST)"
+    description="Semantic search with query parameters (alternative to POST)",
 )
 async def search_documents_get(
     q: str = Query(..., description="Search query", min_length=1, max_length=1000),
     n: int = Query(10, description="Number of results", ge=1, le=100),
-    mode: str = Query("hybrid", description="Search mode: visual, text, or hybrid")
+    mode: str = Query("hybrid", description="Search mode: visual, text, or hybrid"),
 ):
     """Search via GET request for simple use cases."""
-    request = SearchRequest(
-        query=q,
-        n_results=n,
-        search_mode=mode
-    )
+    request = SearchRequest(query=q, n_results=n, search_mode=mode)
     return await search_documents(request)
 
 
@@ -358,15 +344,14 @@ async def search_documents_get(
 # Document Upload Endpoint
 # ============================================================================
 
+
 @app.post(
     "/upload",
     response_model=UploadResponse,
     summary="Upload Document",
-    description="Upload a document file (PDF, DOCX, PPTX) for processing and indexing"
+    description="Upload a document file (PDF, DOCX, PPTX) for processing and indexing",
 )
-async def upload_document(
-    file: UploadFile = File(..., description="Document file to upload")
-):
+async def upload_document(file: UploadFile = File(..., description="Document file to upload")):
     """
     Upload and queue document for processing.
 
@@ -381,7 +366,7 @@ async def upload_document(
         if file_ext not in allowed_extensions:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file type: {file_ext}. Allowed: {allowed_extensions}"
+                detail=f"Unsupported file type: {file_ext}. Allowed: {allowed_extensions}",
             )
 
         # Read file content
@@ -390,6 +375,7 @@ async def upload_document(
 
         # Generate doc ID
         import hashlib
+
         doc_id = hashlib.md5(content).hexdigest()[:12]
 
         # Save to uploads directory
@@ -407,28 +393,26 @@ async def upload_document(
             filename=file.filename,
             file_size_bytes=file_size,
             status="queued",
-            message="Document uploaded and queued for processing"
+            message="Document uploaded and queued for processing",
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Upload error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Upload failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 # ============================================================================
 # Processing Status Endpoint
 # ============================================================================
 
+
 @app.get(
     "/processing/{doc_id}",
     response_model=ProcessingStatus,
     summary="Get Processing Status",
-    description="Get the processing status for a specific document"
+    description="Get the processing status for a specific document",
 )
 async def get_processing_status(doc_id: str):
     """
@@ -446,7 +430,7 @@ async def get_processing_status(doc_id: str):
         pages_processed=None,
         total_pages=None,
         started_at=datetime.now(),
-        completed_at=datetime.now()
+        completed_at=datetime.now(),
     )
 
 
@@ -454,18 +438,14 @@ async def get_processing_status(doc_id: str):
 # Statistics Endpoint
 # ============================================================================
 
+
 @app.get(
-    "/stats/search",
-    summary="Search Statistics",
-    description="Get search performance statistics"
+    "/stats/search", summary="Search Statistics", description="Get search performance statistics"
 )
 async def get_search_stats():
     """Get search engine statistics."""
     if not _app_state["search_engine"]:
-        raise HTTPException(
-            status_code=503,
-            detail="Search engine not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Search engine not initialized")
 
     stats = _app_state["search_engine"].get_search_stats()
     return stats
@@ -475,11 +455,8 @@ async def get_search_stats():
 # Main Entry Point
 # ============================================================================
 
-def main(
-    host: str = "0.0.0.0",
-    port: int = 8002,
-    reload: bool = False
-):
+
+def main(host: str = "0.0.0.0", port: int = 8002, reload: bool = False):
     """
     Run the API server.
 
@@ -488,13 +465,7 @@ def main(
         port: Port number to listen on
         reload: Enable auto-reload on code changes (development)
     """
-    uvicorn.run(
-        "src.api.server:app",
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
+    uvicorn.run("src.api.server:app", host=host, port=port, reload=reload, log_level="info")
 
 
 if __name__ == "__main__":

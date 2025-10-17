@@ -5,36 +5,23 @@ This script validates that all requirements from the integration contract
 have been met and the implementation is ready for integration.
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
 
-from embeddings import (
-    ColPaliEngine,
-    EmbeddingOutput,
-    BatchEmbeddingOutput,
-    ScoringOutput,
-    EmbeddingError,
-    ModelLoadError,
-    DeviceError,
-    EmbeddingGenerationError,
-    ScoringError,
-    QuantizationError,
-    maxsim_score,
-    batch_maxsim_scores,
-    validate_embedding_shape,
-    load_model
-)
-from config import ModelConfig
-from PIL import Image
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import numpy as np
+from PIL import Image
+
+from config import ModelConfig
+from embeddings import ColPaliEngine, batch_maxsim_scores, maxsim_score, validate_embedding_shape
 
 
 def check_section(title):
     """Print section header."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"✓ {title}")
-    print("="*70)
+    print("=" * 70)
 
 
 def verify_imports():
@@ -42,20 +29,20 @@ def verify_imports():
     check_section("Verifying Imports")
 
     required = [
-        'ColPaliEngine',
-        'EmbeddingOutput',
-        'BatchEmbeddingOutput',
-        'ScoringOutput',
-        'EmbeddingError',
-        'ModelLoadError',
-        'DeviceError',
-        'EmbeddingGenerationError',
-        'ScoringError',
-        'QuantizationError',
-        'maxsim_score',
-        'batch_maxsim_scores',
-        'validate_embedding_shape',
-        'load_model',
+        "ColPaliEngine",
+        "EmbeddingOutput",
+        "BatchEmbeddingOutput",
+        "ScoringOutput",
+        "EmbeddingError",
+        "ModelLoadError",
+        "DeviceError",
+        "EmbeddingGenerationError",
+        "ScoringError",
+        "QuantizationError",
+        "maxsim_score",
+        "batch_maxsim_scores",
+        "validate_embedding_shape",
+        "load_model",
     ]
 
     print(f"Checking {len(required)} required exports...")
@@ -73,13 +60,13 @@ def verify_api_structure():
     engine = ColPaliEngine(device="cpu")
 
     required_methods = [
-        '__init__',
-        'embed_images',
-        'embed_texts',
-        'embed_query',
-        'score_multi_vector',
-        'get_model_info',
-        'clear_cache',
+        "__init__",
+        "embed_images",
+        "embed_texts",
+        "embed_query",
+        "score_multi_vector",
+        "get_model_info",
+        "clear_cache",
     ]
 
     print(f"Checking {len(required_methods)} required methods...")
@@ -104,12 +91,12 @@ def verify_output_shapes():
     img_result = engine.embed_images(images)
 
     assert isinstance(img_result, dict)
-    assert 'embeddings' in img_result
-    assert 'cls_tokens' in img_result
-    assert 'seq_lengths' in img_result
-    assert len(img_result['embeddings']) == 3
-    assert img_result['cls_tokens'].shape == (3, 768)
-    for emb in img_result['embeddings']:
+    assert "embeddings" in img_result
+    assert "cls_tokens" in img_result
+    assert "seq_lengths" in img_result
+    assert len(img_result["embeddings"]) == 3
+    assert img_result["cls_tokens"].shape == (3, 768)
+    for emb in img_result["embeddings"]:
         assert emb.shape[1] == 768, f"Expected 768 dims, got {emb.shape[1]}"
     print("  ✓ Image embeddings: (seq_length, 768)")
     print("  ✓ CLS tokens: (batch_size, 768)")
@@ -119,9 +106,9 @@ def verify_output_shapes():
     texts = ["Test text 1", "Test text 2"]
     text_result = engine.embed_texts(texts)
 
-    assert len(text_result['embeddings']) == 2
-    assert text_result['cls_tokens'].shape == (2, 768)
-    for emb in text_result['embeddings']:
+    assert len(text_result["embeddings"]) == 2
+    assert text_result["cls_tokens"].shape == (2, 768)
+    for emb in text_result["embeddings"]:
         assert emb.shape[1] == 768
     print("  ✓ Text embeddings: (seq_length, 768)")
     print("  ✓ CLS tokens: (batch_size, 768)")
@@ -130,24 +117,21 @@ def verify_output_shapes():
     print("\nTesting query embedding output shapes...")
     query_result = engine.embed_query("test query")
 
-    assert query_result['embeddings'].ndim == 2
-    assert query_result['embeddings'].shape[1] == 768
-    assert query_result['cls_token'].shape == (768,)
+    assert query_result["embeddings"].ndim == 2
+    assert query_result["embeddings"].shape[1] == 768
+    assert query_result["cls_token"].shape == (768,)
     print("  ✓ Query embeddings: (seq_length, 768)")
     print("  ✓ Query CLS token: (768,)")
 
     # Test scoring
     print("\nTesting scoring output...")
-    score_result = engine.score_multi_vector(
-        query_result['embeddings'],
-        text_result['embeddings']
-    )
+    score_result = engine.score_multi_vector(query_result["embeddings"], text_result["embeddings"])
 
-    assert 'scores' in score_result
-    assert 'scoring_time_ms' in score_result
-    assert 'num_candidates' in score_result
-    assert len(score_result['scores']) == 2
-    for score in score_result['scores']:
+    assert "scores" in score_result
+    assert "scoring_time_ms" in score_result
+    assert "num_candidates" in score_result
+    assert len(score_result["scores"]) == 2
+    for score in score_result["scores"]:
         assert 0.0 <= score <= 1.0, f"Score {score} not in [0, 1]"
     print("  ✓ Scores in [0, 1] range")
     print("  ✓ Correct number of scores")
@@ -167,9 +151,10 @@ def verify_sequence_lengths():
     img_result = engine.embed_images(images)
 
     visual_range = (80, 120)
-    for i, seq_len in enumerate(img_result['seq_lengths']):
-        assert visual_range[0] <= seq_len <= visual_range[1], \
-            f"Visual seq_len {seq_len} not in range {visual_range}"
+    for i, seq_len in enumerate(img_result["seq_lengths"]):
+        assert (
+            visual_range[0] <= seq_len <= visual_range[1]
+        ), f"Visual seq_len {seq_len} not in range {visual_range}"
     print(f"  ✓ Visual: {visual_range} tokens ✓")
     print(f"    Actual: {img_result['seq_lengths']}")
 
@@ -179,9 +164,10 @@ def verify_sequence_lengths():
     text_result = engine.embed_texts(texts)
 
     text_range = (50, 80)
-    for i, seq_len in enumerate(text_result['seq_lengths']):
-        assert text_range[0] <= seq_len <= text_range[1], \
-            f"Text seq_len {seq_len} not in range {text_range}"
+    for i, seq_len in enumerate(text_result["seq_lengths"]):
+        assert (
+            text_range[0] <= seq_len <= text_range[1]
+        ), f"Text seq_len {seq_len} not in range {text_range}"
     print(f"  ✓ Text: {text_range} tokens ✓")
     print(f"    Actual: {text_result['seq_lengths']}")
 
@@ -190,8 +176,7 @@ def verify_sequence_lengths():
     queries = ["short query", "somewhat longer query with more words"]
     for query in queries:
         result = engine.embed_query(query)
-        assert result['seq_length'] <= 80, \
-            f"Query seq_len {result['seq_length']} exceeds 80"
+        assert result["seq_length"] <= 80, f"Query seq_len {result['seq_length']} exceeds 80"
     print(f"  ✓ Query: ≤80 tokens ✓")
 
     print("\n✅ All sequence lengths in expected ranges")
@@ -283,8 +268,8 @@ def verify_device_management():
 
     # Get model info
     info = engine_cpu.get_model_info()
-    assert 'device' in info
-    assert 'memory_allocated_mb' in info
+    assert "device" in info
+    assert "memory_allocated_mb" in info
     print("  ✓ Model info retrieval")
 
     print("\n✅ Device management verified")
@@ -309,7 +294,7 @@ def verify_quantization():
     print(f"  ✓ INT8: {info_int8['memory_allocated_mb']:.0f}MB")
 
     # INT8 should use less memory
-    assert info_int8['memory_allocated_mb'] < info_fp16['memory_allocated_mb']
+    assert info_int8["memory_allocated_mb"] < info_fp16["memory_allocated_mb"]
     print("  ✓ INT8 uses less memory than FP16")
 
     print("\n✅ Quantization support verified")
@@ -327,8 +312,7 @@ def verify_cls_token_extraction():
     images = [Image.new("RGB", (100, 100))]
     img_result = engine.embed_images(images)
     np.testing.assert_array_almost_equal(
-        img_result['cls_tokens'][0],
-        img_result['embeddings'][0][0]
+        img_result["cls_tokens"][0], img_result["embeddings"][0][0]
     )
     print("  ✓ Image CLS token = first token")
 
@@ -336,17 +320,13 @@ def verify_cls_token_extraction():
     texts = ["Test text"]
     text_result = engine.embed_texts(texts)
     np.testing.assert_array_almost_equal(
-        text_result['cls_tokens'][0],
-        text_result['embeddings'][0][0]
+        text_result["cls_tokens"][0], text_result["embeddings"][0][0]
     )
     print("  ✓ Text CLS token = first token")
 
     # Query
     query_result = engine.embed_query("test")
-    np.testing.assert_array_almost_equal(
-        query_result['cls_token'],
-        query_result['embeddings'][0]
-    )
+    np.testing.assert_array_almost_equal(query_result["cls_token"], query_result["embeddings"][0])
     print("  ✓ Query CLS token = first token")
 
     print("\n✅ CLS token extraction verified")
@@ -354,9 +334,9 @@ def verify_cls_token_extraction():
 
 def main():
     """Run all verification checks."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Embedding-Agent Implementation Verification")
-    print("="*70)
+    print("=" * 70)
     print("\nRunning comprehensive verification...")
 
     try:
@@ -370,15 +350,15 @@ def main():
         verify_quantization()
         verify_cls_token_extraction()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ ALL VERIFICATION CHECKS PASSED")
-        print("="*70)
+        print("=" * 70)
         print("\nImplementation Status: READY FOR INTEGRATION")
         print("\nNext Steps:")
         print("  1. Processing-agent can import ColPaliEngine")
         print("  2. Search-agent can use MaxSim scoring")
         print("  3. Storage-agent can design two-stage search")
-        print("\n" + "="*70 + "\n")
+        print("\n" + "=" * 70 + "\n")
 
         return 0
 
@@ -388,9 +368,10 @@ def main():
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

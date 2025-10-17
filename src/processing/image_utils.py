@@ -9,26 +9,25 @@ Consumers: parser-agent, api-agent
 Contract: integration-contracts/02-image-utils.contract.md
 """
 
-from pathlib import Path
-from typing import Tuple, Optional
 import logging
 import re
+from pathlib import Path
+from typing import Optional, Tuple
 
 try:
     from PIL import Image
 except ImportError:
     raise ImportError(
-        "PIL (Pillow) is required for image operations. "
-        "Install with: pip install Pillow"
+        "PIL (Pillow) is required for image operations. " "Install with: pip install Pillow"
     )
 
 from src.config.image_config import (
-    PAGE_IMAGE_DIR,
-    THUMBNAIL_SIZE,
-    THUMBNAIL_QUALITY,
     IMAGE_FORMAT,
+    MAX_IMAGE_SIZE_MB,
+    PAGE_IMAGE_DIR,
     THUMBNAIL_FORMAT,
-    MAX_IMAGE_SIZE_MB
+    THUMBNAIL_QUALITY,
+    THUMBNAIL_SIZE,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,38 +37,33 @@ logger = logging.getLogger(__name__)
 # Exception Classes
 # ============================================================================
 
+
 class ImageStorageError(Exception):
     """Base exception for image storage operations."""
-    pass
 
 
 class DiskFullError(ImageStorageError):
     """Raised when disk is full."""
-    pass
 
 
 class PermissionError(ImageStorageError):
     """Raised when lacking file permissions."""
-    pass
 
 
 # ============================================================================
 # Validation Patterns
 # ============================================================================
 
-DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
-PAGE_NUM_PATTERN = re.compile(r'^\d+$')
+DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
+PAGE_NUM_PATTERN = re.compile(r"^\d+$")
 
 
 # ============================================================================
 # Core Functions
 # ============================================================================
 
-def save_page_image(
-    image: Image.Image,
-    doc_id: str,
-    page_num: int
-) -> Tuple[str, str]:
+
+def save_page_image(image: Image.Image, doc_id: str, page_num: int) -> Tuple[str, str]:
     """
     Save page image and generate thumbnail.
 
@@ -103,8 +97,7 @@ def save_page_image(
 
     if not DOC_ID_PATTERN.match(doc_id):
         raise ValueError(
-            f"Invalid doc_id format: {doc_id}. "
-            "Must be alphanumeric + dashes, 8-64 characters"
+            f"Invalid doc_id format: {doc_id}. " "Must be alphanumeric + dashes, 8-64 characters"
         )
 
     if not isinstance(page_num, int) or page_num < 1:
@@ -169,11 +162,7 @@ def save_page_image(
         raise ImageStorageError(f"Unexpected error saving image: {e}") from e
 
 
-def generate_thumbnail(
-    image: Image.Image,
-    size: Tuple[int, int],
-    quality: int
-) -> Image.Image:
+def generate_thumbnail(image: Image.Image, size: Tuple[int, int], quality: int) -> Image.Image:
     """
     Generate thumbnail from image.
 
@@ -209,9 +198,7 @@ def generate_thumbnail(
 
     width, height = size
     if not (0 < width < 10000 and 0 < height < 10000):
-        raise ValueError(
-            f"Size dimensions must be > 0 and < 10000, got {size}"
-        )
+        raise ValueError(f"Size dimensions must be > 0 and < 10000, got {size}")
 
     if not isinstance(quality, int) or not (1 <= quality <= 100):
         raise ValueError(f"Quality must be integer 1-100, got {quality}")
@@ -220,13 +207,13 @@ def generate_thumbnail(
     thumb = image.copy()
 
     # Convert RGBA to RGB (JPEG doesn't support transparency)
-    if thumb.mode == 'RGBA':
+    if thumb.mode == "RGBA":
         # Create white background
-        background = Image.new('RGB', thumb.size, (255, 255, 255))
+        background = Image.new("RGB", thumb.size, (255, 255, 255))
         background.paste(thumb, mask=thumb.split()[3])  # Use alpha channel as mask
         thumb = background
-    elif thumb.mode != 'RGB':
-        thumb = thumb.convert('RGB')
+    elif thumb.mode != "RGB":
+        thumb = thumb.convert("RGB")
 
     # Use thumbnail() method which maintains aspect ratio
     thumb.thumbnail(size, Image.Resampling.LANCZOS)
@@ -236,11 +223,7 @@ def generate_thumbnail(
     return thumb
 
 
-def get_image_path(
-    doc_id: str,
-    page_num: int,
-    is_thumb: bool = False
-) -> str:
+def get_image_path(doc_id: str, page_num: int, is_thumb: bool = False) -> str:
     """
     Get path to image file.
 
@@ -338,9 +321,7 @@ def delete_document_images(doc_id: str) -> int:
         raise ImageStorageError(f"Failed to delete images for {doc_id}: {e}") from e
 
     if errors:
-        logger.warning(
-            f"Deleted {deleted_count} files with {len(errors)} errors: {errors}"
-        )
+        logger.warning(f"Deleted {deleted_count} files with {len(errors)} errors: {errors}")
 
     return deleted_count
 

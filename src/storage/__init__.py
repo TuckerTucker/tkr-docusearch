@@ -13,34 +13,34 @@ Components:
 
 from .chroma_client import (
     ChromaClient,
-    StorageError,
     ChromaDBConnectionError,
+    DocumentNotFoundError,
     EmbeddingValidationError,
     MetadataCompressionError,
-    DocumentNotFoundError,
+    StorageError,
 )
 from .collection_manager import CollectionManager
 from .compression import (
     compress_embeddings,
+    compression_ratio,
     decompress_embeddings,
     estimate_compressed_size,
-    compression_ratio,
 )
 
 __all__ = [
     # Main client
-    'ChromaClient',
+    "ChromaClient",
     # Collection management
-    'CollectionManager',
+    "CollectionManager",
     # Exceptions
-    'StorageError',
-    'ChromaDBConnectionError',
-    'EmbeddingValidationError',
-    'MetadataCompressionError',
-    'DocumentNotFoundError',
+    "StorageError",
+    "ChromaDBConnectionError",
+    "EmbeddingValidationError",
+    "MetadataCompressionError",
+    "DocumentNotFoundError",
     # Compression utilities
-    'compress_embeddings',
-    'decompress_embeddings',
-    'estimate_compressed_size',
-    'compression_ratio',
+    "compress_embeddings",
+    "decompress_embeddings",
+    "estimate_compressed_size",
+    "compression_ratio",
 ]

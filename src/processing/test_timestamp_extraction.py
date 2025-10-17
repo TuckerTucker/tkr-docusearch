@@ -8,6 +8,7 @@ Wave 2 - Backend Implementation
 """
 
 import pytest
+
 from src.processing.text_processor import extract_timestamps_from_text
 
 
@@ -221,9 +222,7 @@ class TestTimestampExtraction:
 
     def test_float_precision(self):
         """High precision floats"""
-        start, end, text = extract_timestamps_from_text(
-            "[time: 1.123456789-2.987654321] Text"
-        )
+        start, end, text = extract_timestamps_from_text("[time: 1.123456789-2.987654321] Text")
         assert start == pytest.approx(1.123456789, rel=1e-6)
         assert end == pytest.approx(2.987654321, rel=1e-6)
 

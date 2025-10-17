@@ -9,18 +9,12 @@ Consumers: api-endpoints-agent, processing-agent
 Contract: status-manager.contract.md
 """
 
-import threading
 import logging
-from typing import Dict, List, Optional, Any
+import threading
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from .status_models import (
-    ProcessingStatus,
-    ProcessingStatusEnum,
-    QueueItem,
-    get_stage_description,
-    calculate_progress,
-)
+from .status_models import ProcessingStatus, ProcessingStatusEnum, QueueItem, get_stage_description
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +83,7 @@ class StatusManager:
             # Store as dict in global status tracker
             self._status_dict[doc_id] = status.model_dump()
 
-            logger.info(
-                f"Created status for document {doc_id} (filename: {filename})"
-            )
+            logger.info(f"Created status for document {doc_id} (filename: {filename})")
             return status
 
     def get_status(self, doc_id: str) -> Optional[ProcessingStatus]:
@@ -112,9 +104,7 @@ class StatusManager:
             # Convert dict to Pydantic model
             return ProcessingStatus(**status_dict)
 
-    def update_status(
-        self, doc_id: str, status: str, progress: float, **kwargs
-    ) -> None:
+    def update_status(self, doc_id: str, status: str, progress: float, **kwargs) -> None:
         """
         Update processing status for a document.
 
@@ -145,9 +135,7 @@ class StatusManager:
             status_dict["updated_at"] = datetime.utcnow().isoformat()
 
             # Calculate elapsed time
-            started_at = datetime.fromisoformat(
-                status_dict["started_at"].replace("Z", "+00:00")
-            )
+            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
             elapsed = (datetime.utcnow() - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 
@@ -160,9 +148,7 @@ class StatusManager:
                 if key in ["page", "total_pages", "stage", "estimated_remaining"]:
                     status_dict[key] = value
 
-            logger.debug(
-                f"Updated status for {doc_id}: {status} ({progress:.0%})"
-            )
+            logger.debug(f"Updated status for {doc_id}: {status} ({progress:.0%})")
 
     def list_active(self) -> List[ProcessingStatus]:
         """
@@ -197,8 +183,7 @@ class StatusManager:
         """
         with self._lock:
             all_statuses = [
-                ProcessingStatus(**status_dict)
-                for status_dict in self._status_dict.values()
+                ProcessingStatus(**status_dict) for status_dict in self._status_dict.values()
             ]
 
             # Sort by updated_at (most recent first)
@@ -286,9 +271,7 @@ class StatusManager:
 
                 # Parse updated_at timestamp
                 try:
-                    updated_at = datetime.fromisoformat(
-                        updated_at_str.replace("Z", "+00:00")
-                    )
+                    updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
                     if updated_at < cutoff_time:
                         doc_ids_to_remove.append(doc_id)
                 except (ValueError, AttributeError):
@@ -335,9 +318,7 @@ class StatusManager:
             status_dict["estimated_remaining"] = None
 
             # Calculate final elapsed time
-            started_at = datetime.fromisoformat(
-                status_dict["started_at"].replace("Z", "+00:00")
-            )
+            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
             elapsed = (now - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 
@@ -346,10 +327,7 @@ class StatusManager:
                 if key in ["num_chunks", "storage_ids"]:
                     status_dict["metadata"][key] = value
 
-            logger.info(
-                f"Marked document {doc_id} as completed "
-                f"(elapsed: {elapsed:.1f}s)"
-            )
+            logger.info(f"Marked document {doc_id} as completed " f"(elapsed: {elapsed:.1f}s)")
 
     def mark_failed(self, doc_id: str, error: str) -> None:
         """
@@ -379,15 +357,12 @@ class StatusManager:
             status_dict["estimated_remaining"] = None
 
             # Calculate final elapsed time
-            started_at = datetime.fromisoformat(
-                status_dict["started_at"].replace("Z", "+00:00")
-            )
+            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
             elapsed = (now - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 
             logger.error(
-                f"Marked document {doc_id} as failed: {error} "
-                f"(elapsed: {elapsed:.1f}s)"
+                f"Marked document {doc_id} as failed: {error} " f"(elapsed: {elapsed:.1f}s)"
             )
 
 
@@ -395,9 +370,7 @@ class StatusManager:
 _status_manager_instance: Optional[StatusManager] = None
 
 
-def get_status_manager(
-    status_dict: Optional[Dict[str, Dict[str, Any]]] = None
-) -> StatusManager:
+def get_status_manager(status_dict: Optional[Dict[str, Dict[str, Any]]] = None) -> StatusManager:
     """
     Get or create the global StatusManager instance.
 

@@ -12,10 +12,9 @@ Contract: integration-contracts/03-documents-api.contract.md
 import logging
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -28,16 +27,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["documents"])
 
 # Validation patterns (security)
-DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
-FILENAME_PATTERN = re.compile(r'^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png|svg))$')
+DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
+FILENAME_PATTERN = re.compile(r"^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png|svg))$")
 
 
 # ============================================================================
 # Request/Response Models
 # ============================================================================
 
+
 class DocumentListItem(BaseModel):
     """Document list item schema."""
+
     doc_id: str = Field(..., description="Document identifier (SHA-256 hash)")
     filename: str = Field(..., description="Original filename")
     page_count: int = Field(..., description="Number of pages")
@@ -50,6 +51,7 @@ class DocumentListItem(BaseModel):
 
 class DocumentListResponse(BaseModel):
     """Response model for GET /documents."""
+
     documents: List[DocumentListItem]
     total: int
     limit: int
@@ -58,6 +60,7 @@ class DocumentListResponse(BaseModel):
 
 class PageInfo(BaseModel):
     """Page information schema."""
+
     page_number: int = Field(..., description="Page number (1-indexed)")
     image_path: Optional[str] = Field(None, description="URL to full-resolution image")
     thumb_path: Optional[str] = Field(None, description="URL to thumbnail")
@@ -66,6 +69,7 @@ class PageInfo(BaseModel):
 
 class ChunkInfo(BaseModel):
     """Text chunk information schema."""
+
     chunk_id: str = Field(..., description="Chunk identifier")
     text_content: str = Field(..., description="Full text content")
     embedding_id: str = Field(..., description="ChromaDB embedding ID")
@@ -76,20 +80,28 @@ class ChunkInfo(BaseModel):
 
 class DocumentMetadata(BaseModel):
     """Document metadata schema."""
+
     page_count: int
     chunk_count: int
     has_images: bool
     collections: List[str]
-    raw_metadata: Optional[Dict[str, Any]] = Field(None, description="Raw metadata from ChromaDB (includes audio metadata)")
+    raw_metadata: Optional[Dict[str, Any]] = Field(
+        None, description="Raw metadata from ChromaDB (includes audio metadata)"
+    )
     vtt_available: bool = Field(False, description="True if VTT file exists (audio only)")
     markdown_available: bool = Field(False, description="True if markdown file exists")
-    has_timestamps: bool = Field(False, description="True if document has word-level timestamps (audio only)")
+    has_timestamps: bool = Field(
+        False, description="True if document has word-level timestamps (audio only)"
+    )
     has_album_art: bool = Field(False, description="True if album art is available (audio only)")
-    album_art_url: Optional[str] = Field(None, description="URL to album art cover image (audio only)")
+    album_art_url: Optional[str] = Field(
+        None, description="URL to album art cover image (audio only)"
+    )
 
 
 class DocumentDetail(BaseModel):
     """Document detail schema."""
+
     doc_id: str
     filename: str
     date_added: str
@@ -100,6 +112,7 @@ class DocumentDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Standard error response schema."""
+
     error: str = Field(..., description="Human-readable error message")
     code: str = Field(..., description="Machine-readable error code")
     details: Dict[str, Any] = Field(default_factory=dict, description="Additional error details")
@@ -108,6 +121,7 @@ class ErrorResponse(BaseModel):
 # ============================================================================
 # Utility Functions
 # ============================================================================
+
 
 def validate_doc_id(doc_id: str) -> bool:
     """Validate doc_id to prevent path traversal.
@@ -144,6 +158,7 @@ def get_chroma_client() -> ChromaClient:
     """
     try:
         import os
+
         host = os.getenv("CHROMA_HOST", "localhost")
         port = int(os.getenv("CHROMA_PORT", "8001"))
         return ChromaClient(host=host, port=port)
@@ -154,8 +169,8 @@ def get_chroma_client() -> ChromaClient:
             detail={
                 "error": "Database connection failed",
                 "code": "DATABASE_ERROR",
-                "details": {"message": str(e)}
-            }
+                "details": {"message": str(e)},
+            },
         )
 
 
@@ -185,18 +200,20 @@ def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) 
                 "pages": [],
                 "chunks": [],
                 "collections": [],
-                "has_images": False
+                "has_images": False,
             }
 
         # Add page info
         page_num = item.get("page")
         if page_num:
-            documents[doc_id]["pages"].append({
-                "page_number": page_num,
-                "image_path": item.get("image_path"),
-                "thumb_path": item.get("thumb_path"),
-                "metadata": item
-            })
+            documents[doc_id]["pages"].append(
+                {
+                    "page_number": page_num,
+                    "image_path": item.get("image_path"),
+                    "thumb_path": item.get("thumb_path"),
+                    "metadata": item,
+                }
+            )
 
         if item.get("image_path") or item.get("thumb_path"):
             documents[doc_id]["has_images"] = True
@@ -218,16 +235,13 @@ def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) 
                 "pages": [],
                 "chunks": [],
                 "collections": [],
-                "has_images": False
+                "has_images": False,
             }
 
         # Add chunk info
         chunk_id = item.get("chunk_id")
         if chunk_id is not None:
-            documents[doc_id]["chunks"].append({
-                "chunk_id": f"chunk_{chunk_id}",
-                "metadata": item
-            })
+            documents[doc_id]["chunks"].append({"chunk_id": f"chunk_{chunk_id}", "metadata": item})
 
         if "text" not in documents[doc_id]["collections"]:
             documents[doc_id]["collections"].append("text")
@@ -243,17 +257,18 @@ def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) 
 # API Endpoints
 # ============================================================================
 
+
 @router.get(
     "/documents",
     response_model=DocumentListResponse,
     summary="List all documents",
-    description="Get a paginated list of all stored documents with metadata"
+    description="Get a paginated list of all stored documents with metadata",
 )
 async def list_documents(
     limit: int = Query(50, ge=1, le=100, description="Number of results to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     search: Optional[str] = Query(None, description="Filter by filename (case-insensitive)"),
-    sort_by: str = Query("date_added", description="Sort field: date_added, filename, page_count")
+    sort_by: str = Query("date_added", description="Sort field: date_added, filename, page_count"),
 ):
     """List all stored documents with metadata.
 
@@ -278,8 +293,7 @@ async def list_documents(
 
         # Aggregate by document
         documents = aggregate_documents(
-            visual_data.get("metadatas", []),
-            text_data.get("metadatas", [])
+            visual_data.get("metadatas", []), text_data.get("metadatas", [])
         )
 
         # Convert to list
@@ -288,10 +302,7 @@ async def list_documents(
         # Apply search filter
         if search:
             search_lower = search.lower()
-            doc_list = [
-                doc for doc in doc_list
-                if search_lower in doc["filename"].lower()
-            ]
+            doc_list = [doc for doc in doc_list if search_lower in doc["filename"].lower()]
 
         # Apply sorting
         if sort_by == "filename":
@@ -305,7 +316,7 @@ async def list_documents(
         total = len(doc_list)
 
         # Apply pagination
-        doc_list = doc_list[offset:offset + limit]
+        doc_list = doc_list[offset : offset + limit]
 
         # Convert to response format
         response_docs = []
@@ -324,22 +335,21 @@ async def list_documents(
                             filename_part = parts[-1]
                             first_page_thumb = f"/images/{doc_id_part}/{filename_part}"
 
-            response_docs.append(DocumentListItem(
-                doc_id=doc["doc_id"],
-                filename=doc["filename"],
-                page_count=len(doc["pages"]),
-                chunk_count=len(doc["chunks"]),
-                date_added=doc["date_added"],
-                collections=doc["collections"],
-                has_images=doc["has_images"],
-                first_page_thumb=first_page_thumb
-            ))
+            response_docs.append(
+                DocumentListItem(
+                    doc_id=doc["doc_id"],
+                    filename=doc["filename"],
+                    page_count=len(doc["pages"]),
+                    chunk_count=len(doc["chunks"]),
+                    date_added=doc["date_added"],
+                    collections=doc["collections"],
+                    has_images=doc["has_images"],
+                    first_page_thumb=first_page_thumb,
+                )
+            )
 
         return DocumentListResponse(
-            documents=response_docs,
-            total=total,
-            limit=limit,
-            offset=offset
+            documents=response_docs, total=total, limit=limit, offset=offset
         )
 
     except Exception as e:
@@ -349,8 +359,8 @@ async def list_documents(
             detail={
                 "error": "Failed to retrieve documents",
                 "code": "DATABASE_ERROR",
-                "details": {"message": str(e)}
-            }
+                "details": {"message": str(e)},
+            },
         )
 
 
@@ -358,7 +368,7 @@ async def list_documents(
     "/documents/{doc_id}",
     response_model=DocumentDetail,
     summary="Get document details",
-    description="Get detailed metadata for a specific document including all pages and chunks"
+    description="Get detailed metadata for a specific document including all pages and chunks",
 )
 async def get_document(doc_id: str):
     """Get detailed metadata for a specific document.
@@ -379,22 +389,18 @@ async def get_document(doc_id: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     try:
         client = get_chroma_client()
 
         # Query visual collection
-        visual_data = client._visual_collection.get(
-            where={"doc_id": doc_id}
-        )
+        visual_data = client._visual_collection.get(where={"doc_id": doc_id})
 
         # Query text collection
-        text_data = client._text_collection.get(
-            where={"doc_id": doc_id}
-        )
+        text_data = client._text_collection.get(where={"doc_id": doc_id})
 
         # Check if document exists
         visual_ids = visual_data.get("ids", [])
@@ -406,8 +412,8 @@ async def get_document(doc_id: str):
                 detail={
                     "error": "Document not found",
                     "code": "DOCUMENT_NOT_FOUND",
-                    "details": {"doc_id": doc_id}
-                }
+                    "details": {"doc_id": doc_id},
+                },
             )
 
         # Build pages list
@@ -429,12 +435,14 @@ async def get_document(doc_id: str):
                 if len(parts) >= 2:
                     thumb_path = f"/images/{parts[-2]}/{parts[-1]}"
 
-            pages.append(PageInfo(
-                page_number=page_num,
-                image_path=image_path,
-                thumb_path=thumb_path,
-                embedding_id=visual_ids[idx]
-            ))
+            pages.append(
+                PageInfo(
+                    page_number=page_num,
+                    image_path=image_path,
+                    thumb_path=thumb_path,
+                    embedding_id=visual_ids[idx],
+                )
+            )
 
         # Sort pages by page number
         pages.sort(key=lambda p: p.page_number)
@@ -451,14 +459,16 @@ async def get_document(doc_id: str):
             end_time = metadata.get("end_time")
             has_timestamps = metadata.get("has_timestamps", False)
 
-            chunks.append(ChunkInfo(
-                chunk_id=f"chunk_{chunk_id}",
-                text_content=text_preview,
-                embedding_id=text_ids[idx],
-                start_time=start_time,
-                end_time=end_time,
-                has_timestamps=has_timestamps
-            ))
+            chunks.append(
+                ChunkInfo(
+                    chunk_id=f"chunk_{chunk_id}",
+                    text_content=text_preview,
+                    embedding_id=text_ids[idx],
+                    start_time=start_time,
+                    end_time=end_time,
+                    has_timestamps=has_timestamps,
+                )
+            )
 
         # Get document metadata
         filename = "unknown"
@@ -487,8 +497,12 @@ async def get_document(doc_id: str):
 
         # Check for VTT and markdown availability (Wave 2)
         vtt_available = raw_metadata.get("vtt_available", False) if raw_metadata else False
-        markdown_available = raw_metadata.get("markdown_available", False) if raw_metadata else False
-        has_word_timestamps = raw_metadata.get("has_word_timestamps", False) if raw_metadata else False
+        markdown_available = (
+            raw_metadata.get("markdown_available", False) if raw_metadata else False
+        )
+        has_word_timestamps = (
+            raw_metadata.get("has_word_timestamps", False) if raw_metadata else False
+        )
 
         # Check for album art availability (Wave 5)
         has_album_art = False
@@ -520,8 +534,8 @@ async def get_document(doc_id: str):
                 markdown_available=markdown_available,
                 has_timestamps=has_word_timestamps,
                 has_album_art=has_album_art,
-                album_art_url=album_art_url
-            )
+                album_art_url=album_art_url,
+            ),
         )
 
     except HTTPException:
@@ -533,8 +547,8 @@ async def get_document(doc_id: str):
             detail={
                 "error": "Failed to retrieve document",
                 "code": "DATABASE_ERROR",
-                "details": {"message": str(e)}
-            }
+                "details": {"message": str(e)},
+            },
         )
 
 
@@ -545,8 +559,8 @@ async def get_document(doc_id: str):
     responses={
         200: {"description": "Markdown file", "content": {"text/markdown": {}}},
         400: {"description": "Invalid document ID"},
-        404: {"description": "Markdown file not found"}
-    }
+        404: {"description": "Markdown file not found"},
+    },
 )
 async def get_markdown(doc_id: str):
     """Get document as markdown with frontmatter.
@@ -567,8 +581,8 @@ async def get_markdown(doc_id: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Check if markdown file exists
@@ -581,17 +595,14 @@ async def get_markdown(doc_id: str):
             detail={
                 "error": "Markdown file not found",
                 "code": "MARKDOWN_NOT_FOUND",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Get filename from ChromaDB for the download filename
     try:
         client = get_chroma_client()
-        text_data = client._text_collection.get(
-            where={"doc_id": doc_id},
-            limit=1
-        )
+        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
 
         filename = "unknown.md"
         if text_data.get("metadatas"):
@@ -609,7 +620,7 @@ async def get_markdown(doc_id: str):
         filename=filename,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
-        }
+        },
     )
 
 
@@ -620,8 +631,8 @@ async def get_markdown(doc_id: str):
     responses={
         200: {"description": "VTT file", "content": {"text/vtt": {}}},
         400: {"description": "Invalid document ID"},
-        404: {"description": "VTT file not found"}
-    }
+        404: {"description": "VTT file not found"},
+    },
 )
 async def get_vtt(doc_id: str):
     """Get VTT caption file for audio documents.
@@ -642,8 +653,8 @@ async def get_vtt(doc_id: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Check if VTT file exists
@@ -656,17 +667,17 @@ async def get_vtt(doc_id: str):
             detail={
                 "error": "VTT file not found",
                 "code": "VTT_NOT_FOUND",
-                "details": {"doc_id": doc_id, "message": "VTT captions only available for audio files with word-level timestamps"}
-            }
+                "details": {
+                    "doc_id": doc_id,
+                    "message": "VTT captions only available for audio files with word-level timestamps",
+                },
+            },
         )
 
     # Get filename from ChromaDB for the download filename
     try:
         client = get_chroma_client()
-        text_data = client._text_collection.get(
-            where={"doc_id": doc_id},
-            limit=1
-        )
+        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
 
         filename = "unknown.vtt"
         if text_data.get("metadatas"):
@@ -684,7 +695,7 @@ async def get_vtt(doc_id: str):
         filename=filename,
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
-        }
+        },
     )
 
 
@@ -693,10 +704,13 @@ async def get_vtt(doc_id: str):
     summary="Get audio file",
     description="Stream audio file for playback",
     responses={
-        200: {"description": "Audio file", "content": {"audio/mpeg": {}, "audio/wav": {}, "audio/mp4": {}}},
+        200: {
+            "description": "Audio file",
+            "content": {"audio/mpeg": {}, "audio/wav": {}, "audio/mp4": {}},
+        },
         400: {"description": "Invalid document ID"},
-        404: {"description": "Audio file not found"}
-    }
+        404: {"description": "Audio file not found"},
+    },
 )
 async def get_audio(doc_id: str):
     """Stream audio file for playback.
@@ -717,8 +731,8 @@ async def get_audio(doc_id: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Get document metadata to find audio filename
@@ -726,10 +740,7 @@ async def get_audio(doc_id: str):
         chroma_client = get_chroma_client()
 
         # Try text collection first (audio transcripts)
-        text_results = chroma_client._text_collection.get(
-            where={"doc_id": doc_id},
-            limit=1
-        )
+        text_results = chroma_client._text_collection.get(where={"doc_id": doc_id}, limit=1)
 
         if not text_results["ids"]:
             raise HTTPException(
@@ -737,8 +748,11 @@ async def get_audio(doc_id: str):
                 detail={
                     "error": "Audio file not found",
                     "code": "AUDIO_NOT_FOUND",
-                    "details": {"doc_id": doc_id, "message": "Document not found or is not an audio file"}
-                }
+                    "details": {
+                        "doc_id": doc_id,
+                        "message": "Document not found or is not an audio file",
+                    },
+                },
             )
 
         metadata = text_results["metadatas"][0]
@@ -750,8 +764,8 @@ async def get_audio(doc_id: str):
                 detail={
                     "error": "Audio filename not found in metadata",
                     "code": "FILENAME_NOT_FOUND",
-                    "details": {"doc_id": doc_id}
-                }
+                    "details": {"doc_id": doc_id},
+                },
             )
 
         # Check for audio file in data/uploads/
@@ -765,8 +779,8 @@ async def get_audio(doc_id: str):
                 detail={
                     "error": "Audio file not found on disk",
                     "code": "AUDIO_FILE_NOT_FOUND",
-                    "details": {"doc_id": doc_id, "filename": filename}
-                }
+                    "details": {"doc_id": doc_id, "filename": filename},
+                },
             )
 
         # Determine MIME type based on extension
@@ -776,7 +790,7 @@ async def get_audio(doc_id: str):
             ".wav": "audio/wav",
             ".m4a": "audio/mp4",
             ".ogg": "audio/ogg",
-            ".flac": "audio/flac"
+            ".flac": "audio/flac",
         }
         media_type = mime_types.get(ext, "audio/mpeg")
 
@@ -787,7 +801,7 @@ async def get_audio(doc_id: str):
             headers={
                 "Accept-Ranges": "bytes",  # Enable seeking
                 "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-            }
+            },
         )
 
     except HTTPException:
@@ -799,8 +813,8 @@ async def get_audio(doc_id: str):
             detail={
                 "error": "Internal server error",
                 "code": "AUDIO_SERVE_ERROR",
-                "details": {"doc_id": doc_id, "message": str(e)}
-            }
+                "details": {"doc_id": doc_id, "message": str(e)},
+            },
         )
 
 
@@ -811,8 +825,8 @@ async def get_audio(doc_id: str):
     responses={
         200: {"description": "Cover image file", "content": {"image/jpeg": {}, "image/png": {}}},
         400: {"description": "Invalid document ID"},
-        404: {"description": "Cover art not found"}
-    }
+        404: {"description": "Cover art not found"},
+    },
 )
 async def get_cover(doc_id: str):
     """Get album art cover image for audio documents.
@@ -833,8 +847,8 @@ async def get_cover(doc_id: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Check for cover art in data/images/{doc_id}/
@@ -859,8 +873,11 @@ async def get_cover(doc_id: str):
             detail={
                 "error": "Cover art not found",
                 "code": "COVER_NOT_FOUND",
-                "details": {"doc_id": doc_id, "message": "Album art only available for audio files with embedded cover images"}
-            }
+                "details": {
+                    "doc_id": doc_id,
+                    "message": "Album art only available for audio files with embedded cover images",
+                },
+            },
         )
 
     # Return file with caching headers (1 year for immutable images)
@@ -869,7 +886,7 @@ async def get_cover(doc_id: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=31536000, immutable",  # 1 year
-        }
+        },
     )
 
 
@@ -878,10 +895,13 @@ async def get_cover(doc_id: str):
     summary="Serve page image",
     description="Serve page image, thumbnail, or cover art file (including SVG placeholders)",
     responses={
-        200: {"description": "Image file", "content": {"image/png": {}, "image/jpeg": {}, "image/svg+xml": {}}},
+        200: {
+            "description": "Image file",
+            "content": {"image/png": {}, "image/jpeg": {}, "image/svg+xml": {}},
+        },
         403: {"description": "Invalid filename or path traversal attempt"},
-        404: {"description": "Image file not found"}
-    }
+        404: {"description": "Image file not found"},
+    },
 )
 async def get_image(doc_id: str, filename: str):
     """Serve page image, thumbnail, or cover art files.
@@ -904,8 +924,8 @@ async def get_image(doc_id: str, filename: str):
             detail={
                 "error": "Invalid document ID format",
                 "code": "INVALID_DOC_ID",
-                "details": {"doc_id": doc_id}
-            }
+                "details": {"doc_id": doc_id},
+            },
         )
 
     # Validate filename
@@ -916,14 +936,14 @@ async def get_image(doc_id: str, filename: str):
             detail={
                 "error": "Invalid filename format",
                 "code": "INVALID_FILENAME",
-                "details": {"filename": filename}
-            }
+                "details": {"filename": filename},
+            },
         )
 
     # Try both image directories: page_images (for PDFs) and images (for album art)
     search_dirs = [
         Path(PAGE_IMAGE_DIR) / doc_id,  # data/page_images/{doc_id}/
-        Path("data/images") / doc_id     # data/images/{doc_id}/
+        Path("data/images") / doc_id,  # data/images/{doc_id}/
     ]
 
     image_path = None
@@ -957,16 +977,16 @@ async def get_image(doc_id: str, filename: str):
             detail={
                 "error": "Image file not found",
                 "code": "IMAGE_NOT_FOUND",
-                "details": {"doc_id": doc_id, "filename": filename}
-            }
+                "details": {"doc_id": doc_id, "filename": filename},
+            },
         )
 
     # Determine content type
-    if filename.endswith('.png'):
+    if filename.endswith(".png"):
         media_type = "image/png"
-    elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+    elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
         media_type = "image/jpeg"
-    elif filename.endswith('.svg'):
+    elif filename.endswith(".svg"):
         media_type = "image/svg+xml"
     else:
         media_type = "application/octet-stream"
@@ -977,5 +997,5 @@ async def get_image(doc_id: str, filename: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=86400",  # 24 hours
-        }
+        },
     )

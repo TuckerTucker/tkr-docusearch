@@ -14,7 +14,8 @@ Usage:
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -40,16 +41,14 @@ class ResultRanker:
         """
         self.score_normalization = score_normalization
 
-        logger.info(
-            f"Initialized ResultRanker (normalization={score_normalization})"
-        )
+        logger.info(f"Initialized ResultRanker (normalization={score_normalization})")
 
     def merge_results(
         self,
         visual_results: List[Dict[str, Any]],
         text_results: List[Dict[str, Any]],
         n_results: int = 10,
-        deduplicate: bool = True
+        deduplicate: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Merge visual and text results.
@@ -95,9 +94,7 @@ class ResultRanker:
         return results
 
     def _normalize_scores(
-        self,
-        results: List[Dict[str, Any]],
-        collection: str
+        self, results: List[Dict[str, Any]], collection: str
     ) -> List[Dict[str, Any]]:
         """
         Normalize scores to [0, 1] range within collection.
@@ -145,12 +142,15 @@ class ResultRanker:
 
         else:
             logger.warning(
-                f"Unknown normalization method '{self.score_normalization}', "
-                f"using min_max"
+                f"Unknown normalization method '{self.score_normalization}', " f"using min_max"
             )
             min_score = np.min(scores)
             max_score = np.max(scores)
-            normalized = (scores - min_score) / (max_score - min_score) if max_score > min_score else np.ones_like(scores) * 0.5
+            normalized = (
+                (scores - min_score) / (max_score - min_score)
+                if max_score > min_score
+                else np.ones_like(scores) * 0.5
+            )
 
         # Add normalized scores to results
         for i, result in enumerate(results):
@@ -160,10 +160,7 @@ class ResultRanker:
 
         return results
 
-    def _deduplicate_by_doc(
-        self,
-        results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _deduplicate_by_doc(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Deduplicate results by document ID.
 
@@ -198,9 +195,7 @@ class ResultRanker:
         return deduplicated
 
     def rank_by_late_interaction(
-        self,
-        candidates: List[Dict[str, Any]],
-        late_interaction_scores: List[float]
+        self, candidates: List[Dict[str, Any]], late_interaction_scores: List[float]
     ) -> List[Dict[str, Any]]:
         """
         Update candidate scores with late interaction scores and re-rank.
@@ -229,16 +224,12 @@ class ResultRanker:
         # Re-rank by new scores
         candidates.sort(key=lambda x: x["score"], reverse=True)
 
-        logger.debug(
-            f"Re-ranked {len(candidates)} candidates with late interaction scores"
-        )
+        logger.debug(f"Re-ranked {len(candidates)} candidates with late interaction scores")
 
         return candidates
 
     def format_search_result(
-        self,
-        candidate: Dict[str, Any],
-        include_highlights: bool = True
+        self, candidate: Dict[str, Any], include_highlights: bool = True
     ) -> Dict[str, Any]:
         """
         Format candidate into SearchResult structure.
@@ -269,17 +260,13 @@ class ResultRanker:
                 "timestamp": metadata.get("timestamp"),
                 "seq_length": metadata.get("seq_length"),
                 "normalized_score": candidate.get("normalized_score"),
-                "stage1_score": candidate.get("stage1_score")
-            }
+                "stage1_score": candidate.get("stage1_score"),
+            },
         }
 
         return result
 
-    def _generate_thumbnail_url(
-        self,
-        embedding_id: str,
-        metadata: Dict[str, Any]
-    ) -> Optional[str]:
+    def _generate_thumbnail_url(self, embedding_id: str, metadata: Dict[str, Any]) -> Optional[str]:
         """Generate thumbnail URL for visual results."""
         if metadata.get("type") == "visual":
             return f"/api/thumbnail/{embedding_id}"

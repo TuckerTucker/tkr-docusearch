@@ -5,8 +5,8 @@ This runner avoids importing the processing module's __init__.py
 which has heavy dependencies (torch, etc.).
 """
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 # Get the processing directory

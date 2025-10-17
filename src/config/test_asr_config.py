@@ -4,8 +4,10 @@ Unit tests for ASR configuration.
 Tests AsrConfig dataclass validation, environment loading, and Docling conversion.
 """
 
-import pytest
 import os
+
+import pytest
+
 from src.config.processing_config import AsrConfig
 
 
@@ -129,7 +131,7 @@ class TestAsrConfigFromEnv:
             "ASR_DEVICE",
             "ASR_WORD_TIMESTAMPS",
             "ASR_TEMPERATURE",
-            "ASR_MAX_TIME_CHUNK"
+            "ASR_MAX_TIME_CHUNK",
         ]
         for var in self.env_vars:
             if var in os.environ:
@@ -228,6 +230,7 @@ class TestAsrConfigToDoclingModelSpec:
 
             # Check type
             from docling.datamodel.pipeline_options_asr_model import InlineAsrNativeWhisperOptions
+
             assert isinstance(spec, InlineAsrNativeWhisperOptions)
 
             # Check repo_id contains model name
@@ -323,11 +326,7 @@ class TestAsrConfigIntegration:
         assert config.model == "turbo"
 
         # Modify and create new config
-        config2 = AsrConfig(
-            model="base",
-            language="fr",
-            device="cpu"
-        )
+        config2 = AsrConfig(model="base", language="fr", device="cpu")
 
         assert config2.model == "base"
         assert config2.language == "fr"
@@ -347,25 +346,15 @@ class TestAsrConfigIntegration:
     def test_config_for_different_use_cases(self):
         """Test configurations for different use cases."""
         # Fast/low quality
-        fast_config = AsrConfig(
-            model="base",
-            temperature=0.0,
-            word_timestamps=False
-        )
+        fast_config = AsrConfig(model="base", temperature=0.0, word_timestamps=False)
         assert fast_config.model == "base"
 
         # High quality
-        quality_config = AsrConfig(
-            model="large",
-            temperature=0.0,
-            word_timestamps=True
-        )
+        quality_config = AsrConfig(model="large", temperature=0.0, word_timestamps=True)
         assert quality_config.model == "large"
 
         # Multi-language
-        multilang_config = AsrConfig(
-            language="auto"
-        )
+        multilang_config = AsrConfig(language="auto")
         assert multilang_config.language == "auto"
 
 

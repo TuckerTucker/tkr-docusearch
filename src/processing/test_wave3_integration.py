@@ -15,22 +15,19 @@ Usage:
 import logging
 import sys
 from pathlib import Path
+
 from PIL import Image
-import numpy as np
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from embeddings import ColPaliEngine
-from storage import ChromaClient
-from processing.processor import DocumentProcessor
 from config.model_config import ModelConfig
-from config.storage_config import StorageConfig
+from embeddings import ColPaliEngine
+from processing.processor import DocumentProcessor
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -47,11 +44,11 @@ def test_real_embedding_integration():
     print("-" * 80)
 
     model_config = ModelConfig(
-        name='vidore/colqwen2-v0.1',  # Will auto-select colpali-v1.2
-        device='mps',
-        precision='fp16',
+        name="vidore/colqwen2-v0.1",  # Will auto-select colpali-v1.2
+        device="mps",
+        precision="fp16",
         batch_size_visual=2,
-        batch_size_text=4
+        batch_size_text=4,
     )
 
     engine = ColPaliEngine(config=model_config)
@@ -85,20 +82,18 @@ def test_real_embedding_integration():
 
     # Simulate document pages as images
     sample_pages = [
-        Image.new('RGB', (224, 224), color='white'),
-        Image.new('RGB', (224, 224), color='lightgray'),
+        Image.new("RGB", (224, 224), color="white"),
+        Image.new("RGB", (224, 224), color="lightgray"),
     ]
 
     # Simulate document text chunks
     sample_chunks = [
         "This is the first chunk of text from our sample document. "
         "It contains information about quarterly revenue growth.",
-
         "The second chunk discusses financial performance metrics. "
         "Revenue increased by 23% year-over-year in Q3 2024.",
-
         "Finally, the third chunk covers future outlook and projections. "
-        "We expect continued growth through the next fiscal year."
+        "We expect continued growth through the next fiscal year.",
     ]
 
     print(f"✓ Created {len(sample_pages)} sample pages")
@@ -134,33 +129,33 @@ def test_real_embedding_integration():
 
     # Store visual embeddings
     visual_ids = []
-    for page_num, embedding in enumerate(visual_result['embeddings']):
+    for page_num, embedding in enumerate(visual_result["embeddings"]):
         emb_id = storage_client.add_visual_embedding(
             doc_id=doc_id,
             page=page_num + 1,
             full_embeddings=embedding,
             metadata={
-                'filename': 'sample_document.pdf',
-                'upload_date': '2025-01-28',
-                'page_count': len(sample_pages)
-            }
+                "filename": "sample_document.pdf",
+                "upload_date": "2025-01-28",
+                "page_count": len(sample_pages),
+            },
         )
         visual_ids.append(emb_id)
         print(f"  ✓ Stored visual embedding: {emb_id} (shape: {embedding.shape})")
 
     # Store text embeddings
     text_ids = []
-    for chunk_num, embedding in enumerate(text_result['embeddings']):
+    for chunk_num, embedding in enumerate(text_result["embeddings"]):
         emb_id = storage_client.add_text_embedding(
             doc_id=doc_id,
             chunk_id=chunk_num,
             full_embeddings=embedding,
             metadata={
-                'filename': 'sample_document.pdf',
-                'chunk_size': len(sample_chunks[chunk_num].split()),
-                'page_number': 1,
-                'text_preview': sample_chunks[chunk_num][:100]  # Put in metadata instead
-            }
+                "filename": "sample_document.pdf",
+                "chunk_size": len(sample_chunks[chunk_num].split()),
+                "page_number": 1,
+                "text_preview": sample_chunks[chunk_num][:100],  # Put in metadata instead
+            },
         )
         text_ids.append(emb_id)
         print(f"  ✓ Stored text embedding: {emb_id} (shape: {embedding.shape})")
@@ -178,9 +173,7 @@ def test_real_embedding_integration():
 
     # Search visual collection
     visual_results = storage_client.search_visual(
-        query_embedding=query_result['cls_token'],
-        n_results=5,
-        filters=None
+        query_embedding=query_result["cls_token"], n_results=5, filters=None
     )
 
     print(f"\n  Visual Search Results:")
@@ -189,16 +182,14 @@ def test_real_embedding_integration():
 
     # Search text collection
     text_results = storage_client.search_text(
-        query_embedding=query_result['cls_token'],
-        n_results=5,
-        filters=None
+        query_embedding=query_result["cls_token"], n_results=5, filters=None
     )
 
     print(f"\n  Text Search Results:")
     for i, result in enumerate(text_results[:3], 1):
         print(f"    {i}. ID: {result['id']}, Distance: {result['distance']:.4f}")
-        if 'text_preview' in result['metadata']:
-            preview = result['metadata']['text_preview'][:60]
+        if "text_preview" in result["metadata"]:
+            preview = result["metadata"]["text_preview"][:60]
             print(f"        Preview: {preview}...")
 
     # Step 8: Test late interaction scoring
@@ -208,15 +199,15 @@ def test_real_embedding_integration():
     # Get full embeddings for top text result
     if text_results:
         top_result = text_results[0]
-        full_embedding = storage_client.get_full_embeddings(top_result['id'])
+        full_embedding = storage_client.get_full_embeddings(top_result["id"])
 
         print(f"✓ Retrieved full embedding: {full_embedding.shape}")
 
         # Compute MaxSim score
         scores = engine.score_multi_vector(
-            query_embeddings=query_result['embeddings'],
+            query_embeddings=query_result["embeddings"],
             document_embeddings=[full_embedding],
-            use_gpu=True
+            use_gpu=True,
         )
 
         print(f"✓ MaxSim score: {scores['scores'][0]:.4f}")
@@ -239,8 +230,10 @@ def test_real_embedding_integration():
     print(f"  • Embedding dimension: 128 (optimized for late interaction)")
     print(f"  • Storage: Compatible with ChromaDB (no metadata size issues)")
     print(f"  • Search: CLS token retrieval + MaxSim re-ranking working")
-    print(f"  • Performance: Visual ~{visual_result['batch_processing_time_ms']/len(sample_pages):.0f}ms/page, " +
-          f"Text ~{text_result['batch_processing_time_ms']/len(sample_chunks):.0f}ms/chunk")
+    print(
+        f"  • Performance: Visual ~{visual_result['batch_processing_time_ms']/len(sample_pages):.0f}ms/page, "
+        + f"Text ~{text_result['batch_processing_time_ms']/len(sample_chunks):.0f}ms/chunk"
+    )
 
     return True
 
@@ -257,14 +250,14 @@ def test_document_processor_integration():
 
     from processing.mocks import MockStorageClient
 
-    engine = ColPaliEngine(device='mps', precision='fp16')
+    engine = ColPaliEngine(device="mps", precision="fp16")
     storage_client = MockStorageClient()
 
     processor = DocumentProcessor(
         embedding_engine=engine,
         storage_client=storage_client,
         visual_batch_size=2,
-        text_batch_size=4
+        text_batch_size=4,
     )
 
     print("✓ DocumentProcessor initialized with real ColPali")
@@ -277,7 +270,7 @@ def test_document_processor_integration():
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         # Run integration tests
         success = test_real_embedding_integration()
@@ -296,5 +289,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n❌ Integration test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

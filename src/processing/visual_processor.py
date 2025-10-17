@@ -7,8 +7,9 @@ coordinating with the embedding agent and preparing results for storage.
 
 import logging
 import time
-from typing import List, Dict, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List
+
 import numpy as np
 
 from .docling_parser import Page
@@ -55,10 +56,7 @@ class VisualProcessor:
         logger.info(f"Initialized VisualProcessor (batch_size={batch_size})")
 
     def process_pages(
-        self,
-        pages: List[Page],
-        doc_id: str,
-        progress_callback=None
+        self, pages: List[Page], doc_id: str, progress_callback=None
     ) -> List[VisualEmbeddingResult]:
         """Process pages and generate visual embeddings.
 
@@ -104,25 +102,21 @@ class VisualProcessor:
             # Generate embeddings
             start_time = time.time()
             batch_output = self.embedding_engine.embed_images(
-                images=images,
-                batch_size=self.batch_size
+                images=images, batch_size=self.batch_size
             )
             elapsed_ms = (time.time() - start_time) * 1000
 
-            logger.debug(
-                f"Generated embeddings for {len(images)} pages "
-                f"in {elapsed_ms:.0f}ms"
-            )
+            logger.debug(f"Generated embeddings for {len(images)} pages " f"in {elapsed_ms:.0f}ms")
 
             # Create results
             for idx, page in enumerate(batch_pages):
                 result = VisualEmbeddingResult(
                     doc_id=doc_id,
                     page_num=page.page_num,
-                    embedding=batch_output['embeddings'][idx],
-                    cls_token=batch_output['cls_tokens'][idx],
-                    seq_length=batch_output['seq_lengths'][idx],
-                    processing_time_ms=elapsed_ms / len(images)
+                    embedding=batch_output["embeddings"][idx],
+                    cls_token=batch_output["cls_tokens"][idx],
+                    seq_length=batch_output["seq_lengths"][idx],
+                    processing_time_ms=elapsed_ms / len(images),
                 )
                 all_results.append(result)
 
@@ -133,16 +127,11 @@ class VisualProcessor:
                 except Exception as e:
                     logger.warning(f"Progress callback failed: {e}")
 
-        logger.info(
-            f"Completed visual processing: {len(all_results)} pages"
-        )
+        logger.info(f"Completed visual processing: {len(all_results)} pages")
 
         return all_results
 
-    def get_processing_stats(
-        self,
-        results: List[VisualEmbeddingResult]
-    ) -> Dict[str, Any]:
+    def get_processing_stats(self, results: List[VisualEmbeddingResult]) -> Dict[str, Any]:
         """Get statistics from processing results.
 
         Args:
@@ -157,7 +146,7 @@ class VisualProcessor:
                 "total_time_ms": 0.0,
                 "avg_time_per_page_ms": 0.0,
                 "total_tokens": 0,
-                "avg_tokens_per_page": 0.0
+                "avg_tokens_per_page": 0.0,
             }
 
         total_time = sum(r.processing_time_ms for r in results)
@@ -170,5 +159,5 @@ class VisualProcessor:
             "total_tokens": total_tokens,
             "avg_tokens_per_page": total_tokens / len(results),
             "min_tokens": min(r.seq_length for r in results),
-            "max_tokens": max(r.seq_length for r in results)
+            "max_tokens": max(r.seq_length for r in results),
         }

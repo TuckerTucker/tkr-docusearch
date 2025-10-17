@@ -8,21 +8,28 @@ Tests the integration of:
 - DoclingParser enhanced mode
 """
 
-import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
-from src.config.processing_config import EnhancedModeConfig, ChunkingStrategy
-from src.storage.metadata_schema import (
-    DocumentStructure, HeadingInfo, TableInfo, PictureInfo,
-    HeadingLevel, PictureType, ChunkContext
+import pytest
+
+from src.config.processing_config import ChunkingStrategy, EnhancedModeConfig
+from src.processing.docling_parser import DoclingParser, Page, TextChunk
+from src.processing.smart_chunker import (
+    LegacyChunker,
+    SmartChunker,
+    contextualize_chunk,
+    create_chunker,
 )
 from src.processing.structure_extractor import extract_document_structure
-from src.processing.smart_chunker import (
-    SmartChunker, LegacyChunker, create_chunker, contextualize_chunk
+from src.storage.metadata_schema import (
+    ChunkContext,
+    DocumentStructure,
+    HeadingInfo,
+    HeadingLevel,
+    PictureInfo,
+    PictureType,
+    TableInfo,
 )
-from src.processing.docling_parser import DoclingParser, TextChunk, Page
 
 
 class TestEnhancedModeConfig:
@@ -55,11 +62,7 @@ class TestDocumentStructure:
         structure = DocumentStructure()
 
         # Add a heading
-        heading = HeadingInfo(
-            text="Introduction",
-            level=HeadingLevel.SECTION_HEADER,
-            page_num=1
-        )
+        heading = HeadingInfo(text="Introduction", level=HeadingLevel.SECTION_HEADER, page_num=1)
         structure.headings.append(heading)
 
         # Add a table
@@ -69,7 +72,7 @@ class TestDocumentStructure:
             num_rows=5,
             num_cols=3,
             has_header=True,
-            table_id="table-0"
+            table_id="table-0",
         )
         structure.tables.append(table)
 
@@ -79,7 +82,7 @@ class TestDocumentStructure:
             picture_type=PictureType.CHART,
             caption="Figure 1",
             confidence=0.95,
-            picture_id="picture-0"
+            picture_id="picture-0",
         )
         structure.pictures.append(picture)
 
@@ -94,7 +97,7 @@ class TestDocumentStructure:
             section_path="Introduction > Methods",
             element_type="text",
             page_nums=[2, 3],
-            is_page_boundary=True
+            is_page_boundary=True,
         )
 
         assert context.parent_heading == "Methods"
@@ -147,12 +150,13 @@ class TestSmartChunker:
 
         # Create mock pages
         from PIL import Image
+
         mock_page = Page(
             page_num=1,
-            image=Image.new('RGB', (100, 100)),
+            image=Image.new("RGB", (100, 100)),
             width=100,
             height=100,
-            text="This is a test document. " * 100  # 500 words
+            text="This is a test document. " * 100,  # 500 words
         )
 
         chunks = chunker.chunk_pages([mock_page], doc_id="test-doc")
@@ -172,10 +176,8 @@ class TestSmartChunker:
             end_offset=40,
             word_count=5,
             context=ChunkContext(
-                parent_heading="Methods",
-                section_path="Introduction > Methods",
-                element_type="text"
-            )
+                parent_heading="Methods", section_path="Introduction > Methods", element_type="text"
+            ),
         )
 
         contextualized = contextualize_chunk(chunk)
@@ -190,11 +192,11 @@ class TestDoclingParserEnhancedMode:
     def test_parser_accepts_enhanced_config(self):
         """Test that parser accepts EnhancedModeConfig parameter."""
         parser = DoclingParser()
-        config = EnhancedModeConfig()
+        EnhancedModeConfig()
 
         # This should not raise an error
         # (We can't actually test parsing without a real PDF file)
-        assert hasattr(parser.parse_document, '__call__')
+        assert hasattr(parser.parse_document, "__call__")
 
     def test_text_chunk_has_context_field(self):
         """Test TextChunk dataclass has context field."""
@@ -206,7 +208,7 @@ class TestDoclingParserEnhancedMode:
             start_offset=0,
             end_offset=9,
             word_count=2,
-            context=context
+            context=context,
         )
 
         assert chunk.context is not None
@@ -221,29 +223,29 @@ class TestWave2IntegrationContract:
         config = EnhancedModeConfig()
 
         # Required configuration fields
-        assert hasattr(config, 'enable_table_structure')
-        assert hasattr(config, 'enable_picture_classification')
-        assert hasattr(config, 'enable_code_enrichment')
-        assert hasattr(config, 'enable_formula_enrichment')
-        assert hasattr(config, 'chunking_strategy')
-        assert hasattr(config, 'max_chunk_tokens')
-        assert hasattr(config, 'min_chunk_tokens')
-        assert hasattr(config, 'merge_peer_chunks')
-        assert hasattr(config, 'table_structure_mode')
-        assert hasattr(config, 'images_scale')
+        assert hasattr(config, "enable_table_structure")
+        assert hasattr(config, "enable_picture_classification")
+        assert hasattr(config, "enable_code_enrichment")
+        assert hasattr(config, "enable_formula_enrichment")
+        assert hasattr(config, "chunking_strategy")
+        assert hasattr(config, "max_chunk_tokens")
+        assert hasattr(config, "min_chunk_tokens")
+        assert hasattr(config, "merge_peer_chunks")
+        assert hasattr(config, "table_structure_mode")
+        assert hasattr(config, "images_scale")
 
     def test_metadata_schema_interface_complete(self):
         """Verify DocumentStructure has all required fields."""
         structure = DocumentStructure()
 
-        assert hasattr(structure, 'headings')
-        assert hasattr(structure, 'tables')
-        assert hasattr(structure, 'pictures')
-        assert hasattr(structure, 'code_blocks')
-        assert hasattr(structure, 'formulas')
-        assert hasattr(structure, 'total_sections')
-        assert hasattr(structure, 'max_heading_depth')
-        assert hasattr(structure, 'has_table_of_contents')
+        assert hasattr(structure, "headings")
+        assert hasattr(structure, "tables")
+        assert hasattr(structure, "pictures")
+        assert hasattr(structure, "code_blocks")
+        assert hasattr(structure, "formulas")
+        assert hasattr(structure, "total_sections")
+        assert hasattr(structure, "max_heading_depth")
+        assert hasattr(structure, "has_table_of_contents")
 
     def test_chunking_interface_complete(self):
         """Verify chunker interface compliance."""
@@ -252,9 +254,9 @@ class TestWave2IntegrationContract:
 
         # SmartChunker should have chunk_document method
         if isinstance(chunker, SmartChunker):
-            assert hasattr(chunker, 'chunk_document')
-            assert hasattr(chunker, 'hybrid_chunker')
-            assert hasattr(chunker, 'tokenizer')
+            assert hasattr(chunker, "chunk_document")
+            assert hasattr(chunker, "hybrid_chunker")
+            assert hasattr(chunker, "tokenizer")
 
     def test_parser_interface_updated(self):
         """Verify DoclingParser interface supports enhanced mode."""
@@ -262,11 +264,12 @@ class TestWave2IntegrationContract:
 
         # Check parse_document signature
         import inspect
+
         sig = inspect.signature(parser.parse_document)
         params = sig.parameters
 
-        assert 'config' in params
-        assert params['config'].default is None  # Optional parameter
+        assert "config" in params
+        assert params["config"].default is None  # Optional parameter
 
 
 def test_wave2_summary():

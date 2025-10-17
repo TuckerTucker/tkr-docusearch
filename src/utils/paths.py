@@ -10,10 +10,9 @@ across the project, especially important for:
 All paths returned by these utilities are absolute paths.
 """
 
-import os
 import logging
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +126,7 @@ def validate_file_path(
 
 # Standard directory getters
 
+
 def get_data_dir() -> Path:
     """Get absolute path to data/ directory."""
     return PROJECT_ROOT / "data"
@@ -159,6 +159,7 @@ def get_chroma_db_dir() -> Path:
 
 # Utility functions for common operations
 
+
 def is_audio_file(path: Union[str, Path]) -> bool:
     """
     Check if a file is an audio file based on extension.
@@ -169,7 +170,7 @@ def is_audio_file(path: Union[str, Path]) -> bool:
     Returns:
         True if file has audio extension (.mp3, .wav, .m4a, .flac, etc.)
     """
-    audio_extensions = {'.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac', '.wma'}
+    audio_extensions = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".wma"}
     path_obj = Path(path)
     return path_obj.suffix.lower() in audio_extensions
 
@@ -184,7 +185,7 @@ def is_document_file(path: Union[str, Path]) -> bool:
     Returns:
         True if file has document extension (.pdf, .docx, .pptx, etc.)
     """
-    doc_extensions = {'.pdf', '.docx', '.pptx', '.doc', '.ppt', '.txt', '.md'}
+    doc_extensions = {".pdf", ".docx", ".pptx", ".doc", ".ppt", ".txt", ".md"}
     path_obj = Path(path)
     return path_obj.suffix.lower() in doc_extensions
 
@@ -225,6 +226,7 @@ def get_file_info(path: Union[str, Path]) -> dict:
 
 # Logging helpers
 
+
 def log_path_info(path: Union[str, Path], context: str = "") -> None:
     """
     Log detailed path information for debugging.
@@ -244,5 +246,5 @@ def log_path_info(path: Union[str, Path], context: str = "") -> None:
         f"extension={info['extension']}"
     )
 
-    if not info['exists']:
+    if not info["exists"]:
         logger.warning(f"{context_str}Path does not exist: {info['absolute_path']}")

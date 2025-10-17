@@ -8,10 +8,10 @@ in HTML5 audio/video players.
 Wave 1 - Integration Contract IC-002
 """
 
-from typing import List, Optional
-from pathlib import Path
-import re
 import logging
+import re
+from pathlib import Path
+from typing import List, Optional
 
 from .types import TextChunk
 
@@ -20,17 +20,14 @@ logger = logging.getLogger(__name__)
 
 class VTTGenerationError(Exception):
     """Base exception for VTT generation errors."""
-    pass
 
 
 class InvalidTimestampError(VTTGenerationError):
     """Raised when timestamp format is invalid."""
-    pass
 
 
 class EmptyChunkError(VTTGenerationError):
     """Raised when no chunks with timestamps available."""
-    pass
 
 
 def format_timestamp(seconds: float) -> str:
@@ -78,14 +75,14 @@ def validate_vtt(vtt_content: str) -> bool:
     if not vtt_content:
         return False
 
-    lines = vtt_content.split('\n')
+    lines = vtt_content.split("\n")
 
     # Must start with WEBVTT
-    if not lines or not lines[0].startswith('WEBVTT'):
+    if not lines or not lines[0].startswith("WEBVTT"):
         return False
 
     # Check for at least one valid timestamp line
-    timestamp_pattern = re.compile(r'\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}')
+    timestamp_pattern = re.compile(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}")
     has_timestamp = any(timestamp_pattern.match(line) for line in lines)
 
     return has_timestamp
@@ -126,8 +123,7 @@ def generate_vtt(chunks: List[TextChunk], filename: str) -> str:
 
         # 3. Filter chunks with timestamps
         timestamped_chunks = [
-            c for c in chunks
-            if c.start_time is not None and c.end_time is not None
+            c for c in chunks if c.start_time is not None and c.end_time is not None
         ]
 
         if not timestamped_chunks:
@@ -226,7 +222,7 @@ def save_vtt(doc_id: str, vtt_content: str, output_dir: Optional[Path] = None) -
         output_path = output_dir / filename
 
         # 4. Write file
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(vtt_content)
 
         logger.info(f"Saved VTT file: {output_path}")

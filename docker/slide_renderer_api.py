@@ -6,23 +6,83 @@ to PNG images using LibreOffice. It runs in a Docker container and is
 called by the native processing worker.
 """
 
+import logging
 import os
 import shutil
 import subprocess
 import tempfile
-import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+# Allowed base directories for file access (configurable via environment)
+ALLOWED_UPLOAD_DIRS = os.getenv("ALLOWED_UPLOAD_DIRS", "/uploads,/data/uploads").split(",")
+ALLOWED_EXTENSIONS = {".pptx", ".ppt"}
+
+
+def validate_and_sanitize_path(file_path: str) -> Path:
+    """Validate and sanitize file path to prevent path traversal attacks.
+
+    Args:
+        file_path: Requested file path
+
+    Returns:
+        Validated and resolved Path object
+
+    Raises:
+        HTTPException: If path is invalid or outside allowed directories
+    """
+    try:
+        # Convert to Path and resolve (eliminates .. and symlinks)
+        requested_path = Path(file_path).resolve()
+
+        # Check if path is within allowed directories
+        allowed = False
+        for allowed_dir in ALLOWED_UPLOAD_DIRS:
+            allowed_base = Path(allowed_dir).resolve()
+            try:
+                # Check if requested_path is relative to allowed_base
+                requested_path.relative_to(allowed_base)
+                allowed = True
+                break
+            except ValueError:
+                continue
+
+        if not allowed:
+            raise HTTPException(
+                status_code=403, detail=f"Access denied: Path outside allowed directories"
+            )
+
+        # Validate file extension
+        if requested_path.suffix.lower() not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid file type: {requested_path.suffix}"
+            )
+
+        # Check file exists
+        if not requested_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {requested_path.name}")
+
+        return requested_path
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Path validation error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
 
 app = FastAPI(title="Slide Renderer API", version="1.0.0")
 
@@ -35,6 +95,7 @@ class RenderRequest(BaseModel):
         output_dir: Directory to save rendered slide images
         dpi: Resolution for rendered images (default: 150)
     """
+
     file_path: str
     output_dir: str
     dpi: int = 150
@@ -49,6 +110,7 @@ class RenderResponse(BaseModel):
         slide_paths: List of paths to rendered slide images
         error: Error message if rendering failed
     """
+
     success: bool
     slide_count: int
     slide_paths: List[str]
@@ -56,9 +118,7 @@ class RenderResponse(BaseModel):
 
 
 def render_slides_with_libreoffice(
-    pptx_path: str,
-    output_dir: str,
-    dpi: int = 150
+    pptx_path: str, output_dir: str, dpi: int = 150
 ) -> Dict[str, Any]:
     """Render PPTX slides to PNG images using LibreOffice.
 
@@ -74,12 +134,9 @@ def render_slides_with_libreoffice(
         FileNotFoundError: If PPTX file doesn't exist
         RuntimeError: If LibreOffice conversion fails
     """
-    pptx_path = Path(pptx_path)
+    # Validate and sanitize paths
+    pptx_path = validate_and_sanitize_path(pptx_path)
     output_dir = Path(output_dir)
-
-    # Validate input file
-    if not pptx_path.exists():
-        raise FileNotFoundError(f"PPTX file not found: {pptx_path}")
 
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -95,15 +152,17 @@ def render_slides_with_libreoffice(
 
             result = subprocess.run(
                 [
-                    'libreoffice',
-                    '--headless',
-                    '--convert-to', 'pdf',
-                    '--outdir', str(temp_path),
-                    str(pptx_path)
+                    "libreoffice",
+                    "--headless",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    str(temp_path),
+                    str(pptx_path),
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
 
             if result.returncode != 0:
@@ -119,16 +178,10 @@ def render_slides_with_libreoffice(
 
             # Use pdftoppm for high-quality rendering
             result = subprocess.run(
-                [
-                    'pdftoppm',
-                    '-png',
-                    '-r', str(dpi),
-                    str(pdf_path),
-                    str(temp_path / 'slide')
-                ],
+                ["pdftoppm", "-png", "-r", str(dpi), str(pdf_path), str(temp_path / "slide")],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
 
             if result.returncode != 0:
@@ -136,14 +189,15 @@ def render_slides_with_libreoffice(
                 logger.warning("pdftoppm failed, trying ImageMagick...")
                 result = subprocess.run(
                     [
-                        'convert',
-                        '-density', str(dpi),
+                        "convert",
+                        "-density",
+                        str(dpi),
                         str(pdf_path),
-                        str(temp_path / 'slide-%03d.png')
+                        str(temp_path / "slide-%03d.png"),
                     ],
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=60,
                 )
 
                 if result.returncode != 0:
@@ -152,7 +206,7 @@ def render_slides_with_libreoffice(
                     raise RuntimeError(error_msg)
 
             # Find all generated PNG files
-            slide_files = sorted(temp_path.glob('slide-*.png'))
+            slide_files = sorted(temp_path.glob("slide-*.png"))
 
             if not slide_files:
                 raise RuntimeError("No slide images were generated")
@@ -168,30 +222,20 @@ def render_slides_with_libreoffice(
             logger.info(f"Successfully rendered {len(slide_paths)} slides")
 
             return {
-                'success': True,
-                'slide_count': len(slide_paths),
-                'slide_paths': slide_paths,
-                'error': None
+                "success": True,
+                "slide_count": len(slide_paths),
+                "slide_paths": slide_paths,
+                "error": None,
             }
 
         except subprocess.TimeoutExpired:
             error_msg = "Rendering timeout (60s exceeded)"
             logger.error(error_msg)
-            return {
-                'success': False,
-                'slide_count': 0,
-                'slide_paths': [],
-                'error': error_msg
-            }
+            return {"success": False, "slide_count": 0, "slide_paths": [], "error": error_msg}
         except Exception as e:
             error_msg = f"Rendering error: {str(e)}"
             logger.error(error_msg, exc_info=True)
-            return {
-                'success': False,
-                'slide_count': 0,
-                'slide_paths': [],
-                'error': error_msg
-            }
+            return {"success": False, "slide_count": 0, "slide_paths": [], "error": error_msg}
 
 
 @app.get("/health")
@@ -217,13 +261,11 @@ async def render_slides(request: RenderRequest):
 
     try:
         result = render_slides_with_libreoffice(
-            pptx_path=request.file_path,
-            output_dir=request.output_dir,
-            dpi=request.dpi
+            pptx_path=request.file_path, output_dir=request.output_dir, dpi=request.dpi
         )
 
-        if not result['success']:
-            raise HTTPException(status_code=500, detail=result['error'])
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=result["error"])
 
         return RenderResponse(**result)
 
@@ -241,8 +283,5 @@ async def root():
     return {
         "service": "Slide Renderer API",
         "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "render": "POST /render"
-        }
+        "endpoints": {"health": "/health", "render": "POST /render"},
     }

@@ -8,23 +8,24 @@ Wave 3: Real ColPali integration with fallback to mock if unavailable.
 """
 
 import logging
-from typing import Optional, Tuple, Any, Union, List
+from typing import Any, List, Tuple, Union
+
 import numpy as np
 
 try:
     from config.model_config import ModelConfig
-    from embeddings.exceptions import ModelLoadError, DeviceError, QuantizationError
+    from embeddings.exceptions import DeviceError, ModelLoadError, QuantizationError
 except ImportError:
     # Fallback to relative imports
     from ..config.model_config import ModelConfig
-    from .exceptions import ModelLoadError, DeviceError, QuantizationError
+    from .exceptions import DeviceError, ModelLoadError, QuantizationError
 
 logger = logging.getLogger(__name__)
 
 # Try to import ColPali, fallback to mock if unavailable
 try:
     from colpali_engine.models import ColPali, ColPaliProcessor
-    import torch
+
     COLPALI_AVAILABLE = True
     logger.info("ColPali engine available - using real implementation")
 except ImportError as e:
@@ -55,11 +56,7 @@ class MockColPaliModel:
         self._is_loaded = True
         logger.info(f"MockColPaliModel initialized: {model_name} on {device} ({dtype})")
 
-    def embed_batch(
-        self,
-        inputs: Any,
-        input_type: str
-    ) -> Tuple[list, list]:
+    def embed_batch(self, inputs: Any, input_type: str) -> Tuple[list, list]:
         """Generate mock embeddings.
 
         Args:
@@ -79,7 +76,7 @@ class MockColPaliModel:
             if input_type == "visual":
                 seq_len = np.random.randint(80, 120)  # Visual: 80-120 tokens
             else:
-                seq_len = np.random.randint(50, 80)   # Text: 50-80 tokens
+                seq_len = np.random.randint(50, 80)  # Text: 50-80 tokens
 
             # Generate random embeddings with correct shape
             emb = np.random.randn(seq_len, 768).astype(np.float32)
@@ -119,11 +116,7 @@ class RealColPaliModel:
         self._is_loaded = True
         logger.info(f"RealColPaliModel initialized on {device}")
 
-    def embed_batch(
-        self,
-        inputs: Union[List, Any],
-        input_type: str
-    ) -> Tuple[list, list]:
+    def embed_batch(self, inputs: Union[List, Any], input_type: str) -> Tuple[list, list]:
         """Generate real ColPali embeddings.
 
         Args:
@@ -145,8 +138,10 @@ class RealColPaliModel:
                 processed = self.processor.process_queries(inputs)
 
             # Move to device
-            processed = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v
-                        for k, v in processed.items()}
+            processed = {
+                k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                for k, v in processed.items()
+            }
 
             # Generate embeddings
             with torch.no_grad():
@@ -205,8 +200,6 @@ def load_model(config: ModelConfig) -> Tuple[Any, Any]:
             try:
                 logger.info("Attempting to load real ColPali model...")
 
-                import torch
-
                 # Use recommended ColPali model if using default
                 model_name = config.name
                 if model_name in ["vidore/colqwen2-v0.1", "vidore/colqwen2-v1.0"]:
@@ -220,9 +213,7 @@ def load_model(config: ModelConfig) -> Tuple[Any, Any]:
                 torch_dtype = get_torch_dtype(config.precision)
 
                 model = ColPali.from_pretrained(
-                    model_name,
-                    torch_dtype=torch_dtype,
-                    device_map=device
+                    model_name, torch_dtype=torch_dtype, device_map=device
                 )
 
                 # Model is already on device via device_map
@@ -245,7 +236,7 @@ def load_model(config: ModelConfig) -> Tuple[Any, Any]:
             model_name=config.name,
             device=device,
             dtype=config.precision,
-            is_quantized=config.is_quantized
+            is_quantized=config.is_quantized,
         )
 
         processor = MockColPaliProcessor(model_name=config.name)
@@ -276,32 +267,32 @@ def _validate_device(device: str) -> str:
     try:
         import torch
 
-        if device == 'mps':
+        if device == "mps":
             if torch.backends.mps.is_available():
                 logger.info("MPS (Metal) device available")
-                return 'mps'
+                return "mps"
             else:
                 logger.warning("MPS not available, falling back to CPU")
-                return 'cpu'
+                return "cpu"
 
-        elif device == 'cuda':
+        elif device == "cuda":
             if torch.cuda.is_available():
                 logger.info(f"CUDA device available: {torch.cuda.get_device_name(0)}")
-                return 'cuda'
+                return "cuda"
             else:
                 logger.warning("CUDA not available, falling back to CPU")
-                return 'cpu'
+                return "cpu"
 
-        elif device == 'cpu':
+        elif device == "cpu":
             logger.info("Using CPU device")
-            return 'cpu'
+            return "cpu"
 
         else:
             raise DeviceError(f"Invalid device: {device}")
 
     except ImportError:
         logger.warning("PyTorch not available, using CPU")
-        return 'cpu'
+        return "cpu"
 
 
 def get_torch_dtype(precision: str):
@@ -320,9 +311,9 @@ def get_torch_dtype(precision: str):
     try:
         import torch
 
-        if precision == 'fp16':
+        if precision == "fp16":
             return torch.float16
-        elif precision == 'int8':
+        elif precision == "int8":
             # INT8 quantization would use torch.float16 with additional quantization
             return torch.float16
         else:
@@ -355,16 +346,18 @@ def estimate_memory_usage(model: Any, device: str) -> float:
             # Real model memory estimation
             try:
                 import torch
+
                 if device == "mps":
                     # MPS doesn't have direct memory query, estimate based on parameters
                     param_size = sum(p.numel() * p.element_size() for p in model.model.parameters())
-                    return param_size / (1024 ** 2)  # Convert to MB
+                    return param_size / (1024**2)  # Convert to MB
                 elif device == "cuda":
-                    return torch.cuda.memory_allocated() / (1024 ** 2)
+                    return torch.cuda.memory_allocated() / (1024**2)
                 else:
                     return 0.0
-            except:
+            except Exception as e:
                 # Fallback estimate
+                logger.debug(f"Memory estimation failed: {e}")
                 return 8000.0  # ~8GB for ColPali
 
         return 0.0

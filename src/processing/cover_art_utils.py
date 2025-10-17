@@ -8,10 +8,9 @@ Provider: processing-agent
 Consumers: worker-webhook
 """
 
-from pathlib import Path
-from typing import Optional
 import logging
 import re
+from typing import Optional
 
 from src.config.image_config import PAGE_IMAGE_DIR
 
@@ -21,21 +20,22 @@ logger = logging.getLogger(__name__)
 COVER_ART_DIR = PAGE_IMAGE_DIR.parent / "images"
 
 # Validation pattern for doc_id
-DOC_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-]{8,64}$')
+DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
 
 
 # ============================================================================
 # Exception Classes
 # ============================================================================
 
+
 class CoverArtError(Exception):
     """Base exception for cover art operations."""
-    pass
 
 
 # ============================================================================
 # Core Functions
 # ============================================================================
+
 
 def delete_document_cover_art(doc_id: str) -> int:
     """

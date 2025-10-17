@@ -13,20 +13,21 @@ Target Coverage: 95%+
 Contract: integration-contracts/03-documents-api.contract.md
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from PIL import Image
 
 from src.processing.documents_api import router, validate_doc_id, validate_filename
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def app():
@@ -49,7 +50,8 @@ def temp_image_dir(monkeypatch):
 
     # Monkey patch PAGE_IMAGE_DIR
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'PAGE_IMAGE_DIR', temp_dir)
+
+    monkeypatch.setattr(api_module, "PAGE_IMAGE_DIR", temp_dir)
 
     # Create test document with images
     doc_id = "test-doc-12345678"
@@ -57,11 +59,11 @@ def temp_image_dir(monkeypatch):
     doc_dir.mkdir(parents=True)
 
     # Create test images
-    img = Image.new('RGB', (800, 1000), color='blue')
+    img = Image.new("RGB", (800, 1000), color="blue")
     img.save(doc_dir / "page001.png")
-    img.save(doc_dir / "page001_thumb.jpg", format='JPEG')
+    img.save(doc_dir / "page001_thumb.jpg", format="JPEG")
     img.save(doc_dir / "page002.png")
-    img.save(doc_dir / "page002_thumb.jpg", format='JPEG')
+    img.save(doc_dir / "page002_thumb.jpg", format="JPEG")
 
     yield temp_dir
 
@@ -72,6 +74,7 @@ def temp_image_dir(monkeypatch):
 # ============================================================================
 # Validation Tests
 # ============================================================================
+
 
 def test_validate_doc_id_valid():
     """Test doc_id validation with valid IDs."""
@@ -110,10 +113,11 @@ def test_validate_filename_invalid():
 # GET /documents Tests
 # ============================================================================
 
+
 def test_list_documents_structure(client, monkeypatch):
     """Test GET /documents returns correct structure."""
     # Mock ChromaDB client
-    from unittest.mock import Mock, MagicMock
+    from unittest.mock import Mock
 
     mock_client = Mock()
     mock_visual = Mock()
@@ -121,24 +125,28 @@ def test_list_documents_structure(client, monkeypatch):
 
     mock_visual.get.return_value = {
         "ids": ["testdoc1-page001"],
-        "metadatas": [{
-            "doc_id": "testdoc1",
-            "filename": "test.pdf",
-            "page": 1,
-            "timestamp": "2025-10-11T10:00:00Z",
-            "image_path": "/page_images/testdoc1/page001.png",
-            "thumb_path": "/page_images/testdoc1/page001_thumb.jpg"
-        }]
+        "metadatas": [
+            {
+                "doc_id": "testdoc1",
+                "filename": "test.pdf",
+                "page": 1,
+                "timestamp": "2025-10-11T10:00:00Z",
+                "image_path": "/page_images/testdoc1/page001.png",
+                "thumb_path": "/page_images/testdoc1/page001_thumb.jpg",
+            }
+        ],
     }
 
     mock_text.get.return_value = {
         "ids": ["testdoc1-chunk0000"],
-        "metadatas": [{
-            "doc_id": "testdoc1",
-            "filename": "test.pdf",
-            "chunk_id": 0,
-            "timestamp": "2025-10-11T10:00:00Z"
-        }]
+        "metadatas": [
+            {
+                "doc_id": "testdoc1",
+                "filename": "test.pdf",
+                "chunk_id": 0,
+                "timestamp": "2025-10-11T10:00:00Z",
+            }
+        ],
     }
 
     mock_client._visual_collection = mock_visual
@@ -146,7 +154,8 @@ def test_list_documents_structure(client, monkeypatch):
 
     # Monkey patch get_chroma_client
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'get_chroma_client', lambda: mock_client)
+
+    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
 
     response = client.get("/documents")
 
@@ -164,6 +173,7 @@ def test_list_documents_pagination(client, monkeypatch):
     """Test pagination parameters."""
     # Mock empty response
     from unittest.mock import Mock
+
     mock_client = Mock()
     mock_visual = Mock()
     mock_text = Mock()
@@ -173,7 +183,8 @@ def test_list_documents_pagination(client, monkeypatch):
     mock_client._text_collection = mock_text
 
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'get_chroma_client', lambda: mock_client)
+
+    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
 
     response = client.get("/documents?limit=10&offset=5")
 
@@ -198,6 +209,7 @@ def test_list_documents_invalid_pagination(client):
 # GET /documents/{doc_id} Tests
 # ============================================================================
 
+
 def test_get_document_success(client, monkeypatch):
     """Test GET /documents/{doc_id} with valid document."""
     from unittest.mock import Mock
@@ -217,7 +229,7 @@ def test_get_document_success(client, monkeypatch):
                 "page": 1,
                 "timestamp": "2025-10-11T10:00:00Z",
                 "image_path": f"/page_images/{doc_id}/page001.png",
-                "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg"
+                "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
             },
             {
                 "doc_id": doc_id,
@@ -225,27 +237,30 @@ def test_get_document_success(client, monkeypatch):
                 "page": 2,
                 "timestamp": "2025-10-11T10:00:00Z",
                 "image_path": f"/page_images/{doc_id}/page002.png",
-                "thumb_path": f"/page_images/{doc_id}/page002_thumb.jpg"
-            }
-        ]
+                "thumb_path": f"/page_images/{doc_id}/page002_thumb.jpg",
+            },
+        ],
     }
 
     mock_text.get.return_value = {
         "ids": [f"{doc_id}-chunk0000"],
-        "metadatas": [{
-            "doc_id": doc_id,
-            "filename": "test.pdf",
-            "chunk_id": 0,
-            "text_preview": "Sample text...",
-            "timestamp": "2025-10-11T10:00:00Z"
-        }]
+        "metadatas": [
+            {
+                "doc_id": doc_id,
+                "filename": "test.pdf",
+                "chunk_id": 0,
+                "text_preview": "Sample text...",
+                "timestamp": "2025-10-11T10:00:00Z",
+            }
+        ],
     }
 
     mock_client._visual_collection = mock_visual
     mock_client._text_collection = mock_text
 
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'get_chroma_client', lambda: mock_client)
+
+    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
 
     response = client.get(f"/documents/{doc_id}")
 
@@ -273,7 +288,8 @@ def test_get_document_not_found(client, monkeypatch):
     mock_client._text_collection = mock_text
 
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'get_chroma_client', lambda: mock_client)
+
+    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
 
     response = client.get("/documents/nonexistent-doc-id-12345")
 
@@ -296,6 +312,7 @@ def test_get_document_invalid_id(client):
 # ============================================================================
 # GET /images/{doc_id}/{filename} Tests
 # ============================================================================
+
 
 def test_get_image_success(client, temp_image_dir):
     """Test GET /images/{doc_id}/{filename} serves image."""
@@ -357,6 +374,7 @@ def test_get_image_caching_headers(client, temp_image_dir):
 # Integration Tests
 # ============================================================================
 
+
 def test_full_workflow(client, monkeypatch, temp_image_dir):
     """Test complete workflow: list → detail → image."""
     from unittest.mock import Mock
@@ -370,31 +388,36 @@ def test_full_workflow(client, monkeypatch, temp_image_dir):
 
     mock_visual.get.return_value = {
         "ids": [f"{doc_id}-page001"],
-        "metadatas": [{
-            "doc_id": doc_id,
-            "filename": "test.pdf",
-            "page": 1,
-            "timestamp": "2025-10-11T10:00:00Z",
-            "image_path": f"/page_images/{doc_id}/page001.png",
-            "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg"
-        }]
+        "metadatas": [
+            {
+                "doc_id": doc_id,
+                "filename": "test.pdf",
+                "page": 1,
+                "timestamp": "2025-10-11T10:00:00Z",
+                "image_path": f"/page_images/{doc_id}/page001.png",
+                "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
+            }
+        ],
     }
 
     mock_text.get.return_value = {
         "ids": [f"{doc_id}-chunk0000"],
-        "metadatas": [{
-            "doc_id": doc_id,
-            "filename": "test.pdf",
-            "chunk_id": 0,
-            "timestamp": "2025-10-11T10:00:00Z"
-        }]
+        "metadatas": [
+            {
+                "doc_id": doc_id,
+                "filename": "test.pdf",
+                "chunk_id": 0,
+                "timestamp": "2025-10-11T10:00:00Z",
+            }
+        ],
     }
 
     mock_client._visual_collection = mock_visual
     mock_client._text_collection = mock_text
 
     import src.processing.documents_api as api_module
-    monkeypatch.setattr(api_module, 'get_chroma_client', lambda: mock_client)
+
+    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
 
     # Step 1: List documents
     response = client.get("/documents")

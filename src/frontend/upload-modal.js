@@ -64,6 +64,21 @@ export class UploadModal {
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             <p class="upload-modal__message">Drop your documents here</p>
+            <p class="upload-modal__hint">or</p>
+
+            <!-- Keyboard-accessible file input -->
+            <input
+              type="file"
+              id="upload-modal-file-input"
+              class="upload-modal__file-input"
+              multiple
+              accept=".pdf,.docx,.doc,.pptx,.ppt,.mp3,.wav,.flac,.m4a"
+              aria-label="Select files to upload"
+            />
+            <label for="upload-modal-file-input" class="upload-modal__file-button">
+              Choose Files
+            </label>
+
             <p class="upload-modal__hint">Supported: PDF, DOCX, PPTX, MP3, WAV (max 100MB)</p>
           </div>
 
@@ -95,6 +110,21 @@ export class UploadModal {
       e.stopPropagation();
       this.handleDrop(e);
     });
+    // File input change handler for keyboard accessibility
+    const fileInput = this.modal.querySelector('#upload-modal-file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+          this.handleDrop({ dataTransfer: { files } });
+          // Clear the input so the same file can be selected again
+          fileInput.value = '';
+        }
+      });
+    }
+
   }
 
   /**

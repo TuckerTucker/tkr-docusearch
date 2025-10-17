@@ -6,25 +6,26 @@ interface contract for DocuSearch MVP. It supports multi-vector embeddings
 with CLS token-based indexing and compressed full sequence storage.
 """
 
+import ast
 import logging
-from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import chromadb
-from chromadb.config import Settings
+import numpy as np
 from chromadb.api.models.Collection import Collection
+from chromadb.config import Settings
 
 from .compression import (
+    CorruptedDataError,
     compress_embeddings,
-    decompress_embeddings,
-    compress_structure_metadata,
     compress_markdown,
+    compress_structure_metadata,
+    decompress_embeddings,
     decompress_markdown,
     sanitize_metadata_for_chroma,
-    CorruptedDataError,
 )
-from .metadata_schema import DocumentStructure, ChunkContext
+from .metadata_schema import ChunkContext, DocumentStructure
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,27 +33,22 @@ logger = logging.getLogger(__name__)
 
 class StorageError(Exception):
     """Base exception for storage operations."""
-    pass
 
 
 class ChromaDBConnectionError(StorageError):
     """Cannot connect to ChromaDB server."""
-    pass
 
 
 class EmbeddingValidationError(StorageError):
     """Invalid embedding shape or dtype."""
-    pass
 
 
 class MetadataCompressionError(StorageError):
     """Failed to compress or decompress embeddings."""
-    pass
 
 
 class DocumentNotFoundError(StorageError):
     """Document ID not found in collections."""
-    pass
 
 
 class ChromaClient:
@@ -72,7 +68,7 @@ class ChromaClient:
         host: str = "chromadb",
         port: int = 8000,
         visual_collection: str = "visual_collection",
-        text_collection: str = "text_collection"
+        text_collection: str = "text_collection",
     ):
         """Initialize ChromaDB client and create collections if needed.
 
@@ -95,10 +91,7 @@ class ChromaClient:
             self.client = chromadb.HttpClient(
                 host=host,
                 port=port,
-                settings=Settings(
-                    allow_reset=False,
-                    anonymized_telemetry=False
-                )
+                settings=Settings(allow_reset=False, anonymized_telemetry=False),
             )
 
             # Test connection
@@ -113,16 +106,13 @@ class ChromaClient:
         # Initialize collections
         self._visual_collection: Collection = self._get_or_create_collection(
             visual_collection,
-            metadata={"type": "visual", "description": "Page-level visual embeddings"}
+            metadata={"type": "visual", "description": "Page-level visual embeddings"},
         )
         self._text_collection: Collection = self._get_or_create_collection(
-            text_collection,
-            metadata={"type": "text", "description": "Chunk-level text embeddings"}
+            text_collection, metadata={"type": "text", "description": "Chunk-level text embeddings"}
         )
 
-        logger.info(
-            f"Collections initialized: {visual_collection}, {text_collection}"
-        )
+        logger.info(f"Collections initialized: {visual_collection}, {text_collection}")
 
     @property
     def visual_collection(self) -> Collection:
@@ -135,9 +125,7 @@ class ChromaClient:
         return self._text_collection
 
     def _get_or_create_collection(
-        self,
-        name: str,
-        metadata: Optional[Dict[str, Any]] = None
+        self, name: str, metadata: Optional[Dict[str, Any]] = None
     ) -> Collection:
         """Get existing collection or create new one.
 
@@ -155,16 +143,9 @@ class ChromaClient:
         except Exception:
             # Collection doesn't exist, create it
             logger.info(f"Creating new collection: {name}")
-            return self.client.create_collection(
-                name=name,
-                metadata=metadata or {}
-            )
+            return self.client.create_collection(name=name, metadata=metadata or {})
 
-    def _validate_embedding_shape(
-        self,
-        embeddings: np.ndarray,
-        expected_dim: int = 768
-    ) -> None:
+    def _validate_embedding_shape(self, embeddings: np.ndarray, expected_dim: int = 768) -> None:
         """Validate embedding shape and dtype.
 
         Args:
@@ -187,21 +168,15 @@ class ChromaClient:
         seq_length, dim = embeddings.shape
 
         if seq_length <= 0:
-            raise EmbeddingValidationError(
-                f"Sequence length must be > 0, got {seq_length}"
-            )
+            raise EmbeddingValidationError(f"Sequence length must be > 0, got {seq_length}")
 
         # Support both real ColPali (128) and mock (768) dimensions
         if dim not in [128, 768]:
-            raise EmbeddingValidationError(
-                f"Embedding dimension must be 128 or 768, got {dim}"
-            )
+            raise EmbeddingValidationError(f"Embedding dimension must be 128 or 768, got {dim}")
 
         # Ensure float32 dtype
         if embeddings.dtype not in [np.float32, np.float16, np.float64]:
-            raise EmbeddingValidationError(
-                f"Embeddings must be float type, got {embeddings.dtype}"
-            )
+            raise EmbeddingValidationError(f"Embeddings must be float type, got {embeddings.dtype}")
 
     def _extract_cls_token(self, embeddings: np.ndarray) -> List[float]:
         """Extract CLS token (first token) as representative vector.
@@ -215,11 +190,7 @@ class ChromaClient:
         cls_token = embeddings[0].astype(np.float32)
         return cls_token.tolist()
 
-    def _compress_and_validate(
-        self,
-        embeddings: np.ndarray,
-        max_size_mb: float = 2.0
-    ) -> str:
+    def _compress_and_validate(self, embeddings: np.ndarray, max_size_mb: float = 2.0) -> str:
         """Compress embeddings and validate size limits.
 
         Args:
@@ -236,18 +207,15 @@ class ChromaClient:
             compressed = compress_embeddings(embeddings)
 
             # Check size limit
-            size_bytes = len(compressed.encode('utf-8'))
+            size_bytes = len(compressed.encode("utf-8"))
             size_mb = size_bytes / (1024 * 1024)
 
             if size_mb > max_size_mb:
                 raise MetadataCompressionError(
-                    f"Compressed embeddings ({size_mb:.2f}MB) exceed "
-                    f"limit of {max_size_mb}MB"
+                    f"Compressed embeddings ({size_mb:.2f}MB) exceed " f"limit of {max_size_mb}MB"
                 )
 
-            logger.debug(
-                f"Compressed embeddings: {embeddings.shape} -> {size_mb:.2f}MB"
-            )
+            logger.debug(f"Compressed embeddings: {embeddings.shape} -> {size_mb:.2f}MB")
 
             return compressed
 
@@ -265,7 +233,7 @@ class ChromaClient:
         full_embeddings: np.ndarray,
         metadata: Dict[str, Any],
         image_path: Optional[str] = None,
-        thumb_path: Optional[str] = None
+        thumb_path: Optional[str] = None,
     ) -> str:
         """Store visual embedding for a document page.
 
@@ -336,19 +304,18 @@ class ChromaClient:
             "seq_length": seq_length,
             "embedding_shape": f"({seq_length}, {embedding_dim})",
             "timestamp": datetime.utcnow().isoformat(),
-            **metadata  # Add user-provided metadata
+            **metadata,  # Add user-provided metadata
         }
 
         # Validate required fields
         required_fields = ["filename", "source_path"]
         missing_fields = [f for f in required_fields if f not in complete_metadata]
         if missing_fields:
-            raise ValueError(
-                f"Missing required metadata fields: {missing_fields}"
-            )
+            raise ValueError(f"Missing required metadata fields: {missing_fields}")
 
         # Debug: Log metadata size to catch large fields
         import json
+
         try:
             metadata_json = json.dumps(complete_metadata)
             metadata_size_kb = len(metadata_json) / 1024
@@ -366,15 +333,10 @@ class ChromaClient:
         # Store in ChromaDB
         try:
             self._visual_collection.add(
-                ids=[embedding_id],
-                embeddings=[cls_token],
-                metadatas=[sanitized_metadata]
+                ids=[embedding_id], embeddings=[cls_token], metadatas=[sanitized_metadata]
             )
 
-            logger.info(
-                f"Stored visual embedding: {embedding_id} "
-                f"(seq_length={seq_length})"
-            )
+            logger.info(f"Stored visual embedding: {embedding_id} " f"(seq_length={seq_length})")
 
             return embedding_id
 
@@ -384,11 +346,7 @@ class ChromaClient:
             raise StorageError(error_msg) from e
 
     def add_text_embedding(
-        self,
-        doc_id: str,
-        chunk_id: int,
-        full_embeddings: np.ndarray,
-        metadata: Dict[str, Any]
+        self, doc_id: str, chunk_id: int, full_embeddings: np.ndarray, metadata: Dict[str, Any]
     ) -> str:
         """Store text embedding for a document chunk.
 
@@ -447,16 +405,14 @@ class ChromaClient:
             "seq_length": seq_length,
             "embedding_shape": f"({seq_length}, {embedding_dim})",
             "timestamp": datetime.utcnow().isoformat(),
-            **metadata  # Add user-provided metadata
+            **metadata,  # Add user-provided metadata
         }
 
         # Validate required fields
         required_fields = ["filename", "page", "source_path"]
         missing_fields = [f for f in required_fields if f not in complete_metadata]
         if missing_fields:
-            raise ValueError(
-                f"Missing required metadata fields: {missing_fields}"
-            )
+            raise ValueError(f"Missing required metadata fields: {missing_fields}")
 
         # Sanitize metadata for ChromaDB (convert lists/dicts to JSON strings)
         sanitized_metadata = sanitize_metadata_for_chroma(complete_metadata)
@@ -464,15 +420,10 @@ class ChromaClient:
         # Store in ChromaDB
         try:
             self._text_collection.add(
-                ids=[embedding_id],
-                embeddings=[cls_token],
-                metadatas=[sanitized_metadata]
+                ids=[embedding_id], embeddings=[cls_token], metadatas=[sanitized_metadata]
             )
 
-            logger.info(
-                f"Stored text embedding: {embedding_id} "
-                f"(seq_length={seq_length})"
-            )
+            logger.info(f"Stored text embedding: {embedding_id} " f"(seq_length={seq_length})")
 
             return embedding_id
 
@@ -496,23 +447,19 @@ class ChromaClient:
         """
         # Query any embedding for this doc_id (visual first)
         results = self._visual_collection.get(
-            where={"doc_id": doc_id},
-            limit=1,
-            include=["metadatas"]
+            where={"doc_id": doc_id}, limit=1, include=["metadatas"]
         )
 
-        if not results['ids']:
+        if not results["ids"]:
             # Try text collection
             results = self._text_collection.get(
-                where={"doc_id": doc_id},
-                limit=1,
-                include=["metadatas"]
+                where={"doc_id": doc_id}, limit=1, include=["metadatas"]
             )
 
-        if not results['ids']:
+        if not results["ids"]:
             raise DocumentNotFoundError(f"Document {doc_id} not found")
 
-        metadata = results['metadatas'][0]
+        metadata = results["metadatas"][0]
 
         # Check if markdown extraction succeeded
         if not metadata.get("markdown_extracted"):
@@ -538,9 +485,7 @@ class ChromaClient:
         return None
 
     def _prepare_enhanced_visual_metadata(
-        self,
-        base_metadata: Dict[str, Any],
-        structure: Optional[DocumentStructure] = None
+        self, base_metadata: Dict[str, Any], structure: Optional[DocumentStructure] = None
     ) -> Dict[str, Any]:
         """Prepare visual embedding metadata with optional structure.
 
@@ -570,9 +515,7 @@ class ChromaClient:
         return metadata
 
     def _prepare_enhanced_text_metadata(
-        self,
-        base_metadata: Dict[str, Any],
-        chunk_context: Optional[ChunkContext] = None
+        self, base_metadata: Dict[str, Any], chunk_context: Optional[ChunkContext] = None
     ) -> Dict[str, Any]:
         """Prepare text embedding metadata with optional chunk context.
 
@@ -610,7 +553,7 @@ class ChromaClient:
         self,
         query_embedding: np.ndarray,
         n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Stage 1 search: Fast retrieval using representative vectors.
 
@@ -640,41 +583,39 @@ class ChromaClient:
 
         try:
             results = self._visual_collection.query(
-                query_embeddings=[query_vector],
-                n_results=n_results,
-                where=filters
+                query_embeddings=[query_vector], n_results=n_results, where=filters
             )
 
             # Format results
             candidates = []
-            for i in range(len(results['ids'][0])):
-                metadata = results['metadatas'][0][i]
+            for i in range(len(results["ids"][0])):
+                metadata = results["metadatas"][0][i]
 
                 # Decompress full embeddings from metadata
                 full_embeddings = None
-                if 'full_embeddings' in metadata and 'seq_length' in metadata:
+                if "full_embeddings" in metadata and "seq_length" in metadata:
                     # Parse embedding shape from metadata string "(seq_len, dim)"
-                    shape_str = metadata.get('embedding_shape', '')
+                    shape_str = metadata.get("embedding_shape", "")
                     if shape_str:
                         # Extract dimensions from string like "(1031, 128)"
-                        seq_len, dim = eval(shape_str)
+                        seq_len, dim = ast.literal_eval(shape_str)
                         shape = (seq_len, dim)
-                        full_embeddings = decompress_embeddings(
-                            metadata['full_embeddings'],
-                            shape
-                        )
+                        full_embeddings = decompress_embeddings(metadata["full_embeddings"], shape)
 
-                candidates.append({
-                    "id": results['ids'][0][i],
-                    "score": 1.0 - results['distances'][0][i],  # Convert distance to similarity
-                    "metadata": metadata,
-                    "full_embeddings": full_embeddings,  # Include decompressed embeddings
-                    "representative_vector": results['embeddings'][0][i] if results.get('embeddings') else None
-                })
+                candidates.append(
+                    {
+                        "id": results["ids"][0][i],
+                        "score": 1.0 - results["distances"][0][i],  # Convert distance to similarity
+                        "metadata": metadata,
+                        "full_embeddings": full_embeddings,  # Include decompressed embeddings
+                        "representative_vector": (
+                            results["embeddings"][0][i] if results.get("embeddings") else None
+                        ),
+                    }
+                )
 
             logger.info(
-                f"Visual search returned {len(candidates)} candidates "
-                f"(requested: {n_results})"
+                f"Visual search returned {len(candidates)} candidates " f"(requested: {n_results})"
             )
 
             return candidates
@@ -688,7 +629,7 @@ class ChromaClient:
         self,
         query_embedding: np.ndarray,
         n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Stage 1 search: Fast retrieval using representative vectors.
 
@@ -714,41 +655,39 @@ class ChromaClient:
 
         try:
             results = self._text_collection.query(
-                query_embeddings=[query_vector],
-                n_results=n_results,
-                where=filters
+                query_embeddings=[query_vector], n_results=n_results, where=filters
             )
 
             # Format results
             candidates = []
-            for i in range(len(results['ids'][0])):
-                metadata = results['metadatas'][0][i]
+            for i in range(len(results["ids"][0])):
+                metadata = results["metadatas"][0][i]
 
                 # Decompress full embeddings from metadata
                 full_embeddings = None
-                if 'full_embeddings' in metadata and 'seq_length' in metadata:
+                if "full_embeddings" in metadata and "seq_length" in metadata:
                     # Parse embedding shape from metadata string "(seq_len, dim)"
-                    shape_str = metadata.get('embedding_shape', '')
+                    shape_str = metadata.get("embedding_shape", "")
                     if shape_str:
                         # Extract dimensions from string like "(1031, 128)"
-                        seq_len, dim = eval(shape_str)
+                        seq_len, dim = ast.literal_eval(shape_str)
                         shape = (seq_len, dim)
-                        full_embeddings = decompress_embeddings(
-                            metadata['full_embeddings'],
-                            shape
-                        )
+                        full_embeddings = decompress_embeddings(metadata["full_embeddings"], shape)
 
-                candidates.append({
-                    "id": results['ids'][0][i],
-                    "score": 1.0 - results['distances'][0][i],  # Convert distance to similarity
-                    "metadata": metadata,
-                    "full_embeddings": full_embeddings,  # Include decompressed embeddings
-                    "representative_vector": results['embeddings'][0][i] if results.get('embeddings') else None
-                })
+                candidates.append(
+                    {
+                        "id": results["ids"][0][i],
+                        "score": 1.0 - results["distances"][0][i],  # Convert distance to similarity
+                        "metadata": metadata,
+                        "full_embeddings": full_embeddings,  # Include decompressed embeddings
+                        "representative_vector": (
+                            results["embeddings"][0][i] if results.get("embeddings") else None
+                        ),
+                    }
+                )
 
             logger.info(
-                f"Text search returned {len(candidates)} candidates "
-                f"(requested: {n_results})"
+                f"Text search returned {len(candidates)} candidates " f"(requested: {n_results})"
             )
 
             return candidates
@@ -758,11 +697,7 @@ class ChromaClient:
             logger.error(error_msg)
             raise StorageError(error_msg) from e
 
-    def get_full_embeddings(
-        self,
-        embedding_id: str,
-        collection: str = "visual"
-    ) -> np.ndarray:
+    def get_full_embeddings(self, embedding_id: str, collection: str = "visual") -> np.ndarray:
         """Retrieve full multi-vector sequence for re-ranking.
 
         Args:
@@ -783,31 +718,27 @@ class ChromaClient:
             # Get metadata
             result = col.get(ids=[embedding_id], include=["metadatas"])
 
-            if not result['ids']:
+            if not result["ids"]:
                 raise DocumentNotFoundError(
                     f"Embedding {embedding_id} not found in {collection} collection"
                 )
 
-            metadata = result['metadatas'][0]
+            metadata = result["metadatas"][0]
 
             # Extract compressed embeddings and shape
-            compressed = metadata.get('full_embeddings')
-            shape_str = metadata.get('embedding_shape')
+            compressed = metadata.get("full_embeddings")
+            shape_str = metadata.get("embedding_shape")
 
             if not compressed or not shape_str:
-                raise MetadataCompressionError(
-                    f"Missing embedding data for {embedding_id}"
-                )
+                raise MetadataCompressionError(f"Missing embedding data for {embedding_id}")
 
             # Parse shape string "(seq_length, 768)" -> tuple
-            shape = tuple(map(int, shape_str.strip('()').split(',')))
+            shape = tuple(map(int, shape_str.strip("()").split(",")))
 
             # Decompress
             embeddings = decompress_embeddings(compressed, shape)
 
-            logger.debug(
-                f"Retrieved full embeddings for {embedding_id}: shape {embeddings.shape}"
-            )
+            logger.debug(f"Retrieved full embeddings for {embedding_id}: shape {embeddings.shape}")
 
             return embeddings
 
@@ -818,10 +749,7 @@ class ChromaClient:
             logger.error(error_msg)
             raise MetadataCompressionError(error_msg) from e
 
-    def delete_document(
-        self,
-        doc_id: str
-    ) -> Tuple[int, int]:
+    def delete_document(self, doc_id: str) -> Tuple[int, int]:
         """Delete all embeddings for a document.
 
         Args:
@@ -835,22 +763,16 @@ class ChromaClient:
 
         try:
             # Delete from visual collection
-            visual_results = self._visual_collection.get(
-                where={"doc_id": doc_id},
-                include=[]
-            )
-            if visual_results['ids']:
-                self._visual_collection.delete(ids=visual_results['ids'])
-                visual_count = len(visual_results['ids'])
+            visual_results = self._visual_collection.get(where={"doc_id": doc_id}, include=[])
+            if visual_results["ids"]:
+                self._visual_collection.delete(ids=visual_results["ids"])
+                visual_count = len(visual_results["ids"])
 
             # Delete from text collection
-            text_results = self._text_collection.get(
-                where={"doc_id": doc_id},
-                include=[]
-            )
-            if text_results['ids']:
-                self._text_collection.delete(ids=text_results['ids'])
-                text_count = len(text_results['ids'])
+            text_results = self._text_collection.get(where={"doc_id": doc_id}, include=[])
+            if text_results["ids"]:
+                self._text_collection.delete(ids=text_results["ids"])
+                text_count = len(text_results["ids"])
 
             logger.info(
                 f"Deleted document {doc_id}: "
@@ -884,11 +806,9 @@ class ChromaClient:
             # For performance, we'll estimate from visual collection
             visual_docs = self._visual_collection.get(include=["metadatas"])
             unique_docs = set()
-            if visual_docs['metadatas']:
+            if visual_docs["metadatas"]:
                 unique_docs = {
-                    meta.get('doc_id')
-                    for meta in visual_docs['metadatas']
-                    if meta.get('doc_id')
+                    meta.get("doc_id") for meta in visual_docs["metadatas"] if meta.get("doc_id")
                 }
 
             # Estimate storage size (simplified - actual DB size may vary)
@@ -899,7 +819,7 @@ class ChromaClient:
                 "visual_count": visual_count,
                 "text_count": text_count,
                 "total_documents": len(unique_docs),
-                "storage_size_mb": round(estimated_size_mb, 2)
+                "storage_size_mb": round(estimated_size_mb, 2),
             }
 
             logger.info(f"Collection stats: {stats}")

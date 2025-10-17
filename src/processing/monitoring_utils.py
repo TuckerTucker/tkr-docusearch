@@ -7,19 +7,17 @@ Provides:
 - Context managers for easy integration
 """
 
-import threading
-import time
-import signal
 import logging
-from typing import Optional, Callable, Any
+import signal
+import threading
 from contextlib import contextmanager
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class TimeoutException(Exception):
     """Raised when an operation times out."""
-    pass
 
 
 class PeriodicStatusUpdater:
@@ -31,11 +29,7 @@ class PeriodicStatusUpdater:
     like Docling parsing or Whisper transcription.
     """
 
-    def __init__(
-        self,
-        update_callback: Callable[[], None],
-        interval_seconds: float = 5.0
-    ):
+    def __init__(self, update_callback: Callable[[], None], interval_seconds: float = 5.0):
         """
         Initialize periodic updater.
 
@@ -72,10 +66,7 @@ class PeriodicStatusUpdater:
         if self._thread.is_alive():
             logger.warning("PeriodicStatusUpdater thread did not stop cleanly")
         else:
-            logger.debug(
-                f"Stopped periodic status updates "
-                f"({self._update_count} updates sent)"
-            )
+            logger.debug(f"Stopped periodic status updates " f"({self._update_count} updates sent)")
 
     def _update_loop(self):
         """Background thread that sends periodic updates."""
@@ -99,10 +90,7 @@ class PeriodicStatusUpdater:
 
 
 @contextmanager
-def periodic_status_updates(
-    update_callback: Callable[[], None],
-    interval_seconds: float = 5.0
-):
+def periodic_status_updates(update_callback: Callable[[], None], interval_seconds: float = 5.0):
     """
     Context manager for periodic status updates.
 
@@ -140,18 +128,15 @@ def operation_timeout(timeout_seconds: int, operation_name: str = "Operation"):
     Raises:
         TimeoutException: If operation exceeds timeout
     """
+
     def timeout_handler(signum, frame):
-        raise TimeoutException(
-            f"{operation_name} timed out after {timeout_seconds}s"
-        )
+        raise TimeoutException(f"{operation_name} timed out after {timeout_seconds}s")
 
     # Set up signal handler
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
 
-    logger.debug(
-        f"Starting {operation_name} with {timeout_seconds}s timeout"
-    )
+    logger.debug(f"Starting {operation_name} with {timeout_seconds}s timeout")
 
     try:
         yield
@@ -159,9 +144,7 @@ def operation_timeout(timeout_seconds: int, operation_name: str = "Operation"):
         signal.alarm(0)
         logger.debug(f"{operation_name} completed within timeout")
     except TimeoutException:
-        logger.error(
-            f"{operation_name} exceeded timeout of {timeout_seconds}s"
-        )
+        logger.error(f"{operation_name} exceeded timeout of {timeout_seconds}s")
         raise
     finally:
         # Restore original handler
@@ -174,7 +157,7 @@ def monitored_operation(
     status_callback: Optional[Callable[[], None]] = None,
     timeout_seconds: Optional[int] = None,
     operation_name: str = "Operation",
-    update_interval: float = 5.0
+    update_interval: float = 5.0,
 ):
     """
     Combined context manager for both periodic updates and timeout monitoring.
@@ -200,14 +183,10 @@ def monitored_operation(
     contexts = []
 
     if timeout_seconds is not None:
-        contexts.append(
-            operation_timeout(timeout_seconds, operation_name)
-        )
+        contexts.append(operation_timeout(timeout_seconds, operation_name))
 
     if status_callback is not None:
-        contexts.append(
-            periodic_status_updates(status_callback, update_interval)
-        )
+        contexts.append(periodic_status_updates(status_callback, update_interval))
 
     # Enter all contexts
     for ctx in contexts:

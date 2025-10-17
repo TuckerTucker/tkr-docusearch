@@ -7,25 +7,26 @@ and computing late interaction scores using the MaxSim algorithm.
 NOTE: Wave 2 implementation uses mock model. Real ColPali integration in Wave 3+.
 """
 
-import time
 import logging
-from typing import List, Dict, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 from PIL import Image
 
 try:
     from config.model_config import ModelConfig
-    from embeddings.types import EmbeddingOutput, BatchEmbeddingOutput, ScoringOutput
     from embeddings.exceptions import EmbeddingGenerationError, ScoringError
-    from embeddings.model_loader import load_model, estimate_memory_usage
+    from embeddings.model_loader import estimate_memory_usage, load_model
     from embeddings.scoring import batch_maxsim_scores, validate_embedding_shape
+    from embeddings.types import BatchEmbeddingOutput, EmbeddingOutput, ScoringOutput
 except ImportError:
     # Fallback to relative imports
     from ..config.model_config import ModelConfig
-    from .types import EmbeddingOutput, BatchEmbeddingOutput, ScoringOutput
     from .exceptions import EmbeddingGenerationError, ScoringError
-    from .model_loader import load_model, estimate_memory_usage
+    from .model_loader import estimate_memory_usage, load_model
     from .scoring import batch_maxsim_scores, validate_embedding_shape
+    from .types import BatchEmbeddingOutput, EmbeddingOutput, ScoringOutput
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class ColPaliEngine:
         precision: Optional[str] = None,
         cache_dir: Optional[str] = None,
         quantization: Optional[str] = None,
-        config: Optional[ModelConfig] = None
+        config: Optional[ModelConfig] = None,
     ):
         """
         Initialize ColPali model and processor.
@@ -63,7 +64,7 @@ class ColPaliEngine:
                 name=model_name or "vidore/colqwen2-v0.1",
                 device=device or "mps",
                 precision=precision or "fp16",
-                cache_dir=cache_dir or "/models"
+                cache_dir=cache_dir or "/models",
             )
             # Apply quantization if specified
             if quantization == "int8":
@@ -83,9 +84,7 @@ class ColPaliEngine:
         logger.info(f"Memory allocated: {self._memory_allocated:.1f}MB")
 
     def embed_images(
-        self,
-        images: List[Image.Image],
-        batch_size: Optional[int] = None
+        self, images: List[Image.Image], batch_size: Optional[int] = None
     ) -> BatchEmbeddingOutput:
         """
         Generate multi-vector embeddings for image batch.
@@ -125,7 +124,7 @@ class ColPaliEngine:
             all_seq_lengths = []
 
             for i in range(0, len(images), batch_size):
-                batch = images[i:i + batch_size]
+                batch = images[i : i + batch_size]
                 logger.debug(f"Processing batch {i//batch_size + 1}: {len(batch)} images")
 
                 # Generate embeddings (mock in Wave 2)
@@ -148,7 +147,7 @@ class ColPaliEngine:
                 cls_tokens=cls_tokens,
                 seq_lengths=all_seq_lengths,
                 input_type="visual",
-                batch_processing_time_ms=elapsed_ms
+                batch_processing_time_ms=elapsed_ms,
             )
 
         except Exception as e:
@@ -156,9 +155,7 @@ class ColPaliEngine:
             raise EmbeddingGenerationError(f"Failed to embed images: {e}") from e
 
     def embed_texts(
-        self,
-        texts: List[str],
-        batch_size: Optional[int] = None
+        self, texts: List[str], batch_size: Optional[int] = None
     ) -> BatchEmbeddingOutput:
         """
         Generate multi-vector embeddings for text batch.
@@ -202,7 +199,7 @@ class ColPaliEngine:
             all_seq_lengths = []
 
             for i in range(0, len(texts), batch_size):
-                batch = texts[i:i + batch_size]
+                batch = texts[i : i + batch_size]
                 logger.debug(f"Processing batch {i//batch_size + 1}: {len(batch)} texts")
 
                 # Generate embeddings (mock in Wave 2)
@@ -225,17 +222,14 @@ class ColPaliEngine:
                 cls_tokens=cls_tokens,
                 seq_lengths=all_seq_lengths,
                 input_type="text",
-                batch_processing_time_ms=elapsed_ms
+                batch_processing_time_ms=elapsed_ms,
             )
 
         except Exception as e:
             logger.error(f"Text embedding failed: {e}")
             raise EmbeddingGenerationError(f"Failed to embed texts: {e}") from e
 
-    def embed_query(
-        self,
-        query: str
-    ) -> EmbeddingOutput:
+    def embed_query(self, query: str) -> EmbeddingOutput:
         """
         Generate multi-vector embedding for search query.
 
@@ -270,11 +264,11 @@ class ColPaliEngine:
             elapsed_ms = (time.time() - start_time) * 1000
 
             return EmbeddingOutput(
-                embeddings=batch_output['embeddings'][0],
-                cls_token=batch_output['cls_tokens'][0],
-                seq_length=batch_output['seq_lengths'][0],
+                embeddings=batch_output["embeddings"][0],
+                cls_token=batch_output["cls_tokens"][0],
+                seq_length=batch_output["seq_lengths"][0],
                 input_type="text",
-                processing_time_ms=elapsed_ms
+                processing_time_ms=elapsed_ms,
             )
 
         except Exception as e:
@@ -285,7 +279,7 @@ class ColPaliEngine:
         self,
         query_embeddings: np.ndarray,
         document_embeddings: List[np.ndarray],
-        use_gpu: bool = True
+        use_gpu: bool = True,
     ) -> ScoringOutput:
         """
         Late interaction scoring using MaxSim algorithm.
@@ -328,11 +322,7 @@ class ColPaliEngine:
                 validate_embedding_shape(doc_emb, f"document_embeddings[{i}]")
 
             # Compute MaxSim scores
-            scores = batch_maxsim_scores(
-                query_embeddings,
-                document_embeddings,
-                use_gpu=use_gpu
-            )
+            scores = batch_maxsim_scores(query_embeddings, document_embeddings, use_gpu=use_gpu)
 
             elapsed_ms = (time.time() - start_time) * 1000
 
@@ -340,9 +330,7 @@ class ColPaliEngine:
             logger.info(f"Score range: [{min(scores):.3f}, {max(scores):.3f}]")
 
             return ScoringOutput(
-                scores=scores,
-                scoring_time_ms=elapsed_ms,
-                num_candidates=len(document_embeddings)
+                scores=scores, scoring_time_ms=elapsed_ms, num_candidates=len(document_embeddings)
             )
 
         except ValueError:
@@ -374,7 +362,7 @@ class ColPaliEngine:
             "dtype": self.config.precision,
             "quantization": "int8" if self.config.is_quantized else None,
             "memory_allocated_mb": self._memory_allocated,
-            "is_loaded": hasattr(self, 'model') and self.model is not None,
+            "is_loaded": hasattr(self, "model") and self.model is not None,
             "cache_dir": self.config.cache_dir,
             "batch_size_visual": self.config.batch_size_visual,
             "batch_size_text": self.config.batch_size_text,
@@ -392,10 +380,10 @@ class ColPaliEngine:
         try:
             import torch
 
-            if self.config.device == 'mps' and torch.backends.mps.is_available():
+            if self.config.device == "mps" and torch.backends.mps.is_available():
                 torch.mps.empty_cache()
                 logger.info("MPS cache cleared")
-            elif self.config.device == 'cuda' and torch.cuda.is_available():
+            elif self.config.device == "cuda" and torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 logger.info("CUDA cache cleared")
             else:

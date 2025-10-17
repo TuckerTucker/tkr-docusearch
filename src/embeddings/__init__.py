@@ -30,41 +30,38 @@ Example usage:
 """
 
 from .colpali_wrapper import ColPaliEngine
-from .types import EmbeddingOutput, BatchEmbeddingOutput, ScoringOutput
 from .exceptions import (
-    EmbeddingError,
-    ModelLoadError,
     DeviceError,
+    EmbeddingError,
     EmbeddingGenerationError,
+    ModelLoadError,
+    QuantizationError,
     ScoringError,
-    QuantizationError
 )
-from .scoring import maxsim_score, batch_maxsim_scores, validate_embedding_shape
 from .model_loader import load_model
+from .scoring import batch_maxsim_scores, maxsim_score, validate_embedding_shape
+from .types import BatchEmbeddingOutput, EmbeddingOutput, ScoringOutput
 
 __all__ = [
     # Main API
-    'ColPaliEngine',
-
+    "ColPaliEngine",
     # Type definitions
-    'EmbeddingOutput',
-    'BatchEmbeddingOutput',
-    'ScoringOutput',
-
+    "EmbeddingOutput",
+    "BatchEmbeddingOutput",
+    "ScoringOutput",
     # Exceptions
-    'EmbeddingError',
-    'ModelLoadError',
-    'DeviceError',
-    'EmbeddingGenerationError',
-    'ScoringError',
-    'QuantizationError',
-
+    "EmbeddingError",
+    "ModelLoadError",
+    "DeviceError",
+    "EmbeddingGenerationError",
+    "ScoringError",
+    "QuantizationError",
     # Utilities
-    'maxsim_score',
-    'batch_maxsim_scores',
-    'validate_embedding_shape',
-    'load_model',
+    "maxsim_score",
+    "batch_maxsim_scores",
+    "validate_embedding_shape",
+    "load_model",
 ]
 
-__version__ = '1.0.0'
-__author__ = 'DocuSearch Team'
+__version__ = "1.0.0"
+__author__ = "DocuSearch Team"

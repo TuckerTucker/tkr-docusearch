@@ -8,18 +8,15 @@ Wave 2 - API Backend
 """
 
 import logging
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 def generate_markdown_with_frontmatter(
-    chunks: List[Dict[str, Any]],
-    doc_metadata: Dict[str, Any],
-    filename: str,
-    doc_id: str
+    chunks: List[Dict[str, Any]], doc_metadata: Dict[str, Any], filename: str, doc_id: str
 ) -> str:
     """
     Generate markdown document with YAML frontmatter.
@@ -91,7 +88,9 @@ def generate_markdown_with_frontmatter(
     # Combine frontmatter and content
     markdown_content = "\n".join(frontmatter_lines + content_lines)
 
-    logger.debug(f"Generated markdown: {len(frontmatter_lines)} frontmatter lines, {len(chunks)} chunks")
+    logger.debug(
+        f"Generated markdown: {len(frontmatter_lines)} frontmatter lines, {len(chunks)} chunks"
+    )
 
     return markdown_content
 
@@ -124,7 +123,7 @@ def save_markdown(doc_id: str, markdown_content: str, output_dir: Optional[Path]
         output_path = output_dir / filename
 
         # 4. Write file
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(markdown_content)
 
         logger.info(f"Saved markdown file: {output_path}")

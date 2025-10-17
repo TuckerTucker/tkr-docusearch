@@ -6,19 +6,20 @@ tables, pictures, code blocks, and formulas from Docling's parsed output.
 """
 
 import logging
-from typing import List, Optional
+from typing import List
+
 from docling_core.types.doc import DoclingDocument
 
 from src.config.processing_config import EnhancedModeConfig
 from src.storage.metadata_schema import (
-    DocumentStructure,
-    HeadingInfo,
-    TableInfo,
-    PictureInfo,
     CodeBlockInfo,
+    DocumentStructure,
     FormulaInfo,
+    HeadingInfo,
     HeadingLevel,
-    PictureType
+    PictureInfo,
+    PictureType,
+    TableInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,12 +27,10 @@ logger = logging.getLogger(__name__)
 
 class StructureExtractionError(Exception):
     """Raised when structure extraction fails."""
-    pass
 
 
 def extract_document_structure(
-    doc: DoclingDocument,
-    config: EnhancedModeConfig
+    doc: DoclingDocument, config: EnhancedModeConfig
 ) -> DocumentStructure:
     """Extract document structure from DoclingDocument.
 
@@ -81,8 +80,7 @@ def extract_document_structure(
         size_kb = structure.size_estimate_kb()
         if size_kb > config.max_structure_size_kb:
             raise StructureExtractionError(
-                f"Structure size {size_kb:.1f}KB exceeds "
-                f"limit {config.max_structure_size_kb}KB"
+                f"Structure size {size_kb:.1f}KB exceeds " f"limit {config.max_structure_size_kb}KB"
             )
 
         logger.info(
@@ -117,25 +115,25 @@ def _extract_headings(doc: DoclingDocument) -> List[HeadingInfo]:
         "subtitle": HeadingLevel.SUB_SECTION_HEADER,
     }
 
-    if not hasattr(doc, 'texts') or not doc.texts:
+    if not hasattr(doc, "texts") or not doc.texts:
         return headings
 
     for text_item in doc.texts:
         # Check if this is a heading
-        label = text_item.label.lower() if hasattr(text_item, 'label') else None
+        label = text_item.label.lower() if hasattr(text_item, "label") else None
         if label not in LABEL_TO_LEVEL:
             continue
 
         # Get page number from provenance
         page_num = 1
-        if hasattr(text_item, 'prov') and text_item.prov:
-            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], 'page_no') else 1
+        if hasattr(text_item, "prov") and text_item.prov:
+            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], "page_no") else 1
 
         # Get bounding box if available
         bbox = None
-        if hasattr(text_item, 'prov') and text_item.prov:
+        if hasattr(text_item, "prov") and text_item.prov:
             prov = text_item.prov[0]
-            if hasattr(prov, 'bbox'):
+            if hasattr(prov, "bbox"):
                 try:
                     prov_bbox = prov.bbox
                     bbox = (prov_bbox.l, prov_bbox.t, prov_bbox.r, prov_bbox.b)
@@ -146,11 +144,11 @@ def _extract_headings(doc: DoclingDocument) -> List[HeadingInfo]:
         section_path = _build_section_path(text_item, doc, headings)
 
         heading = HeadingInfo(
-            text=text_item.text if hasattr(text_item, 'text') else "",
+            text=text_item.text if hasattr(text_item, "text") else "",
             level=LABEL_TO_LEVEL[label],
             page_num=page_num,
             bbox=bbox,
-            section_path=section_path
+            section_path=section_path,
         )
         headings.append(heading)
 
@@ -168,18 +166,18 @@ def _extract_tables(doc: DoclingDocument) -> List[TableInfo]:
     """
     tables = []
 
-    if not hasattr(doc, 'tables') or not doc.tables:
+    if not hasattr(doc, "tables") or not doc.tables:
         return tables
 
     for idx, table_item in enumerate(doc.tables):
         # Get page number
         page_num = 1
-        if hasattr(table_item, 'prov') and table_item.prov:
-            page_num = table_item.prov[0].page_no if hasattr(table_item.prov[0], 'page_no') else 1
+        if hasattr(table_item, "prov") and table_item.prov:
+            page_num = table_item.prov[0].page_no if hasattr(table_item.prov[0], "page_no") else 1
 
         # Get caption
         caption = None
-        if hasattr(table_item, 'caption') and table_item.caption:
+        if hasattr(table_item, "caption") and table_item.caption:
             caption = str(table_item.caption)
 
         # Get table dimensions
@@ -187,15 +185,15 @@ def _extract_tables(doc: DoclingDocument) -> List[TableInfo]:
         num_cols = 0
         has_header = False
 
-        if hasattr(table_item, 'data') and table_item.data:
+        if hasattr(table_item, "data") and table_item.data:
             # Try to get dimensions from table data
             try:
-                if hasattr(table_item.data, 'num_rows'):
+                if hasattr(table_item.data, "num_rows"):
                     num_rows = table_item.data.num_rows
-                if hasattr(table_item.data, 'num_cols'):
+                if hasattr(table_item.data, "num_cols"):
                     num_cols = table_item.data.num_cols
                 # Check for header row
-                if hasattr(table_item.data, 'grid') and table_item.data.grid:
+                if hasattr(table_item.data, "grid") and table_item.data.grid:
                     # Heuristic: if first row cells have different formatting, likely header
                     has_header = True
             except (AttributeError, TypeError):
@@ -203,9 +201,9 @@ def _extract_tables(doc: DoclingDocument) -> List[TableInfo]:
 
         # Get bbox
         bbox = None
-        if hasattr(table_item, 'prov') and table_item.prov:
+        if hasattr(table_item, "prov") and table_item.prov:
             prov = table_item.prov[0]
-            if hasattr(prov, 'bbox'):
+            if hasattr(prov, "bbox"):
                 try:
                     prov_bbox = prov.bbox
                     bbox = (prov_bbox.l, prov_bbox.t, prov_bbox.r, prov_bbox.b)
@@ -219,7 +217,7 @@ def _extract_tables(doc: DoclingDocument) -> List[TableInfo]:
             num_cols=num_cols,
             has_header=has_header,
             bbox=bbox,
-            table_id=f"table-{idx}"
+            table_id=f"table-{idx}",
         )
         tables.append(table)
 
@@ -237,23 +235,25 @@ def _extract_pictures(doc: DoclingDocument) -> List[PictureInfo]:
     """
     pictures = []
 
-    if not hasattr(doc, 'pictures') or not doc.pictures:
+    if not hasattr(doc, "pictures") or not doc.pictures:
         return pictures
 
     for idx, picture_item in enumerate(doc.pictures):
         # Get page number
         page_num = 1
-        if hasattr(picture_item, 'prov') and picture_item.prov:
-            page_num = picture_item.prov[0].page_no if hasattr(picture_item.prov[0], 'page_no') else 1
+        if hasattr(picture_item, "prov") and picture_item.prov:
+            page_num = (
+                picture_item.prov[0].page_no if hasattr(picture_item.prov[0], "page_no") else 1
+            )
 
         # Get classification if available
         picture_type = PictureType.OTHER
         confidence = 0.0
 
-        if hasattr(picture_item, 'annotations') and picture_item.annotations:
+        if hasattr(picture_item, "annotations") and picture_item.annotations:
             # Docling stores classification in annotations
             for annotation in picture_item.annotations:
-                if hasattr(annotation, 'label') and hasattr(annotation, 'score'):
+                if hasattr(annotation, "label") and hasattr(annotation, "score"):
                     # Map Docling label to PictureType
                     picture_type = _map_picture_type(annotation.label)
                     confidence = float(annotation.score)
@@ -261,14 +261,14 @@ def _extract_pictures(doc: DoclingDocument) -> List[PictureInfo]:
 
         # Get caption
         caption = None
-        if hasattr(picture_item, 'caption') and picture_item.caption:
+        if hasattr(picture_item, "caption") and picture_item.caption:
             caption = str(picture_item.caption)
 
         # Get bbox
         bbox = None
-        if hasattr(picture_item, 'prov') and picture_item.prov:
+        if hasattr(picture_item, "prov") and picture_item.prov:
             prov = picture_item.prov[0]
-            if hasattr(prov, 'bbox'):
+            if hasattr(prov, "bbox"):
                 try:
                     prov_bbox = prov.bbox
                     bbox = (prov_bbox.l, prov_bbox.t, prov_bbox.r, prov_bbox.b)
@@ -281,7 +281,7 @@ def _extract_pictures(doc: DoclingDocument) -> List[PictureInfo]:
             caption=caption,
             confidence=confidence,
             bbox=bbox,
-            picture_id=f"picture-{idx}"
+            picture_id=f"picture-{idx}",
         )
         pictures.append(picture)
 
@@ -299,38 +299,38 @@ def _extract_code_blocks(doc: DoclingDocument) -> List[CodeBlockInfo]:
     """
     code_blocks = []
 
-    if not hasattr(doc, 'texts') or not doc.texts:
+    if not hasattr(doc, "texts") or not doc.texts:
         return code_blocks
 
     for text_item in doc.texts:
         # Check if this is a code block
-        if not hasattr(text_item, 'label'):
+        if not hasattr(text_item, "label"):
             continue
 
         label = text_item.label.lower()
-        if label != 'code':
+        if label != "code":
             continue
 
         # Get page number
         page_num = 1
-        if hasattr(text_item, 'prov') and text_item.prov:
-            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], 'page_no') else 1
+        if hasattr(text_item, "prov") and text_item.prov:
+            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], "page_no") else 1
 
         # Get language (if detected)
         language = None
-        if hasattr(text_item, 'metadata') and text_item.metadata:
-            language = text_item.metadata.get('language')
+        if hasattr(text_item, "metadata") and text_item.metadata:
+            language = text_item.metadata.get("language")
 
         # Get number of lines
         num_lines = 0
-        if hasattr(text_item, 'text') and text_item.text:
-            num_lines = len(text_item.text.split('\n'))
+        if hasattr(text_item, "text") and text_item.text:
+            num_lines = len(text_item.text.split("\n"))
 
         # Get bbox
         bbox = None
-        if hasattr(text_item, 'prov') and text_item.prov:
+        if hasattr(text_item, "prov") and text_item.prov:
             prov = text_item.prov[0]
-            if hasattr(prov, 'bbox'):
+            if hasattr(prov, "bbox"):
                 try:
                     prov_bbox = prov.bbox
                     bbox = (prov_bbox.l, prov_bbox.t, prov_bbox.r, prov_bbox.b)
@@ -338,10 +338,7 @@ def _extract_code_blocks(doc: DoclingDocument) -> List[CodeBlockInfo]:
                     pass
 
         code_block = CodeBlockInfo(
-            page_num=page_num,
-            language=language,
-            num_lines=num_lines,
-            bbox=bbox
+            page_num=page_num, language=language, num_lines=num_lines, bbox=bbox
         )
         code_blocks.append(code_block)
 
@@ -359,44 +356,40 @@ def _extract_formulas(doc: DoclingDocument) -> List[FormulaInfo]:
     """
     formulas = []
 
-    if not hasattr(doc, 'texts') or not doc.texts:
+    if not hasattr(doc, "texts") or not doc.texts:
         return formulas
 
     for text_item in doc.texts:
         # Check if this is a formula
-        if not hasattr(text_item, 'label'):
+        if not hasattr(text_item, "label"):
             continue
 
         label = text_item.label.lower()
-        if label != 'formula':
+        if label != "formula":
             continue
 
         # Get page number
         page_num = 1
-        if hasattr(text_item, 'prov') and text_item.prov:
-            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], 'page_no') else 1
+        if hasattr(text_item, "prov") and text_item.prov:
+            page_num = text_item.prov[0].page_no if hasattr(text_item.prov[0], "page_no") else 1
 
         # Get LaTeX (if extracted)
         latex = None
-        if hasattr(text_item, 'text') and text_item.text:
+        if hasattr(text_item, "text") and text_item.text:
             latex = text_item.text
 
         # Get bbox
         bbox = None
-        if hasattr(text_item, 'prov') and text_item.prov:
+        if hasattr(text_item, "prov") and text_item.prov:
             prov = text_item.prov[0]
-            if hasattr(prov, 'bbox'):
+            if hasattr(prov, "bbox"):
                 try:
                     prov_bbox = prov.bbox
                     bbox = (prov_bbox.l, prov_bbox.t, prov_bbox.r, prov_bbox.b)
                 except (AttributeError, TypeError):
                     pass
 
-        formula = FormulaInfo(
-            page_num=page_num,
-            latex=latex,
-            bbox=bbox
-        )
+        formula = FormulaInfo(page_num=page_num, latex=latex, bbox=bbox)
         formulas.append(formula)
 
     return formulas
@@ -414,24 +407,22 @@ def _map_picture_type(docling_label: str) -> PictureType:
     label_lower = docling_label.lower()
 
     # Map common Docling labels
-    if any(word in label_lower for word in ['chart', 'graph', 'plot']):
+    if any(word in label_lower for word in ["chart", "graph", "plot"]):
         return PictureType.CHART
-    elif any(word in label_lower for word in ['diagram', 'flow', 'architecture']):
+    elif any(word in label_lower for word in ["diagram", "flow", "architecture"]):
         return PictureType.DIAGRAM
-    elif any(word in label_lower for word in ['photo', 'image']):
+    elif any(word in label_lower for word in ["photo", "image"]):
         return PictureType.PHOTO
-    elif 'logo' in label_lower:
+    elif "logo" in label_lower:
         return PictureType.LOGO
-    elif 'signature' in label_lower:
+    elif "signature" in label_lower:
         return PictureType.SIGNATURE
     else:
         return PictureType.OTHER
 
 
 def _build_section_path(
-    text_item,
-    doc: DoclingDocument,
-    previous_headings: List[HeadingInfo]
+    text_item, doc: DoclingDocument, previous_headings: List[HeadingInfo]
 ) -> str:
     """Build hierarchical section path for a heading.
 
@@ -445,7 +436,7 @@ def _build_section_path(
     """
     # Simple implementation: use heading text
     # More sophisticated version would track hierarchy
-    if hasattr(text_item, 'text') and text_item.text:
+    if hasattr(text_item, "text") and text_item.text:
         return text_item.text
     return ""
 
@@ -477,7 +468,7 @@ def _detect_toc(headings: List[HeadingInfo]) -> bool:
     # Simple heuristic: look for "table of contents" or "contents" heading
     for heading in headings:
         text_lower = heading.text.lower()
-        if any(word in text_lower for word in ['table of contents', 'contents']):
+        if any(word in text_lower for word in ["table of contents", "contents"]):
             if heading.level in [HeadingLevel.TITLE, HeadingLevel.SECTION_HEADER]:
                 return True
 

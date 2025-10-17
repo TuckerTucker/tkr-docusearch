@@ -5,21 +5,21 @@ Test multi-format document support.
 Tests format detection, parsing, and text-only vs visual processing.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.processing.docling_parser import (
-    get_format_type,
-    FormatType,
-    VISUAL_FORMATS,
-    IMAGE_FORMATS,
-    TEXT_ONLY_FORMATS,
     AUDIO_FORMATS,
+    IMAGE_FORMATS,
     OFFICE_FORMATS,
+    TEXT_ONLY_FORMATS,
+    VISUAL_FORMATS,
+    FormatType,
+    get_format_type,
 )
 
 
@@ -66,7 +66,9 @@ def test_format_detection():
         else:
             failed += 1
 
-        print(f"  {status} {filename:20} → {detected_type.value:10} (expected: {expected_type.value})")
+        print(
+            f"  {status} {filename:20} → {detected_type.value:10} (expected: {expected_type.value})"
+        )
 
     print(f"\nResults: {passed} passed, {failed} failed")
     return failed == 0
@@ -104,10 +106,12 @@ def test_configuration_loading():
     print("=" * 60)
 
     # Simulate environment variable
-    os.environ['SUPPORTED_FORMATS'] = 'pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json'
+    os.environ["SUPPORTED_FORMATS"] = (
+        "pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json"
+    )
 
-    formats_str = os.getenv('SUPPORTED_FORMATS', 'pdf,docx,pptx')
-    extensions = {f'.{fmt.strip().lower()}' for fmt in formats_str.split(',')}
+    formats_str = os.getenv("SUPPORTED_FORMATS", "pdf,docx,pptx")
+    extensions = {f".{fmt.strip().lower()}" for fmt in formats_str.split(",")}
 
     print(f"\n  Loaded {len(extensions)} formats from config")
     print(f"  Extensions: {sorted(extensions)}")
@@ -131,7 +135,9 @@ def test_configuration_loading():
         if is_valid == should_be_valid:
             passed += 1
 
-        print(f"    {status} {filename:20} → {'supported' if is_valid else 'unsupported':12} (expected: {'supported' if should_be_valid else 'unsupported'})")
+        print(
+            f"    {status} {filename:20} → {'supported' if is_valid else 'unsupported':12} (expected: {'supported' if should_be_valid else 'unsupported'})"
+        )
 
     print(f"\n  Results: {passed}/{len(test_cases)} passed")
     return passed == len(test_cases)

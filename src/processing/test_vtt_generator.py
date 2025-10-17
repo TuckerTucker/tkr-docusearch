@@ -7,21 +7,21 @@ VTT content generation, file saving, and validation.
 Wave 1 - Integration Contract IC-002
 """
 
-import pytest
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
 
-from src.processing.vtt_generator import (
-    generate_vtt,
-    format_timestamp,
-    validate_vtt,
-    save_vtt,
-    VTTGenerationError,
-    InvalidTimestampError,
-    EmptyChunkError
-)
+import pytest
+
 from src.processing.types import TextChunk
+from src.processing.vtt_generator import (
+    EmptyChunkError,
+    InvalidTimestampError,
+    format_timestamp,
+    generate_vtt,
+    save_vtt,
+    validate_vtt,
+)
 
 
 def test_format_timestamp():
@@ -67,7 +67,7 @@ def test_generate_vtt_basic():
             end_offset=11,
             word_count=2,
             start_time=0.0,
-            end_time=5.0
+            end_time=5.0,
         ),
         TextChunk(
             chunk_id="test-0002",
@@ -77,7 +77,7 @@ def test_generate_vtt_basic():
             end_offset=23,
             word_count=2,
             start_time=5.0,
-            end_time=10.0
+            end_time=10.0,
         ),
     ]
 
@@ -102,7 +102,7 @@ def test_generate_vtt_no_timestamps():
             end_offset=13,
             word_count=2,
             start_time=None,
-            end_time=None
+            end_time=None,
         ),
     ]
 
@@ -121,7 +121,7 @@ def test_generate_vtt_partial_timestamps():
             end_offset=15,
             word_count=2,
             start_time=0.0,
-            end_time=5.0
+            end_time=5.0,
         ),
         TextChunk(
             chunk_id="test-0002",
@@ -131,7 +131,7 @@ def test_generate_vtt_partial_timestamps():
             end_offset=33,
             word_count=2,
             start_time=None,
-            end_time=None
+            end_time=None,
         ),
     ]
 
@@ -153,7 +153,7 @@ def test_generate_vtt_invalid_timestamps():
             end_offset=11,
             word_count=2,
             start_time=0.0,
-            end_time=5.0
+            end_time=5.0,
         ),
         TextChunk(
             chunk_id="test-0002",
@@ -163,7 +163,7 @@ def test_generate_vtt_invalid_timestamps():
             end_offset=38,
             word_count=5,
             start_time=10.0,
-            end_time=10.0  # End equals start
+            end_time=10.0,  # End equals start
         ),
     ]
 
@@ -192,7 +192,7 @@ Test content
         assert output_path.name == f"{doc_id}.vtt"
 
         # Verify content
-        with open(output_path, 'r', encoding='utf-8') as f:
+        with open(output_path, "r", encoding="utf-8") as f:
             saved_content = f.read()
 
         assert saved_content == vtt_content
@@ -235,7 +235,7 @@ def test_generate_and_validate():
             end_offset=11,
             word_count=2,
             start_time=0.0,
-            end_time=2.5
+            end_time=2.5,
         ),
         TextChunk(
             chunk_id="test-0002",
@@ -245,7 +245,7 @@ def test_generate_and_validate():
             end_offset=25,
             word_count=4,
             start_time=2.5,
-            end_time=5.0
+            end_time=5.0,
         ),
     ]
 
@@ -266,7 +266,7 @@ def test_generate_vtt_with_multiline_text():
             end_offset=20,
             word_count=6,
             start_time=0.0,
-            end_time=5.0
+            end_time=5.0,
         ),
     ]
 
@@ -288,7 +288,7 @@ def test_generate_vtt_empty_text():
             end_offset=11,
             word_count=2,
             start_time=0.0,
-            end_time=5.0
+            end_time=5.0,
         ),
         TextChunk(
             chunk_id="test-0002",
@@ -298,7 +298,7 @@ def test_generate_vtt_empty_text():
             end_offset=14,
             word_count=0,
             start_time=5.0,
-            end_time=10.0
+            end_time=10.0,
         ),
     ]
 

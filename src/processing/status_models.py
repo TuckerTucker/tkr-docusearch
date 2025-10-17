@@ -10,10 +10,11 @@ Consumers: api-endpoints-agent, processing-agent
 Contract: status-manager.contract.md
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProcessingStatusEnum(str, Enum):
@@ -52,17 +53,11 @@ class ProcessingStatus(BaseModel):
         max_length=64,
         pattern=r"^[a-f0-9]{64}$",
     )
-    filename: str = Field(
-        ..., description="Original filename", min_length=1, max_length=255
-    )
+    filename: str = Field(..., description="Original filename", min_length=1, max_length=255)
 
     # Status tracking
-    status: ProcessingStatusEnum = Field(
-        ..., description="Current processing status"
-    )
-    progress: float = Field(
-        ..., ge=0.0, le=1.0, description="Progress value between 0.0 and 1.0"
-    )
+    status: ProcessingStatusEnum = Field(..., description="Current processing status")
+    progress: float = Field(..., ge=0.0, le=1.0, description="Progress value between 0.0 and 1.0")
     stage: str = Field(..., description="Human-readable current stage")
 
     # Progress details
@@ -79,9 +74,7 @@ class ProcessingStatus(BaseModel):
     completed_at: Optional[datetime] = Field(
         None, description="Completion time (UTC), null if not completed"
     )
-    elapsed_time: float = Field(
-        ..., ge=0.0, description="Seconds elapsed since processing started"
-    )
+    elapsed_time: float = Field(..., ge=0.0, description="Seconds elapsed since processing started")
     estimated_remaining: Optional[float] = Field(
         None, ge=0.0, description="Estimated seconds remaining (null if unavailable)"
     )

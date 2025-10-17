@@ -5,11 +5,11 @@ This module defines configuration for file handling, text chunking,
 and visual processing parameters, including enhanced Docling features.
 """
 
-from dataclasses import dataclass
-from typing import List, Tuple, Set
-from enum import Enum
-import os
 import logging
+import os
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class ChunkingStrategy(Enum):
         LEGACY: Word-based sliding window (backward compatible)
         HYBRID: Document-aware hybrid chunker (recommended)
     """
+
     LEGACY = "legacy"
     HYBRID = "hybrid"
 
@@ -44,31 +45,34 @@ class ProcessingConfig:
     """
 
     # File handling
-    max_file_size_mb: int = int(os.getenv('MAX_FILE_SIZE_MB', '100'))
+    max_file_size_mb: int = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
     supported_formats: List[str] = None  # type: ignore
-    upload_dir: str = os.getenv('UPLOAD_DIR', '/uploads')
+    upload_dir: str = os.getenv("UPLOAD_DIR", "/uploads")
 
     # Text processing
-    chunk_size_words: int = int(os.getenv('TEXT_CHUNK_SIZE', '250'))
-    chunk_overlap_words: int = int(os.getenv('TEXT_CHUNK_OVERLAP', '50'))
+    chunk_size_words: int = int(os.getenv("TEXT_CHUNK_SIZE", "250"))
+    chunk_overlap_words: int = int(os.getenv("TEXT_CHUNK_OVERLAP", "50"))
 
     # Visual processing
-    page_render_dpi: int = int(os.getenv('PAGE_RENDER_DPI', '150'))
+    page_render_dpi: int = int(os.getenv("PAGE_RENDER_DPI", "150"))
 
     # Worker configuration
-    worker_threads: int = int(os.getenv('WORKER_THREADS', '1'))
-    enable_queue: bool = os.getenv('ENABLE_QUEUE', 'false').lower() == 'true'
+    worker_threads: int = int(os.getenv("WORKER_THREADS", "1"))
+    enable_queue: bool = os.getenv("ENABLE_QUEUE", "false").lower() == "true"
 
     # Logging
-    log_level: str = os.getenv('LOG_LEVEL', 'INFO')
-    log_format: str = os.getenv('LOG_FORMAT', 'json')
-    log_file: str = os.getenv('LOG_FILE', '/data/logs/worker.log')
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    log_format: str = os.getenv("LOG_FORMAT", "json")
+    log_file: str = os.getenv("LOG_FILE", "/data/logs/worker.log")
 
     def __post_init__(self):
         """Initialize supported formats from environment."""
         if self.supported_formats is None:
-            formats_str = os.getenv('SUPPORTED_FORMATS', 'pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp')
-            self.supported_formats = [fmt.strip().lower() for fmt in formats_str.split(',')]
+            formats_str = os.getenv(
+                "SUPPORTED_FORMATS",
+                "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp",
+            )
+            self.supported_formats = [fmt.strip().lower() for fmt in formats_str.split(",")]
 
     def validate_file(self, filename: str, size_bytes: int) -> Tuple[bool, str]:
         """Validate uploaded file.
@@ -82,6 +86,7 @@ class ProcessingConfig:
         """
         # Delegate to file_validator module for consistency
         from ..processing.file_validator import validate_file as validator
+
         return validator(filename, size_bytes, self.max_file_size_mb)
 
     @property
@@ -92,6 +97,7 @@ class ProcessingConfig:
             Set of extensions like {'.pdf', '.docx', ...}
         """
         from ..processing.file_validator import get_supported_extensions
+
         return get_supported_extensions()
 
     @property
@@ -121,18 +127,18 @@ class ProcessingConfig:
             Configuration as dictionary
         """
         return {
-            'max_file_size_mb': self.max_file_size_mb,
-            'max_file_size_bytes': self.max_file_size_bytes,
-            'supported_formats': self.supported_formats,
-            'upload_dir': self.upload_dir,
-            'chunk_size_words': self.chunk_size_words,
-            'chunk_overlap_words': self.chunk_overlap_words,
-            'chunk_overlap_ratio': self.chunk_overlap_ratio,
-            'page_render_dpi': self.page_render_dpi,
-            'worker_threads': self.worker_threads,
-            'enable_queue': self.enable_queue,
-            'log_level': self.log_level,
-            'log_format': self.log_format,
+            "max_file_size_mb": self.max_file_size_mb,
+            "max_file_size_bytes": self.max_file_size_bytes,
+            "supported_formats": self.supported_formats,
+            "upload_dir": self.upload_dir,
+            "chunk_size_words": self.chunk_size_words,
+            "chunk_overlap_words": self.chunk_overlap_words,
+            "chunk_overlap_ratio": self.chunk_overlap_ratio,
+            "page_render_dpi": self.page_render_dpi,
+            "worker_threads": self.worker_threads,
+            "enable_queue": self.enable_queue,
+            "log_level": self.log_level,
+            "log_format": self.log_format,
         }
 
     def __repr__(self) -> str:
@@ -234,9 +240,7 @@ class EnhancedModeConfig:
             # Parse pipeline options
             table_mode = os.getenv("TABLE_STRUCTURE_MODE", "accurate").lower()
             if table_mode not in ["fast", "accurate"]:
-                logger.warning(
-                    f"Invalid TABLE_STRUCTURE_MODE '{table_mode}', using 'accurate'"
-                )
+                logger.warning(f"Invalid TABLE_STRUCTURE_MODE '{table_mode}', using 'accurate'")
                 table_mode = "accurate"
 
             images_scale = float(os.getenv("IMAGES_SCALE", "2.0"))
@@ -251,7 +255,7 @@ class EnhancedModeConfig:
                 min_chunk_tokens=min_tokens,
                 merge_peer_chunks=merge_peers,
                 table_structure_mode=table_mode,
-                images_scale=images_scale
+                images_scale=images_scale,
             )
 
             # Validate configuration
@@ -283,22 +287,28 @@ def validate_config(config: EnhancedModeConfig) -> None:
         AssertionError: If configuration values are invalid
     """
     # Token limits
-    assert 10 <= config.min_chunk_tokens <= 1000, \
-        f"min_chunk_tokens {config.min_chunk_tokens} out of range [10, 1000]"
+    assert (
+        10 <= config.min_chunk_tokens <= 1000
+    ), f"min_chunk_tokens {config.min_chunk_tokens} out of range [10, 1000]"
 
-    assert 100 <= config.max_chunk_tokens <= 4096, \
-        f"max_chunk_tokens {config.max_chunk_tokens} out of range [100, 4096]"
+    assert (
+        100 <= config.max_chunk_tokens <= 4096
+    ), f"max_chunk_tokens {config.max_chunk_tokens} out of range [100, 4096]"
 
-    assert config.min_chunk_tokens < config.max_chunk_tokens, \
-        f"min_chunk_tokens {config.min_chunk_tokens} must be < max_chunk_tokens {config.max_chunk_tokens}"
+    assert (
+        config.min_chunk_tokens < config.max_chunk_tokens
+    ), f"min_chunk_tokens {config.min_chunk_tokens} must be < max_chunk_tokens {config.max_chunk_tokens}"
 
     # Image scale
-    assert 0.5 <= config.images_scale <= 4.0, \
-        f"images_scale {config.images_scale} out of range [0.5, 4.0]"
+    assert (
+        0.5 <= config.images_scale <= 4.0
+    ), f"images_scale {config.images_scale} out of range [0.5, 4.0]"
 
     # Table mode
-    assert config.table_structure_mode in ["fast", "accurate"], \
-        f"Invalid table_structure_mode: {config.table_structure_mode}"
+    assert config.table_structure_mode in [
+        "fast",
+        "accurate",
+    ], f"Invalid table_structure_mode: {config.table_structure_mode}"
 
 
 def create_pipeline_options(config: EnhancedModeConfig):
@@ -323,7 +333,8 @@ def create_pipeline_options(config: EnhancedModeConfig):
     # Table structure mode
     if config.enable_table_structure:
         options.table_structure_options.mode = (
-            TableFormerMode.ACCURATE if config.table_structure_mode == "accurate"
+            TableFormerMode.ACCURATE
+            if config.table_structure_mode == "accurate"
             else TableFormerMode.FAST
         )
 
@@ -344,6 +355,7 @@ def create_pipeline_options(config: EnhancedModeConfig):
 # ============================================================================
 # ASR (Automatic Speech Recognition) Configuration
 # ============================================================================
+
 
 @dataclass
 class AsrConfig:
@@ -376,28 +388,20 @@ class AsrConfig:
         # Validate model
         valid_models = ["turbo", "base", "small", "medium", "large"]
         if self.model not in valid_models:
-            raise ValueError(
-                f"Invalid model: {self.model}. Must be one of {valid_models}"
-            )
+            raise ValueError(f"Invalid model: {self.model}. Must be one of {valid_models}")
 
         # Validate device
         valid_devices = ["mps", "cpu", "cuda"]
         if self.device not in valid_devices:
-            raise ValueError(
-                f"Invalid device: {self.device}. Must be one of {valid_devices}"
-            )
+            raise ValueError(f"Invalid device: {self.device}. Must be one of {valid_devices}")
 
         # Validate temperature
         if not (0.0 <= self.temperature <= 1.0):
-            raise ValueError(
-                f"Temperature must be 0.0-1.0, got {self.temperature}"
-            )
+            raise ValueError(f"Temperature must be 0.0-1.0, got {self.temperature}")
 
         # Validate max_time_chunk
         if self.max_time_chunk <= 0:
-            raise ValueError(
-                f"max_time_chunk must be positive, got {self.max_time_chunk}"
-            )
+            raise ValueError(f"max_time_chunk must be positive, got {self.max_time_chunk}")
 
     def to_docling_model_spec(self):
         """Convert to Docling ASR model specification.
@@ -409,10 +413,8 @@ class AsrConfig:
             ImportError: If Docling ASR modules not available
         """
         try:
-            from docling.datamodel.pipeline_options_asr_model import (
-                InlineAsrNativeWhisperOptions
-            )
             from docling.datamodel.accelerator_options import AcceleratorDevice
+            from docling.datamodel.pipeline_options_asr_model import InlineAsrNativeWhisperOptions
         except ImportError as e:
             raise ImportError(
                 "Docling ASR not installed. Install with: pip install docling[asr]"
@@ -425,7 +427,7 @@ class AsrConfig:
             "base": "base",
             "small": "small",
             "medium": "medium",
-            "large": "large"
+            "large": "large",
         }
 
         repo_id = model_map[self.model]
@@ -441,7 +443,9 @@ class AsrConfig:
             "word_timestamps": self.word_timestamps,
             "temperature": self.temperature,
             "max_time_chunk": self.max_time_chunk,
-            "supported_devices": [accelerator_device]  # FIXED: Use supported_devices with AcceleratorDevice enum
+            "supported_devices": [
+                accelerator_device
+            ],  # FIXED: Use supported_devices with AcceleratorDevice enum
         }
 
         # Only include language if not "auto" (for auto-detection, omit the parameter)
@@ -501,7 +505,7 @@ class AsrConfig:
                 device=device,
                 word_timestamps=word_timestamps,
                 temperature=temperature,
-                max_time_chunk=max_time_chunk
+                max_time_chunk=max_time_chunk,
             )
 
             logger.info(
@@ -534,7 +538,7 @@ class AsrConfig:
             "device": self.device,
             "word_timestamps": self.word_timestamps,
             "temperature": self.temperature,
-            "max_time_chunk": self.max_time_chunk
+            "max_time_chunk": self.max_time_chunk,
         }
 
     def __repr__(self) -> str:

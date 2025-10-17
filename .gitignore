@@ -270,7 +270,6 @@ test_outputs/
 # Keep These Files
 # ============================================================================
 # Explicitly track important config files
-!docker/.env
 !docker/docker-compose.yml
 !docker/Dockerfile.*
 !src/config/

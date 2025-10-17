@@ -8,8 +8,9 @@ coordinating with the embedding agent and preparing results for storage.
 import logging
 import re
 import time
-from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 
 from .docling_parser import TextChunk
@@ -52,7 +53,7 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
         (None, None, "[time: 5.0-2.0] Invalid")
     """
     # Match [time: X-Y] at start of text (don't consume trailing whitespace)
-    pattern = r'^\s*\[time:\s*([\d.]+)-([\d.]+)\]'
+    pattern = r"^\s*\[time:\s*([\d.]+)-([\d.]+)\]"
     match = re.match(pattern, text)
 
     if not match:
@@ -74,7 +75,7 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
             return (None, None, text)
 
         # Remove timestamp marker from text (preserve trailing whitespace)
-        cleaned_text = text[match.end():]
+        cleaned_text = text[match.end() :]
 
         logger.debug(f"Extracted timestamp: {start_time:.2f}-{end_time:.2f}")
         return (start_time, end_time, cleaned_text)
@@ -128,10 +129,7 @@ class TextProcessor:
         logger.info(f"Initialized TextProcessor (batch_size={batch_size})")
 
     def process_chunks(
-        self,
-        chunks: List[TextChunk],
-        doc_id: str,
-        progress_callback=None
+        self, chunks: List[TextChunk], doc_id: str, progress_callback=None
     ) -> List[TextEmbeddingResult]:
         """Process text chunks and generate embeddings.
 
@@ -177,15 +175,11 @@ class TextProcessor:
             # Generate embeddings
             start_time = time.time()
             batch_output = self.embedding_engine.embed_texts(
-                texts=texts,
-                batch_size=self.batch_size
+                texts=texts, batch_size=self.batch_size
             )
             elapsed_ms = (time.time() - start_time) * 1000
 
-            logger.debug(
-                f"Generated embeddings for {len(texts)} chunks "
-                f"in {elapsed_ms:.0f}ms"
-            )
+            logger.debug(f"Generated embeddings for {len(texts)} chunks " f"in {elapsed_ms:.0f}ms")
 
             # Create results
             for idx, chunk in enumerate(batch_chunks):
@@ -193,11 +187,11 @@ class TextProcessor:
                     doc_id=doc_id,
                     chunk_id=chunk.chunk_id,
                     page_num=chunk.page_num,
-                    embedding=batch_output['embeddings'][idx],
-                    cls_token=batch_output['cls_tokens'][idx],
-                    seq_length=batch_output['seq_lengths'][idx],
+                    embedding=batch_output["embeddings"][idx],
+                    cls_token=batch_output["cls_tokens"][idx],
+                    seq_length=batch_output["seq_lengths"][idx],
                     text=chunk.text,
-                    processing_time_ms=elapsed_ms / len(texts)
+                    processing_time_ms=elapsed_ms / len(texts),
                 )
                 all_results.append(result)
 
@@ -208,16 +202,11 @@ class TextProcessor:
                 except Exception as e:
                     logger.warning(f"Progress callback failed: {e}")
 
-        logger.info(
-            f"Completed text processing: {len(all_results)} chunks"
-        )
+        logger.info(f"Completed text processing: {len(all_results)} chunks")
 
         return all_results
 
-    def get_processing_stats(
-        self,
-        results: List[TextEmbeddingResult]
-    ) -> Dict[str, Any]:
+    def get_processing_stats(self, results: List[TextEmbeddingResult]) -> Dict[str, Any]:
         """Get statistics from processing results.
 
         Args:
@@ -232,7 +221,7 @@ class TextProcessor:
                 "total_time_ms": 0.0,
                 "avg_time_per_chunk_ms": 0.0,
                 "total_tokens": 0,
-                "avg_tokens_per_chunk": 0.0
+                "avg_tokens_per_chunk": 0.0,
             }
 
         total_time = sum(r.processing_time_ms for r in results)
@@ -246,5 +235,5 @@ class TextProcessor:
             "avg_tokens_per_chunk": total_tokens / len(results),
             "min_tokens": min(r.seq_length for r in results),
             "max_tokens": max(r.seq_length for r in results),
-            "total_text_chars": sum(len(r.text) for r in results)
+            "total_text_chars": sum(len(r.text) for r in results),
         }

@@ -4,14 +4,16 @@ Unit tests for compression utilities.
 Tests markdown compression/decompression and error handling.
 """
 
-import pytest
 import time
+
+import pytest
+
 from src.storage.compression import (
+    CompressionError,
+    CorruptedDataError,
+    MarkdownTooLargeError,
     compress_markdown,
     decompress_markdown,
-    CompressionError,
-    MarkdownTooLargeError,
-    CorruptedDataError
 )
 
 
@@ -111,7 +113,7 @@ class TestMarkdownCompression:
         import base64
 
         # Valid base64 but invalid gzip
-        invalid_gzip = base64.b64encode(b"not gzip data").decode('utf-8')
+        invalid_gzip = base64.b64encode(b"not gzip data").decode("utf-8")
 
         with pytest.raises(CorruptedDataError) as exc_info:
             decompress_markdown(invalid_gzip)
@@ -161,7 +163,8 @@ class TestMarkdownCompressionPerformance:
     def test_compression_ratio(self):
         """Test compression ratio for typical markdown."""
         # Typical markdown with structure
-        markdown = """# Document Title
+        markdown = (
+            """# Document Title
 
 ## Introduction
 
@@ -175,12 +178,14 @@ This is a sample document with various elements.
 
 ### Section 1.2
 
-Some text content that repeats. """ * 100  # Repeating pattern
+Some text content that repeats. """
+            * 100
+        )  # Repeating pattern
 
         compressed = compress_markdown(markdown)
 
-        original_size = len(markdown.encode('utf-8'))
-        compressed_size = len(compressed.encode('utf-8'))
+        original_size = len(markdown.encode("utf-8"))
+        compressed_size = len(compressed.encode("utf-8"))
         ratio = original_size / compressed_size
 
         # Should achieve at least 3x compression for repetitive content

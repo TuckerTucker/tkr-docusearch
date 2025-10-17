@@ -6,14 +6,10 @@ including initialization, reset, backup, and maintenance operations.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .chroma_client import (
-    ChromaClient,
-    StorageError,
-    ChromaDBConnectionError
-)
+from .chroma_client import ChromaClient, StorageError
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -64,7 +60,7 @@ class CollectionManager:
             "visual_collection": {"exists": False, "count": 0, "issues": []},
             "text_collection": {"exists": False, "count": 0, "issues": []},
             "issues": [],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         try:
@@ -80,34 +76,19 @@ class CollectionManager:
 
             # Validate metadata structure on sample documents
             if visual_count > 0:
-                visual_sample = self.client._visual_collection.get(
-                    limit=1,
-                    include=["metadatas"]
-                )
-                if visual_sample['metadatas']:
-                    issues = self._validate_metadata(
-                        visual_sample['metadatas'][0],
-                        "visual"
-                    )
+                visual_sample = self.client._visual_collection.get(limit=1, include=["metadatas"])
+                if visual_sample["metadatas"]:
+                    issues = self._validate_metadata(visual_sample["metadatas"][0], "visual")
                     report["visual_collection"]["issues"].extend(issues)
 
             if text_count > 0:
-                text_sample = self.client._text_collection.get(
-                    limit=1,
-                    include=["metadatas"]
-                )
-                if text_sample['metadatas']:
-                    issues = self._validate_metadata(
-                        text_sample['metadatas'][0],
-                        "text"
-                    )
+                text_sample = self.client._text_collection.get(limit=1, include=["metadatas"])
+                if text_sample["metadatas"]:
+                    issues = self._validate_metadata(text_sample["metadatas"][0], "text")
                     report["text_collection"]["issues"].extend(issues)
 
             # Determine overall status
-            all_issues = (
-                report["visual_collection"]["issues"] +
-                report["text_collection"]["issues"]
-            )
+            all_issues = report["visual_collection"]["issues"] + report["text_collection"]["issues"]
             if all_issues:
                 report["status"] = "degraded"
                 report["issues"] = all_issues
@@ -121,11 +102,7 @@ class CollectionManager:
 
         return report
 
-    def _validate_metadata(
-        self,
-        metadata: Dict[str, Any],
-        collection_type: str
-    ) -> List[str]:
+    def _validate_metadata(self, metadata: Dict[str, Any], collection_type: str) -> List[str]:
         """Validate metadata structure.
 
         Args:
@@ -139,8 +116,14 @@ class CollectionManager:
 
         # Common required fields
         common_required = [
-            "doc_id", "type", "full_embeddings", "seq_length",
-            "embedding_shape", "timestamp", "filename", "source_path"
+            "doc_id",
+            "type",
+            "full_embeddings",
+            "seq_length",
+            "embedding_shape",
+            "timestamp",
+            "filename",
+            "source_path",
         ]
 
         for field in common_required:
@@ -160,17 +143,12 @@ class CollectionManager:
         # Validate type field
         if metadata.get("type") != collection_type:
             issues.append(
-                f"Type mismatch: expected '{collection_type}', "
-                f"got '{metadata.get('type')}'"
+                f"Type mismatch: expected '{collection_type}', " f"got '{metadata.get('type')}'"
             )
 
         return issues
 
-    def reset_collection(
-        self,
-        collection: str,
-        confirm: bool = False
-    ) -> Dict[str, Any]:
+    def reset_collection(self, collection: str, confirm: bool = False) -> Dict[str, Any]:
         """Reset a collection (delete all data).
 
         Args:
@@ -191,15 +169,13 @@ class CollectionManager:
             StorageError: If reset fails
         """
         if not confirm:
-            raise ValueError(
-                "Reset requires explicit confirmation (confirm=True)"
-            )
+            raise ValueError("Reset requires explicit confirmation (confirm=True)")
 
         report = {
             "status": "success",
             "collections_reset": [],
             "items_deleted": 0,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
         try:
@@ -207,7 +183,7 @@ class CollectionManager:
                 visual_count = self.client._visual_collection.count()
                 if visual_count > 0:
                     # Delete all items
-                    all_ids = self.client._visual_collection.get(include=[])['ids']
+                    all_ids = self.client._visual_collection.get(include=[])["ids"]
                     self.client._visual_collection.delete(ids=all_ids)
                     report["collections_reset"].append("visual")
                     report["items_deleted"] += visual_count
@@ -217,15 +193,13 @@ class CollectionManager:
                 text_count = self.client._text_collection.count()
                 if text_count > 0:
                     # Delete all items
-                    all_ids = self.client._text_collection.get(include=[])['ids']
+                    all_ids = self.client._text_collection.get(include=[])["ids"]
                     self.client._text_collection.delete(ids=all_ids)
                     report["collections_reset"].append("text")
                     report["items_deleted"] += text_count
                     logger.info(f"Reset text collection: {text_count} items deleted")
 
-            logger.info(
-                f"Collection reset complete: {report['items_deleted']} items deleted"
-            )
+            logger.info(f"Collection reset complete: {report['items_deleted']} items deleted")
 
         except Exception as e:
             report["status"] = "failed"
@@ -235,10 +209,7 @@ class CollectionManager:
 
         return report
 
-    def get_document_list(
-        self,
-        limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    def get_document_list(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get list of all documents with metadata.
 
         Args:
@@ -260,46 +231,38 @@ class CollectionManager:
         """
         try:
             # Get all visual embeddings (one per page)
-            visual_results = self.client._visual_collection.get(
-                include=["metadatas"]
-            )
+            visual_results = self.client._visual_collection.get(include=["metadatas"])
 
             # Group by doc_id
             doc_map: Dict[str, Dict[str, Any]] = {}
 
-            for metadata in visual_results['metadatas'] or []:
-                doc_id = metadata.get('doc_id')
+            for metadata in visual_results["metadatas"] or []:
+                doc_id = metadata.get("doc_id")
                 if not doc_id:
                     continue
 
                 if doc_id not in doc_map:
                     doc_map[doc_id] = {
                         "doc_id": doc_id,
-                        "filename": metadata.get('filename', 'unknown'),
+                        "filename": metadata.get("filename", "unknown"),
                         "visual_pages": 0,
                         "text_chunks": 0,
-                        "timestamp": metadata.get('timestamp', ''),
-                        "source_path": metadata.get('source_path', '')
+                        "timestamp": metadata.get("timestamp", ""),
+                        "source_path": metadata.get("source_path", ""),
                     }
 
                 doc_map[doc_id]["visual_pages"] += 1
 
             # Get text chunk counts
-            text_results = self.client._text_collection.get(
-                include=["metadatas"]
-            )
+            text_results = self.client._text_collection.get(include=["metadatas"])
 
-            for metadata in text_results['metadatas'] or []:
-                doc_id = metadata.get('doc_id')
+            for metadata in text_results["metadatas"] or []:
+                doc_id = metadata.get("doc_id")
                 if doc_id and doc_id in doc_map:
                     doc_map[doc_id]["text_chunks"] += 1
 
             # Convert to list and sort by timestamp (newest first)
-            documents = sorted(
-                doc_map.values(),
-                key=lambda x: x['timestamp'],
-                reverse=True
-            )
+            documents = sorted(doc_map.values(), key=lambda x: x["timestamp"], reverse=True)
 
             # Apply limit if specified
             if limit:
@@ -325,34 +288,26 @@ class CollectionManager:
                 "count": int
             }
         """
-        orphans = {
-            "visual_orphans": [],
-            "text_orphans": [],
-            "count": 0
-        }
+        orphans = {"visual_orphans": [], "text_orphans": [], "count": 0}
 
         try:
             # Check visual collection
-            visual_results = self.client._visual_collection.get(
-                include=["metadatas"]
-            )
+            visual_results = self.client._visual_collection.get(include=["metadatas"])
 
-            for i, metadata in enumerate(visual_results['metadatas'] or []):
+            for i, metadata in enumerate(visual_results["metadatas"] or []):
                 issues = self._validate_metadata(metadata, "visual")
                 if issues:
-                    embedding_id = visual_results['ids'][i]
+                    embedding_id = visual_results["ids"][i]
                     orphans["visual_orphans"].append(embedding_id)
                     orphans["count"] += 1
 
             # Check text collection
-            text_results = self.client._text_collection.get(
-                include=["metadatas"]
-            )
+            text_results = self.client._text_collection.get(include=["metadatas"])
 
-            for i, metadata in enumerate(text_results['metadatas'] or []):
+            for i, metadata in enumerate(text_results["metadatas"] or []):
                 issues = self._validate_metadata(metadata, "text")
                 if issues:
-                    embedding_id = text_results['ids'][i]
+                    embedding_id = text_results["ids"][i]
                     orphans["text_orphans"].append(embedding_id)
                     orphans["count"] += 1
 
@@ -365,10 +320,7 @@ class CollectionManager:
             logger.error(error_msg)
             raise StorageError(error_msg) from e
 
-    def cleanup_orphaned_embeddings(
-        self,
-        confirm: bool = False
-    ) -> Dict[str, Any]:
+    def cleanup_orphaned_embeddings(self, confirm: bool = False) -> Dict[str, Any]:
         """Delete orphaned embeddings with invalid metadata.
 
         Args:
@@ -387,16 +339,9 @@ class CollectionManager:
             ValueError: If confirm is False
         """
         if not confirm:
-            raise ValueError(
-                "Cleanup requires explicit confirmation (confirm=True)"
-            )
+            raise ValueError("Cleanup requires explicit confirmation (confirm=True)")
 
-        report = {
-            "status": "success",
-            "visual_deleted": 0,
-            "text_deleted": 0,
-            "total_deleted": 0
-        }
+        report = {"status": "success", "visual_deleted": 0, "text_deleted": 0, "total_deleted": 0}
 
         try:
             # Find orphans
@@ -404,25 +349,17 @@ class CollectionManager:
 
             # Delete visual orphans
             if orphans["visual_orphans"]:
-                self.client._visual_collection.delete(
-                    ids=orphans["visual_orphans"]
-                )
+                self.client._visual_collection.delete(ids=orphans["visual_orphans"])
                 report["visual_deleted"] = len(orphans["visual_orphans"])
 
             # Delete text orphans
             if orphans["text_orphans"]:
-                self.client._text_collection.delete(
-                    ids=orphans["text_orphans"]
-                )
+                self.client._text_collection.delete(ids=orphans["text_orphans"])
                 report["text_deleted"] = len(orphans["text_orphans"])
 
-            report["total_deleted"] = (
-                report["visual_deleted"] + report["text_deleted"]
-            )
+            report["total_deleted"] = report["visual_deleted"] + report["text_deleted"]
 
-            logger.info(
-                f"Cleaned up {report['total_deleted']} orphaned embeddings"
-            )
+            logger.info(f"Cleaned up {report['total_deleted']} orphaned embeddings")
 
         except Exception as e:
             report["status"] = "failed"
@@ -432,8 +369,7 @@ class CollectionManager:
         return report
 
     def export_collection_metadata(
-        self,
-        collection: str = "all"
+        self, collection: str = "all"
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Export collection metadata for backup/analysis.
 
@@ -451,25 +387,20 @@ class CollectionManager:
         export: Dict[str, Any] = {
             "visual": [],
             "text": [],
-            "export_timestamp": datetime.utcnow().isoformat()
+            "export_timestamp": datetime.utcnow().isoformat(),
         }
 
         try:
             if collection in ["visual", "all"]:
-                visual_results = self.client._visual_collection.get(
-                    include=["metadatas"]
-                )
-                export["visual"] = visual_results['metadatas'] or []
+                visual_results = self.client._visual_collection.get(include=["metadatas"])
+                export["visual"] = visual_results["metadatas"] or []
 
             if collection in ["text", "all"]:
-                text_results = self.client._text_collection.get(
-                    include=["metadatas"]
-                )
-                export["text"] = text_results['metadatas'] or []
+                text_results = self.client._text_collection.get(include=["metadatas"])
+                export["text"] = text_results["metadatas"] or []
 
             logger.info(
-                f"Exported metadata: {len(export['visual'])} visual, "
-                f"{len(export['text'])} text"
+                f"Exported metadata: {len(export['visual'])} visual, " f"{len(export['text'])} text"
             )
 
             return export

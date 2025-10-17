@@ -8,14 +8,13 @@ See AUDIO_METADATA_SCHEMA.md for complete metadata field documentation.
 """
 
 import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 try:
     from mutagen import File as MutagenFile
-    from mutagen.id3 import ID3
-    from mutagen.mp3 import MP3
+
     MUTAGEN_AVAILABLE = True
 except ImportError:
     MUTAGEN_AVAILABLE = False
@@ -169,27 +168,27 @@ def extract_audio_metadata(file_path: str) -> AudioMetadata:
 
 def _extract_audio_properties(audio, metadata: AudioMetadata) -> None:
     """Extract audio properties (duration, bitrate, etc.) from mutagen audio object."""
-    if not hasattr(audio, 'info'):
+    if not hasattr(audio, "info"):
         return
 
     info = audio.info
 
-    if hasattr(info, 'length'):
+    if hasattr(info, "length"):
         metadata.duration_seconds = float(info.length)
 
-    if hasattr(info, 'bitrate'):
+    if hasattr(info, "bitrate"):
         metadata.bitrate_kbps = int(info.bitrate // 1000)
 
-    if hasattr(info, 'sample_rate'):
+    if hasattr(info, "sample_rate"):
         metadata.sample_rate_hz = int(info.sample_rate)
 
-    if hasattr(info, 'channels'):
+    if hasattr(info, "channels"):
         metadata.channels = int(info.channels)
 
 
 def _extract_id3_tags(audio, metadata: AudioMetadata) -> None:
     """Extract ID3 tags from mutagen audio object."""
-    if not hasattr(audio, 'tags') or audio.tags is None:
+    if not hasattr(audio, "tags") or audio.tags is None:
         logger.debug("No ID3 tags found in audio file")
         return
 
@@ -199,45 +198,45 @@ def _extract_id3_tags(audio, metadata: AudioMetadata) -> None:
     def get_text_tag(tag_id: str) -> Optional[str]:
         if tag_id in tags:
             tag = tags[tag_id]
-            if hasattr(tag, 'text') and tag.text:
+            if hasattr(tag, "text") and tag.text:
                 return str(tag.text[0])
         return None
 
     # Extract standard ID3v2 text frames
-    metadata.title = get_text_tag('TIT2')           # Title
-    metadata.artist = get_text_tag('TPE1')          # Artist
-    metadata.album = get_text_tag('TALB')           # Album
-    metadata.album_artist = get_text_tag('TPE2')    # Album Artist
-    metadata.year = get_text_tag('TDRC')            # Year
-    metadata.genre = get_text_tag('TCON')           # Genre
-    metadata.track_number = get_text_tag('TRCK')    # Track number
-    metadata.composer = get_text_tag('TCOM')        # Composer
-    metadata.publisher = get_text_tag('TPUB')       # Publisher
-    metadata.encoder = get_text_tag('TSSE')         # Encoder software
+    metadata.title = get_text_tag("TIT2")  # Title
+    metadata.artist = get_text_tag("TPE1")  # Artist
+    metadata.album = get_text_tag("TALB")  # Album
+    metadata.album_artist = get_text_tag("TPE2")  # Album Artist
+    metadata.year = get_text_tag("TDRC")  # Year
+    metadata.genre = get_text_tag("TCON")  # Genre
+    metadata.track_number = get_text_tag("TRCK")  # Track number
+    metadata.composer = get_text_tag("TCOM")  # Composer
+    metadata.publisher = get_text_tag("TPUB")  # Publisher
+    metadata.encoder = get_text_tag("TSSE")  # Encoder software
 
     # Comment frame (can have multiple, take first)
-    if 'COMM::eng' in tags:
-        comm = tags['COMM::eng']
-        if hasattr(comm, 'text') and comm.text:
+    if "COMM::eng" in tags:
+        comm = tags["COMM::eng"]
+        if hasattr(comm, "text") and comm.text:
             metadata.comment = str(comm.text[0])
-    elif any(k.startswith('COMM:') for k in tags.keys()):
+    elif any(k.startswith("COMM:") for k in tags.keys()):
         # Fallback to any comment frame
-        comm_keys = [k for k in tags.keys() if k.startswith('COMM:')]
+        comm_keys = [k for k in tags.keys() if k.startswith("COMM:")]
         if comm_keys:
             comm = tags[comm_keys[0]]
-            if hasattr(comm, 'text') and comm.text:
+            if hasattr(comm, "text") and comm.text:
                 metadata.comment = str(comm.text[0])
 
 
 def _extract_album_art(audio, metadata: AudioMetadata) -> None:
     """Extract album art from mutagen audio object."""
-    if not hasattr(audio, 'tags') or audio.tags is None:
+    if not hasattr(audio, "tags") or audio.tags is None:
         return
 
     tags = audio.tags
 
     # Find APIC frames (attached pictures)
-    apic_frames = [k for k in tags.keys() if k.startswith('APIC:')]
+    apic_frames = [k for k in tags.keys() if k.startswith("APIC:")]
 
     if not apic_frames:
         return
@@ -245,7 +244,7 @@ def _extract_album_art(audio, metadata: AudioMetadata) -> None:
     # Prefer front cover, otherwise take first
     apic_key = None
     for key in apic_frames:
-        if 'Cover (front)' in key or key == 'APIC:':
+        if "Cover (front)" in key or key == "APIC:":
             apic_key = key
             break
 
@@ -254,15 +253,15 @@ def _extract_album_art(audio, metadata: AudioMetadata) -> None:
 
     apic = tags[apic_key]
 
-    if hasattr(apic, 'data') and apic.data:
+    if hasattr(apic, "data") and apic.data:
         metadata.has_album_art = True
         metadata.album_art_data = apic.data
         metadata.album_art_size_bytes = len(apic.data)
 
-        if hasattr(apic, 'mime'):
+        if hasattr(apic, "mime"):
             metadata.album_art_mime = apic.mime
 
-        if hasattr(apic, 'desc'):
+        if hasattr(apic, "desc"):
             metadata.album_art_description = apic.desc
 
         logger.debug(
@@ -275,7 +274,7 @@ def save_album_art(
     doc_id: str,
     metadata: AudioMetadata,
     base_dir: str = "data/images",
-    use_placeholder: bool = True
+    use_placeholder: bool = True,
 ) -> Optional[str]:
     """
     Save album art image to filesystem, or use placeholder if no album art.

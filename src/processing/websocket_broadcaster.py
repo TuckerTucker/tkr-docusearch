@@ -4,12 +4,13 @@ WebSocket broadcaster for real-time status updates.
 Broadcasts processing status and log messages to connected web clients.
 """
 
-import logging
-import json
 import asyncio
-from typing import Set, Dict, Any
+import json
+import logging
 from datetime import datetime
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import Any, Dict, Set
+
+from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,7 @@ class WebSocketBroadcaster:
         async with self._lock:
             self.active_connections.add(websocket)
 
-        logger.info(
-            f"WebSocket client connected (total: {len(self.active_connections)})"
-        )
+        logger.info(f"WebSocket client connected (total: {len(self.active_connections)})")
 
         # Send initial welcome message
         await self.send_to_client(
@@ -49,8 +48,8 @@ class WebSocketBroadcaster:
                 "type": "connection",
                 "status": "connected",
                 "message": "Connected to DocuSearch monitoring",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         )
 
     async def disconnect(self, websocket: WebSocket):
@@ -63,9 +62,7 @@ class WebSocketBroadcaster:
         async with self._lock:
             self.active_connections.discard(websocket)
 
-        logger.info(
-            f"WebSocket client disconnected (total: {len(self.active_connections)})"
-        )
+        logger.info(f"WebSocket client disconnected (total: {len(self.active_connections)})")
 
     async def broadcast(self, message: Dict[str, Any]):
         """
@@ -113,13 +110,7 @@ class WebSocketBroadcaster:
         except Exception as e:
             logger.warning(f"Failed to send to client: {e}")
 
-    async def broadcast_status_update(
-        self,
-        doc_id: str,
-        status: str,
-        progress: float,
-        **kwargs
-    ):
+    async def broadcast_status_update(self, doc_id: str, status: str, progress: float, **kwargs):
         """
         Broadcast a status update.
 
@@ -134,16 +125,11 @@ class WebSocketBroadcaster:
             "doc_id": doc_id,
             "status": status,
             "progress": progress,
-            **kwargs
+            **kwargs,
         }
         await self.broadcast(message)
 
-    async def broadcast_log_message(
-        self,
-        level: str,
-        message: str,
-        doc_id: str = None
-    ):
+    async def broadcast_log_message(self, level: str, message: str, doc_id: str = None):
         """
         Broadcast a log message.
 
@@ -152,11 +138,7 @@ class WebSocketBroadcaster:
             message: Log message
             doc_id: Optional document ID
         """
-        msg = {
-            "type": "log",
-            "level": level,
-            "message": message
-        }
+        msg = {"type": "log", "level": level, "message": message}
         if doc_id:
             msg["doc_id"] = doc_id
 
@@ -169,10 +151,7 @@ class WebSocketBroadcaster:
         Args:
             stats: Statistics dictionary
         """
-        message = {
-            "type": "stats",
-            **stats
-        }
+        message = {"type": "stats", **stats}
         await self.broadcast(message)
 
     def get_connection_count(self) -> int:

@@ -9,15 +9,15 @@ Tests cover:
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
-from file_validator import (
+import pytest
+
+from processing.file_validator import (
     get_supported_extensions,
-    validate_file_type,
-    validate_file_size,
     validate_file,
-    DEFAULT_FORMATS,
+    validate_file_size,
+    validate_file_type,
 )
 
 

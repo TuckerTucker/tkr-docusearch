@@ -8,12 +8,10 @@ Contract: status-api.contract.md
 
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime
 
-from .worker_webhook import app
-from .status_manager import StatusManager
-from .status_api import set_status_manager
-from .status_models import ProcessingStatusEnum
+from processing.status_api import set_status_manager
+from processing.status_manager import StatusManager
+from processing.worker_webhook import app
 
 
 @pytest.fixture
@@ -292,9 +290,7 @@ class TestIntegrationScenarios:
         assert response.json()["status"] == "parsing"
 
         # Update to visual embedding
-        status_manager.update_status(
-            doc_id, status="embedding_visual", progress=0.5
-        )
+        status_manager.update_status(doc_id, status="embedding_visual", progress=0.5)
         response = client.get(f"/status/{doc_id}")
         assert response.json()["status"] == "embedding_visual"
 
@@ -321,9 +317,7 @@ class TestIntegrationScenarios:
             elif target_status == "failed":
                 status_manager.mark_failed(doc_id, "Test error")
             elif target_status != "queued":
-                status_manager.update_status(
-                    doc_id, status=target_status, progress=0.5
-                )
+                status_manager.update_status(doc_id, status=target_status, progress=0.5)
 
         # Check queue
         response = client.get("/status/queue")

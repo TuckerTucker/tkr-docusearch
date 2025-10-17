@@ -4,17 +4,19 @@ Unit tests for markdown storage in ChromaDB.
 Tests markdown compression, storage, and retrieval in ChromaClient.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import Mock, MagicMock, patch
+import pytest
+
 from src.storage.chroma_client import ChromaClient, DocumentNotFoundError
-from src.storage.compression import compress_markdown, decompress_markdown
+from src.storage.compression import compress_markdown
 
 
 @pytest.fixture
 def mock_chroma_client():
     """Mock ChromaDB HttpClient."""
-    with patch('chromadb.HttpClient') as mock:
+    with patch("chromadb.HttpClient") as mock:
         client = mock.return_value
         client.heartbeat.return_value = None
         yield mock
@@ -31,8 +33,8 @@ def chroma_client(mock_chroma_client):
     text_collection = MagicMock()
 
     # Setup collection responses
-    visual_collection.get.return_value = {'ids': [], 'metadatas': []}
-    text_collection.get.return_value = {'ids': [], 'metadatas': []}
+    visual_collection.get.return_value = {"ids": [], "metadatas": []}
+    text_collection.get.return_value = {"ids": [], "metadatas": []}
 
     client._visual_collection = visual_collection
     client._text_collection = text_collection
@@ -62,19 +64,13 @@ class TestMarkdownCompression:
 
         # Store
         embedding_id = chroma_client.add_visual_embedding(
-            doc_id="test-doc-1",
-            page=1,
-            full_embeddings=embeddings,
-            metadata=metadata
+            doc_id="test-doc-1", page=1, full_embeddings=embeddings, metadata=metadata
         )
 
         # Retrieve metadata
-        results = chroma_client._visual_collection.get(
-            ids=[embedding_id],
-            include=["metadatas"]
-        )
+        results = chroma_client._visual_collection.get(ids=[embedding_id], include=["metadatas"])
 
-        stored_metadata = results['metadatas'][0]
+        stored_metadata = results["metadatas"][0]
 
         # Check uncompressed storage
         assert "full_markdown" in stored_metadata
@@ -101,19 +97,13 @@ class TestMarkdownCompression:
 
         # Store
         embedding_id = chroma_client.add_visual_embedding(
-            doc_id="test-doc-2",
-            page=1,
-            full_embeddings=embeddings,
-            metadata=metadata
+            doc_id="test-doc-2", page=1, full_embeddings=embeddings, metadata=metadata
         )
 
         # Retrieve metadata
-        results = chroma_client._visual_collection.get(
-            ids=[embedding_id],
-            include=["metadatas"]
-        )
+        results = chroma_client._visual_collection.get(ids=[embedding_id], include=["metadatas"])
 
-        stored_metadata = results['metadatas'][0]
+        stored_metadata = results["metadatas"][0]
 
         # Check compressed storage
         assert "full_markdown_compressed" in stored_metadata
@@ -134,13 +124,15 @@ class TestMarkdownRetrieval:
 
         # Mock the collection response
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['test-doc-3-page001'],
-            'metadatas': [{
-                'doc_id': 'test-doc-3',
-                'full_markdown': small_markdown,
-                'markdown_extracted': True,
-                'markdown_compression': 'none'
-            }]
+            "ids": ["test-doc-3-page001"],
+            "metadatas": [
+                {
+                    "doc_id": "test-doc-3",
+                    "full_markdown": small_markdown,
+                    "markdown_extracted": True,
+                    "markdown_compression": "none",
+                }
+            ],
         }
 
         # Retrieve markdown
@@ -155,13 +147,15 @@ class TestMarkdownRetrieval:
 
         # Mock the collection response with compressed markdown
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['test-doc-4-page001'],
-            'metadatas': [{
-                'doc_id': 'test-doc-4',
-                'full_markdown_compressed': compressed,
-                'markdown_extracted': True,
-                'markdown_compression': 'gzip+base64'
-            }]
+            "ids": ["test-doc-4-page001"],
+            "metadatas": [
+                {
+                    "doc_id": "test-doc-4",
+                    "full_markdown_compressed": compressed,
+                    "markdown_extracted": True,
+                    "markdown_compression": "gzip+base64",
+                }
+            ],
         }
 
         # Retrieve markdown
@@ -174,13 +168,15 @@ class TestMarkdownRetrieval:
         """Test retrieving markdown when extraction failed."""
         # Mock the collection response for failed extraction
         chroma_client._visual_collection.get.return_value = {
-            'ids': ['test-doc-5-page001'],
-            'metadatas': [{
-                'doc_id': 'test-doc-5',
-                'full_markdown': '',
-                'markdown_extracted': False,  # Extraction failed
-                'markdown_error': 'Test error'
-            }]
+            "ids": ["test-doc-5-page001"],
+            "metadatas": [
+                {
+                    "doc_id": "test-doc-5",
+                    "full_markdown": "",
+                    "markdown_extracted": False,  # Extraction failed
+                    "markdown_error": "Test error",
+                }
+            ],
         }
 
         # Retrieve markdown
@@ -192,8 +188,8 @@ class TestMarkdownRetrieval:
     def test_retrieve_markdown_document_not_found(self, chroma_client):
         """Test retrieving markdown for non-existent document."""
         # Mock empty response (document not found)
-        chroma_client._visual_collection.get.return_value = {'ids': [], 'metadatas': []}
-        chroma_client._text_collection.get.return_value = {'ids': [], 'metadatas': []}
+        chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
+        chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
 
         with pytest.raises(DocumentNotFoundError, match="not found"):
             chroma_client.get_document_markdown("non-existent-doc")
@@ -203,15 +199,17 @@ class TestMarkdownRetrieval:
         markdown = "# Text Chunk\n\nContent"
 
         # Mock visual collection has no results, text collection has results
-        chroma_client._visual_collection.get.return_value = {'ids': [], 'metadatas': []}
+        chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
         chroma_client._text_collection.get.return_value = {
-            'ids': ['test-doc-6-chunk0000'],
-            'metadatas': [{
-                'doc_id': 'test-doc-6',
-                'full_markdown': markdown,
-                'markdown_extracted': True,
-                'markdown_compression': 'none'
-            }]
+            "ids": ["test-doc-6-chunk0000"],
+            "metadatas": [
+                {
+                    "doc_id": "test-doc-6",
+                    "full_markdown": markdown,
+                    "markdown_extracted": True,
+                    "markdown_compression": "none",
+                }
+            ],
         }
 
         # Retrieve markdown
@@ -238,20 +236,15 @@ class TestMarkdownEdgeCases:
         }
 
         chroma_client.add_visual_embedding(
-            doc_id="test-doc-7",
-            page=1,
-            full_embeddings=embeddings,
-            metadata=metadata
+            doc_id="test-doc-7", page=1, full_embeddings=embeddings, metadata=metadata
         )
 
         # Retrieve metadata
         results = chroma_client._visual_collection.get(
-            where={"doc_id": "test-doc-7"},
-            limit=1,
-            include=["metadatas"]
+            where={"doc_id": "test-doc-7"}, limit=1, include=["metadatas"]
         )
 
-        stored_metadata = results['metadatas'][0]
+        stored_metadata = results["metadatas"][0]
 
         # Should be stored uncompressed (<=1KB)
         assert "full_markdown" in stored_metadata
@@ -272,20 +265,15 @@ class TestMarkdownEdgeCases:
         }
 
         chroma_client.add_visual_embedding(
-            doc_id="test-doc-8",
-            page=1,
-            full_embeddings=embeddings,
-            metadata=metadata
+            doc_id="test-doc-8", page=1, full_embeddings=embeddings, metadata=metadata
         )
 
         # Retrieve metadata
         results = chroma_client._visual_collection.get(
-            where={"doc_id": "test-doc-8"},
-            limit=1,
-            include=["metadatas"]
+            where={"doc_id": "test-doc-8"}, limit=1, include=["metadatas"]
         )
 
-        stored_metadata = results['metadatas'][0]
+        stored_metadata = results["metadatas"][0]
 
         # Should be compressed (>1KB)
         assert "full_markdown_compressed" in stored_metadata
@@ -305,10 +293,7 @@ class TestMarkdownEdgeCases:
         }
 
         chroma_client.add_visual_embedding(
-            doc_id="test-doc-9",
-            page=1,
-            full_embeddings=embeddings,
-            metadata=metadata
+            doc_id="test-doc-9", page=1, full_embeddings=embeddings, metadata=metadata
         )
 
         # Retrieve markdown
