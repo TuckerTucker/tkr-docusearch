@@ -98,8 +98,8 @@ struct:
     research:
       _: {n: 9, t: {py: 8, md: 1}, s: wave6-complete}
       f: [__init__.py, litellm_client.py, context_builder.py, citation_parser.py, prompts.py, types.py, exceptions.py, test_citation_parser.py, README.md]
-      feat: [Multi-provider LLM, Citation extraction, Context formatting, Optimized prompts]
-      ln: {litellm_client: 400, context_builder: 350, citation_parser: 450, prompts: 150, test_citation_parser: 150}
+      feat: [Multi-provider LLM, Citation extraction, Context formatting, Optimized prompts, Thumbnail path conversion]
+      ln: {litellm_client: 400, context_builder: 511, citation_parser: 450, prompts: 150, test_citation_parser: 150}
       tests: {total: 11, passed: 11, coverage: comprehensive}
 
     frontend:
@@ -335,7 +335,8 @@ arch:
       providers: [OpenAI GPT-4, Anthropic Claude, Google Gemini]
       pipeline: {s1: "2-stage doc search", s2: "Context builder", s3: "LLM inference", s4: "Citation parser"}
       latency: {search: "~239ms", context: "<100ms", llm: "~2s", citation: "<50ms", total: "~2.5s"}
-      feat: ["Inline citations [N]", Bidirectional highlighting, Metadata extraction, Optimized prompts, Error handling]
+      feat: ["Inline citations [N]", Bidirectional highlighting, Metadata extraction, Optimized prompts, Error handling, Thumbnail path conversion]
+      thumbnail_fix: {desc: "Convert filesystem paths to URL format", impl: "_convert_path_to_url() in context_builder.py", format: "data/page_images/{doc_id}/page.jpg → /images/{doc_id}/page.jpg", consistency: "Matches documents_api.py format"}
 
     webhook: {trigger: "Copyparty upload", endpoint: "http://host.docker.internal:8002/webhook", method: POST, payload: {event: str, path: str, filename: str}, proc: "Async pipeline"}
 
@@ -501,7 +502,9 @@ notes:
   - "TESTS: 11/11 passing - citation extraction, bidirectional mapping, regex patterns"
   - "ACCESSIBILITY: WCAG 2.1 AA compliant - citations, keyboard nav, semantic HTML"
   - "DOCUMENTATION: RESEARCH_BOT_GUIDE.md - complete user guide with examples"
-  - "LINE COUNTS: litellm_client.py 400, context_builder.py 350, citation_parser.py 450, research.html 300"
+  - "LINE COUNTS: litellm_client.py 400, context_builder.py 511, citation_parser.py 450, research.html 300"
+  - "THUMBNAIL FIX: _convert_path_to_url() converts filesystem paths to URL format for reference cards"
+  - "PATH CONVERSION: data/page_images/{doc_id}/page.jpg → /images/{doc_id}/page.jpg matches worker API"
 
   # Critical Fixes Wave 1-2 (2025-10-16)
   - "CRITICAL FIXES WAVE 1-2 COMPLETE: Security, Accessibility, Complexity, Testing"

@@ -80,7 +80,7 @@ function createReferenceCard(source, citationNum, variant) {
                 </div>
             </div>
             <a
-                href="/details.html?filename=${encodeURIComponent(source.filename)}"
+                href="/frontend/details.html?id=${source.doc_id}"
                 class="reference-card__details-btn"
                 aria-label="View details for ${source.filename}"
             >
@@ -95,7 +95,7 @@ function createReferenceCard(source, citationNum, variant) {
                 ${source.filename}
             </div>
             <a
-                href="/details.html?filename=${encodeURIComponent(source.filename)}"
+                href="/frontend/details.html?id=${source.doc_id}"
                 class="reference-card__details-btn-simple"
                 aria-label="View details"
             >

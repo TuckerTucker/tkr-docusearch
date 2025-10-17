@@ -14,6 +14,31 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+def _convert_path_to_url(path: Optional[str]) -> Optional[str]:
+    """
+    Convert file path to URL format for serving via worker API.
+
+    Args:
+        path: File path like 'data/page_images/abc123/page001_thumb.jpg'
+
+    Returns:
+        URL path like '/images/abc123/page001_thumb.jpg' or None
+
+    Note:
+        Matches format used by documents_api.py for consistency.
+        Worker serves images via /images/{doc_id}/{filename} endpoint.
+    """
+    if not path or "/" not in path:
+        return path
+
+    parts = path.split("/")
+    if len(parts) >= 2:
+        # Extract last two parts: doc_id and filename
+        return f"/images/{parts[-2]}/{parts[-1]}"
+
+    return path
+
+
 @dataclass
 class SourceDocument:
     """Represents a source document for citation"""
@@ -246,8 +271,38 @@ class ContextBuilder:
 
         metadata = visual_results["metadatas"][0]
 
-        # Get full markdown (compressed in metadata)
-        full_markdown = self.chroma_client.get_document_markdown(doc_id)
+        # Get full markdown from file or compressed metadata
+        full_markdown = None
+
+        # Try to read from markdown file path (preferred)
+        markdown_path = metadata.get("markdown_path")
+        if markdown_path:
+            try:
+                import os
+
+                if os.path.exists(markdown_path):
+                    with open(markdown_path, "r", encoding="utf-8") as f:
+                        full_markdown = f.read()
+                    logger.debug(
+                        "Loaded markdown from file",
+                        path=markdown_path,
+                        length=len(full_markdown),
+                    )
+            except Exception as e:
+                logger.warning("Failed to read markdown file", path=markdown_path, error=str(e))
+
+        # Fallback: try to get from compressed metadata
+        if not full_markdown:
+            try:
+                full_markdown = self.chroma_client.get_document_markdown(doc_id)
+            except Exception as e:
+                logger.warning("Failed to get markdown from ChromaDB", doc_id=doc_id, error=str(e))
+
+        # Last resort: use full_text from chunk metadata if available
+        if not full_markdown:
+            full_markdown = metadata.get("full_text", "")
+            if full_markdown:
+                logger.debug("Using full_text from metadata", length=len(full_markdown))
 
         # Extract page-specific content
         page_content = self._extract_page_from_markdown(full_markdown, page)
@@ -257,8 +312,8 @@ class ContextBuilder:
             filename=metadata.get("filename", "unknown"),
             page=page,
             extension=metadata.get("extension", ""),
-            thumbnail_path=metadata.get("thumb_path"),
-            image_path=metadata.get("image_path"),
+            thumbnail_path=_convert_path_to_url(metadata.get("thumb_path")),
+            image_path=_convert_path_to_url(metadata.get("image_path")),
             timestamp=metadata.get("timestamp", ""),
             section_path=metadata.get("section_path"),
             parent_heading=metadata.get("parent_heading"),
@@ -330,7 +385,7 @@ class ContextBuilder:
             2. Add sources in order until budget exceeded
             3. Return sources that fit
         """
-        truncated = []
+        truncated: List[SourceDocument] = []
         current_tokens = 0
 
         for source in sources:
@@ -431,8 +486,21 @@ class ContextBuilder:
         Returns:
             Estimated page content
         """
+        # If markdown is short, return it all
+        if len(markdown) < 1000:
+            return markdown
+
         # Split by double newlines (paragraphs)
-        paragraphs = markdown.split("\n\n")
+        paragraphs = [p for p in markdown.split("\n\n") if p.strip()]
+
+        if not paragraphs:
+            # No paragraph breaks, just chunk by characters
+            chunk_size = 800
+            start_idx = (page - 1) * chunk_size
+            end_idx = page * chunk_size
+            return (
+                markdown[start_idx:end_idx] if start_idx < len(markdown) else markdown[:chunk_size]
+            )
 
         # Estimate ~3 paragraphs per page
         paragraphs_per_page = 3
@@ -441,4 +509,11 @@ class ContextBuilder:
 
         page_paragraphs = paragraphs[start_idx:end_idx]
 
-        return "\n\n".join(page_paragraphs) if page_paragraphs else markdown[:500]
+        # If we're beyond the available paragraphs, use the last ones or first 500 chars
+        if not page_paragraphs:
+            # Return last few paragraphs or beginning of document
+            if paragraphs:
+                return "\n\n".join(paragraphs[-paragraphs_per_page:])
+            return markdown[:800]
+
+        return "\n\n".join(page_paragraphs)
