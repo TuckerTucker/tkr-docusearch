@@ -137,4 +137,31 @@ export class DocumentsAPIClient {
       throw error;
     }
   }
+
+  /**
+   * Get detailed processing status for a document
+   *
+   * @param {string} docId - Document ID (SHA-256 hash)
+   * @returns {Promise<Object>} Full processing status with stage description
+   */
+  async getProcessingStatus(docId) {
+    const url = `${this.baseUrl}/status/${docId}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // Document not found in processing queue
+        }
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`Failed to get status for ${docId}:`, error);
+      return null; // Return null on error to allow graceful degradation
+    }
+  }
 }
