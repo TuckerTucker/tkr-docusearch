@@ -10,6 +10,10 @@
 import { Slideshow } from './slideshow.js';
 import { AudioPlayer } from './audio-player.js';
 import { Accordion } from './accordion.js';
+import { applyEarlyTheme, initTheme } from './theme-toggle.js';
+
+// Apply theme immediately to avoid flash
+applyEarlyTheme();
 
 class DetailsPage {
     constructor() {
@@ -147,8 +151,10 @@ class DetailsPage {
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
         new DetailsPage();
     });
 } else {
+    initTheme();
     new DetailsPage();
 }

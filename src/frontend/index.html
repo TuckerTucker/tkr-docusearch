@@ -9,24 +9,26 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Sticky Header -->
-  <header class="header" role="banner">
-    <div class="header__container">
-      <div class="header__branding">
-        <h1 class="header__title">DocuSearch</h1>
-        <span class="header__subtitle">Document Library</span>
+  <!-- Sticky Filter Bar -->
+  <aside class="filter-bar-container" role="complementary" aria-label="Document filters">
+    <div id="filter-bar"></div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main" role="main">
+    <div class="main__container">
+      <!-- Document Grid -->
+      <div id="document-grid" class="document-grid" role="region" aria-label="Document library">
+        <!-- Documents will be dynamically inserted here -->
+        <div class="loading">Loading documents...</div>
       </div>
+    </div>
+  </main>
 
-      <nav class="header__nav" role="navigation" aria-label="Main navigation">
-        <a href="/frontend" class="header__nav-link header__nav-link--active" aria-current="page">
-          Library
-        </a>
-        <a href="/frontend/search.html" class="header__nav-link">
-          Search
-        </a>
-      </nav>
-
-      <div class="header__actions">
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo">
+    <div class="footer__container">
+      <div class="footer__actions">
         <button
           id="theme-toggle"
           class="theme-toggle"
@@ -49,39 +51,11 @@
         </button>
       </div>
 
-      <div class="header__status">
+      <div class="footer__status">
         <span id="connection-status" class="connection-status connection-status--disconnected" role="status" aria-live="polite">
           Disconnected
         </span>
       </div>
-    </div>
-  </header>
-
-  <!-- Sticky Filter Bar -->
-  <aside class="filter-bar-container" role="complementary" aria-label="Document filters">
-    <div id="filter-bar"></div>
-  </aside>
-
-  <!-- Main Content -->
-  <main class="main" role="main">
-    <div class="main__container">
-      <!-- Document Grid -->
-      <div id="document-grid" class="document-grid" role="region" aria-label="Document library">
-        <!-- Documents will be dynamically inserted here -->
-        <div class="loading">Loading documents...</div>
-      </div>
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="footer" role="contentinfo">
-    <div class="footer__container">
-      <p class="footer__text">
-        DocuSearch - Multimodal Document Search with ColPali
-      </p>
-      <p class="footer__meta">
-        <span class="footer__status-indicator" id="footer-status"></span>
-      </p>
     </div>
   </footer>
 

@@ -83,7 +83,8 @@ export class FilterBar {
   render() {
     this.container.innerHTML = `
       <div class="filter-bar">
-        <div class="filter-bar__search">
+        <!-- Search temporarily hidden until semantic search is implemented -->
+        <!-- <div class="filter-bar__search">
           <input
             type="search"
             id="search-input"
@@ -92,7 +93,7 @@ export class FilterBar {
             value="${this.state.search}"
             aria-label="Search documents"
           >
-        </div>
+        </div> -->
 
         <div class="filter-bar__sort">
           <label for="sort-select" class="filter-bar__label">Sort by:</label>
@@ -138,16 +139,18 @@ export class FilterBar {
    * Attach event listeners
    */
   attachEventListeners() {
-    // Search input (debounced)
+    // Search input (debounced) - temporarily disabled
     const searchInput = this.container.querySelector('#search-input');
-    searchInput.addEventListener('input', (e) => {
-      clearTimeout(this.searchTimeout);
-      this.searchTimeout = setTimeout(() => {
-        this.state.search = e.target.value;
-        this.state.offset = 0; // Reset to first page
-        this.emitFilterChange();
-      }, this.searchDebounce);
-    });
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(() => {
+          this.state.search = e.target.value;
+          this.state.offset = 0; // Reset to first page
+          this.emitFilterChange();
+        }, this.searchDebounce);
+      });
+    }
 
     // Sort select
     const sortSelect = this.container.querySelector('#sort-select');
