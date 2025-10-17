@@ -89,7 +89,9 @@
       "Bash(.venv-native/bin/isort src/ --profile black)",
       "Bash(.venv-native/bin/flake8:*)",
       "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/radon cc src/processing/docling_parser.py src/processing/processor.py -s -n C)",
-      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/flake8:*)"
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/.venv-native/bin/flake8:*)",
+      "Bash(awk:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",

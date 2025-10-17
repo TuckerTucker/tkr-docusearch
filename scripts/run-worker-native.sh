@@ -68,6 +68,9 @@ export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-8003}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 export PYTHONUNBUFFERED=1
 
+# Python path - add src directory for module imports
+export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH}"
+
 # ============================================================================
 # Functions
 # ============================================================================
