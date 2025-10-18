@@ -15,8 +15,12 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 /**
  * WebSocket URL for real-time updates
  * Override with VITE_WS_URL environment variable
+ *
+ * Uses relative protocol and hostname to work through Vite proxy in dev
+ * and direct connection in production.
  */
-export const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8002/ws';
+export const WS_URL = import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 /**
  * Copyparty file server URL
