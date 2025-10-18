@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from src.config.filter_groups import resolve_filter_group
 from src.config.image_config import PAGE_IMAGE_DIR
 from src.processing.api import structure_router
 from src.processing.file_validator import get_supported_extensions
@@ -403,6 +404,35 @@ def _apply_search_filter(doc_list: List[Dict], search: Optional[str]) -> List[Di
     return [doc for doc in doc_list if search_lower in doc["filename"].lower()]
 
 
+def _apply_file_type_filter(doc_list: List[Dict], file_type_group: str) -> List[Dict]:
+    """Filter documents by file type group.
+
+    Args:
+        doc_list: List of documents to filter
+        file_type_group: Filter group (all, pdf, audio, office, text, images)
+
+    Returns:
+        Filtered list of documents
+    """
+    # Get extensions for the group
+    extensions = resolve_filter_group(file_type_group)
+
+    # If None (all group) or invalid group, return all documents
+    if extensions is None:
+        return doc_list
+
+    # Filter documents by extension
+    filtered = []
+    for doc in doc_list:
+        filename = doc.get("filename", "")
+        file_ext = Path(filename).suffix.lower()
+
+        if file_ext in extensions:
+            filtered.append(doc)
+
+    return filtered
+
+
 def _sort_documents(doc_list: List[Dict], sort_by: str) -> None:
     """Sort documents in-place by specified criteria.
 
@@ -496,6 +526,10 @@ async def list_documents(
     sort_by: str = Query(  # noqa: B008
         "newest_first", description="Sort order: newest_first, oldest_first, name_asc, name_desc"
     ),
+    file_type_group: str = Query(  # noqa: B008
+        "all",
+        description="Filter by file type group: all, pdf, audio, office, text, images",
+    ),
 ):
     """List all stored documents with metadata.
 
@@ -504,6 +538,7 @@ async def list_documents(
         offset: Pagination offset
         search: Optional filename filter
         sort_by: Sort order (newest_first, oldest_first, name_asc, name_desc)
+        file_type_group: Filter by file type group (all, pdf, audio, office, text, images)
 
     Returns:
         DocumentListResponse with paginated documents
@@ -526,6 +561,7 @@ async def list_documents(
         # Convert to list and apply filters/sorting
         doc_list = list(documents.values())
         doc_list = _apply_search_filter(doc_list, search)
+        doc_list = _apply_file_type_filter(doc_list, file_type_group)
         _sort_documents(doc_list, sort_by)
 
         # Get total before pagination

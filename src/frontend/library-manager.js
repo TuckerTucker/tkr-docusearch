@@ -42,7 +42,7 @@ export class LibraryManager {
     this.currentQuery = {
       search: '',
       sort_by: 'newest_first',
-      file_types: ['pdf', 'docx', 'pptx', 'audio'],
+      file_type_group: 'all',
       limit: 50,
       offset: 0
     };
@@ -262,27 +262,8 @@ export class LibraryManager {
       );
 
       // Combine all documents (processing docs first, then completed)
+      // Note: Backend now handles file_type_group filtering via API query param
       let allDocuments = [...processingDocs, ...completedDocs];
-
-      // Filter by file type (client-side) using server config
-      if (this.currentQuery.file_types.length > 0) {
-        allDocuments = allDocuments.filter(doc => {
-          const ext = `.${doc.filename.split('.').pop().toLowerCase()}`;
-
-          // Check if extension matches any selected group
-          for (const groupId of this.currentQuery.file_types) {
-            const group = this.serverConfig.groups.find(g => g.id === groupId);
-            if (group && group.extensions.includes(ext)) {
-              return true;
-            }
-            // Also support direct extension matching for backwards compatibility
-            if (ext === `.${groupId}`) {
-              return true;
-            }
-          }
-          return false;
-        });
-      }
 
       // Sort: Processing documents first, then apply user's selected sort order
       allDocuments.sort((a, b) => {
