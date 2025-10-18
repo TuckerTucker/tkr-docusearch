@@ -1,0 +1,63 @@
+/**
+ * ConnectionStatus Styles
+ */
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.connection-status__indicator {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.connection-status__text {
+  font-weight: 500;
+}
+
+/* Connected state */
+.connection-status--connected .connection-status__indicator {
+  color: var(--color-status-ok, #22c55e);
+}
+
+.connection-status--connected .connection-status__text {
+  color: var(--color-status-ok, #22c55e);
+}
+
+/* Disconnected state */
+.connection-status--disconnected .connection-status__indicator {
+  color: var(--color-text-tertiary, #9ca3af);
+}
+
+.connection-status--disconnected .connection-status__text {
+  color: var(--color-text-tertiary, #9ca3af);
+}
+
+/* Reconnecting state */
+.connection-status--reconnecting .connection-status__indicator {
+  color: var(--color-status-warn, #f59e0b);
+  animation: connection-status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.connection-status--reconnecting .connection-status__text {
+  color: var(--color-status-warn, #f59e0b);
+}
+
+@keyframes connection-status-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Dark theme support */
+.dark .connection-status--disconnected .connection-status__indicator,
+.dark .connection-status--disconnected .connection-status__text {
+  color: var(--color-text-tertiary, #6b7280);
+}

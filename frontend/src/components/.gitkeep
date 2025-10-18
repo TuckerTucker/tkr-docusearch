@@ -1,0 +1,16 @@
+# Components Directory
+
+This directory will contain reusable React components used across multiple views.
+
+Examples:
+- DocumentCard
+- Button
+- Modal
+- ThemeToggle
+- ConnectionStatus
+- LoadingSpinner
+- Accordion
+- Slideshow
+- AudioPlayer
+- FilterBar
+- UploadModal

@@ -1,0 +1,33 @@
+/**
+ * Layout Styles
+ */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #1f2937);
+}
+
+.layout__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--layout-max-width, 1440px);
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .layout__main {
+    padding: 1rem;
+  }
+}
+
+/* Dark theme styles */
+.dark .layout {
+  background: var(--color-bg-primary, #1f2937);
+  color: var(--color-text-primary, #f3f4f6);
+}
