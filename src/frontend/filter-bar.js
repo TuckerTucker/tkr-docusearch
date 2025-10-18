@@ -28,7 +28,7 @@ export class FilterBar {
     this.state = {
       search: '',
       sort_by: 'newest_first',
-      file_types: ['pdf', 'docx', 'pptx', 'audio'],
+      file_type_group: 'all',
       limit: 50,
       offset: 0
     };
@@ -72,6 +72,10 @@ export class FilterBar {
       this.state.sort_by = params.get('sort_by');
     }
 
+    if (params.has('file_type_group')) {
+      this.state.file_type_group = params.get('file_type_group');
+    }
+
     if (params.has('offset')) {
       this.state.offset = parseInt(params.get('offset'), 10);
     }
@@ -105,24 +109,16 @@ export class FilterBar {
           </select>
         </div>
 
-        <div class="filter-bar__file-types">
-          <span class="filter-bar__label">File types:</span>
-          <label class="filter-bar__checkbox">
-            <input type="checkbox" value="pdf" ${this.state.file_types.includes('pdf') ? 'checked' : ''}>
-            PDF
-          </label>
-          <label class="filter-bar__checkbox">
-            <input type="checkbox" value="docx" ${this.state.file_types.includes('docx') ? 'checked' : ''}>
-            DOCX
-          </label>
-          <label class="filter-bar__checkbox">
-            <input type="checkbox" value="pptx" ${this.state.file_types.includes('pptx') ? 'checked' : ''}>
-            PPTX
-          </label>
-          <label class="filter-bar__checkbox">
-            <input type="checkbox" value="audio" ${this.state.file_types.includes('audio') ? 'checked' : ''}>
-            Audio
-          </label>
+        <div class="filter-bar__file-type">
+          <label for="file-type-select" class="filter-bar__label">Filter by type:</label>
+          <select id="file-type-select" class="filter-bar__select" aria-label="Filter documents by file type">
+            <option value="all" ${this.state.file_type_group === 'all' ? 'selected' : ''}>All</option>
+            <option value="pdf" ${this.state.file_type_group === 'pdf' ? 'selected' : ''}>PDF</option>
+            <option value="audio" ${this.state.file_type_group === 'audio' ? 'selected' : ''}>Audio (MP3, WAV)</option>
+            <option value="office" ${this.state.file_type_group === 'office' ? 'selected' : ''}>Office Documents (Word, Excel, PowerPoint)</option>
+            <option value="text" ${this.state.file_type_group === 'text' ? 'selected' : ''}>Text Documents (Markdown, CSV, HTML, VTT)</option>
+            <option value="images" ${this.state.file_type_group === 'images' ? 'selected' : ''}>Images (PNG, JPG, TIFF, BMP, WebP)</option>
+          </select>
         </div>
 
         <button id="clear-filters" class="filter-bar__clear">Clear Filters</button>
@@ -161,14 +157,12 @@ export class FilterBar {
       this.emitFilterChange();
     });
 
-    // File type checkboxes
-    const checkboxes = this.container.querySelectorAll('.filter-bar__file-types input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
-        this.updateFileTypes();
-        this.state.offset = 0; // Reset to first page
-        this.emitFilterChange();
-      });
+    // File type group select
+    const fileTypeSelect = this.container.querySelector('#file-type-select');
+    fileTypeSelect.addEventListener('change', (e) => {
+      this.state.file_type_group = e.target.value;
+      this.state.offset = 0; // Reset to first page
+      this.emitFilterChange();
     });
 
     // Clear filters button
@@ -197,21 +191,13 @@ export class FilterBar {
   }
 
   /**
-   * Update file types from checkboxes
-   */
-  updateFileTypes() {
-    const checkboxes = this.container.querySelectorAll('.filter-bar__file-types input[type="checkbox"]:checked');
-    this.state.file_types = Array.from(checkboxes).map(cb => cb.value);
-  }
-
-  /**
    * Clear all filters
    */
   clearFilters() {
     this.state = {
       search: '',
       sort_by: 'newest_first',
-      file_types: ['pdf', 'docx', 'pptx', 'audio'],
+      file_type_group: 'all',
       limit: 50,
       offset: 0
     };
@@ -266,6 +252,10 @@ export class FilterBar {
 
     if (this.state.sort_by !== 'newest_first') {
       params.set('sort_by', this.state.sort_by);
+    }
+
+    if (this.state.file_type_group !== 'all') {
+      params.set('file_type_group', this.state.file_type_group);
     }
 
     if (this.state.offset > 0) {

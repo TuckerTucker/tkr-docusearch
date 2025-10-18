@@ -52,9 +52,10 @@ export class DocumentsAPIClient {
    * @param {number} [options.offset=0] - Pagination offset
    * @param {string} [options.search=null] - Filename filter (case-insensitive)
    * @param {string} [options.sort_by='date_added'] - Sort field (date_added, filename, page_count)
+   * @param {string} [options.file_type_group='all'] - File type group filter (all, pdf, audio, office, text, images)
    * @returns {Promise<Object>} Response with documents array, total, limit, offset
    */
-  async listDocuments({ limit = 50, offset = 0, search = null, sort_by = 'date_added' } = {}) {
+  async listDocuments({ limit = 50, offset = 0, search = null, sort_by = 'date_added', file_type_group = 'all' } = {}) {
     // Build query string
     const params = new URLSearchParams();
     params.set('limit', Math.min(Math.max(limit, 1), 100).toString());
@@ -66,6 +67,10 @@ export class DocumentsAPIClient {
 
     if (sort_by && ['date_added', 'filename', 'page_count'].includes(sort_by)) {
       params.set('sort_by', sort_by);
+    }
+
+    if (file_type_group && file_type_group !== 'all') {
+      params.set('file_type_group', file_type_group);
     }
 
     const url = `${this.baseUrl}/documents?${params.toString()}`;
