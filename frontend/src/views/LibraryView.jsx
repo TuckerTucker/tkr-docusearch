@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { useDocumentStore } from '../stores/useDocumentStore.js';
+import { WS_URL } from '../constants/config.js';
 import FilterBar from '../features/library/FilterBar.jsx';
 import DocumentGrid from '../components/document/DocumentGrid.jsx';
 import UploadModal from '../features/library/UploadModal.jsx';
@@ -58,7 +59,7 @@ export default function LibraryView() {
   }, [documents, tempDocuments.size]); // Use tempDocuments.size to avoid reference issues
 
   // WebSocket for real-time document status updates
-  const { isConnected } = useWebSocket('ws://localhost:8002/ws', {
+  const { isConnected } = useWebSocket(WS_URL, {
     onMessage: useCallback(
       (event) => {
         try {

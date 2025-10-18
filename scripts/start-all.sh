@@ -35,6 +35,7 @@ NC='\033[0m'
 
 MODE="${1:-gpu}"  # Default to GPU mode
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
+FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 COMPOSE_DIR="${PROJECT_ROOT}/docker"
 
 # ============================================================================
@@ -79,8 +80,8 @@ check_docker() {
 }
 
 check_ports() {
-    local ports=("8000" "8001" "8002" "8004")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API")
+    local ports=("8000" "8001" "8002" "8004" "3000")
+    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
 
     for i in "${!ports[@]}"; do
         local port="${ports[$i]}"
@@ -199,23 +200,89 @@ start_research_api() {
     fi
 }
 
+start_frontend() {
+    echo -e "\n${CYAN}Starting React Frontend...${NC}\n"
+
+    # Check if frontend is already running
+    if [ -f "$FRONTEND_PID_FILE" ]; then
+        local old_pid=$(cat "$FRONTEND_PID_FILE")
+        if ps -p "$old_pid" > /dev/null 2>&1; then
+            print_status "Frontend" "warn" "Already running (PID: $old_pid)"
+            return
+        else
+            rm -f "$FRONTEND_PID_FILE"
+        fi
+    fi
+
+    # Wait for worker to be ready before starting frontend
+    # Frontend proxy needs worker API to be available
+    local max_wait=30
+    local wait_count=0
+    echo -e "${YELLOW}Waiting for worker API to be ready...${NC}"
+
+    while [ $wait_count -lt $max_wait ]; do
+        if curl -s http://localhost:8002/health > /dev/null 2>&1; then
+            print_status "Worker API" "ok" "Ready"
+            break
+        fi
+        sleep 1
+        wait_count=$((wait_count + 1))
+    done
+
+    if [ $wait_count -ge $max_wait ]; then
+        print_status "Worker API" "warn" "Not ready after ${max_wait}s, starting frontend anyway"
+    fi
+
+    # Check if node_modules exists
+    if [ ! -d "frontend/node_modules" ]; then
+        echo -e "${YELLOW}Installing frontend dependencies...${NC}"
+        cd frontend
+        npm install
+        cd "$PROJECT_ROOT"
+    fi
+
+    # Start frontend dev server in background
+    cd frontend
+    nohup npm run dev > ../logs/frontend.log 2>&1 &
+    local frontend_pid=$!
+    echo $frontend_pid > "$FRONTEND_PID_FILE"
+    cd "$PROJECT_ROOT"
+
+    # Wait for frontend to start
+    sleep 3
+
+    # Check if frontend is running
+    if ps -p "$frontend_pid" > /dev/null 2>&1; then
+        if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            print_status "Frontend" "ok" "Running on http://localhost:3000 (React 19)"
+            print_status "Frontend PID" "info" "$frontend_pid (saved to .frontend.pid)"
+        else
+            print_status "Frontend" "warn" "Starting... (check logs/frontend.log)"
+        fi
+    else
+        print_status "Frontend" "error" "Failed to start (check logs/frontend.log)"
+        rm -f "$FRONTEND_PID_FILE"
+    fi
+}
+
 show_summary() {
     echo -e "\n${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} Copyparty:     ${BLUE}http://localhost:8000${NC} (File upload)"
-    echo -e "  ${GREEN}→${NC} ChromaDB:      ${BLUE}http://localhost:8001${NC}"
-    echo -e "  ${GREEN}→${NC} Worker API:    ${BLUE}http://localhost:8002${NC}"
-    echo -e "  ${GREEN}→${NC} Frontend UI:   ${BLUE}http://localhost:8002/frontend${NC}"
-    echo -e "  ${GREEN}→${NC} Worker Status: ${BLUE}http://localhost:8002/status${NC}"
-    echo -e "  ${GREEN}→${NC} Research API:  ${BLUE}http://localhost:8004${NC}"
-    echo -e "  ${GREEN}→${NC} Research UI:   ${BLUE}http://localhost:8002/frontend/research.html${NC}"
+    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:3000${NC} (NEW - React 19)"
+    echo -e "  ${GREEN}→${NC} Copyparty:        ${BLUE}http://localhost:8000${NC} (File upload)"
+    echo -e "  ${GREEN}→${NC} ChromaDB:         ${BLUE}http://localhost:8001${NC}"
+    echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
+    echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
+    echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
+    echo -e "  ${GREEN}→${NC} Legacy Frontend:  ${BLUE}http://localhost:8000/frontend${NC} (src/frontend)"
 
     if [ "$MODE" = "gpu" ]; then
         echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU${NC}"
         echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
         echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
+        echo -e "  ${BLUE}ℹ${NC} Frontend waits for worker to be ready (model loading ~10s)"
     else
         echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Docker (CPU only)${NC}"
         echo -e "  ${BLUE}ℹ${NC} For GPU: ${YELLOW}./scripts/start-all.sh --gpu${NC}"
@@ -334,9 +401,13 @@ start_docker_services
 if [ "$MODE" = "gpu" ]; then
     start_native_worker
     start_research_api
+    start_frontend
 elif [ "$MODE" = "docker-only" ]; then
     print_status "Worker" "info" "Skipped (--docker-only mode)"
     print_status "Research API" "info" "Skipped (--docker-only mode)"
+    print_status "Frontend" "info" "Skipped (--docker-only mode)"
+elif [ "$MODE" = "cpu" ]; then
+    start_frontend
 fi
 
 # Show summary

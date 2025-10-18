@@ -34,6 +34,7 @@ NC='\033[0m'
 FORCE_MODE="${1:-}"
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
+FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 COMPOSE_DIR="${PROJECT_ROOT}/docker"
 
 # ============================================================================
@@ -185,6 +186,67 @@ stop_research_api() {
     fi
 }
 
+stop_frontend() {
+    echo -e "\n${CYAN}Stopping React frontend...${NC}\n"
+
+    # Check PID file
+    if [ -f "$FRONTEND_PID_FILE" ]; then
+        local frontend_pid=$(cat "$FRONTEND_PID_FILE")
+
+        if ps -p "$frontend_pid" > /dev/null 2>&1; then
+            print_status "Frontend PID" "info" "Found: $frontend_pid"
+
+            if [ "$FORCE_MODE" = "--force" ]; then
+                print_status "Frontend" "warn" "Force killing (SIGKILL)"
+                kill -9 "$frontend_pid" 2>/dev/null || true
+            else
+                print_status "Frontend" "info" "Gracefully stopping (SIGTERM)"
+                kill "$frontend_pid" 2>/dev/null || true
+
+                # Wait up to 5 seconds for graceful shutdown
+                local count=0
+                while ps -p "$frontend_pid" > /dev/null 2>&1 && [ $count -lt 5 ]; do
+                    sleep 1
+                    count=$((count + 1))
+                done
+
+                # Force kill if still running
+                if ps -p "$frontend_pid" > /dev/null 2>&1; then
+                    print_status "Frontend" "warn" "Graceful shutdown timed out, force killing"
+                    kill -9 "$frontend_pid" 2>/dev/null || true
+                fi
+            fi
+
+            # Verify stopped
+            if ps -p "$frontend_pid" > /dev/null 2>&1; then
+                print_status "Frontend" "error" "Failed to stop (PID: $frontend_pid)"
+            else
+                print_status "Frontend" "ok" "Stopped"
+            fi
+        else
+            print_status "Frontend" "info" "Not running (stale PID file)"
+        fi
+
+        rm -f "$FRONTEND_PID_FILE"
+        print_status "Frontend PID file" "ok" "Cleaned up"
+    else
+        print_status "Frontend" "info" "No PID file found (may not be running)"
+    fi
+
+    # Check for orphaned npm/vite processes on port 3000
+    local orphaned_pids=$(lsof -ti :3000 2>/dev/null || true)
+    if [ -n "$orphaned_pids" ]; then
+        print_status "Orphaned frontend processes" "warn" "Found on port 3000: $orphaned_pids"
+
+        if [ "$FORCE_MODE" = "--force" ]; then
+            lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+            print_status "Orphaned frontend processes" "ok" "Killed"
+        else
+            echo -e "\n  ${YELLOW}Run with --force to kill orphaned frontend processes${NC}"
+        fi
+    fi
+}
+
 stop_docker_services() {
     echo -e "\n${CYAN}Stopping Docker services...${NC}\n"
 
@@ -239,8 +301,8 @@ stop_docker_services() {
 check_ports() {
     echo -e "\n${CYAN}Checking ports...${NC}\n"
 
-    local ports=("8000" "8001" "8002" "8004")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API")
+    local ports=("8000" "8001" "8002" "8004" "3000")
+    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
     local ports_in_use=false
 
     for i in "${!ports[@]}"; do
@@ -275,6 +337,11 @@ cleanup_logs() {
         print_status "Research API log" "info" "Saved (${log_size}): logs/research-api.log"
     fi
 
+    if [ -f "logs/frontend.log" ]; then
+        local log_size=$(du -h logs/frontend.log | cut -f1)
+        print_status "Frontend log" "info" "Saved (${log_size}): logs/frontend.log"
+    fi
+
     # Show recent Docker logs
     cd "$COMPOSE_DIR"
     local compose_logs=$(docker-compose logs --tail=0 2>/dev/null || echo "")
@@ -297,7 +364,7 @@ show_summary() {
     if [ "$FORCE_MODE" != "--force" ]; then
         echo -e "\n${CYAN}Troubleshooting:${NC}"
         echo -e "  ${GREEN}→${NC} Force stop: ${YELLOW}./scripts/stop-all.sh --force${NC}"
-        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :8000,8001,8002,8004${NC}"
+        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :3000,8000,8001,8002,8004${NC}"
     fi
 
     echo ""
@@ -334,7 +401,7 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Troubleshooting:${NC}
   # Check what's running on DocuSearch ports
-  lsof -i :8000,8001,8002,8004
+  lsof -i :3000,8000,8001,8002,8004
 
   # Manually kill worker
   pkill -f worker_webhook.py
@@ -385,6 +452,7 @@ fi
 
 stop_native_worker
 stop_research_api
+stop_frontend
 stop_docker_services
 check_ports
 cleanup_logs

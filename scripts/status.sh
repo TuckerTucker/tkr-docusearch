@@ -28,6 +28,7 @@ NC='\033[0m'
 
 OUTPUT_FORMAT="${1:-text}"
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
+FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 
 # ============================================================================
 # Functions
@@ -142,9 +143,40 @@ show_status_text() {
         fi
     fi
 
+    # Frontend
+    echo -e "\n${CYAN}React Frontend:${NC}"
+
+    # Check frontend PID
+    local frontend_running=false
+    if [ -f "$FRONTEND_PID_FILE" ]; then
+        local frontend_pid=$(cat "$FRONTEND_PID_FILE")
+        if ps -p "$frontend_pid" > /dev/null 2>&1; then
+            frontend_running=true
+        fi
+    fi
+
+    # Check frontend endpoint
+    local frontend_status=$(check_service "http://localhost:3000")
+
+    if [ "$frontend_status" = "running" ]; then
+        echo -e "  ${GREEN}✓${NC} Frontend:  Running (React 19 + Vite)"
+        if [ $frontend_running = true ]; then
+            echo -e "    ${BLUE}→${NC} PID:     $(cat $FRONTEND_PID_FILE)"
+        fi
+        echo -e "    ${BLUE}→${NC} URL:     http://localhost:3000"
+        echo -e "    ${BLUE}→${NC} Logs:    logs/frontend.log"
+    else
+        if [ $frontend_running = true ]; then
+            echo -e "  ${YELLOW}⚠${NC} Frontend:  Process running but not responding"
+            echo -e "    ${BLUE}→${NC} PID:     $(cat $FRONTEND_PID_FILE)"
+        else
+            echo -e "  ${RED}✗${NC} Frontend:  Stopped"
+        fi
+    fi
+
     # Port usage
     echo -e "\n${CYAN}Port Usage:${NC}"
-    for port in 8000 8001 8002; do
+    for port in 3000 8000 8001 8002 8004; do
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
             local pid=$(lsof -Pi :$port -sTCP:LISTEN -t)
             local process=$(ps -p $pid -o comm= | tr -d '\n')
@@ -161,6 +193,7 @@ show_status_text() {
     [ "$chromadb_status" != "running" ] && all_running=false
     [ "$copyparty_status" != "running" ] && all_running=false
     [ "$worker_status" != "running" ] && all_running=false
+    [ "$frontend_status" != "running" ] && all_running=false
 
     if $all_running; then
         echo -e "  ${GREEN}✓ All services running${NC}"
@@ -178,9 +211,11 @@ show_status_json() {
     local chromadb_status=$(check_service "http://localhost:8001/api/v2/heartbeat")
     local copyparty_status=$(check_service "http://localhost:8000/")
     local worker_status=$(check_service "http://localhost:8002/health")
+    local frontend_status=$(check_service "http://localhost:3000")
 
     local native_worker=false
     local worker_pid=""
+    local frontend_pid=""
 
     if [ -f "$WORKER_PID_FILE" ]; then
         worker_pid=$(cat "$WORKER_PID_FILE")
@@ -189,9 +224,18 @@ show_status_json() {
         fi
     fi
 
+    if [ -f "$FRONTEND_PID_FILE" ]; then
+        frontend_pid=$(cat "$FRONTEND_PID_FILE")
+    fi
+
     cat << EOF
 {
   "services": {
+    "frontend": {
+      "status": "$frontend_status",
+      "url": "http://localhost:3000",
+      "pid": "$frontend_pid"
+    },
     "chromadb": {
       "status": "$chromadb_status",
       "url": "http://localhost:8001"
@@ -207,7 +251,7 @@ show_status_json() {
       "pid": "$worker_pid"
     }
   },
-  "all_running": $([ "$chromadb_status" = "running" ] && [ "$copyparty_status" = "running" ] && [ "$worker_status" = "running" ] && echo 'true' || echo 'false')
+  "all_running": $([ "$chromadb_status" = "running" ] && [ "$copyparty_status" = "running" ] && [ "$worker_status" = "running" ] && [ "$frontend_status" = "running" ] && echo 'true' || echo 'false')
 }
 EOF
 }

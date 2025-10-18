@@ -65,14 +65,14 @@ export class WebSocketManager {
       };
 
       this.ws.onclose = () => {
-        console.log('[WebSocket] Connection closed');
-        if (this.options.onClose) {
-          this.options.onClose();
+        // Only log if not an intentional close (reduces React Strict Mode noise)
+        if (!this.isIntentionallyClosed) {
+          console.log('[WebSocket] Connection closed unexpectedly');
+          this.scheduleReconnect();
         }
 
-        // Auto-reconnect unless intentionally closed
-        if (!this.isIntentionallyClosed) {
-          this.scheduleReconnect();
+        if (this.options.onClose) {
+          this.options.onClose();
         }
       };
     } catch (error) {
@@ -95,6 +95,9 @@ export class WebSocketManager {
     }
 
     if (this.ws) {
+      // Remove error handlers before closing to avoid "connection closed before established" errors
+      // This happens in React Strict Mode when components mount/unmount/remount
+      this.ws.onerror = null;
       this.ws.close();
       this.ws = null;
     }
