@@ -140,7 +140,7 @@ const documents = {
    * Fetch extracted markdown content for a document
    *
    * @param {string} docId - Document ID
-   * @returns {Promise<Object>} Markdown content with sections
+   * @returns {Promise<string>} Markdown content as text
    */
   async getMarkdown(docId) {
     if (!docId || !/^[a-zA-Z0-9\-]{8,64}$/.test(docId)) {
@@ -149,7 +149,15 @@ const documents = {
 
     const url = `${API_BASE_URL}/documents/${docId}/markdown`;
     const response = await fetchWithTimeout(url);
-    return handleResponse(response, url);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const message = errorData.error || errorData.message || `HTTP ${response.status}`;
+      throw new APIError(message, response.status, url);
+    }
+
+    // Markdown endpoint returns plain text, not JSON
+    return response.text();
   },
 
   /**
