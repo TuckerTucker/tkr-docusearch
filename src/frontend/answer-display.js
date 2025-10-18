@@ -169,13 +169,13 @@ function createCitationMarker(citation) {
         display: 'inline-block',
         padding: '0 0.25rem',
         margin: '0 0.125rem',
-        background: 'var(--color-primary-light)',
-        color: 'var(--color-primary-base)',
+        background: 'var(--accent)',
+        color: 'var(--primary)',
         borderRadius: 'var(--radius-sm, 0.25rem)',
         fontSize: 'var(--font-size-sm, 0.875rem)',
         fontWeight: '600',
         cursor: 'pointer',
-        transition: 'all var(--trans-fast, 150ms)',
+        transition: 'all var(--transition-fast, 150ms)',
         verticalAlign: 'super',
         fontFamily: 'var(--font-sans)'
     });
@@ -215,8 +215,8 @@ function handleCitationHover(event) {
     }
 
     // Highlight citation marker
-    event.target.style.background = 'var(--color-primary-base)';
-    event.target.style.color = 'var(--color-bg-primary)';
+    event.target.style.background = 'var(--primary)';
+    event.target.style.color = 'var(--primary-foreground)';
 }
 
 /**
@@ -234,8 +234,8 @@ function handleCitationLeave(event) {
     }
 
     // Reset citation marker style
-    event.target.style.background = 'var(--color-primary-light)';
-    event.target.style.color = 'var(--color-primary-base)';
+    event.target.style.background = 'var(--accent)';
+    event.target.style.color = 'var(--primary)';
 }
 
 /**
@@ -281,7 +281,7 @@ style.textContent = `
     .answer-display {
         font-family: var(--font-serif, Georgia, serif);
         line-height: 1.8;
-        color: var(--color-text-primary);
+        color: var(--foreground);
     }
 
     .answer-sentence {
@@ -291,17 +291,25 @@ style.textContent = `
 
     .citation-marker:hover,
     .citation-marker:focus {
-        outline: 2px solid var(--color-primary-base);
+        outline: 2px solid var(--primary);
         outline-offset: 2px;
     }
 
+    .citation-marker--highlighted {
+        background: var(--citation-highlight-bg) !important;
+        color: var(--citation-highlight-fg) !important;
+        font-weight: 600;
+        transition: all var(--transition-fast, 150ms) ease-in-out;
+    }
+
     .answer-sentence.highlighted-sentence {
-        background: var(--color-primary-light);
+        background: var(--citation-highlight-bg);
+        color: var(--citation-highlight-fg);
         padding: var(--space-2);
         margin-left: calc(var(--space-2) * -1);
         margin-right: calc(var(--space-2) * -1);
         border-radius: var(--radius-sm, 0.25rem);
-        transition: all var(--trans-base, 200ms);
+        transition: all var(--transition-base, 200ms) ease-in-out;
     }
 `;
 document.head.appendChild(style);
