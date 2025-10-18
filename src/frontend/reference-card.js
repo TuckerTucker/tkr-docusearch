@@ -3,7 +3,11 @@
  *
  * Renders reference cards for source documents.
  * Supports detailed and simple view modes.
+ *
+ * Wave 7 - Enhanced with chunk-level navigation support
  */
+
+import { buildDetailsURL, hasChunkContext } from './utils/url-builder.js';
 
 /**
  * Render reference cards
@@ -49,6 +53,10 @@ function createReferenceCard(source, citationNum, variant) {
         `Reference ${citationNum}: ${source.filename}, Page ${source.page}`
     );
 
+    // Build URL with chunk support (Wave 7 enhancement)
+    const detailsURL = buildDetailsURL(source);
+    const hasChunk = hasChunkContext(source);
+
     if (variant === 'detailed') {
         card.innerHTML = `
             <div class="reference-card__number">${citationNum}</div>
@@ -71,6 +79,7 @@ function createReferenceCard(source, citationNum, variant) {
             <div class="reference-card__content">
                 <div class="reference-card__badge">
                     ${source.extension.toUpperCase()}
+                    ${hasChunk ? '<span class="chunk-indicator" title="Jump to specific section" aria-label="Has chunk-level navigation">📍</span>' : ''}
                 </div>
                 <div class="reference-card__filename" title="${source.filename}">
                     ${source.filename}
@@ -80,9 +89,9 @@ function createReferenceCard(source, citationNum, variant) {
                 </div>
             </div>
             <a
-                href="/frontend/details.html?id=${source.doc_id}"
+                href="${detailsURL}"
                 class="reference-card__details-btn"
-                aria-label="View details for ${source.filename}"
+                aria-label="View details for ${source.filename}${hasChunk ? ' (jump to section)' : ''}"
             >
                 Details
             </a>
@@ -93,11 +102,12 @@ function createReferenceCard(source, citationNum, variant) {
             <div class="reference-card__number">${citationNum}</div>
             <div class="reference-card__filename-simple" title="${source.filename}">
                 ${source.filename}
+                ${hasChunk ? '<span class="chunk-indicator-simple" title="Jump to section">📍</span>' : ''}
             </div>
             <a
-                href="/frontend/details.html?id=${source.doc_id}"
+                href="${detailsURL}"
                 class="reference-card__details-btn-simple"
-                aria-label="View details"
+                aria-label="View details${hasChunk ? ' (jump to section)' : ''}"
             >
                 Details
             </a>
@@ -349,6 +359,45 @@ style.textContent = `
         text-decoration: none;
         font-size: var(--font-size-sm, 0.875rem);
         font-weight: 600;
+    }
+
+    /* Chunk navigation indicators (Wave 7) */
+    .chunk-indicator {
+        display: inline-block;
+        margin-left: var(--space-1, 0.25rem);
+        font-size: var(--font-size-xs, 0.75rem);
+        opacity: 0.9;
+        cursor: help;
+        transition: opacity var(--trans-fast, 150ms);
+    }
+
+    .chunk-indicator:hover {
+        opacity: 1;
+    }
+
+    .chunk-indicator-simple {
+        display: inline-block;
+        margin-left: var(--space-2, 0.5rem);
+        font-size: var(--font-size-sm, 0.875rem);
+        color: var(--color-primary-base);
+        opacity: 0.8;
+        cursor: help;
+        transition: opacity var(--trans-fast, 150ms);
+    }
+
+    .chunk-indicator-simple:hover {
+        opacity: 1;
+    }
+
+    /* Enhanced button styling for chunk links */
+    .reference-card:has(.chunk-indicator) .reference-card__details-btn,
+    .reference-card:has(.chunk-indicator-simple) .reference-card__details-btn-simple {
+        background: var(--color-primary-hover, var(--color-primary-base));
+    }
+
+    .reference-card:has(.chunk-indicator):hover .reference-card__details-btn,
+    .reference-card:has(.chunk-indicator-simple):hover .reference-card__details-btn-simple {
+        box-shadow: var(--shadow-md);
     }
 `;
 document.head.appendChild(style);

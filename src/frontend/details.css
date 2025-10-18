@@ -554,4 +554,78 @@ body {
     --border-color: var(--border);
     --hover-background: var(--muted);
     --shadow-md: var(--shadow-md);
+
+    /* Chunk highlighting colors */
+    --chunk-hover-bg: oklch(0.8348 0.0426 88.8064);
+    --chunk-active-bg: oklch(0.7264 0.0581 66.6967);
+    --chunk-hover-border: oklch(0.6180 0.0778 65.5444);
+    --chunk-active-border: oklch(0.5680 0.0878 65.5444);
+}
+
+/* Bidirectional Highlighting Styles */
+/* Wave 3 - Agent 9: Chunk Highlighting */
+
+/* Chunk divs with data-chunk-id attribute */
+[data-chunk-id] {
+    transition: background-color 0.2s ease, border-left 0.2s ease, padding-left 0.2s ease;
+    border-left: 3px solid transparent;
+    padding-left: 0;
+}
+
+/* Hover state - triggered by hovering over chunk text */
+[data-chunk-id].chunk-hover {
+    background-color: var(--chunk-hover-bg);
+    border-left-color: var(--chunk-hover-border);
+    padding-left: 0.75rem;
+}
+
+/* Active state - triggered by clicking bbox or navigating via URL */
+[data-chunk-id].chunk-active {
+    background-color: var(--chunk-active-bg);
+    border-left-color: var(--chunk-active-border);
+    padding-left: 0.75rem;
+    animation: highlightPulse 1s ease-in-out;
+}
+
+/* Pulse animation for chunk navigation */
+@keyframes highlightPulse {
+    0%, 100% {
+        background-color: var(--chunk-active-bg);
+    }
+    50% {
+        background-color: var(--chunk-hover-bg);
+    }
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] {
+    --chunk-hover-bg: oklch(0.3237 0.0155 59.0603);
+    --chunk-active-bg: oklch(0.3737 0.0255 59.0603);
+    --chunk-hover-border: oklch(0.7264 0.0581 66.6967);
+    --chunk-active-border: oklch(0.8348 0.0426 88.8064);
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+    [data-chunk-id].chunk-hover {
+        border-left-width: 4px;
+        border-left-color: var(--primary-color);
+    }
+
+    [data-chunk-id].chunk-active {
+        border-left-width: 5px;
+        border-left-color: var(--primary-color);
+        background-color: var(--hover-background);
+    }
+}
+
+/* Reduced motion - disable animations */
+@media (prefers-reduced-motion: reduce) {
+    [data-chunk-id] {
+        transition: none;
+    }
+
+    [data-chunk-id].chunk-active {
+        animation: none;
+    }
 }

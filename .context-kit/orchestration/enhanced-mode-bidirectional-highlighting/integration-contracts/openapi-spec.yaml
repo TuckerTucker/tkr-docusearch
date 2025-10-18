@@ -1,0 +1,794 @@
+openapi: 3.0.3
+info:
+  title: DocuSearch Enhanced Mode API
+  description: |
+    API endpoints for bidirectional highlighting between research answers and source documents.
+
+    This specification covers new and enhanced endpoints required for the enhanced mode feature:
+    - Structure metadata extraction
+    - Chunk-level navigation
+    - Research API with chunk references
+
+    **Version**: 1.0
+    **Last Updated**: 2025-10-17
+  version: 1.0.0
+  contact:
+    name: DocuSearch Development Team
+
+servers:
+  - url: http://localhost:8002
+    description: Worker API (documents, structure, chunks)
+  - url: http://localhost:8003
+    description: Research API
+
+paths:
+  /documents/{doc_id}/pages/{page}/structure:
+    get:
+      summary: Get document structure metadata for a specific page
+      description: |
+        Retrieves structural elements (headings, tables, pictures, code blocks, formulas)
+        with bounding boxes for a specific document page.
+
+        Returns empty structure arrays if page exists but has no extracted structure.
+      operationId: getPageStructure
+      tags:
+        - Structure Metadata
+      parameters:
+        - name: doc_id
+          in: path
+          required: true
+          description: Document identifier (SHA-256 hash or UUID)
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9\-]{8,64}$'
+            example: abc123-def456-789
+        - name: page
+          in: path
+          required: true
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            example: 3
+      responses:
+        '200':
+          description: Structure metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageStructure'
+              examples:
+                withStructure:
+                  summary: Page with extracted structure
+                  value:
+                    doc_id: abc123-def456-789
+                    page: 3
+                    has_structure: true
+                    headings:
+                      - text: Introduction
+                        level: SECTION_HEADER
+                        section_path: "1. Introduction"
+                        bbox: [50.5, 100.0, 545.8, 125.3]
+                        chunk_ids:
+                          - abc123-def456-789-chunk0003
+                          - abc123-def456-789-chunk0004
+                    tables:
+                      - caption: Survey Results by Region
+                        rows: 12
+                        cols: 5
+                        has_header: true
+                        table_id: table-0
+                        bbox: [100.0, 250.0, 500.0, 400.0]
+                    pictures:
+                      - type: chart
+                        caption: "Figure 1: Market Growth 2020-2024"
+                        confidence: 0.92
+                        picture_id: picture-0
+                        bbox: [80.0, 200.0, 530.0, 400.0]
+                    code_blocks: []
+                    formulas: []
+                    summary:
+                      total_sections: 3
+                      max_depth: 2
+                      has_toc: false
+                    coordinate_system:
+                      origin: top-left
+                      units: pixels
+                      image_width: 612
+                      image_height: 792
+                withoutStructure:
+                  summary: Page without structure
+                  value:
+                    doc_id: xyz789-uvw456-123
+                    page: 1
+                    has_structure: false
+                    headings: []
+                    tables: []
+                    pictures: []
+                    code_blocks: []
+                    formulas: []
+                    summary:
+                      total_sections: 0
+                      max_depth: 0
+                      has_toc: false
+                    coordinate_system: null
+        '404':
+          description: Document or page not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Page not found
+                detail: "Document abc123 page 99 not found"
+                status_code: 404
+
+  /documents/{doc_id}/chunks/{chunk_id}:
+    get:
+      summary: Get metadata for a specific text chunk
+      description: |
+        Retrieves detailed metadata for a specific chunk including its text content,
+        location, context, and related elements.
+      operationId: getChunkMetadata
+      tags:
+        - Chunk Metadata
+      parameters:
+        - name: doc_id
+          in: path
+          required: true
+          description: Document identifier
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9\-]{8,64}$'
+            example: abc123-def456-789
+        - name: chunk_id
+          in: path
+          required: true
+          description: Chunk identifier in format {doc_id}-chunk{NNNN}
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9\-]+-chunk\d{4}$'
+            example: abc123-def456-789-chunk0012
+      responses:
+        '200':
+          description: Chunk metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChunkMetadata'
+              examples:
+                textChunk:
+                  summary: Text document chunk
+                  value:
+                    chunk_id: abc123-def456-789-chunk0012
+                    doc_id: abc123-def456-789
+                    page: 3
+                    full_text: "The research methodology employed in this study combines qualitative and quantitative approaches..."
+                    word_count: 45
+                    parent_heading: Research Methodology
+                    section_path: "2. Research Methodology"
+                    element_type: text
+                    bbox: [50.5, 480.0, 545.8, 560.0]
+                    related_tables:
+                      - table-1
+                    related_pictures:
+                      - picture-1
+                    is_page_boundary: false
+                    start_time: null
+                    end_time: null
+                audioChunk:
+                  summary: Audio transcript chunk
+                  value:
+                    chunk_id: audio789-chunk0005
+                    doc_id: audio789
+                    page: 1
+                    full_text: "Welcome to the quarterly earnings call..."
+                    word_count: 26
+                    parent_heading: null
+                    section_path: Transcript
+                    element_type: text
+                    bbox: null
+                    related_tables: []
+                    related_pictures: []
+                    is_page_boundary: false
+                    start_time: 45.2
+                    end_time: 58.7
+        '404':
+          description: Chunk not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Chunk not found
+                detail: "Chunk abc123-chunk9999 not found"
+                status_code: 404
+
+  /api/research/ask:
+    post:
+      summary: Submit research question with AI-generated answer
+      description: |
+        Enhanced research endpoint that returns AI-generated answers with inline citations
+        and chunk-level source references for precise navigation.
+      operationId: askResearchQuestion
+      tags:
+        - Research
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchRequest'
+            example:
+              query: "What caused the 2008 financial crisis?"
+              num_sources: 10
+              search_mode: hybrid
+      responses:
+        '200':
+          description: Research answer generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchResponse'
+              example:
+                answer: "The 2008 financial crisis was caused by several interconnected factors. The primary cause was the collapse of the subprime mortgage market [1]..."
+                citations:
+                  - id: 1
+                    start: 155
+                    end: 158
+                    marker: "[1]"
+                  - id: 2
+                    start: 320
+                    end: 323
+                    marker: "[2]"
+                sources:
+                  - id: 1
+                    doc_id: fin-crisis-2008-report
+                    filename: Financial_Crisis_Report_2009.pdf
+                    page: 12
+                    extension: pdf
+                    thumbnail_path: /images/fin-crisis-2008-report/page012_thumb.jpg
+                    date_added: "2025-10-15T10:30:00Z"
+                    relevance_score: 0.89
+                    chunk_id: fin-crisis-2008-report-chunk0045
+                  - id: 2
+                    doc_id: housing-bubble-analysis
+                    filename: Housing_Market_Analysis.pdf
+                    page: 8
+                    extension: pdf
+                    thumbnail_path: /images/housing-bubble-analysis/page008_thumb.jpg
+                    date_added: "2025-10-14T15:20:00Z"
+                    relevance_score: 0.82
+                    chunk_id: null
+                citation_map:
+                  "1":
+                    - sentence_index: 1
+                      sentence_text: "The primary cause was the collapse of the subprime mortgage market [1]."
+                metadata:
+                  total_sources: 5
+                  context_tokens: 2850
+                  context_truncated: false
+                  model_used: gpt-4-turbo
+                  search_mode: hybrid
+                  processing_time_ms: 2450
+                  llm_latency_ms: 1950
+                  search_latency_ms: 245
+
+components:
+  schemas:
+    PageStructure:
+      type: object
+      required:
+        - doc_id
+        - page
+        - has_structure
+        - headings
+        - tables
+        - pictures
+        - code_blocks
+        - formulas
+        - summary
+      properties:
+        doc_id:
+          type: string
+          description: Document identifier
+        page:
+          type: integer
+          minimum: 1
+          description: Page number (1-indexed)
+        has_structure:
+          type: boolean
+          description: Whether structural elements were extracted
+        headings:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeadingInfo'
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableInfo'
+        pictures:
+          type: array
+          items:
+            $ref: '#/components/schemas/PictureInfo'
+        code_blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeBlockInfo'
+        formulas:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormulaInfo'
+        summary:
+          $ref: '#/components/schemas/StructureSummary'
+        coordinate_system:
+          $ref: '#/components/schemas/CoordinateSystem'
+          nullable: true
+
+    HeadingInfo:
+      type: object
+      required:
+        - text
+        - level
+        - section_path
+        - bbox
+        - chunk_ids
+      properties:
+        text:
+          type: string
+          description: Heading text content
+        level:
+          type: string
+          enum: [TITLE, SECTION_HEADER, SUB_SECTION_HEADER, PARAGRAPH_HEADER]
+          description: Hierarchical heading level
+        section_path:
+          type: string
+          description: Hierarchical path (e.g., "1.2.3" or "Intro > Methods")
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        chunk_ids:
+          type: array
+          items:
+            type: string
+          description: IDs of text chunks containing this heading
+
+    TableInfo:
+      type: object
+      required:
+        - caption
+        - rows
+        - cols
+        - has_header
+        - table_id
+        - bbox
+      properties:
+        caption:
+          type: string
+          nullable: true
+          description: Table caption if available
+        rows:
+          type: integer
+          minimum: 0
+          description: Number of rows
+        cols:
+          type: integer
+          minimum: 0
+          description: Number of columns
+        has_header:
+          type: boolean
+          description: Whether table has header row
+        table_id:
+          type: string
+          description: Unique table identifier
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+
+    PictureInfo:
+      type: object
+      required:
+        - type
+        - caption
+        - confidence
+        - picture_id
+        - bbox
+      properties:
+        type:
+          type: string
+          enum: [chart, diagram, photo, logo, signature, other]
+          description: Picture classification type
+        caption:
+          type: string
+          nullable: true
+          description: Picture caption if available
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Classification confidence score
+        picture_id:
+          type: string
+          description: Unique picture identifier
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+
+    CodeBlockInfo:
+      type: object
+      required:
+        - language
+        - lines
+        - bbox
+      properties:
+        language:
+          type: string
+          nullable: true
+          description: Detected programming language
+        lines:
+          type: integer
+          minimum: 0
+          description: Number of lines
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+
+    FormulaInfo:
+      type: object
+      required:
+        - latex
+        - bbox
+      properties:
+        latex:
+          type: string
+          nullable: true
+          description: LaTeX representation
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+
+    BoundingBox:
+      type: array
+      description: |
+        Bounding box coordinates [x1, y1, x2, y2] where:
+        - x1, y1: top-left corner
+        - x2, y2: bottom-right corner
+        - Origin: top-left (0, 0)
+        - Units: pixels relative to original image dimensions
+      items:
+        type: number
+        format: float
+      minItems: 4
+      maxItems: 4
+      example: [50.5, 100.0, 545.8, 125.3]
+
+    StructureSummary:
+      type: object
+      required:
+        - total_sections
+        - max_depth
+        - has_toc
+      properties:
+        total_sections:
+          type: integer
+          minimum: 0
+          description: Total number of sections
+        max_depth:
+          type: integer
+          minimum: 0
+          description: Maximum heading nesting depth
+        has_toc:
+          type: boolean
+          description: Whether document has table of contents
+
+    CoordinateSystem:
+      type: object
+      required:
+        - origin
+        - units
+        - image_width
+        - image_height
+      properties:
+        origin:
+          type: string
+          enum: [top-left]
+          description: Coordinate system origin
+        units:
+          type: string
+          enum: [pixels]
+          description: Measurement units
+        image_width:
+          type: integer
+          minimum: 1
+          description: Original image width in pixels
+        image_height:
+          type: integer
+          minimum: 1
+          description: Original image height in pixels
+
+    ChunkMetadata:
+      type: object
+      required:
+        - chunk_id
+        - doc_id
+        - page
+        - full_text
+        - word_count
+        - parent_heading
+        - section_path
+        - element_type
+        - bbox
+        - related_tables
+        - related_pictures
+        - is_page_boundary
+        - start_time
+        - end_time
+      properties:
+        chunk_id:
+          type: string
+          description: Chunk identifier
+        doc_id:
+          type: string
+          description: Document identifier
+        page:
+          type: integer
+          minimum: 1
+          description: Page number
+        full_text:
+          type: string
+          description: Complete chunk text content
+        word_count:
+          type: integer
+          minimum: 0
+          description: Number of words
+        parent_heading:
+          type: string
+          nullable: true
+          description: Parent heading text
+        section_path:
+          type: string
+          description: Hierarchical section path
+        element_type:
+          type: string
+          enum: [text, list_item, table_cell, caption, code, formula]
+          description: Type of document element
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+          nullable: true
+        related_tables:
+          type: array
+          items:
+            type: string
+          description: IDs of related tables
+        related_pictures:
+          type: array
+          items:
+            type: string
+          description: IDs of related pictures
+        is_page_boundary:
+          type: boolean
+          description: Whether chunk crosses page boundary
+        start_time:
+          type: number
+          format: float
+          nullable: true
+          description: Start timestamp in seconds (audio only)
+        end_time:
+          type: number
+          format: float
+          nullable: true
+          description: End timestamp in seconds (audio only)
+
+    ResearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Research question from user
+        num_sources:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 10
+          description: Maximum number of source documents
+        search_mode:
+          type: string
+          enum: [visual, text, hybrid]
+          default: hybrid
+          description: Search collection mode
+        model:
+          type: string
+          nullable: true
+          description: LLM model to use (default from config)
+        temperature:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          nullable: true
+          description: LLM temperature (default 0.3)
+
+    ResearchResponse:
+      type: object
+      required:
+        - answer
+        - citations
+        - citation_map
+        - sources
+        - metadata
+      properties:
+        answer:
+          type: string
+          description: AI-generated answer with inline citations
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CitationInfo'
+        citation_map:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/SentenceInfo'
+          description: Map of citation numbers to sentences
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceInfo'
+        metadata:
+          $ref: '#/components/schemas/ResearchMetadata'
+
+    CitationInfo:
+      type: object
+      required:
+        - id
+        - start
+        - end
+        - marker
+      properties:
+        id:
+          type: integer
+          minimum: 1
+          description: Citation number
+        start:
+          type: integer
+          minimum: 0
+          description: Start position in answer text
+        end:
+          type: integer
+          minimum: 0
+          description: End position in answer text
+        marker:
+          type: string
+          description: Citation marker (e.g., "[1]")
+
+    SentenceInfo:
+      type: object
+      required:
+        - sentence_index
+        - sentence_text
+      properties:
+        sentence_index:
+          type: integer
+          minimum: 0
+          description: Sentence index
+        sentence_text:
+          type: string
+          description: Sentence text with citation
+
+    SourceInfo:
+      type: object
+      required:
+        - id
+        - doc_id
+        - filename
+        - page
+        - extension
+        - date_added
+        - relevance_score
+      properties:
+        id:
+          type: integer
+          minimum: 1
+          description: Citation number (1-indexed)
+        doc_id:
+          type: string
+          description: Document identifier
+        filename:
+          type: string
+          description: Original filename
+        page:
+          type: integer
+          minimum: 1
+          description: Page number
+        extension:
+          type: string
+          description: File extension
+        thumbnail_path:
+          type: string
+          nullable: true
+          description: Thumbnail image URL
+        date_added:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp
+        relevance_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Search relevance score
+        chunk_id:
+          type: string
+          nullable: true
+          description: |
+            Chunk identifier for text search results.
+            Null for visual search results (page-level only).
+            Format: {doc_id}-chunk{NNNN}
+
+    ResearchMetadata:
+      type: object
+      required:
+        - total_sources
+        - context_tokens
+        - context_truncated
+        - model_used
+        - search_mode
+        - processing_time_ms
+        - llm_latency_ms
+        - search_latency_ms
+      properties:
+        total_sources:
+          type: integer
+          minimum: 0
+          description: Number of sources used
+        context_tokens:
+          type: integer
+          minimum: 0
+          description: Total tokens in context
+        context_truncated:
+          type: boolean
+          description: Whether context was truncated
+        model_used:
+          type: string
+          description: LLM model name
+        search_mode:
+          type: string
+          description: Search mode used
+        processing_time_ms:
+          type: integer
+          minimum: 0
+          description: Total processing time
+        llm_latency_ms:
+          type: integer
+          minimum: 0
+          description: LLM inference latency
+        search_latency_ms:
+          type: integer
+          minimum: 0
+          description: Search latency
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - detail
+        - status_code
+      properties:
+        error:
+          type: string
+          description: Error message
+        detail:
+          type: string
+          description: Detailed error description
+        status_code:
+          type: integer
+          description: HTTP status code
+
+tags:
+  - name: Structure Metadata
+    description: Document structure extraction endpoints
+  - name: Chunk Metadata
+    description: Text chunk metadata endpoints
+  - name: Research
+    description: AI-powered research endpoints

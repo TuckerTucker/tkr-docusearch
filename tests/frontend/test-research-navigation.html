@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Navigation Test - DocuSearch</title>
+    <style>
+        :root {
+            /* Design system variables */
+            --color-bg-primary: oklch(0.9582 0.0152 90.2357);
+            --color-bg-secondary: oklch(0.9914 0.0098 87.4695);
+            --color-text-primary: oklch(0.3760 0.0225 64.3434);
+            --color-text-secondary: oklch(0.4700 0.0350 71.1655);
+            --color-primary-base: oklch(0.6180 0.0778 65.5444);
+            --color-primary-hover: oklch(0.5680 0.0878 65.5444);
+            --color-primary-light: oklch(0.8348 0.0426 88.8064);
+            --color-border: oklch(0.7 0.02 65);
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --radius-sm: 0.25rem;
+            --radius-md: 0.5rem;
+            --shadow-md: 2px 3px 5px 0px hsl(28 13% 20% / 0.12);
+            --trans-fast: 150ms;
+            --trans-base: 200ms;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--color-text-primary);
+        }
+
+        .test-section {
+            background: white;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+        }
+
+        .test-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--color-primary-base);
+        }
+
+        .test-case {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .test-case h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--color-text-primary);
+        }
+
+        .test-case p {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .result {
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            font-family: monospace;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .result.pass {
+            background: oklch(0.90 0.08 145);
+            color: oklch(0.30 0.15 145);
+        }
+
+        .result.fail {
+            background: oklch(0.90 0.08 33);
+            color: oklch(0.30 0.15 33);
+        }
+
+        button {
+            background: var(--color-primary-base);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background var(--trans-fast);
+        }
+
+        button:hover {
+            background: var(--color-primary-hover);
+        }
+
+        #reference-cards-container {
+            margin-top: 1rem;
+        }
+
+        pre {
+            background: oklch(0.2 0.01 60);
+            color: oklch(0.9 0.02 80);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .info-box {
+            background: var(--color-primary-light);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+        }
+
+        .info-box strong {
+            color: var(--color-primary-base);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Research Navigation Enhancement Test</h1>
+        <p style="margin-bottom: 2rem; color: var(--color-text-secondary);">
+            Wave 7 - Agent 10: Testing chunk-level deep linking in reference cards
+        </p>
+
+        <div class="info-box">
+            <strong>Test Objectives:</strong>
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                <li>Verify URL builder generates correct URLs with chunk_id</li>
+                <li>Verify visual indicators appear for chunk-enabled sources</li>
+                <li>Verify backward compatibility with sources without chunk_id</li>
+                <li>Verify accessibility attributes are correct</li>
+            </ul>
+        </div>
+
+        <!-- Test 1: URL Builder -->
+        <div class="test-section">
+            <h2>Test 1: URL Builder Utilities</h2>
+
+            <div class="test-case">
+                <h3>1.1 Build URL with chunk_id</h3>
+                <p>Should generate URL with id, page, and chunk parameters</p>
+                <button onclick="testURLBuilder1()">Run Test</button>
+                <div id="result-1-1"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>1.2 Build URL without chunk_id</h3>
+                <p>Should generate URL with only id and page parameters</p>
+                <button onclick="testURLBuilder2()">Run Test</button>
+                <div id="result-1-2"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>1.3 Check chunk context availability</h3>
+                <p>Should correctly identify sources with chunk_id</p>
+                <button onclick="testHasChunkContext()">Run Test</button>
+                <div id="result-1-3"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>1.4 Extract chunk number</h3>
+                <p>Should parse chunk number from chunk_id format</p>
+                <button onclick="testExtractChunkNumber()">Run Test</button>
+                <div id="result-1-4"></div>
+            </div>
+        </div>
+
+        <!-- Test 2: Reference Cards -->
+        <div class="test-section">
+            <h2>Test 2: Reference Card Rendering</h2>
+
+            <div class="test-case">
+                <h3>2.1 Render cards with mixed sources</h3>
+                <p>Should render cards with and without chunk indicators</p>
+                <button onclick="testRenderReferenceCards()">Run Test</button>
+                <div id="reference-cards-container"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>2.2 Verify chunk indicators</h3>
+                <p>Should show 📍 indicator only for sources with chunk_id</p>
+                <button onclick="testChunkIndicators()">Run Test</button>
+                <div id="result-2-2"></div>
+            </div>
+
+            <div class="test-case">
+                <h3>2.3 Verify link URLs</h3>
+                <p>Should generate correct href attributes</p>
+                <button onclick="testLinkURLs()">Run Test</button>
+                <div id="result-2-3"></div>
+            </div>
+        </div>
+
+        <!-- Test 3: Integration -->
+        <div class="test-section">
+            <h2>Test 3: Mock Research API Integration</h2>
+
+            <div class="test-case">
+                <h3>3.1 Simulate research API response</h3>
+                <p>Should correctly handle real API response format</p>
+                <button onclick="testMockAPIResponse()">Run Test</button>
+                <div id="result-3-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import modules -->
+    <script type="module">
+        import { buildDetailsURL, hasChunkContext, extractChunkNumber } from '../../src/frontend/utils/url-builder.js';
+        import { renderReferenceCards } from '../../src/frontend/reference-card.js';
+
+        // Make functions globally available for onclick handlers
+        window.buildDetailsURL = buildDetailsURL;
+        window.hasChunkContext = hasChunkContext;
+        window.extractChunkNumber = extractChunkNumber;
+        window.renderReferenceCards = renderReferenceCards;
+
+        // Test data
+        window.mockSources = {
+            withChunk: {
+                doc_id: "abc123",
+                page: 5,
+                chunk_id: "abc123-chunk0045",
+                filename: "document-with-chunk.pdf",
+                extension: "pdf",
+                thumbnail_path: null,
+                date_added: "2025-10-17T12:00:00Z"
+            },
+            withoutChunk: {
+                doc_id: "def456",
+                page: 3,
+                chunk_id: null,
+                filename: "document-without-chunk.pdf",
+                extension: "pdf",
+                thumbnail_path: null,
+                date_added: "2025-10-17T12:00:00Z"
+            },
+            visualResult: {
+                doc_id: "ghi789",
+                page: 1,
+                filename: "visual-search-result.pptx",
+                extension: "pptx",
+                thumbnail_path: "/api/thumbnail/ghi789-page1.jpg",
+                date_added: "2025-10-17T12:00:00Z"
+            }
+        };
+    </script>
+
+    <script>
+        // Test 1.1: Build URL with chunk_id
+        function testURLBuilder1() {
+            const source = window.mockSources.withChunk;
+            const url = window.buildDetailsURL(source);
+            const expected = "/frontend/details.html?id=abc123&page=5&chunk=abc123-chunk0045";
+            const pass = url === expected;
+
+            document.getElementById('result-1-1').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>Expected: ${expected}
+                    <br>Got: ${url}
+                </div>
+            `;
+        }
+
+        // Test 1.2: Build URL without chunk_id
+        function testURLBuilder2() {
+            const source = window.mockSources.withoutChunk;
+            const url = window.buildDetailsURL(source);
+            const expected = "/frontend/details.html?id=def456&page=3";
+            const pass = url === expected;
+
+            document.getElementById('result-1-2').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>Expected: ${expected}
+                    <br>Got: ${url}
+                </div>
+            `;
+        }
+
+        // Test 1.3: Check chunk context availability
+        function testHasChunkContext() {
+            const test1 = window.hasChunkContext(window.mockSources.withChunk) === true;
+            const test2 = window.hasChunkContext(window.mockSources.withoutChunk) === false;
+            const test3 = window.hasChunkContext(window.mockSources.visualResult) === false;
+            const pass = test1 && test2 && test3;
+
+            document.getElementById('result-1-3').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>With chunk: ${test1 ? '✓' : '✗'}
+                    <br>Without chunk: ${test2 ? '✓' : '✗'}
+                    <br>Visual result: ${test3 ? '✓' : '✗'}
+                </div>
+            `;
+        }
+
+        // Test 1.4: Extract chunk number
+        function testExtractChunkNumber() {
+            const num1 = window.extractChunkNumber("abc123-chunk0045");
+            const num2 = window.extractChunkNumber("abc123-chunk0000");
+            const num3 = window.extractChunkNumber("invalid");
+            const pass = num1 === 45 && num2 === 0 && num3 === null;
+
+            document.getElementById('result-1-4').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>chunk0045: ${num1} (expected 45)
+                    <br>chunk0000: ${num2} (expected 0)
+                    <br>invalid: ${num3} (expected null)
+                </div>
+            `;
+        }
+
+        // Test 2.1: Render reference cards
+        function testRenderReferenceCards() {
+            const container = document.getElementById('reference-cards-container');
+            const sources = [
+                window.mockSources.withChunk,
+                window.mockSources.withoutChunk,
+                window.mockSources.visualResult
+            ];
+
+            window.renderReferenceCards(sources, container, 'detailed');
+
+            // Verify rendering
+            const cards = container.querySelectorAll('.reference-card');
+            if (cards.length === 3) {
+                container.insertAdjacentHTML('afterbegin', `
+                    <div class="result pass">
+                        ✅ Rendered ${cards.length} cards successfully
+                    </div>
+                `);
+            } else {
+                container.insertAdjacentHTML('afterbegin', `
+                    <div class="result fail">
+                        ❌ Expected 3 cards, got ${cards.length}
+                    </div>
+                `);
+            }
+        }
+
+        // Test 2.2: Verify chunk indicators
+        function testChunkIndicators() {
+            const container = document.getElementById('reference-cards-container');
+            const indicators = container.querySelectorAll('.chunk-indicator');
+            const pass = indicators.length === 1; // Only first source has chunk
+
+            document.getElementById('result-2-2').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>Expected 1 chunk indicator, found ${indicators.length}
+                </div>
+            `;
+        }
+
+        // Test 2.3: Verify link URLs
+        function testLinkURLs() {
+            const container = document.getElementById('reference-cards-container');
+            const links = container.querySelectorAll('.reference-card__details-btn');
+
+            const url1 = links[0]?.href || '';
+            const url2 = links[1]?.href || '';
+            const url3 = links[2]?.href || '';
+
+            const test1 = url1.includes('chunk=abc123-chunk0045');
+            const test2 = !url2.includes('chunk=');
+            const test3 = !url3.includes('chunk=');
+
+            const pass = test1 && test2 && test3;
+
+            document.getElementById('result-2-3').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>Link 1 has chunk: ${test1 ? '✓' : '✗'}
+                    <br>Link 2 no chunk: ${test2 ? '✓' : '✗'}
+                    <br>Link 3 no chunk: ${test3 ? '✓' : '✗'}
+                </div>
+            `;
+        }
+
+        // Test 3.1: Mock API response
+        function testMockAPIResponse() {
+            const mockAPIResponse = {
+                answer: "This is a test answer [1] with citations [2].",
+                sources: [
+                    {
+                        id: 1,
+                        doc_id: "test123",
+                        filename: "test-document.pdf",
+                        extension: "pdf",
+                        page: 5,
+                        chunk_id: "test123-chunk0012",
+                        thumbnail_path: null,
+                        date_added: "2025-10-17T12:00:00Z"
+                    },
+                    {
+                        id: 2,
+                        doc_id: "visual456",
+                        filename: "visual-doc.pptx",
+                        extension: "pptx",
+                        page: 3,
+                        chunk_id: null,
+                        thumbnail_path: "/api/thumbnail/visual456-page3.jpg",
+                        date_added: "2025-10-17T12:00:00Z"
+                    }
+                ]
+            };
+
+            const container = document.createElement('div');
+            window.renderReferenceCards(mockAPIResponse.sources, container, 'detailed');
+
+            const cards = container.querySelectorAll('.reference-card');
+            const indicators = container.querySelectorAll('.chunk-indicator');
+            const links = container.querySelectorAll('.reference-card__details-btn');
+
+            const pass = cards.length === 2 &&
+                        indicators.length === 1 &&
+                        links[0].href.includes('chunk=test123-chunk0012');
+
+            document.getElementById('result-3-1').innerHTML = `
+                <div class="result ${pass ? 'pass' : 'fail'}">
+                    ${pass ? '✅ PASS' : '❌ FAIL'}
+                    <br>Cards: ${cards.length}/2
+                    <br>Indicators: ${indicators.length}/1
+                    <br>Chunk link: ${links[0]?.href.includes('chunk=') ? '✓' : '✗'}
+                </div>
+                <pre>${JSON.stringify(mockAPIResponse, null, 2)}</pre>
+            `;
+        }
+
+        // Auto-run all tests on load
+        window.addEventListener('load', () => {
+            console.log('Test page loaded. Click buttons to run individual tests.');
+        });
+    </script>
+</body>
+</html>

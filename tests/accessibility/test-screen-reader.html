@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Reader Test - Accessibility</title>
+    <link rel="stylesheet" href="../../src/frontend/styles/accessibility.css">
+    <style>
+        /* Test page specific styles */
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: oklch(0.9582 0.0152 90.2357);
+        }
+
+        .test-section {
+            margin: 40px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 {
+            color: oklch(0.3760 0.0225 64.3434);
+        }
+
+        /* Mock chunk styles */
+        [data-chunk-id] {
+            padding: 16px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Mock bbox styles */
+        .bbox-overlay {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+
+        .bbox-rect {
+            cursor: pointer;
+            fill: oklch(0.6180 0.0778 65.5444);
+            fill-opacity: 0.2;
+            stroke: oklch(0.6180 0.0778 65.5444);
+            stroke-width: 1px;
+        }
+
+        /* Instructions */
+        .instructions {
+            background: oklch(0.8348 0.0426 88.8064);
+            padding: 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+        }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 8px;
+            margin: 8px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .checklist input[type="checkbox"] {
+            margin-right: 12px;
+        }
+
+        /* Screen reader tools */
+        .sr-tools {
+            background: oklch(0.60 0.15 230);
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .sr-tools h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .sr-tools ul {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        /* Test controls */
+        .test-controls {
+            margin: 20px 0;
+            padding: 16px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .test-controls button {
+            margin: 4px;
+            padding: 12px 24px;
+            background: oklch(0.6180 0.0778 65.5444);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .test-controls button:hover {
+            background: oklch(0.5680 0.0878 65.5444);
+        }
+
+        /* Live region demo */
+        .live-region-demo {
+            border: 2px dashed oklch(0.6180 0.0778 65.5444);
+            padding: 16px;
+            border-radius: 4px;
+            min-height: 60px;
+        }
+
+        /* Citation mock */
+        .citation-link {
+            display: inline;
+            background: oklch(0.8348 0.0426 88.8064);
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-decoration: none;
+            color: oklch(0.3760 0.0225 64.3434);
+            font-size: 0.875rem;
+            vertical-align: super;
+        }
+
+        /* Reference card mock */
+        .reference-card {
+            padding: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+
+        .reference-card h4 {
+            margin: 0 0 8px 0;
+        }
+
+        /* ARIA attribute display */
+        .aria-display {
+            font-family: monospace;
+            font-size: 0.875rem;
+            background: #f5f5f5;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+
+        .aria-display code {
+            color: oklch(0.6180 0.0778 65.5444);
+        }
+    </style>
+</head>
+<body>
+    <h1>Screen Reader Test</h1>
+    <p>Test ARIA labels, roles, and screen reader announcements for bidirectional highlighting.</p>
+
+    <!-- Screen reader tools info -->
+    <div class="sr-tools">
+        <h3>Screen Reader Testing Tools</h3>
+        <ul>
+            <li><strong>macOS:</strong> VoiceOver (Cmd+F5 to toggle)</li>
+            <li><strong>Windows:</strong> NVDA (free), JAWS (commercial)</li>
+            <li><strong>Browser DevTools:</strong> Accessibility Inspector</li>
+            <li><strong>Browser Extensions:</strong> Accessibility Insights, axe DevTools</li>
+        </ul>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions">
+        <h3>Test Instructions</h3>
+        <p>Enable your screen reader and navigate through each section. Verify that:</p>
+        <ul>
+            <li>All interactive elements have descriptive labels</li>
+            <li>Roles are announced correctly (button, article, image, etc.)</li>
+            <li>State changes are announced (pressed, current, expanded)</li>
+            <li>Live region announcements are clear and timely</li>
+            <li>Navigation provides context (section name, page number)</li>
+        </ul>
+    </div>
+
+    <!-- Test 1: ARIA Labels on Chunks -->
+    <section class="test-section">
+        <h2>Test 1: ARIA Labels on Chunks</h2>
+        <p>Chunks should be announced as articles with descriptive labels including section path and page number.</p>
+
+        <div id="chunk-test-container">
+            <div data-chunk-id="chunk-1" role="article" aria-label="Chunk from Introduction, Page 1" tabindex="0">
+                <strong>Introduction</strong>
+                <p>This is the introduction section explaining the document search system.</p>
+                <div class="aria-display">
+                    <code>role="article"</code><br>
+                    <code>aria-label="Chunk from Introduction, Page 1"</code><br>
+                    <code>aria-current="false"</code>
+                </div>
+            </div>
+
+            <div data-chunk-id="chunk-2" role="article" aria-label="Chunk from System Architecture, Page 2" tabindex="0">
+                <strong>System Architecture</strong>
+                <p>Overview of the ColPali-based architecture with ChromaDB storage.</p>
+                <div class="aria-display">
+                    <code>role="article"</code><br>
+                    <code>aria-label="Chunk from System Architecture, Page 2"</code><br>
+                    <code>aria-current="false"</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Test 2: ARIA Labels on BBoxes -->
+    <section class="test-section">
+        <h2>Test 2: ARIA Labels on BBoxes</h2>
+        <p>Bounding boxes should be announced as buttons with element type, heading, and page information.</p>
+
+        <svg class="bbox-overlay" role="img" aria-label="Document structure overlay with 3 highlighted regions">
+            <rect class="bbox-rect"
+                  data-bbox-id="bbox-1"
+                  x="20" y="20" width="180" height="60"
+                  role="button"
+                  aria-label="Section: Introduction, Page 1"
+                  aria-pressed="false"
+                  tabindex="0" />
+            <text x="30" y="50" font-size="14" fill="oklch(0.3760 0.0225 64.3434)">Section: Introduction</text>
+
+            <rect class="bbox-rect"
+                  data-bbox-id="bbox-2"
+                  x="220" y="20" width="180" height="60"
+                  role="button"
+                  aria-label="Table: Performance Metrics, Page 2"
+                  aria-pressed="false"
+                  tabindex="0" />
+            <text x="230" y="50" font-size="14" fill="oklch(0.3760 0.0225 64.3434)">Table: Metrics</text>
+
+            <rect class="bbox-rect"
+                  data-bbox-id="bbox-3"
+                  x="20" y="100" width="180" height="60"
+                  role="button"
+                  aria-label="Figure: Architecture Diagram, Page 3"
+                  aria-pressed="false"
+                  tabindex="0" />
+            <text x="30" y="130" font-size="14" fill="oklch(0.3760 0.0225 64.3434)">Figure: Architecture</text>
+        </svg>
+
+        <div class="aria-display">
+            <code>role="button"</code><br>
+            <code>aria-label="Section: Introduction, Page 1"</code><br>
+            <code>aria-pressed="false"</code>
+        </div>
+    </section>
+
+    <!-- Test 3: Live Region Announcements -->
+    <section class="test-section">
+        <h2>Test 3: Live Region Announcements</h2>
+        <p>Use the buttons below to trigger screen reader announcements. Verify they are clear and timely.</p>
+
+        <div class="test-controls">
+            <button id="announce-nav">Announce Chunk Navigation</button>
+            <button id="announce-highlight">Announce Highlight Action</button>
+            <button id="announce-search">Announce Search Results</button>
+            <button id="announce-error">Announce Error</button>
+        </div>
+
+        <div class="live-region-demo">
+            <p><strong>Live Region Output:</strong> <span id="live-output">No announcements yet</span></p>
+        </div>
+
+        <!-- Hidden live regions -->
+        <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true" role="status"></div>
+        <div id="sr-announcements-assertive" class="sr-only" aria-live="assertive" aria-atomic="true" role="alert"></div>
+    </section>
+
+    <!-- Test 4: Citation Labels -->
+    <section class="test-section">
+        <h2>Test 4: Citation Labels</h2>
+        <p>Citations should be announced with document name and page number.</p>
+
+        <div>
+            <p>
+                According to the research findings
+                <a href="#" class="citation-link"
+                   role="link"
+                   aria-label="Citation 1: Reference to Technical Manual, Page 42. Click to view document."
+                   aria-describedby="citation-1-desc">
+                    [1]
+                </a>,
+                the system performs well under load.
+            </p>
+
+            <div id="citation-1-desc" class="sr-only">
+                This citation references Technical Manual at page 42.
+                Clicking will navigate to the document viewer with bidirectional highlighting.
+            </div>
+
+            <div class="aria-display">
+                <code>role="link"</code><br>
+                <code>aria-label="Citation 1: Reference to Technical Manual, Page 42"</code><br>
+                <code>aria-describedby="citation-1-desc"</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- Test 5: State Changes -->
+    <section class="test-section">
+        <h2>Test 5: State Changes</h2>
+        <p>Verify that state changes (active, pressed, expanded) are announced.</p>
+
+        <div>
+            <button id="toggle-button"
+                    aria-pressed="false"
+                    style="padding: 12px 24px; margin: 8px;">
+                Toggle State
+            </button>
+            <span id="toggle-status">State: Not pressed</span>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div data-chunk-id="state-chunk"
+                 role="article"
+                 aria-label="Test chunk for state changes"
+                 aria-current="false"
+                 tabindex="0"
+                 style="padding: 16px; border: 1px solid #ddd; border-radius: 4px;">
+                <strong>State Chunk</strong>
+                <p>Click or press Enter to toggle current state.</p>
+                <div class="aria-display">
+                    <code>aria-current="<span id="current-value">false</span>"</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Test 6: Navigation Context -->
+    <section class="test-section">
+        <h2>Test 6: Navigation Context</h2>
+        <p>Reference cards should provide full document context.</p>
+
+        <div class="reference-card" role="article" aria-label="Reference 1: Technical Manual, Page 42">
+            <h4>Reference 1</h4>
+            <p><strong>Document:</strong> Technical Manual</p>
+            <p><strong>Page:</strong> 42</p>
+            <p><strong>Section:</strong> Performance Benchmarks</p>
+
+            <div class="aria-display">
+                <code>role="article"</code><br>
+                <code>aria-label="Reference 1: Technical Manual, Page 42"</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- Test Checklist -->
+    <section class="test-section">
+        <h2>Screen Reader Test Checklist</h2>
+        <p>Check off each item as you verify it with your screen reader:</p>
+
+        <ul class="checklist">
+            <li>
+                <input type="checkbox" id="check1">
+                <label for="check1">Chunks are announced as "article" with descriptive labels</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check2">
+                <label for="check2">BBoxes are announced as "button" with element type and page</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check3">
+                <label for="check3">Overlay is announced as "image" with region count</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check4">
+                <label for="check4">Navigation announcements are clear and include context</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check5">
+                <label for="check5">Highlight action announcements are timely</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check6">
+                <label for="check6">State changes (pressed, current) are announced</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check7">
+                <label for="check7">Citations include full document and page information</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check8">
+                <label for="check8">Error announcements use assertive priority</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check9">
+                <label for="check9">Reading order is logical and sequential</label>
+            </li>
+            <li>
+                <input type="checkbox" id="check10">
+                <label for="check10">All interactive elements are reachable and operable</label>
+            </li>
+        </ul>
+    </section>
+
+    <!-- Load test scripts -->
+    <script type="module">
+        import {
+            announceChunkNav,
+            announceHighlight,
+            announceSearchResults,
+            announceError,
+            announceToScreenReader,
+            initializeLiveRegions
+        } from '../../src/frontend/accessibility/screen-reader-announce.js';
+
+        import {
+            labelBbox,
+            labelChunk,
+            updateHighlightState
+        } from '../../src/frontend/accessibility/aria-labels.js';
+
+        // Initialize live regions
+        initializeLiveRegions();
+
+        // Test announcement buttons
+        document.getElementById('announce-nav').addEventListener('click', () => {
+            announceChunkNav('System Architecture', 2);
+            document.getElementById('live-output').textContent =
+                'Announced: "Navigated to System Architecture on page 2"';
+        });
+
+        document.getElementById('announce-highlight').addEventListener('click', () => {
+            announceHighlight('chunk-1', 'section', true);
+            document.getElementById('live-output').textContent =
+                'Announced: "Activated section section"';
+        });
+
+        document.getElementById('announce-search').addEventListener('click', () => {
+            announceSearchResults(5, 'document architecture');
+            document.getElementById('live-output').textContent =
+                'Announced: "5 results found for document architecture"';
+        });
+
+        document.getElementById('announce-error').addEventListener('click', () => {
+            announceError('Failed to load document');
+            document.getElementById('live-output').textContent =
+                'Announced: "Error: Failed to load document" (assertive)';
+        });
+
+        // Toggle button test
+        const toggleButton = document.getElementById('toggle-button');
+        const toggleStatus = document.getElementById('toggle-status');
+        let isPressed = false;
+
+        toggleButton.addEventListener('click', () => {
+            isPressed = !isPressed;
+            toggleButton.setAttribute('aria-pressed', isPressed.toString());
+            toggleStatus.textContent = `State: ${isPressed ? 'Pressed' : 'Not pressed'}`;
+            announceToScreenReader(
+                `Button ${isPressed ? 'pressed' : 'unpressed'}`,
+                'polite'
+            );
+        });
+
+        // State chunk test
+        const stateChunk = document.querySelector('[data-chunk-id="state-chunk"]');
+        const currentValue = document.getElementById('current-value');
+        let isCurrent = false;
+
+        stateChunk.addEventListener('click', () => {
+            isCurrent = !isCurrent;
+            stateChunk.setAttribute('aria-current', isCurrent.toString());
+            currentValue.textContent = isCurrent.toString();
+            announceToScreenReader(
+                `Chunk ${isCurrent ? 'activated' : 'deactivated'}`,
+                'polite'
+            );
+        });
+
+        stateChunk.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                stateChunk.click();
+            }
+        });
+
+        // Label chunks and bboxes on load
+        document.querySelectorAll('[data-chunk-id]').forEach((chunk, index) => {
+            const chunkData = {
+                section_path: chunk.querySelector('strong')?.textContent || 'Unknown',
+                page: index + 1
+            };
+            // Labels already added in HTML for testing, but we could add them dynamically
+        });
+
+        document.querySelectorAll('.bbox-rect').forEach((bbox, index) => {
+            // Labels already added in HTML for testing
+        });
+    </script>
+</body>
+</html>

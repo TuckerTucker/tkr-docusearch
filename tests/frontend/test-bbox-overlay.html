@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoundingBox Overlay Test Page</title>
+
+  <!-- Load styles -->
+  <link rel="stylesheet" href="../../src/frontend/styles/bounding-box-overlay.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      margin-bottom: 15px;
+      color: #555;
+      font-size: 1.3rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: #4b5563;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #374151;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block;
+      border: 2px solid #ddd;
+      background: white;
+    }
+
+    .test-image {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .event-log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+
+    .event-log-entry {
+      margin-bottom: 5px;
+      padding: 4px;
+      border-left: 3px solid transparent;
+    }
+
+    .event-log-entry.click {
+      border-left-color: #4ade80;
+    }
+
+    .event-log-entry.hover {
+      border-left-color: #60a5fa;
+    }
+
+    .event-log-entry.info {
+      border-left-color: #facc15;
+    }
+
+    .event-log-entry.error {
+      border-left-color: #f87171;
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+
+    .code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 BoundingBox Overlay Component - Test Suite</h1>
+
+    <!-- Test 1: Basic Rendering -->
+    <div class="test-section">
+      <h2>Test 1: Basic Rendering & Coordinate Scaling</h2>
+      <div class="info-box">
+        <strong>Purpose:</strong> Verify that bboxes render correctly with proper coordinate scaling and Y-axis flip.
+        This test uses sample data from the Structure API with bottom-left PDF coordinates.
+      </div>
+
+      <div class="controls">
+        <button id="test1-render">Render Overlay</button>
+        <button id="test1-destroy">Destroy Overlay</button>
+        <button id="test1-clear">Clear Highlights</button>
+      </div>
+
+      <div class="image-container" id="test1-container">
+        <!-- We'll create a placeholder SVG to simulate a page image -->
+        <svg id="test1-image" width="612" height="792" viewBox="0 0 612 792" style="background: #fff; border: 1px solid #ddd;">
+          <!-- Simulated page background -->
+          <rect width="612" height="792" fill="#fafafa"/>
+
+          <!-- Visual reference grid (optional) -->
+          <line x1="0" y1="396" x2="612" y2="396" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="5,5"/>
+          <line x1="306" y1="0" x2="306" y2="792" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="5,5"/>
+
+          <!-- Reference text -->
+          <text x="10" y="30" font-size="14" fill="#666">Simulated PDF Page (612 x 792 pt)</text>
+          <text x="10" y="50" font-size="12" fill="#999">Gray boxes will overlay this image</text>
+        </svg>
+      </div>
+
+      <div id="test1-log" class="event-log"></div>
+    </div>
+
+    <!-- Test 2: Interactive Events -->
+    <div class="test-section">
+      <h2>Test 2: Click & Hover Events</h2>
+      <div class="info-box">
+        <strong>Purpose:</strong> Test click and hover event handlers. Try clicking and hovering over bboxes.
+      </div>
+
+      <div class="controls">
+        <button id="test2-render">Render Overlay</button>
+        <button id="test2-highlight-heading">Highlight Heading</button>
+        <button id="test2-highlight-table">Highlight Table</button>
+        <button id="test2-highlight-picture">Highlight Picture</button>
+      </div>
+
+      <div class="image-container" id="test2-container">
+        <svg id="test2-image" width="612" height="792" viewBox="0 0 612 792" style="background: #fff; border: 1px solid #ddd;">
+          <rect width="612" height="792" fill="#fafafa"/>
+          <text x="10" y="30" font-size="14" fill="#666">Click or hover over bounding boxes</text>
+        </svg>
+      </div>
+
+      <div id="test2-log" class="event-log"></div>
+    </div>
+
+    <!-- Test 3: Coordinate Validation -->
+    <div class="test-section">
+      <h2>Test 3: Coordinate System Validation</h2>
+      <div class="info-box">
+        <strong>Purpose:</strong> Verify Y-axis flip is correct. The table shows PDF coordinates vs. screen coordinates.
+      </div>
+
+      <div class="controls">
+        <button id="test3-validate">Run Validation</button>
+      </div>
+
+      <div id="test3-results"></div>
+    </div>
+
+    <!-- Test 4: Responsive Behavior -->
+    <div class="test-section">
+      <h2>Test 4: Responsive Scaling</h2>
+      <div class="info-box">
+        <strong>Purpose:</strong> Test that bboxes scale correctly when image size changes.
+      </div>
+
+      <div class="controls">
+        <button id="test4-render">Render Overlay</button>
+        <button id="test4-resize-small">Resize Small (400px)</button>
+        <button id="test4-resize-medium">Resize Medium (600px)</button>
+        <button id="test4-resize-large">Resize Large (800px)</button>
+      </div>
+
+      <div class="image-container" id="test4-container">
+        <svg id="test4-image" width="612" height="792" viewBox="0 0 612 792" style="background: #fff; border: 1px solid #ddd; transition: width 0.3s;">
+          <rect width="612" height="792" fill="#fafafa"/>
+          <text x="10" y="30" font-size="14" fill="#666">Resize and watch bboxes scale</text>
+        </svg>
+      </div>
+
+      <div id="test4-log" class="event-log"></div>
+    </div>
+
+    <!-- Test 5: Real API Data -->
+    <div class="test-section">
+      <h2>Test 5: Real API Integration</h2>
+      <div class="info-box">
+        <strong>Purpose:</strong> Test with real data from the Structure API endpoint.
+        Enter a document ID and page number to fetch real structure data.
+      </div>
+
+      <div class="controls">
+        <input type="text" id="test5-docid" placeholder="Document ID" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <input type="number" id="test5-page" placeholder="Page" value="1" min="1" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <button id="test5-fetch">Fetch & Render</button>
+      </div>
+
+      <div class="image-container" id="test5-container" style="display: none;">
+        <img id="test5-image" class="test-image" alt="Document page">
+      </div>
+
+      <div id="test5-log" class="event-log"></div>
+    </div>
+  </div>
+
+  <!-- Load modules as ES6 -->
+  <script type="module">
+    import { BoundingBoxOverlay } from '../../src/frontend/bounding-box-overlay.js';
+    import {
+      scaleBboxToScreen,
+      validateBbox,
+      calculateScaleFactors,
+      getStandardPageDimensions
+    } from '../../src/frontend/utils/coordinate-scaler.js';
+
+    // Sample data from integration-contracts/sample-api-responses.json
+    const sampleBboxes = [
+      {
+        chunk_id: 'test-chunk-001',
+        element_type: 'heading',
+        bbox: { left: 72.0, bottom: 650.0, right: 540.0, top: 720.0 }
+      },
+      {
+        chunk_id: 'test-chunk-002',
+        element_type: 'picture',
+        bbox: { left: 150.0, bottom: 100.0, right: 462.0, top: 300.0 }
+      },
+      {
+        chunk_id: 'test-chunk-003',
+        element_type: 'table',
+        bbox: { left: 100.0, bottom: 350.0, right: 512.0, top: 600.0 }
+      },
+      {
+        chunk_id: 'test-chunk-004',
+        element_type: 'text',
+        bbox: { left: 72.0, bottom: 50.0, right: 540.0, top: 80.0 }
+      }
+    ];
+
+    // Utility: Add log entry
+    function addLog(logId, message, type = 'info') {
+      const log = document.getElementById(logId);
+      const entry = document.createElement('div');
+      entry.className = `event-log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span style="color: #888">[${timestamp}]</span> ${message}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Store overlay instances
+    const overlays = {};
+
+    // =====================
+    // Test 1: Basic Rendering
+    // =====================
+    document.getElementById('test1-render').addEventListener('click', () => {
+      try {
+        if (overlays.test1) {
+          overlays.test1.destroy();
+        }
+
+        const image = document.getElementById('test1-image');
+        overlays.test1 = new BoundingBoxOverlay(image, sampleBboxes, {
+          pdfWidth: 612,
+          pdfHeight: 792,
+          opacity: 0.2,
+          hoverOpacity: 0.3,
+          activeOpacity: 0.4
+        });
+
+        overlays.test1.render();
+        addLog('test1-log', '✅ Overlay rendered successfully', 'info');
+        addLog('test1-log', `📊 Rendered ${sampleBboxes.length} bounding boxes`, 'info');
+      } catch (error) {
+        addLog('test1-log', `❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    });
+
+    document.getElementById('test1-destroy').addEventListener('click', () => {
+      if (overlays.test1) {
+        overlays.test1.destroy();
+        overlays.test1 = null;
+        addLog('test1-log', '🗑️  Overlay destroyed', 'info');
+      }
+    });
+
+    document.getElementById('test1-clear').addEventListener('click', () => {
+      if (overlays.test1) {
+        overlays.test1.clearHighlight();
+        addLog('test1-log', '🧹 Highlights cleared', 'info');
+      }
+    });
+
+    // =====================
+    // Test 2: Interactive Events
+    // =====================
+    document.getElementById('test2-render').addEventListener('click', () => {
+      try {
+        if (overlays.test2) {
+          overlays.test2.destroy();
+        }
+
+        const image = document.getElementById('test2-image');
+        overlays.test2 = new BoundingBoxOverlay(image, sampleBboxes, {
+          pdfWidth: 612,
+          pdfHeight: 792
+        });
+
+        overlays.test2.render();
+
+        // Register event handlers
+        overlays.test2.onBboxClick((chunkId, elementType) => {
+          addLog('test2-log', `🖱️  Clicked: <span class="code">${chunkId}</span> (${elementType})`, 'click');
+        });
+
+        overlays.test2.onBboxHover((chunkId, elementType, isEnter) => {
+          if (isEnter) {
+            addLog('test2-log', `👆 Hover enter: <span class="code">${chunkId}</span> (${elementType})`, 'hover');
+          } else {
+            addLog('test2-log', `👋 Hover leave: <span class="code">${chunkId}</span>`, 'hover');
+          }
+        });
+
+        addLog('test2-log', '✅ Overlay rendered with event handlers', 'info');
+      } catch (error) {
+        addLog('test2-log', `❌ Error: ${error.message}`, 'error');
+      }
+    });
+
+    document.getElementById('test2-highlight-heading').addEventListener('click', () => {
+      if (overlays.test2) {
+        overlays.test2.highlightBbox('test-chunk-001', true);
+        addLog('test2-log', '🎯 Highlighted heading', 'info');
+      }
+    });
+
+    document.getElementById('test2-highlight-table').addEventListener('click', () => {
+      if (overlays.test2) {
+        overlays.test2.highlightBbox('test-chunk-003', true);
+        addLog('test2-log', '🎯 Highlighted table', 'info');
+      }
+    });
+
+    document.getElementById('test2-highlight-picture').addEventListener('click', () => {
+      if (overlays.test2) {
+        overlays.test2.highlightBbox('test-chunk-002', true);
+        addLog('test2-log', '🎯 Highlighted picture', 'info');
+      }
+    });
+
+    // =====================
+    // Test 3: Coordinate Validation
+    // =====================
+    document.getElementById('test3-validate').addEventListener('click', () => {
+      const resultsDiv = document.getElementById('test3-results');
+
+      try {
+        // Test coordinate scaling
+        const pdfDims = getStandardPageDimensions('letter');
+        const imageDims = { width: 1020, height: 1320 }; // 150 DPI
+
+        const testCases = [
+          {
+            name: 'Heading (top of page)',
+            pdf: { left: 72, bottom: 650, right: 540, top: 720 }
+          },
+          {
+            name: 'Picture (bottom of page)',
+            pdf: { left: 150, bottom: 100, right: 462, top: 300 }
+          },
+          {
+            name: 'Table (middle)',
+            pdf: { left: 100, bottom: 350, right: 512, top: 600 }
+          }
+        ];
+
+        let html = '<table><thead><tr><th>Element</th><th>PDF Coords</th><th>Screen Coords</th><th>Y-Flip</th></tr></thead><tbody>';
+
+        testCases.forEach(test => {
+          const screen = scaleBboxToScreen(
+            test.pdf,
+            pdfDims.width,
+            pdfDims.height,
+            imageDims.width,
+            imageDims.height
+          );
+
+          // Verify Y-flip: PDF top (high Y) should become screen top (low Y)
+          const pdfTopY = test.pdf.top;
+          const screenTopY = screen.y;
+          const flipCorrect = screenTopY < (imageDims.height / 2) === (pdfTopY > (pdfDims.height / 2));
+
+          html += `
+            <tr>
+              <td>${test.name}</td>
+              <td><code>l:${test.pdf.left} b:${test.pdf.bottom} r:${test.pdf.right} t:${test.pdf.top}</code></td>
+              <td><code>x:${screen.x.toFixed(1)} y:${screen.y.toFixed(1)} w:${screen.width.toFixed(1)} h:${screen.height.toFixed(1)}</code></td>
+              <td><span class="status ${flipCorrect ? 'success' : 'error'}">${flipCorrect ? '✅ Correct' : '❌ Wrong'}</span></td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+
+        html += '<div class="info-box" style="margin-top: 15px;"><strong>Validation:</strong> Y-axis flip is correct if high PDF Y values become low screen Y values (and vice versa).</div>';
+
+        resultsDiv.innerHTML = html;
+
+      } catch (error) {
+        resultsDiv.innerHTML = `<div class="status error">❌ ${error.message}</div>`;
+      }
+    });
+
+    // =====================
+    // Test 4: Responsive Scaling
+    // =====================
+    document.getElementById('test4-render').addEventListener('click', () => {
+      try {
+        if (overlays.test4) {
+          overlays.test4.destroy();
+        }
+
+        const image = document.getElementById('test4-image');
+        overlays.test4 = new BoundingBoxOverlay(image, sampleBboxes, {
+          pdfWidth: 612,
+          pdfHeight: 792
+        });
+
+        overlays.test4.render();
+        addLog('test4-log', '✅ Overlay rendered', 'info');
+      } catch (error) {
+        addLog('test4-log', `❌ Error: ${error.message}`, 'error');
+      }
+    });
+
+    const resizeImage = (width) => {
+      const image = document.getElementById('test4-image');
+      image.style.width = `${width}px`;
+      image.style.height = 'auto';
+      addLog('test4-log', `📐 Resized to ${width}px width`, 'info');
+    };
+
+    document.getElementById('test4-resize-small').addEventListener('click', () => resizeImage(400));
+    document.getElementById('test4-resize-medium').addEventListener('click', () => resizeImage(600));
+    document.getElementById('test4-resize-large').addEventListener('click', () => resizeImage(800));
+
+    // =====================
+    // Test 5: Real API Integration
+    // =====================
+    document.getElementById('test5-fetch').addEventListener('click', async () => {
+      const docId = document.getElementById('test5-docid').value.trim();
+      const page = parseInt(document.getElementById('test5-page').value, 10);
+
+      if (!docId) {
+        addLog('test5-log', '⚠️  Please enter a document ID', 'error');
+        return;
+      }
+
+      try {
+        addLog('test5-log', `🔄 Fetching structure for ${docId}, page ${page}...`, 'info');
+
+        // Fetch structure
+        const structureUrl = `http://localhost:8002/documents/${docId}/pages/${page}/structure`;
+        const structureRes = await fetch(structureUrl);
+
+        if (!structureRes.ok) {
+          throw new Error(`Structure API returned ${structureRes.status}`);
+        }
+
+        const structureData = await structureRes.json();
+        addLog('test5-log', `✅ Fetched structure data`, 'info');
+
+        // Convert structure data to bbox format
+        const bboxes = [];
+
+        ['headings', 'tables', 'pictures', 'code_blocks', 'formulas'].forEach(type => {
+          if (structureData[type]) {
+            structureData[type].forEach((item, idx) => {
+              if (item.bbox) {
+                bboxes.push({
+                  chunk_id: `${type}-${idx}`,
+                  element_type: type.replace('_blocks', '').replace('s', ''),
+                  bbox: item.bbox
+                });
+              }
+            });
+          }
+        });
+
+        addLog('test5-log', `📊 Found ${bboxes.length} bboxes`, 'info');
+
+        // Fetch page image
+        const imageUrl = `http://localhost:8000/data/images/${docId}/page_${page}.png`;
+        const imageContainer = document.getElementById('test5-container');
+        const image = document.getElementById('test5-image');
+
+        image.onload = () => {
+          addLog('test5-log', `🖼️  Image loaded: ${image.naturalWidth}x${image.naturalHeight}`, 'info');
+
+          // Get PDF dimensions from structure metadata (or use defaults)
+          const pdfWidth = structureData.pdf_width || 612;
+          const pdfHeight = structureData.pdf_height || 792;
+
+          // Render overlay
+          if (overlays.test5) {
+            overlays.test5.destroy();
+          }
+
+          overlays.test5 = new BoundingBoxOverlay(image, bboxes, {
+            pdfWidth,
+            pdfHeight
+          });
+
+          overlays.test5.render();
+
+          overlays.test5.onBboxClick((chunkId, elementType) => {
+            addLog('test5-log', `🖱️  Clicked: ${chunkId} (${elementType})`, 'click');
+          });
+
+          addLog('test5-log', '✅ Overlay rendered with real data', 'info');
+        };
+
+        image.onerror = () => {
+          addLog('test5-log', '❌ Failed to load page image', 'error');
+        };
+
+        image.src = imageUrl;
+        imageContainer.style.display = 'block';
+
+      } catch (error) {
+        addLog('test5-log', `❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    });
+
+    // Auto-run Test 1 on load
+    window.addEventListener('load', () => {
+      document.getElementById('test1-render').click();
+    });
+  </script>
+</body>
+</html>

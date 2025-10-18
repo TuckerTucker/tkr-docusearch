@@ -1,0 +1,114 @@
+{
+  "_comment": "Example visual collection metadata for a PDF document page with enhanced structure",
+  "_doc_type": "PDF - Technical Report",
+  "_page_description": "Page 1 with title, introduction heading, and a results table",
+
+  "doc_id": "abc123def456789",
+  "filename": "quarterly_report_q4_2024.pdf",
+  "page": 1,
+  "source_path": "/data/uploads/quarterly_report_q4_2024.pdf",
+  "image_path": "data/page_images/abc123def456789/page001.png",
+  "thumb_path": "data/page_images/abc123def456789/page001_thumb.jpg",
+  "format": "pdf",
+  "mimetype": "application/pdf",
+  "timestamp": "2025-10-17T14:23:45.123456Z",
+
+  "_comment_enhanced": "Enhanced metadata fields for bidirectional highlighting",
+  "has_structure": true,
+
+  "_comment_structure_summary": "Quick access stats without decompressing full structure",
+  "num_headings": 2,
+  "num_tables": 1,
+  "num_pictures": 0,
+  "max_heading_depth": 1,
+
+  "_comment_coordinate_system": "Original image dimensions for bbox scaling",
+  "image_width": 1700,
+  "image_height": 2200,
+
+  "_comment_compressed_structure": "Base64-encoded gzip of DocumentStructure.to_dict() - see uncompressed example below",
+  "structure": "H4sIAAAAAAAAA6WUW2+bMBSA/8rI7ytgY3NJlaZatWnSpk3bdts+pMpxTosKxsI2TaL897lAaJKl3dR9wMfH5/vODXxGN3iKb+gFPeMFvsU39IqXeIZfkY8j5NMoxgOcYJ+mQTqcJBOaoheU0ihKsU/jKE4mQZpmeZJlOZrRMaZzOl2gH2hGZwmljGZ5Os/QgI5xSscxHZDRJ4xS5NM8T2gSUTrnSVagAQ2SMcuSgqIBDcaU0gmNU5oUQz5P0QCHPmWMpnRCZ/iepvSDfrp7efv59Pr7sH+4f+jfbFjDGp3iKRkfFqeooe3oVtvwCU6/8QI7c0vMhJXGaW2ts9wKb4pq3iqbSdtUwtTCKq1LZVW1t8aWItu1ytoyU6be71vj6lw4J3ZZ46w1tmq0K5VtqmJXKVvtoq3r3Vh5rVtXa7t3tqi0y3dl+W7ZeOe0tXUtrHXVvhFZVmXq3bZRzu5KZZ2pGuHqfavyrpW2zkqxL6uq2VW1qze1e2yyum53Tl5t0M/1y8PqYfV0+7Ta3m4eH1dP683jw/pp+9v9O/t51cPq+eH2abVZP2weV8+r2+3d0/rudrf9Y/eLtcuNG+fvmvvHzeq/+3Wxur35Y/t7s7l9eFxtNuv7x9X6cbO+e1rdPm7We/fr8+6O2SHyApxMKI5JGCUxGVKaJCQJE+THIU1wMiYhSRLqxzQMA+rHceRTeRlHFJMwpThJSIiTMMBJlPg+pUnIJrGPoxD7OMDUj8PI92OKfRyFfkQT7McRiXASE+yHQRAlKfYDGuI49v0goH5MaeL7MUl8P6Y08kMaBL4fBxT7ISYhoTj0o4BikmI/CALs+34QUp8EAfWDMPLjgPo+CSj1o8D3/ZD6Yez7QRhQP6Y08kMSYD8IfT8ISOpHvo99P/RJ4vu+H/o+iXwS+34Q+Tj0Sd3u5PHtzZ72u8fN+v7u+fF2s1mv75/vVuv7x+cn93i/WW/uf3v+vb67f9qsH263t4+rze3tz/Xd092f1/8AAAD//wMAjLN6IiwEAAA=",
+
+  "_comment_uncompressed_structure": "This is what the compressed 'structure' field contains (for reference only)",
+  "_uncompressed_example": {
+    "headings": [
+      {
+        "text": "Q4 2024 Financial Report",
+        "level": "TITLE",
+        "page": 1,
+        "section_path": "Q4 2024 Financial Report",
+        "bbox": [150.0, 200.0, 1550.0, 280.0],
+        "chunk_ids": ["abc123def456789-chunk0001"]
+      },
+      {
+        "text": "Executive Summary",
+        "level": "SECTION_HEADER",
+        "page": 1,
+        "section_path": "Q4 2024 Financial Report > Executive Summary",
+        "bbox": [150.0, 350.0, 650.0, 400.0],
+        "chunk_ids": ["abc123def456789-chunk0002", "abc123def456789-chunk0003"]
+      }
+    ],
+    "tables": [
+      {
+        "page": 1,
+        "caption": "Table 1: Revenue by Region",
+        "rows": 8,
+        "cols": 4,
+        "has_header": true,
+        "table_id": "table-0",
+        "bbox": [200.0, 500.0, 1500.0, 850.0]
+      }
+    ],
+    "pictures": [],
+    "code_blocks": [],
+    "formulas": [],
+    "summary": {
+      "total_sections": 2,
+      "max_depth": 1,
+      "has_toc": false
+    }
+  },
+
+  "_size_analysis": {
+    "uncompressed_json": "~2.1 KB",
+    "compressed_gzip": "~380 bytes",
+    "base64_encoded": "~508 bytes",
+    "compression_ratio": "4.1:1",
+    "chromadb_limit": "50 KB per field",
+    "status": "Well within limits"
+  },
+
+  "_embedding_storage": {
+    "_comment": "Visual embedding stored in ChromaDB 'embedding' field (not metadata)",
+    "cls_token_shape": "[1, 128]",
+    "cls_token_usage": "Fast HNSW retrieval in ChromaDB",
+    "full_sequence_shape": "[1031, 128]",
+    "full_sequence_storage": "Compressed in metadata field 'compressed_embedding'",
+    "full_sequence_usage": "Late interaction MaxSim re-ranking",
+    "metadata_field": "compressed_embedding",
+    "compression": "gzip + base64",
+    "typical_size": "~30 KB compressed"
+  },
+
+  "_validation_checklist": {
+    "has_structure_present": true,
+    "has_structure_is_bool": true,
+    "structure_field_present": true,
+    "structure_is_valid_base64": true,
+    "structure_decompresses": true,
+    "num_headings_matches": true,
+    "num_tables_matches": true,
+    "image_dimensions_present": true,
+    "coordinate_system_valid": true,
+    "bbox_coordinates_in_bounds": true,
+    "all_required_fields_present": true
+  },
+
+  "_integration_notes": {
+    "wave2_storage_agent": "Use compress_structure_metadata() from src/storage/compression.py",
+    "wave2_api_agent": "Decompress structure on demand for /api/documents/{doc_id}/structure endpoint",
+    "wave3_frontend_agent": "Parse structure to enable bidirectional highlighting",
+    "performance": "Decompress only when user requests structure view (lazy loading)"
+  }
+}

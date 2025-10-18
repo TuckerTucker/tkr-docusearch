@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from src.config.image_config import PAGE_IMAGE_DIR
+from src.processing.api import structure_router
 from src.processing.file_validator import get_supported_extensions
 from src.storage import ChromaClient
 
@@ -26,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 # Create API router
 router = APIRouter(prefix="", tags=["documents"])
+
+# Include structure endpoints router
+router.include_router(structure_router)
 
 # Validation patterns (security)
 DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
@@ -798,24 +802,30 @@ async def get_document(doc_id: str):
 @router.get(
     "/documents/{doc_id}/markdown",
     summary="Get document markdown",
-    description="Download document as markdown with YAML frontmatter",
+    description="Download document as markdown with YAML frontmatter and chunk markers",
     responses={
-        200: {"description": "Markdown file", "content": {"text/markdown": {}}},
+        200: {"description": "Markdown file with chunk markers", "content": {"text/markdown": {}}},
         400: {"description": "Invalid document ID"},
         404: {"description": "Markdown file not found"},
     },
 )
-async def get_markdown(doc_id: str):
-    """Get document as markdown with frontmatter.
+async def get_markdown(doc_id: str, include_markers: bool = True):
+    """Get document as markdown with frontmatter and chunk markers.
 
     Args:
         doc_id: Document identifier (SHA-256 hash)
+        include_markers: If True, insert chunk markers for bidirectional highlighting
 
     Returns:
         FileResponse with markdown content
 
     Raises:
         HTTPException: 404 if markdown not found, 400 if invalid doc_id
+
+    Note:
+        Chunk markers are inserted as HTML comments and div wrappers to enable
+        bidirectional highlighting between search results and document content.
+        Format: <!-- chunk:ID page:N section:"PATH" --> <div>...</div>
     """
     # Validate doc_id
     if not validate_doc_id(doc_id):
@@ -855,6 +865,49 @@ async def get_markdown(doc_id: str):
     except Exception as e:
         logger.warning(f"Failed to get filename from ChromaDB: {e}")
         filename = f"{doc_id}.md"
+
+    # Insert chunk markers if requested
+    if include_markers:
+        try:
+            from src.storage.markdown_chunking import get_chunks_for_document, insert_chunk_markers
+
+            # Read original markdown
+            with open(markdown_path, "r", encoding="utf-8") as f:
+                original_markdown = f.read()
+
+            # Get chunks from ChromaDB
+            chunks = get_chunks_for_document(doc_id, client)
+
+            # Insert markers
+            if chunks:
+                marked_markdown = insert_chunk_markers(original_markdown, chunks)
+
+                # Write marked markdown to temporary file
+                import tempfile
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w", encoding="utf-8", suffix=".md", delete=False
+                ) as temp_file:
+                    temp_file.write(marked_markdown)
+                    temp_path = temp_file.name
+
+                logger.info(f"Generated markdown with {len(chunks)} chunk markers for {doc_id}")
+
+                # Return temporary file
+                return FileResponse(
+                    path=temp_path,
+                    media_type="text/markdown",
+                    filename=filename,
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"',
+                    },
+                )
+            else:
+                logger.info(f"No chunks found for {doc_id}, returning original markdown")
+
+        except Exception as e:
+            logger.warning(f"Failed to insert chunk markers for {doc_id}: {e}", exc_info=True)
+            # Fall through to return original markdown
 
     # Return file with appropriate headers
     return FileResponse(

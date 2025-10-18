@@ -1,0 +1,334 @@
+{
+  "description": "Sample API responses for bidirectional highlighting integration testing",
+  "version": "1.0",
+  "last_updated": "2025-10-17",
+
+  "structure_endpoint": {
+    "description": "GET /documents/{doc_id}/pages/{page}/structure",
+
+    "with_structure": {
+      "doc_id": "abc123-def456-789",
+      "page": 3,
+      "has_structure": true,
+      "headings": [
+        {
+          "text": "Introduction",
+          "level": "SECTION_HEADER",
+          "section_path": "1. Introduction",
+          "bbox": [50.5, 100.0, 545.8, 125.3],
+          "chunk_ids": ["abc123-def456-789-chunk0003", "abc123-def456-789-chunk0004"]
+        },
+        {
+          "text": "Background and Context",
+          "level": "SUB_SECTION_HEADER",
+          "section_path": "1.1 Background and Context",
+          "bbox": [50.5, 150.0, 420.2, 170.5],
+          "chunk_ids": ["abc123-def456-789-chunk0005", "abc123-def456-789-chunk0006"]
+        },
+        {
+          "text": "Research Methodology",
+          "level": "SECTION_HEADER",
+          "section_path": "2. Research Methodology",
+          "bbox": [50.5, 450.0, 545.8, 475.3],
+          "chunk_ids": ["abc123-def456-789-chunk0012"]
+        }
+      ],
+      "tables": [
+        {
+          "caption": "Survey Results by Region",
+          "rows": 12,
+          "cols": 5,
+          "has_header": true,
+          "table_id": "table-0",
+          "bbox": [100.0, 250.0, 500.0, 400.0]
+        },
+        {
+          "caption": null,
+          "rows": 8,
+          "cols": 3,
+          "has_header": false,
+          "table_id": "table-1",
+          "bbox": [100.0, 550.0, 350.0, 650.0]
+        }
+      ],
+      "pictures": [
+        {
+          "type": "chart",
+          "caption": "Figure 1: Market Growth 2020-2024",
+          "confidence": 0.92,
+          "picture_id": "picture-0",
+          "bbox": [80.0, 200.0, 530.0, 400.0]
+        },
+        {
+          "type": "diagram",
+          "caption": "System Architecture Overview",
+          "confidence": 0.87,
+          "picture_id": "picture-1",
+          "bbox": [100.0, 500.0, 500.0, 700.0]
+        }
+      ],
+      "code_blocks": [
+        {
+          "language": "python",
+          "lines": 15,
+          "bbox": [60.0, 300.0, 540.0, 450.0]
+        }
+      ],
+      "formulas": [
+        {
+          "latex": "E = mc^2",
+          "bbox": [200.0, 350.0, 400.0, 380.0]
+        }
+      ],
+      "summary": {
+        "total_sections": 3,
+        "max_depth": 2,
+        "has_toc": false
+      },
+      "coordinate_system": {
+        "origin": "top-left",
+        "units": "pixels",
+        "image_width": 612,
+        "image_height": 792
+      }
+    },
+
+    "without_structure": {
+      "doc_id": "xyz789-uvw456-123",
+      "page": 1,
+      "has_structure": false,
+      "headings": [],
+      "tables": [],
+      "pictures": [],
+      "code_blocks": [],
+      "formulas": [],
+      "summary": {
+        "total_sections": 0,
+        "max_depth": 0,
+        "has_toc": false
+      },
+      "coordinate_system": null
+    },
+
+    "not_found": {
+      "error": "Page not found",
+      "detail": "Document abc123 page 99 not found",
+      "status_code": 404
+    }
+  },
+
+  "chunk_endpoint": {
+    "description": "GET /documents/{doc_id}/chunks/{chunk_id}",
+
+    "success": {
+      "chunk_id": "abc123-def456-789-chunk0012",
+      "doc_id": "abc123-def456-789",
+      "page": 3,
+      "full_text": "The research methodology employed in this study combines qualitative and quantitative approaches to provide comprehensive insights into user behavior patterns. Data was collected through structured interviews, surveys, and observational studies conducted over a six-month period with 500 participants.",
+      "word_count": 45,
+      "parent_heading": "Research Methodology",
+      "section_path": "2. Research Methodology",
+      "element_type": "text",
+      "bbox": [50.5, 480.0, 545.8, 560.0],
+      "related_tables": ["table-1"],
+      "related_pictures": ["picture-1"],
+      "is_page_boundary": false,
+      "start_time": null,
+      "end_time": null
+    },
+
+    "audio_chunk": {
+      "chunk_id": "audio789-chunk0005",
+      "doc_id": "audio789",
+      "page": 1,
+      "full_text": "Welcome to the quarterly earnings call. Today we'll discuss financial performance for Q3 2024, market trends, and our strategic initiatives for the upcoming quarter.",
+      "word_count": 26,
+      "parent_heading": null,
+      "section_path": "Transcript",
+      "element_type": "text",
+      "bbox": null,
+      "related_tables": [],
+      "related_pictures": [],
+      "is_page_boundary": false,
+      "start_time": 45.2,
+      "end_time": 58.7
+    },
+
+    "not_found": {
+      "error": "Chunk not found",
+      "detail": "Chunk abc123-chunk9999 not found",
+      "status_code": 404
+    }
+  },
+
+  "markdown_endpoint": {
+    "description": "GET /documents/{doc_id}/markdown",
+
+    "enhanced_markdown_sample": "---\nfilename: Research_Paper.pdf\ndoc_id: abc123-def456-789\ndate_added: 2025-10-17T14:30:00Z\nhas_timestamps: false\nchunk_count: 45\n---\n\n# AI-Powered Document Understanding: A Comprehensive Survey\n\n<!-- chunk:abc123-def456-789-chunk0000 page:1 section:\"Title\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0000\" data-page=\"1\" data-section=\"Title\">\nAI-Powered Document Understanding: A Comprehensive Survey\n</div>\n\n<!-- chunk:abc123-def456-789-chunk0001 page:1 section:\"Authors\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0001\" data-page=\"1\" data-section=\"Authors\">\nJohn Doe, Jane Smith, Bob Johnson\nUniversity of Technology, 2025\n</div>\n\n## Abstract\n\n<!-- chunk:abc123-def456-789-chunk0002 page:1 section:\"Abstract\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0002\" data-page=\"1\" data-section=\"Abstract\">\nThis paper presents a comprehensive survey of recent advances in AI-powered document understanding systems. We examine multimodal approaches, embedding techniques, and real-world applications across various domains.\n</div>\n\n## 1. Introduction\n\n<!-- chunk:abc123-def456-789-chunk0003 page:2 section:\"1. Introduction\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0003\" data-page=\"2\" data-section=\"1. Introduction\">\nDocument understanding has evolved significantly with the advent of large language models and vision transformers. Modern systems can now process complex documents with mixed content including text, tables, figures, and formulas.\n</div>\n\n<!-- chunk:abc123-def456-789-chunk0004 page:2 section:\"1. Introduction\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0004\" data-page=\"2\" data-section=\"1. Introduction\">\nThe challenges in this field include maintaining semantic coherence across pages, accurately extracting structured data from tables, and understanding the relationships between visual and textual elements.\n</div>\n\n### 1.1 Background and Context\n\n<!-- chunk:abc123-def456-789-chunk0005 page:3 section:\"1.1 Background and Context\" -->\n<div data-chunk-id=\"abc123-def456-789-chunk0005\" data-page=\"3\" data-section=\"1.1 Background and Context\">\nTraditional document processing relied heavily on rule-based systems and template matching. These approaches struggled with variability in document layouts and formatting.\n</div>"
+  },
+
+  "research_api": {
+    "description": "POST /api/research/ask - Enhanced with chunk_id field",
+
+    "full_response": {
+      "answer": "The 2008 financial crisis was caused by several interconnected factors. The primary cause was the collapse of the subprime mortgage market [1]. Banks had issued risky loans to borrowers with poor credit, which were then packaged into complex financial instruments called mortgage-backed securities [2]. When housing prices declined, defaults increased dramatically, triggering a chain reaction across the financial system [3].\n\nRegulatory failures also played a significant role, as oversight agencies failed to recognize the systemic risks building in the financial sector [4]. The crisis spread globally due to the interconnected nature of international financial markets [5].",
+      "citations": [
+        {
+          "id": 1,
+          "start": 155,
+          "end": 158,
+          "marker": "[1]"
+        },
+        {
+          "id": 2,
+          "start": 320,
+          "end": 323,
+          "marker": "[2]"
+        },
+        {
+          "id": 3,
+          "start": 450,
+          "end": 453,
+          "marker": "[3]"
+        },
+        {
+          "id": 4,
+          "start": 610,
+          "end": 613,
+          "marker": "[4]"
+        },
+        {
+          "id": 5,
+          "start": 720,
+          "end": 723,
+          "marker": "[5]"
+        }
+      ],
+      "citation_map": {
+        "1": [
+          {
+            "sentence_index": 1,
+            "sentence_text": "The primary cause was the collapse of the subprime mortgage market [1]."
+          }
+        ],
+        "2": [
+          {
+            "sentence_index": 2,
+            "sentence_text": "Banks had issued risky loans to borrowers with poor credit, which were then packaged into complex financial instruments called mortgage-backed securities [2]."
+          }
+        ]
+      },
+      "sources": [
+        {
+          "id": 1,
+          "doc_id": "fin-crisis-2008-report",
+          "filename": "Financial_Crisis_Report_2009.pdf",
+          "page": 12,
+          "extension": "pdf",
+          "thumbnail_path": "/images/fin-crisis-2008-report/page012_thumb.jpg",
+          "date_added": "2025-10-15T10:30:00Z",
+          "relevance_score": 0.89,
+          "chunk_id": "fin-crisis-2008-report-chunk0045"
+        },
+        {
+          "id": 2,
+          "doc_id": "fin-crisis-2008-report",
+          "filename": "Financial_Crisis_Report_2009.pdf",
+          "page": 15,
+          "extension": "pdf",
+          "thumbnail_path": "/images/fin-crisis-2008-report/page015_thumb.jpg",
+          "date_added": "2025-10-15T10:30:00Z",
+          "relevance_score": 0.85,
+          "chunk_id": "fin-crisis-2008-report-chunk0058"
+        },
+        {
+          "id": 3,
+          "doc_id": "housing-bubble-analysis",
+          "filename": "Housing_Market_Analysis.pdf",
+          "page": 8,
+          "extension": "pdf",
+          "thumbnail_path": "/images/housing-bubble-analysis/page008_thumb.jpg",
+          "date_added": "2025-10-14T15:20:00Z",
+          "relevance_score": 0.82,
+          "chunk_id": null
+        },
+        {
+          "id": 4,
+          "doc_id": "regulatory-failures",
+          "filename": "Regulatory_Oversight_Study.docx",
+          "page": 5,
+          "extension": "docx",
+          "thumbnail_path": "/images/regulatory-failures/page005_thumb.jpg",
+          "date_added": "2025-10-16T09:45:00Z",
+          "relevance_score": 0.78,
+          "chunk_id": "regulatory-failures-chunk0023"
+        },
+        {
+          "id": 5,
+          "doc_id": "global-contagion",
+          "filename": "Global_Financial_Contagion.pdf",
+          "page": 3,
+          "extension": "pdf",
+          "thumbnail_path": "/images/global-contagion/page003_thumb.jpg",
+          "date_added": "2025-10-13T12:00:00Z",
+          "relevance_score": 0.75,
+          "chunk_id": "global-contagion-chunk0010"
+        }
+      ],
+      "metadata": {
+        "total_sources": 5,
+        "context_tokens": 2850,
+        "context_truncated": false,
+        "model_used": "gpt-4-turbo",
+        "search_mode": "hybrid",
+        "processing_time_ms": 2450,
+        "llm_latency_ms": 1950,
+        "search_latency_ms": 245
+      }
+    }
+  },
+
+  "url_parameters": {
+    "description": "Details page URL parameter examples",
+
+    "examples": [
+      {
+        "scenario": "Visual search result (page-level only)",
+        "url": "/frontend/details.html?id=abc123-def456-789&page=5",
+        "behavior": "Navigate to page 5, no chunk highlighting"
+      },
+      {
+        "scenario": "Text search result (chunk-level precision)",
+        "url": "/frontend/details.html?id=abc123-def456-789&page=5&chunk=abc123-def456-789-chunk0012",
+        "behavior": "Navigate to page 5, highlight chunk in both markdown and page image, scroll to make visible"
+      },
+      {
+        "scenario": "Research citation click (from research interface)",
+        "url": "/frontend/details.html?id=fin-crisis-2008-report&page=12&chunk=fin-crisis-2008-report-chunk0045",
+        "behavior": "Open document, navigate to page 12, highlight specific chunk that was cited, scroll to chunk"
+      },
+      {
+        "scenario": "Document browse (no search context)",
+        "url": "/frontend/details.html?id=abc123-def456-789",
+        "behavior": "Open document on page 1, no highlighting"
+      },
+      {
+        "scenario": "Invalid chunk ID (graceful degradation)",
+        "url": "/frontend/details.html?id=abc123-def456-789&page=5&chunk=invalid-chunk-id",
+        "behavior": "Show page 5, display user-friendly error message, no crash"
+      }
+    ]
+  },
+
+  "notes": {
+    "chunk_id_format": "Format is always {doc_id}-chunk{NNNN} where NNNN is zero-padded 4-digit number",
+    "bbox_coordinates": "Always [x1, y1, x2, y2] in pixels relative to original page image dimensions",
+    "chunk_id_null_cases": [
+      "Visual-only search results (page-level matching)",
+      "Documents processed without text extraction",
+      "Legacy documents uploaded before chunk tracking"
+    ],
+    "coordinate_system": "Top-left origin (0,0), X increases right, Y increases down, units in pixels",
+    "responsive_scaling": "Frontend must scale bbox coordinates based on displayed vs. original image dimensions"
+  }
+}

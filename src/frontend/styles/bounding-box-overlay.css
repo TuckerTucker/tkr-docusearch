@@ -1,0 +1,293 @@
+/**
+ * BoundingBox Overlay Styles
+ *
+ * Styles for interactive document structure bounding boxes.
+ * Supports hover, active, and keyboard focus states.
+ *
+ * Uses Kraft Paper theme design tokens from _context-kit.yml
+ */
+
+/* ===========================
+   SVG Container
+   =========================== */
+
+.bbox-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Allow clicks to pass through */
+  z-index: 10; /* Above image, below UI controls */
+}
+
+/* ===========================
+   Bbox Rectangles - Base
+   =========================== */
+
+.bbox-rect {
+  /* Pointer events enabled on individual rects */
+  pointer-events: auto;
+  cursor: pointer;
+
+  /* Smooth transitions for hover/active states */
+  transition:
+    fill-opacity var(--trans-fast, 150ms) var(--trans-ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    stroke-opacity var(--trans-fast, 150ms) var(--trans-ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    stroke-width var(--trans-fast, 150ms) var(--trans-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* ===========================
+   Bbox Rectangles - Hover
+   =========================== */
+
+.bbox-rect:hover,
+.bbox-rect.bbox-hover {
+  /* Increase opacity and stroke on hover */
+  stroke-width: 3;
+  stroke-opacity: 0.8;
+
+  /* Add subtle glow effect */
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ===========================
+   Bbox Rectangles - Active/Highlighted
+   =========================== */
+
+.bbox-rect.bbox-active {
+  /* Solid border and higher opacity for active state */
+  stroke-width: 3;
+  stroke-opacity: 1;
+
+  /* Stronger glow */
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* ===========================
+   Bbox Rectangles - Focus (Keyboard Navigation)
+   =========================== */
+
+.bbox-rect:focus {
+  outline: none; /* Remove default outline */
+
+  /* Custom focus ring */
+  stroke-width: 4;
+  stroke-opacity: 1;
+
+  /* Focus glow */
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.bbox-rect:focus-visible {
+  /* Enhanced focus for keyboard navigation */
+  stroke-width: 4;
+  stroke-opacity: 1;
+  stroke-dasharray: 4 2; /* Dashed outline */
+
+  /* Stronger focus glow */
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+/* ===========================
+   Element Type Colors
+   =========================== */
+
+/* Headings - Gray */
+.bbox-rect.bbox-heading {
+  fill: oklch(0.4700 0.0350 71.1655);
+  stroke: oklch(0.4700 0.0350 71.1655);
+}
+
+/* Tables - Blue-gray */
+.bbox-rect.bbox-table {
+  fill: oklch(0.5400 0.0400 71.1655);
+  stroke: oklch(0.5400 0.0400 71.1655);
+}
+
+/* Pictures - Purple */
+.bbox-rect.bbox-picture {
+  fill: oklch(0.60 0.15 290);
+  stroke: oklch(0.60 0.15 290);
+}
+
+/* Text - Green */
+.bbox-rect.bbox-text {
+  fill: oklch(0.60 0.15 145);
+  stroke: oklch(0.60 0.15 145);
+}
+
+/* Code - Red */
+.bbox-rect.bbox-code {
+  fill: oklch(0.5471 0.1438 32.9149);
+  stroke: oklch(0.5471 0.1438 32.9149);
+}
+
+/* Formula - Orange */
+.bbox-rect.bbox-formula {
+  fill: oklch(0.60 0.15 45);
+  stroke: oklch(0.60 0.15 45);
+}
+
+/* Default - Gray */
+.bbox-rect.bbox-default {
+  fill: oklch(0.5400 0.0400 71.1655);
+  stroke: oklch(0.5400 0.0400 71.1655);
+}
+
+/* ===========================
+   Dark Theme Support
+   =========================== */
+
+[data-theme="dark"] .bbox-rect.bbox-heading {
+  fill: oklch(0.7264 0.0581 66.6967);
+  stroke: oklch(0.7264 0.0581 66.6967);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-table {
+  fill: oklch(0.7982 0.0243 82.1078);
+  stroke: oklch(0.7982 0.0243 82.1078);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-picture {
+  fill: oklch(0.65 0.15 290);
+  stroke: oklch(0.65 0.15 290);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-text {
+  fill: oklch(0.65 0.15 145);
+  stroke: oklch(0.65 0.15 145);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-code {
+  fill: oklch(0.5471 0.1438 32.9149);
+  stroke: oklch(0.5471 0.1438 32.9149);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-formula {
+  fill: oklch(0.65 0.15 45);
+  stroke: oklch(0.65 0.15 45);
+}
+
+[data-theme="dark"] .bbox-rect.bbox-default {
+  fill: oklch(0.7982 0.0243 82.1078);
+  stroke: oklch(0.7982 0.0243 82.1078);
+}
+
+/* ===========================
+   Accessibility - High Contrast
+   =========================== */
+
+@media (prefers-contrast: more) {
+  .bbox-rect {
+    stroke-width: 3; /* Thicker borders in high contrast mode */
+  }
+
+  .bbox-rect:hover,
+  .bbox-rect.bbox-hover {
+    stroke-width: 4;
+  }
+
+  .bbox-rect.bbox-active,
+  .bbox-rect:focus,
+  .bbox-rect:focus-visible {
+    stroke-width: 5;
+  }
+
+  /* Increase opacity for better visibility */
+  .bbox-rect {
+    fill-opacity: 0.25 !important;
+  }
+
+  .bbox-rect:hover,
+  .bbox-rect.bbox-hover {
+    fill-opacity: 0.4 !important;
+  }
+
+  .bbox-rect.bbox-active,
+  .bbox-rect:focus,
+  .bbox-rect:focus-visible {
+    fill-opacity: 0.5 !important;
+  }
+}
+
+/* ===========================
+   Accessibility - Reduced Motion
+   =========================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .bbox-rect {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===========================
+   Mobile Adjustments
+   =========================== */
+
+@media (max-width: 768px) {
+  .bbox-rect {
+    /* Larger touch targets on mobile */
+    stroke-width: 3;
+  }
+
+  .bbox-rect:hover,
+  .bbox-rect.bbox-hover {
+    stroke-width: 4;
+  }
+
+  /* Increase base opacity for better visibility on small screens */
+  .bbox-rect {
+    fill-opacity: 0.2;
+  }
+}
+
+/* ===========================
+   Print Styles
+   =========================== */
+
+@media print {
+  .bbox-overlay {
+    display: none; /* Hide overlays in print */
+  }
+}
+
+/* ===========================
+   Optional: Bbox Labels
+   =========================== */
+
+.bbox-label {
+  font-family: var(--font-mono, 'Courier Prime', monospace);
+  font-size: 10px;
+  fill: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--trans-fast, 150ms) var(--trans-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.bbox-rect:hover + .bbox-label,
+.bbox-rect.bbox-active + .bbox-label {
+  opacity: 1;
+}
+
+/* ===========================
+   Loading State
+   =========================== */
+
+.bbox-overlay.bbox-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.bbox-overlay.bbox-loading .bbox-rect {
+  animation: bbox-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes bbox-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

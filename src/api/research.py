@@ -80,6 +80,7 @@ class SourceInfo(BaseModel):
     thumbnail_path: Optional[str] = None
     date_added: str  # ISO format
     relevance_score: float
+    chunk_id: Optional[str] = None  # Format: "{doc_id}-chunk{NNNN}" for text, None for visual
 
 
 class ResearchMetadata(BaseModel):
@@ -318,6 +319,7 @@ async def ask_research_question(request: ResearchRequest):
                     thumbnail_path=source.thumbnail_path,
                     date_added=source.timestamp,
                     relevance_score=source.relevance_score,
+                    chunk_id=source.chunk_id,
                 )
                 for i, source in enumerate(context.sources)
             ],

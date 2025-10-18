@@ -1,0 +1,360 @@
+/**
+ * Highlighting Animations CSS
+ *
+ * Smooth, accessible animations for bidirectional highlighting:
+ * - Fade in/out effects
+ * - Pulse effects for active states
+ * - Smooth scrolling
+ * - Respects prefers-reduced-motion
+ *
+ * WCAG 2.1 AA Compliant - Accessible animations
+ */
+
+/* ===== CSS Variables ===== */
+:root {
+    /* Animation durations */
+    --anim-fast: 150ms;
+    --anim-base: 200ms;
+    --anim-slow: 300ms;
+    --anim-pulse: 1s;
+
+    /* Easing functions */
+    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.6, 1);
+
+    /* Highlight colors */
+    --highlight-hover: oklch(0.8348 0.0426 88.8064);
+    --highlight-active: oklch(0.6180 0.0778 65.5444);
+    --highlight-focus: oklch(0.5680 0.0878 65.5444);
+
+    /* Shadow for pulse effect */
+    --primary-color: oklch(0.6180 0.0778 65.5444);
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+    --highlight-hover: oklch(0.8348 0.0426 88.8064);
+    --highlight-active: oklch(0.7264 0.0581 66.6967);
+    --highlight-focus: oklch(0.6180 0.0778 65.5444);
+    --primary-color: oklch(0.7264 0.0581 66.6967);
+}
+
+/* ===== Keyframe Animations ===== */
+
+/* Fade in highlight */
+@keyframes highlightFadeIn {
+    from {
+        background-color: transparent;
+        opacity: 0;
+    }
+    to {
+        background-color: var(--highlight-hover);
+        opacity: 1;
+    }
+}
+
+/* Fade out highlight */
+@keyframes highlightFadeOut {
+    from {
+        background-color: var(--highlight-hover);
+        opacity: 1;
+    }
+    to {
+        background-color: transparent;
+        opacity: 0;
+    }
+}
+
+/* Pulse effect for active elements */
+@keyframes highlightPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+    50% {
+        box-shadow: 0 0 8px 4px var(--primary-color);
+    }
+}
+
+/* Pulse effect for SVG elements */
+@keyframes bboxPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 0 transparent);
+    }
+    50% {
+        filter: drop-shadow(0 0 8px var(--primary-color));
+    }
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Slide down animation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Glow effect for focus */
+@keyframes focusGlow {
+    0%, 100% {
+        outline-width: 2px;
+        outline-offset: 2px;
+    }
+    50% {
+        outline-width: 3px;
+        outline-offset: 4px;
+    }
+}
+
+/* ===== Chunk Highlighting ===== */
+
+/* Chunk hover state */
+[data-chunk-id].chunk-hover {
+    animation: highlightFadeIn var(--anim-base) var(--ease-out);
+    background-color: var(--highlight-hover);
+    transition: background-color var(--anim-base) var(--ease-out);
+}
+
+/* Chunk active state (permanent) */
+[data-chunk-id].chunk-active {
+    animation: highlightPulse var(--anim-pulse) var(--ease-in-out);
+    background-color: var(--highlight-active);
+    border-left: 4px solid var(--primary-color);
+    padding-left: calc(1rem - 4px); /* Compensate for border */
+    transition: all var(--anim-base) var(--ease-out);
+}
+
+/* Chunk focus state (keyboard navigation) */
+[data-chunk-id]:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    animation: focusGlow var(--anim-pulse) var(--ease-in-out) infinite;
+}
+
+/* Chunk transition on hover */
+[data-chunk-id] {
+    transition: background-color var(--anim-base) var(--ease-out);
+}
+
+/* ===== BBox Highlighting ===== */
+
+/* Bbox hover state */
+.bbox-rect:hover {
+    fill-opacity: 0.3;
+    stroke-width: 2px;
+    transition: all var(--anim-fast) var(--ease-out);
+}
+
+/* Bbox active state */
+.bbox-rect.active {
+    fill-opacity: 0.4;
+    stroke-width: 3px;
+    animation: bboxPulse var(--anim-pulse) var(--ease-in-out);
+    transition: all var(--anim-base) var(--ease-out);
+}
+
+/* Bbox focus state */
+.bbox-rect:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    animation: focusGlow var(--anim-pulse) var(--ease-in-out) infinite;
+}
+
+/* Bbox transition */
+.bbox-rect {
+    transition: all var(--anim-fast) var(--ease-out);
+}
+
+/* ===== Citation Highlighting ===== */
+
+/* Citation link hover */
+.citation-link:hover {
+    background-color: var(--highlight-hover);
+    transition: background-color var(--anim-fast) var(--ease-out);
+}
+
+/* Citation link active */
+.citation-link.active {
+    background-color: var(--highlight-active);
+    animation: highlightPulse var(--anim-pulse) var(--ease-in-out);
+}
+
+/* Citation reference card highlight */
+.reference-card.highlighted {
+    animation: highlightPulse var(--anim-pulse) var(--ease-in-out);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color);
+    transition: all var(--anim-base) var(--ease-out);
+}
+
+/* ===== Smooth Scrolling ===== */
+
+/* Enable smooth scroll for whole document */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Smooth scroll for specific containers */
+.markdown-content,
+.references-list,
+.document-viewer {
+    scroll-behavior: smooth;
+}
+
+/* ===== Context Badge Animations ===== */
+
+/* Badge slide in */
+.chunk-context-badge {
+    animation: slideDown var(--anim-slow) var(--ease-out);
+}
+
+/* Badge hover */
+.chunk-context-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all var(--anim-fast) var(--ease-out);
+}
+
+/* ===== Loading States ===== */
+
+/* Loading spinner */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-spinner {
+    animation: spin 0.8s linear infinite;
+}
+
+/* Loading shimmer */
+@keyframes shimmer {
+    from {
+        background-position: -100% 0;
+    }
+    to {
+        background-position: 200% 0;
+    }
+}
+
+.loading-shimmer {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--highlight-hover) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ===== Modal Animations ===== */
+
+/* Modal fade in */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Modal slide up */
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-overlay {
+    animation: modalFadeIn var(--anim-slow) var(--ease-out);
+}
+
+.modal-content {
+    animation: modalSlideUp var(--anim-slow) var(--ease-out);
+}
+
+/* ===== Reduced Motion Support ===== */
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Keep essential feedback but remove motion */
+    [data-chunk-id].chunk-active,
+    .bbox-rect.active,
+    .citation-link.active {
+        animation: none !important;
+    }
+
+    /* Instant state changes */
+    [data-chunk-id],
+    .bbox-rect,
+    .citation-link {
+        transition: none !important;
+    }
+
+    /* Disable smooth scrolling */
+    html,
+    .markdown-content,
+    .references-list,
+    .document-viewer {
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===== Print Styles ===== */
+
+/* Remove animations for print */
+@media print {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    /* Remove highlights for print */
+    [data-chunk-id].chunk-hover,
+    [data-chunk-id].chunk-active {
+        background-color: transparent !important;
+        border-left: none !important;
+    }
+
+    .bbox-rect {
+        display: none !important;
+    }
+}

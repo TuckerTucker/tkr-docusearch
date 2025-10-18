@@ -1,0 +1,246 @@
+{
+  "page_structure_response": {
+    "description": "Sample response from GET /documents/{doc_id}/pages/{page}/structure",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/pages/1/structure",
+    "status": 200,
+    "response": {
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "page": 1,
+      "has_structure": true,
+      "headings": [
+        {
+          "text": "Introduction to Machine Learning",
+          "level": "TITLE",
+          "page": 1,
+          "section_path": "1. Introduction to Machine Learning",
+          "bbox": {
+            "left": 72.0,
+            "bottom": 650.0,
+            "right": 540.0,
+            "top": 720.0
+          }
+        }
+      ],
+      "tables": [],
+      "pictures": [
+        {
+          "page": 1,
+          "type": "chart",
+          "caption": "Figure 1: Neural Network Architecture",
+          "confidence": 0.92,
+          "picture_id": "picture-0",
+          "bbox": {
+            "left": 150.0,
+            "bottom": 100.0,
+            "right": 462.0,
+            "top": 300.0
+          }
+        }
+      ],
+      "code_blocks": [],
+      "formulas": [],
+      "summary": {
+        "total_sections": 2,
+        "max_depth": 2,
+        "has_toc": true
+      },
+      "coordinate_system": {
+        "format": "[left, bottom, right, top]",
+        "origin": "bottom-left",
+        "units": "points",
+        "reference": "integration-contracts/docling-structure-spec.md"
+      }
+    }
+  },
+  "page_structure_empty": {
+    "description": "Sample response when page has no structure metadata",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/pages/1/structure",
+    "status": 200,
+    "response": {
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "page": 1,
+      "has_structure": false,
+      "headings": [],
+      "tables": [],
+      "pictures": [],
+      "code_blocks": [],
+      "formulas": [],
+      "summary": null,
+      "coordinate_system": {
+        "format": "[left, bottom, right, top]",
+        "origin": "bottom-left",
+        "units": "points",
+        "reference": "integration-contracts/docling-structure-spec.md"
+      }
+    }
+  },
+  "page_structure_multi_elements": {
+    "description": "Sample response with multiple structure elements on page 2",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/pages/2/structure",
+    "status": 200,
+    "response": {
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "page": 2,
+      "has_structure": true,
+      "headings": [
+        {
+          "text": "Supervised Learning",
+          "level": "SECTION_HEADER",
+          "page": 2,
+          "section_path": "1.1 Supervised Learning",
+          "bbox": {
+            "left": 72.0,
+            "bottom": 600.0,
+            "right": 300.0,
+            "top": 625.0
+          }
+        }
+      ],
+      "tables": [
+        {
+          "page": 2,
+          "caption": "Comparison of ML Algorithms",
+          "rows": 6,
+          "cols": 4,
+          "has_header": true,
+          "table_id": "table-0",
+          "bbox": {
+            "left": 100.0,
+            "bottom": 200.0,
+            "right": 512.0,
+            "top": 450.0
+          }
+        }
+      ],
+      "pictures": [],
+      "code_blocks": [],
+      "formulas": [],
+      "summary": {
+        "total_sections": 2,
+        "max_depth": 2,
+        "has_toc": true
+      },
+      "coordinate_system": {
+        "format": "[left, bottom, right, top]",
+        "origin": "bottom-left",
+        "units": "points",
+        "reference": "integration-contracts/docling-structure-spec.md"
+      }
+    }
+  },
+  "chunk_context_response": {
+    "description": "Sample response from GET /documents/{doc_id}/chunks/{chunk_id}",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/chunks/0012",
+    "status": 200,
+    "response": {
+      "chunk_id": "a1b2c3d4e5f6g7h8-chunk0012",
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "text_content": "Supervised learning algorithms learn from labeled training data. Common examples include linear regression, logistic regression, and decision trees. These algorithms are used for classification and regression tasks.",
+      "parent_heading": "Supervised Learning",
+      "parent_heading_level": 1,
+      "section_path": "1. Introduction to Machine Learning > 1.1 Supervised Learning",
+      "element_type": "text",
+      "related_tables": [
+        "table-0"
+      ],
+      "related_pictures": [
+        "picture-0"
+      ],
+      "page_nums": [
+        2
+      ],
+      "is_page_boundary": false,
+      "bbox": null
+    }
+  },
+  "chunk_context_minimal": {
+    "description": "Sample response with minimal chunk metadata",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/chunks/0001",
+    "status": 200,
+    "response": {
+      "chunk_id": "a1b2c3d4e5f6g7h8-chunk0001",
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "text_content": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed.",
+      "parent_heading": null,
+      "parent_heading_level": null,
+      "section_path": "",
+      "element_type": "text",
+      "related_tables": [],
+      "related_pictures": [],
+      "page_nums": [
+        1
+      ],
+      "is_page_boundary": false,
+      "bbox": null
+    }
+  },
+  "chunk_context_page_boundary": {
+    "description": "Sample response for chunk crossing page boundary",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/chunks/0025",
+    "status": 200,
+    "response": {
+      "chunk_id": "a1b2c3d4e5f6g7h8-chunk0025",
+      "doc_id": "a1b2c3d4e5f6g7h8",
+      "text_content": "...The training process involves iteratively adjusting model parameters to minimize the loss function. This optimization is typically performed using gradient descent or its variants...",
+      "parent_heading": "Model Training",
+      "parent_heading_level": 2,
+      "section_path": "1. Introduction to Machine Learning > 1.2 Model Training",
+      "element_type": "text",
+      "related_tables": [
+        "table-1",
+        "table-2"
+      ],
+      "related_pictures": [],
+      "page_nums": [
+        3,
+        4
+      ],
+      "is_page_boundary": true,
+      "bbox": null
+    }
+  },
+  "error_page_not_found": {
+    "description": "Error response when page doesn't exist",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/pages/999/structure",
+    "status": 404,
+    "response": {
+      "detail": {
+        "error": "Page not found",
+        "code": "PAGE_NOT_FOUND",
+        "details": {
+          "doc_id": "a1b2c3d4e5f6g7h8",
+          "page": 999
+        }
+      }
+    }
+  },
+  "error_chunk_not_found": {
+    "description": "Error response when chunk doesn't exist",
+    "endpoint": "GET /documents/a1b2c3d4e5f6g7h8/chunks/9999",
+    "status": 404,
+    "response": {
+      "detail": {
+        "error": "Chunk not found",
+        "code": "CHUNK_NOT_FOUND",
+        "details": {
+          "doc_id": "a1b2c3d4e5f6g7h8",
+          "chunk_id": "a1b2c3d4e5f6g7h8-chunk9999"
+        }
+      }
+    }
+  },
+  "error_invalid_doc_id": {
+    "description": "Error response for invalid document ID",
+    "endpoint": "GET /documents/invalid@id!/pages/1/structure",
+    "status": 400,
+    "response": {
+      "detail": {
+        "error": "Invalid document ID format",
+        "code": "INVALID_DOC_ID",
+        "details": {
+          "doc_id": "invalid@id!"
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,8 @@ extracted from DocumentProcessor for reduced complexity.
 import logging
 from typing import Any, Dict, List, Optional
 
+from .enhanced_metadata import prepare_enhanced_visual_metadata
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,8 +67,11 @@ class VisualEmbeddingHandler:
                 **safe_doc_metadata,
             }
 
+            # Get image dimensions from page if available
+            image_width, image_height = self._get_image_dimensions(result.page_num, page_lookup)
+
             # Prepare enhanced metadata if available
-            metadata = self._prepare_metadata(base_metadata, structure)
+            metadata = self._prepare_metadata(base_metadata, structure, image_width, image_height)
 
             # Get image paths from page if available
             image_path, thumb_path = self._get_image_paths(result.page_num, page_lookup)
@@ -89,11 +94,35 @@ class VisualEmbeddingHandler:
         return visual_ids, total_size_bytes
 
     def _prepare_metadata(
-        self, base_metadata: Dict[str, Any], structure: Optional[Any]
+        self,
+        base_metadata: Dict[str, Any],
+        structure: Optional[Any],
+        image_width: Optional[int] = None,
+        image_height: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Prepare enhanced metadata if available."""
-        if hasattr(self.storage_client, "_prepare_enhanced_visual_metadata") and structure:
-            return self.storage_client._prepare_enhanced_visual_metadata(base_metadata, structure)
+        """
+        Prepare enhanced metadata if available.
+
+        Args:
+            base_metadata: Base metadata dictionary
+            structure: Optional DocumentStructure from Docling
+            image_width: Original image width in pixels
+            image_height: Original image height in pixels
+
+        Returns:
+            Enhanced metadata if structure provided, else base metadata
+        """
+        # If enhanced mode is enabled and structure is available, use enhanced metadata
+        if self.enhanced_mode_config and structure:
+            try:
+                return prepare_enhanced_visual_metadata(
+                    base_metadata, structure, image_width, image_height
+                )
+            except Exception as e:
+                logger.warning(f"Failed to prepare enhanced metadata: {e}, falling back to base")
+                return base_metadata
+
+        # Otherwise, return base metadata
         return base_metadata
 
     def _get_image_paths(self, page_num: int, page_lookup: Dict) -> tuple:
@@ -107,3 +136,25 @@ class VisualEmbeddingHandler:
             thumb_path = page.thumb_path
 
         return image_path, thumb_path
+
+    def _get_image_dimensions(self, page_num: int, page_lookup: Dict) -> tuple:
+        """
+        Get image dimensions from page lookup.
+
+        Args:
+            page_num: Page number to look up
+            page_lookup: Dictionary mapping page numbers to Page objects
+
+        Returns:
+            Tuple of (width, height) or (None, None) if not available
+        """
+        if page_num in page_lookup:
+            page = page_lookup[page_num]
+            # Try to get dimensions from page object
+            if hasattr(page, "width") and hasattr(page, "height"):
+                return page.width, page.height
+            # Try image_width/image_height attributes
+            if hasattr(page, "image_width") and hasattr(page, "image_height"):
+                return page.image_width, page.image_height
+
+        return None, None

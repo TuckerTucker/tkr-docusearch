@@ -1,0 +1,180 @@
+{
+  "_comment": "Example text collection metadata for a document chunk with enhanced context",
+  "_doc_type": "PDF - Technical Report",
+  "_chunk_description": "Text chunk from Executive Summary section, spanning pages 1-2",
+
+  "doc_id": "abc123def456789",
+  "chunk_id": "abc123def456789-chunk0003",
+  "filename": "quarterly_report_q4_2024.pdf",
+  "page": 1,
+  "source_path": "/data/uploads/quarterly_report_q4_2024.pdf",
+  "timestamp": "2025-10-17T14:23:45.456789Z",
+
+  "_comment_text_fields": "Text content and preview",
+  "text_preview": "In Q4 2024, our company achieved record revenue growth of 28% year-over-year, driven primarily by strong performance in the Asia-Pacific region. This growth exceeded our initial projections by 12%...",
+  "full_text": "In Q4 2024, our company achieved record revenue growth of 28% year-over-year, driven primarily by strong performance in the Asia-Pacific region. This growth exceeded our initial projections by 12% and demonstrates the effectiveness of our strategic expansion initiatives. The revenue distribution across regions is shown in Table 1, which highlights the Asia-Pacific contribution of 45% to total revenue. Our European operations also showed solid performance with 15% growth, while North American markets remained stable with 8% growth.",
+  "word_count": 78,
+
+  "_comment_enhanced": "Enhanced metadata fields for bidirectional highlighting and context",
+  "has_context": true,
+
+  "_comment_structural_context": "Hierarchical position in document",
+  "parent_heading": "Executive Summary",
+  "parent_heading_level": 1,
+  "section_path": "Q4 2024 Financial Report > Executive Summary",
+  "element_type": "text",
+  "is_page_boundary": true,
+
+  "_comment_related_elements": "Cross-references to tables/pictures - stored as JSON strings due to ChromaDB limitation",
+  "related_tables": "[\"table-0\"]",
+  "related_pictures": "[]",
+
+  "_comment_bounding_box": "Optional bbox if available from smart chunking - JSON string format",
+  "bbox": "[150.0, 420.0, 1550.0, 620.0]",
+
+  "_comment_page_span": "Pages covered by this chunk - JSON string format",
+  "page_nums": "[1, 2]",
+
+  "_uncompressed_examples": {
+    "related_tables_parsed": ["table-0"],
+    "related_pictures_parsed": [],
+    "bbox_parsed": [150.0, 420.0, 1550.0, 620.0],
+    "page_nums_parsed": [1, 2]
+  },
+
+  "_element_types_reference": {
+    "text": "Regular paragraph text",
+    "list_item": "Bulleted or numbered list item",
+    "table_cell": "Text extracted from table cell",
+    "caption": "Figure or table caption",
+    "code": "Code block content",
+    "formula": "Mathematical formula"
+  },
+
+  "_heading_levels_reference": {
+    "0": "TITLE - Document title",
+    "1": "SECTION_HEADER - Major section",
+    "2": "SUB_SECTION_HEADER - Subsection",
+    "3": "PARAGRAPH_HEADER - Paragraph heading"
+  },
+
+  "_embedding_storage": {
+    "_comment": "Text embedding stored in ChromaDB 'embedding' field (not metadata)",
+    "cls_token_shape": "[1, 128]",
+    "cls_token_usage": "Fast HNSW retrieval in ChromaDB",
+    "full_sequence_shape": "[30, 128]",
+    "full_sequence_storage": "Compressed in metadata field 'compressed_embedding'",
+    "full_sequence_usage": "Late interaction MaxSim re-ranking",
+    "metadata_field": "compressed_embedding",
+    "compression": "gzip + base64",
+    "typical_size": "~5 KB compressed"
+  },
+
+  "_validation_checklist": {
+    "has_context_present": true,
+    "has_context_is_bool": true,
+    "element_type_valid": true,
+    "parent_heading_level_in_range": true,
+    "section_path_not_too_long": true,
+    "related_tables_valid_json": true,
+    "related_pictures_valid_json": true,
+    "bbox_valid_json": true,
+    "bbox_coordinates_valid": true,
+    "page_nums_valid_json": true,
+    "page_nums_all_positive": true,
+    "all_required_fields_present": true
+  },
+
+  "_query_examples": {
+    "get_all_chunks_for_page": {
+      "description": "Get all chunks starting on page 1",
+      "query": {
+        "where": {
+          "$and": [
+            {"doc_id": {"$eq": "abc123def456789"}},
+            {"page": {"$eq": 1}}
+          ]
+        }
+      },
+      "note": "Returns chunks where page=1. For multi-page chunks, check page_nums field."
+    },
+    "get_chunks_under_heading": {
+      "description": "Get all chunks under 'Executive Summary' heading",
+      "query": {
+        "where": {
+          "$and": [
+            {"doc_id": {"$eq": "abc123def456789"}},
+            {"parent_heading": {"$eq": "Executive Summary"}}
+          ]
+        }
+      }
+    },
+    "get_chunks_with_tables": {
+      "description": "Get chunks that reference any tables",
+      "query": {
+        "where": {
+          "$and": [
+            {"doc_id": {"$eq": "abc123def456789"}},
+            {"related_tables": {"$ne": "[]"}}
+          ]
+        }
+      },
+      "note": "Must parse related_tables JSON string to get actual table IDs"
+    },
+    "get_chunks_by_element_type": {
+      "description": "Get all list items in document",
+      "query": {
+        "where": {
+          "$and": [
+            {"doc_id": {"$eq": "abc123def456789"}},
+            {"element_type": {"$eq": "list_item"}}
+          ]
+        }
+      }
+    }
+  },
+
+  "_bidirectional_highlighting_workflow": {
+    "step1_user_clicks_reference": {
+      "description": "User clicks reference card in search results",
+      "data_available": {
+        "doc_id": "abc123def456789",
+        "chunk_id": "abc123def456789-chunk0003",
+        "page": 1,
+        "bbox": [150.0, 420.0, 1550.0, 620.0]
+      }
+    },
+    "step2_highlight_in_document_view": {
+      "description": "Frontend highlights bounding box on page image",
+      "action": "Draw overlay rectangle at bbox coordinates",
+      "coordinate_system": "Use image_width and image_height from visual metadata to scale"
+    },
+    "step3_user_clicks_heading": {
+      "description": "User clicks 'Executive Summary' heading in structure tree",
+      "data_available": {
+        "heading_text": "Executive Summary",
+        "chunk_ids": ["abc123def456789-chunk0002", "abc123def456789-chunk0003"]
+      }
+    },
+    "step4_highlight_chunks": {
+      "description": "Frontend highlights all chunks under heading",
+      "action": "Scroll to first chunk and highlight all bbox regions"
+    }
+  },
+
+  "_integration_notes": {
+    "wave2_storage_agent": "Flatten ChunkContext to ChromaDB-compatible metadata using to_dict() + JSON.stringify for arrays",
+    "wave2_search_agent": "When returning search results, parse JSON fields back to Python objects",
+    "wave3_frontend_agent": "Parse bbox and related_* fields to enable bidirectional highlighting",
+    "performance": "Use indexed queries on page and parent_heading fields for fast lookup",
+    "size_limits": "ChunkContext metadata typically <2 KB per chunk, well within ChromaDB limits"
+  },
+
+  "_common_pitfalls": {
+    "arrays_as_strings": "ChromaDB doesn't support array types - must store as JSON strings",
+    "bbox_null_handling": "bbox may be null if smart chunking didn't provide coordinates",
+    "page_nums_vs_page": "page is primary page where chunk starts, page_nums includes all spanned pages",
+    "json_parsing": "Always validate JSON strings before parsing to handle malformed data gracefully",
+    "coordinate_scaling": "Bbox coordinates are in original image space - scale using image_width/height for display"
+  }
+}

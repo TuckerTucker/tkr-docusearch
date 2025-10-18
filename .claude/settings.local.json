@@ -101,7 +101,12 @@
       "WebFetch(domain:arxiv.org)",
       "Bash(./scripts/start-research-api.sh:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(node:*)",
+      "Bash(node --check:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/tests/accessibility/validate-accessibility.sh:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
