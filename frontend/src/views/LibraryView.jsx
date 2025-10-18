@@ -7,7 +7,7 @@
  * Wave 2 - Library Agent
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
@@ -40,9 +40,7 @@ export default function LibraryView() {
     useDocuments(filters);
 
   // Merge real documents with temp documents for optimistic UI
-  const [mergedDocuments, setMergedDocuments] = useState([]);
-
-  useEffect(() => {
+  const mergedDocuments = useMemo(() => {
     // Convert temp documents Map to array
     const tempDocs = Array.from(tempDocuments.entries()).map(([tempId, data]) => ({
       temp_id: tempId,
@@ -56,8 +54,8 @@ export default function LibraryView() {
     }));
 
     // Merge temp docs at the beginning (newest first)
-    setMergedDocuments([...tempDocs, ...documents]);
-  }, [documents, tempDocuments]);
+    return [...tempDocs, ...(documents || [])];
+  }, [documents, tempDocuments.size]); // Use tempDocuments.size to avoid reference issues
 
   // WebSocket for real-time document status updates
   const { isConnected } = useWebSocket('ws://localhost:8002/ws', {
@@ -137,7 +135,7 @@ export default function LibraryView() {
   // Handle view details
   const handleViewDetails = useCallback(
     (docId) => {
-      navigate(`/document/${docId}`);
+      navigate(`/details/${docId}`);
     },
     [navigate]
   );
