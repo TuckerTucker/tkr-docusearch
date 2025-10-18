@@ -317,7 +317,7 @@ export default function DocumentCard({ document, onDelete, onViewDetails }) {
 
         {status === 'completed' && (
           <Link
-            to={`/document/${doc_id}`}
+            to={`/details/${doc_id}`}
             className="document-card__button"
             aria-label={`View details for ${filename}`}
             onClick={onViewDetails}
