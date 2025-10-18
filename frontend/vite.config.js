@@ -7,8 +7,43 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      // Python backend API
-      '/api': {
+      // Python backend API - document endpoints
+      '/documents': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - image endpoints
+      '/images': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - status endpoints
+      '/status': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - health endpoints
+      '/health': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - config endpoints
+      '/config': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - delete endpoint
+      '/delete': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Python backend API - process endpoint
+      '/process': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
+      // Research API endpoints (if mounted)
+      '/api/research': {
         target: 'http://localhost:8002',
         changeOrigin: true,
       },
