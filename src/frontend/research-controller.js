@@ -7,6 +7,11 @@
 
 import { renderAnswer } from './answer-display.js';
 import { renderReferenceCards } from './reference-card.js';
+import { applyEarlyTheme, initTheme } from './theme-toggle.js';
+import { initStyleSelector } from './style-selector.js';
+
+// Apply theme immediately to avoid flash
+applyEarlyTheme();
 
 // State
 let currentView = 'detailed';
@@ -18,6 +23,11 @@ const API_BASE = 'http://localhost:8004';
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize theme system
+    initTheme();
+    initStyleSelector();
+
+    // Initialize research page
     initializeResearchPage();
 });
 

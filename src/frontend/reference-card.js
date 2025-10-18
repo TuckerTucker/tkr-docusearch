@@ -189,14 +189,16 @@ function handleReferenceHover(event) {
     const card = event.currentTarget;
     const citationId = card.dataset.citationId;
 
+    // Highlight the reference card itself
+    card.classList.add('reference-card--highlighted');
+
     // Find all citations with this ID
     const citations = document.querySelectorAll(
         `.citation-marker[data-citation-id="${citationId}"]`
     );
 
     citations.forEach(citation => {
-        citation.style.background = 'var(--color-primary-base)';
-        citation.style.color = 'var(--color-bg-primary)';
+        citation.classList.add('citation-marker--highlighted');
 
         // Highlight containing sentence
         const sentence = citation.closest('.answer-sentence');
@@ -214,13 +216,15 @@ function handleReferenceLeave(event) {
     const card = event.currentTarget;
     const citationId = card.dataset.citationId;
 
+    // Remove highlight from reference card
+    card.classList.remove('reference-card--highlighted');
+
     const citations = document.querySelectorAll(
         `.citation-marker[data-citation-id="${citationId}"]`
     );
 
     citations.forEach(citation => {
-        citation.style.background = 'var(--color-primary-light)';
-        citation.style.color = 'var(--color-primary-base)';
+        citation.classList.remove('citation-marker--highlighted');
 
         const sentence = citation.closest('.answer-sentence');
         if (sentence) {
@@ -237,22 +241,24 @@ style.textContent = `
         align-items: center;
         gap: var(--space-3);
         padding: var(--space-3);
-        background: var(--color-bg-secondary);
-        border: 1px solid var(--color-border);
+        background: var(--muted);
+        border: 1px solid var(--border);
         border-radius: var(--radius-md, 0.5rem);
         margin-bottom: var(--space-3);
-        transition: all var(--trans-base, 200ms);
+        transition: all var(--transition-base, 200ms);
     }
 
     .reference-card:hover {
-        background: var(--color-bg-primary);
+        background: var(--card);
         box-shadow: var(--shadow-md);
         cursor: pointer;
     }
 
-    .reference-card.highlighted {
-        background: var(--color-primary-light);
-        border-color: var(--color-primary-base);
+    .reference-card.highlighted,
+    .reference-card--highlighted {
+        background: var(--citation-highlight-bg);
+        border-color: var(--primary);
+        border-width: 2px;
         box-shadow: var(--shadow-lg);
     }
 
@@ -263,8 +269,8 @@ style.textContent = `
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--color-primary-base);
-        color: var(--color-bg-primary);
+        background: var(--primary);
+        color: var(--primary-foreground);
         border-radius: var(--radius-round, 9999px);
         font-weight: 600;
         font-size: var(--font-size-sm, 0.875rem);
@@ -285,9 +291,9 @@ style.textContent = `
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--color-bg-tertiary);
+        background: var(--muted);
         border-radius: var(--radius-sm, 0.25rem);
-        color: var(--color-text-secondary);
+        color: var(--muted-foreground);
     }
 
     .reference-card__content {
@@ -298,8 +304,8 @@ style.textContent = `
     .reference-card__badge {
         display: inline-block;
         padding: var(--space-1) var(--space-2);
-        background: var(--color-primary-light);
-        color: var(--color-primary-base);
+        background: var(--accent);
+        color: var(--primary);
         border-radius: var(--radius-sm, 0.25rem);
         font-size: var(--font-size-xs, 0.75rem);
         font-weight: 600;
@@ -308,7 +314,7 @@ style.textContent = `
 
     .reference-card__filename {
         font-weight: 500;
-        color: var(--color-text-primary);
+        color: var(--foreground);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -317,23 +323,23 @@ style.textContent = `
 
     .reference-card__meta {
         font-size: var(--font-size-sm, 0.875rem);
-        color: var(--color-text-secondary);
+        color: var(--muted-foreground);
     }
 
     .reference-card__details-btn {
         flex-shrink: 0;
         padding: var(--space-2) var(--space-4);
-        background: var(--color-primary-base);
-        color: var(--color-bg-primary);
+        background: var(--primary);
+        color: var(--primary-foreground);
         border-radius: var(--radius-md, 0.5rem);
         text-decoration: none;
         font-size: var(--font-size-sm, 0.875rem);
         font-weight: 600;
-        transition: all var(--trans-fast, 150ms);
+        transition: all var(--transition-fast, 150ms);
     }
 
     .reference-card__details-btn:hover {
-        background: var(--color-primary-hover);
+        background: color-mix(in oklch, var(--primary) 85%, black);
     }
 
     /* Simple variant */
@@ -347,14 +353,14 @@ style.textContent = `
         text-overflow: ellipsis;
         white-space: nowrap;
         font-size: var(--font-size-base, 1rem);
-        color: var(--color-text-primary);
+        color: var(--foreground);
     }
 
     .reference-card__details-btn-simple {
         flex-shrink: 0;
         padding: var(--space-1) var(--space-3);
-        background: var(--color-primary-base);
-        color: var(--color-bg-primary);
+        background: var(--primary);
+        color: var(--primary-foreground);
         border-radius: var(--radius-md, 0.5rem);
         text-decoration: none;
         font-size: var(--font-size-sm, 0.875rem);
@@ -368,7 +374,7 @@ style.textContent = `
         font-size: var(--font-size-xs, 0.75rem);
         opacity: 0.9;
         cursor: help;
-        transition: opacity var(--trans-fast, 150ms);
+        transition: opacity var(--transition-fast, 150ms);
     }
 
     .chunk-indicator:hover {
@@ -379,10 +385,10 @@ style.textContent = `
         display: inline-block;
         margin-left: var(--space-2, 0.5rem);
         font-size: var(--font-size-sm, 0.875rem);
-        color: var(--color-primary-base);
+        color: var(--primary);
         opacity: 0.8;
         cursor: help;
-        transition: opacity var(--trans-fast, 150ms);
+        transition: opacity var(--transition-fast, 150ms);
     }
 
     .chunk-indicator-simple:hover {
@@ -392,7 +398,7 @@ style.textContent = `
     /* Enhanced button styling for chunk links */
     .reference-card:has(.chunk-indicator) .reference-card__details-btn,
     .reference-card:has(.chunk-indicator-simple) .reference-card__details-btn-simple {
-        background: var(--color-primary-hover, var(--color-primary-base));
+        background: color-mix(in oklch, var(--primary) 85%, black);
     }
 
     .reference-card:has(.chunk-indicator):hover .reference-card__details-btn,

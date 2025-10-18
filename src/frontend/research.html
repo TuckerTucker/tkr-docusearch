@@ -4,249 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Research - DocuSearch</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Research Page Specific Styles */
-        .research-page {
-            min-height: 100vh;
-            background: var(--color-bg-secondary);
-        }
-
-        .research-header {
-            position: sticky;
-            top: 0;
-            z-index: var(--z-sticky);
-            background: var(--color-bg-primary);
-            border-bottom: 1px solid var(--color-border);
-            padding: var(--space-4) var(--space-6);
-        }
-
-        .header-content {
-            max-width: var(--max-width, 1440px);
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .research-header h1 {
-            font-size: var(--font-size-2xl, 2rem);
-            color: var(--color-text-primary);
-            margin: 0;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: var(--space-3);
-            align-items: center;
-        }
-
-        /* Query Section */
-        .query-section {
-            padding: var(--space-6);
-            background: var(--color-bg-primary);
-            border-bottom: 1px solid var(--color-border);
-        }
-
-        .query-form {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .input-group {
-            display: flex;
-            gap: var(--space-3);
-        }
-
-        .query-input {
-            flex: 1;
-            padding: var(--space-3) var(--space-4);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md, 0.5rem);
-            font-size: var(--font-size-base, 1rem);
-            font-family: var(--font-sans);
-            background: var(--color-bg-primary);
-            color: var(--color-text-primary);
-        }
-
-        .query-input:focus {
-            outline: 2px solid var(--color-primary-base);
-            outline-offset: 2px;
-        }
-
-        .ask-button {
-            padding: var(--space-3) var(--space-6);
-            background: var(--color-primary-base);
-            color: var(--color-bg-primary);
-            border: none;
-            border-radius: var(--radius-md, 0.5rem);
-            font-size: var(--font-size-base, 1rem);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all var(--trans-fast, 150ms);
-        }
-
-        .ask-button:hover {
-            background: var(--color-primary-hover);
-        }
-
-        .ask-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Main Content */
-        .research-main {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-6);
-            padding: var(--space-6);
-            max-width: var(--max-width, 1440px);
-            margin: 0 auto;
-            min-height: calc(100vh - 200px);
-        }
-
-        /* Answer Panel */
-        .answer-panel {
-            background: var(--color-bg-primary);
-            border-radius: var(--radius-lg, 0.75rem);
-            padding: var(--space-6);
-            box-shadow: var(--shadow-md);
-        }
-
-        .answer-container {
-            min-height: 300px;
-        }
-
-        /* References Panel */
-        .references-panel {
-            background: var(--color-bg-primary);
-            border-radius: var(--radius-lg, 0.75rem);
-            padding: var(--space-6);
-            box-shadow: var(--shadow-md);
-        }
-
-        .references-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--space-4);
-        }
-
-        .references-header h2 {
-            font-size: var(--font-size-xl, 1.5rem);
-            color: var(--color-text-primary);
-            margin: 0;
-        }
-
-        .view-toggle-group {
-            display: flex;
-            gap: var(--space-2);
-        }
-
-        .view-toggle {
-            padding: var(--space-2) var(--space-4);
-            border: 1px solid var(--color-border);
-            background: transparent;
-            border-radius: var(--radius-md, 0.5rem);
-            cursor: pointer;
-            transition: all var(--trans-base, 200ms);
-            font-size: var(--font-size-sm, 0.875rem);
-            color: var(--color-text-secondary);
-        }
-
-        .view-toggle.active {
-            background: var(--color-primary-base);
-            color: var(--color-bg-primary);
-            border-color: var(--color-primary-base);
-        }
-
-        /* States */
-        .empty-state {
-            text-align: center;
-            padding: var(--space-8) var(--space-4);
-            color: var(--color-text-secondary);
-        }
-
-        .empty-state h2 {
-            font-size: var(--font-size-xl, 1.5rem);
-            margin-bottom: var(--space-2);
-        }
-
-        .loading-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: var(--space-8) var(--space-4);
-            gap: var(--space-4);
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid var(--color-border);
-            border-top-color: var(--color-primary-base);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error-state {
-            text-align: center;
-            padding: var(--space-8) var(--space-4);
-        }
-
-        .error-message {
-            color: var(--color-status-error);
-            margin-bottom: var(--space-4);
-        }
-
-        .retry-button {
-            padding: var(--space-2) var(--space-4);
-            background: var(--color-primary-base);
-            color: var(--color-bg-primary);
-            border: none;
-            border-radius: var(--radius-md, 0.5rem);
-            cursor: pointer;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .research-main {
-                grid-template-columns: 1fr;
-            }
-
-            .input-group {
-                flex-direction: column;
-            }
-
-            .ask-button {
-                width: 100%;
-            }
-        }
-    </style>
 </head>
-<body class="kraft-theme research-page">
+<body>
     <!-- Header -->
-    <header class="research-header">
+    <header class="header">
         <div class="header-content">
-            <h1>Research</h1>
-            <div class="header-actions">
-                <a href="/" class="back-link">← Back to Documents</a>
-                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
-                    </svg>
-                </button>
-            </div>
+            <a href="/frontend" class="back-button">← Back to Library</a>
+            <h1 id="page-title">Research</h1>
         </div>
     </header>
 
@@ -342,7 +108,64 @@
         </aside>
     </main>
 
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="footer__container">
+            <div class="footer__actions">
+                <!-- Style Selector -->
+                <div class="style-selector">
+                    <button
+                        id="style-selector-button"
+                        class="style-selector__button"
+                        aria-label="Select visual style"
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        title="Choose visual style">
+                        <svg class="style-selector__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                        </svg>
+                    </button>
+                    <div id="style-selector-dropdown" class="style-selector__dropdown" role="menu" aria-labelledby="style-selector-button">
+                        <ul class="style-selector__list">
+                            <!-- Options will be dynamically inserted here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Theme Toggle (Light/Dark) -->
+                <button
+                    id="theme-toggle-footer"
+                    class="theme-toggle"
+                    aria-label="Toggle theme"
+                    title="Toggle light/dark theme">
+                    <svg class="theme-toggle__icon theme-toggle__icon--sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="theme-toggle__icon theme-toggle__icon--moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="footer__status" style="display: none;">
+                <span id="connection-status" class="connection-status connection-status--disconnected" role="status" aria-live="polite">
+                    Disconnected
+                </span>
+            </div>
+        </div>
+    </footer>
+
     <!-- Scripts -->
+    <script type="module" src="theme-toggle.js"></script>
+    <script type="module" src="style-selector.js"></script>
     <script type="module" src="assets.js"></script>
     <script type="module" src="answer-display.js"></script>
     <script type="module" src="reference-card.js"></script>

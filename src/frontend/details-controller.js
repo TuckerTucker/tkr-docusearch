@@ -75,8 +75,14 @@ export class DetailsController {
 
         // If slideshow exists, set up structure overlay
         if (this.slideshow) {
-            // Get current page from slideshow or URL
+            // Get current page from URL or slideshow
             this.currentPage = params.page || this.slideshow.currentPage || 1;
+
+            // Navigate to the page if URL specifies it
+            if (params.page && params.page !== this.slideshow.currentPage) {
+                console.log(`[DetailsController] Navigating to page ${params.page} from URL`);
+                this.slideshow.goToPage(params.page);
+            }
 
             // Load structure for current page
             await this.loadStructureForPage(this.currentPage);

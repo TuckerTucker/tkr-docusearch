@@ -108,16 +108,25 @@ function applyInitialTheme() {
 }
 
 /**
- * Setup theme toggle button
+ * Setup theme toggle button(s)
  * Call this after DOM is ready
+ * Supports multiple toggle buttons with IDs: theme-toggle, theme-toggle-footer
  */
 function setupToggleButton() {
-  const toggleButton = document.getElementById('theme-toggle');
-  if (toggleButton) {
-    toggleButton.addEventListener('click', toggleTheme);
-    console.log('Theme toggle button initialized');
-  } else {
-    console.warn('Theme toggle button not found');
+  const toggleButtonIds = ['theme-toggle', 'theme-toggle-footer'];
+  let foundButtons = 0;
+
+  toggleButtonIds.forEach(id => {
+    const toggleButton = document.getElementById(id);
+    if (toggleButton) {
+      toggleButton.addEventListener('click', toggleTheme);
+      foundButtons++;
+      console.log(`Theme toggle button initialized: ${id}`);
+    }
+  });
+
+  if (foundButtons === 0) {
+    console.warn('No theme toggle buttons found');
   }
 }
 
