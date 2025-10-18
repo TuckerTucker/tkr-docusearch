@@ -1,0 +1,11 @@
+# Utils Directory
+
+This directory will contain utility functions and helpers used throughout the application.
+
+Examples:
+- API client functions
+- Date/time formatting
+- File size formatting
+- URL parameter handling
+- Clipboard utilities
+- Download utilities

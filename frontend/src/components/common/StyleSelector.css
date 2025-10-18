@@ -1,0 +1,179 @@
+/**
+ * StyleSelector Styles
+ */
+
+.style-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.style-selector__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--border-radius-sm, 0.5rem);
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #1f2937);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base, 200ms) var(--transition-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.style-selector__button:hover {
+  background: var(--color-bg-secondary, #f9fafb);
+  border-color: var(--color-border-hover, #d1d5db);
+}
+
+.style-selector__button:focus {
+  outline: 2px solid var(--color-primary-base, #8b7355);
+  outline-offset: 2px;
+}
+
+.style-selector__button-text {
+  white-space: nowrap;
+}
+
+.style-selector__arrow {
+  transition: transform var(--transition-base, 200ms) var(--transition-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.style-selector__arrow--open {
+  transform: rotate(180deg);
+}
+
+.style-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: var(--z-dropdown, 1000);
+  min-width: 280px;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--border-radius-md, 0.75rem);
+  background: var(--color-bg-primary, #ffffff);
+  box-shadow: var(--shadow-lg, 2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 4px 6px -1px hsl(28 13% 20% / 0.12));
+  animation: style-selector-slide-in var(--transition-base, 200ms) var(--transition-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.style-selector__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.style-selector__item {
+  margin: 0;
+  padding: 0;
+}
+
+.style-selector__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: var(--border-radius-sm, 0.5rem);
+  background: transparent;
+  color: var(--color-text-primary, #1f2937);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-base, 200ms) var(--transition-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.style-selector__option:hover {
+  background: var(--color-bg-secondary, #f9fafb);
+}
+
+.style-selector__option:focus {
+  outline: 2px solid var(--color-primary-base, #8b7355);
+  outline-offset: -2px;
+}
+
+.style-selector__option--active {
+  background: var(--color-primary-light, #f5f0eb);
+}
+
+.style-selector__option-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.style-selector__option-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1f2937);
+  margin-bottom: 0.25rem;
+}
+
+.style-selector__option-description {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+  line-height: 1.4;
+}
+
+.style-selector__checkmark {
+  flex-shrink: 0;
+  color: var(--color-primary-base, #8b7355);
+  margin-left: 0.5rem;
+}
+
+@keyframes style-selector-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark theme styles */
+.dark .style-selector__button {
+  background: var(--color-bg-primary, #374151);
+  border-color: var(--color-border, #4b5563);
+  color: var(--color-text-primary, #f3f4f6);
+}
+
+.dark .style-selector__button:hover {
+  background: var(--color-bg-secondary, #4b5563);
+  border-color: var(--color-border-hover, #6b7280);
+}
+
+.dark .style-selector__dropdown {
+  background: var(--color-bg-primary, #374151);
+  border-color: var(--color-border, #4b5563);
+}
+
+.dark .style-selector__option {
+  color: var(--color-text-primary, #f3f4f6);
+}
+
+.dark .style-selector__option:hover {
+  background: var(--color-bg-secondary, #4b5563);
+}
+
+.dark .style-selector__option--active {
+  background: rgba(139, 115, 85, 0.2);
+}
+
+.dark .style-selector__option-name {
+  color: var(--color-text-primary, #f3f4f6);
+}
+
+.dark .style-selector__option-description {
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+/* Accessibility: Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .style-selector__arrow,
+  .style-selector__dropdown {
+    animation: none;
+    transition-duration: 0.01ms;
+  }
+}

@@ -1,0 +1,10 @@
+# Constants Directory
+
+This directory will contain application-wide constants and configuration values.
+
+Examples:
+- API endpoints
+- File type mappings
+- Document type constants
+- Theme constants
+- UI configuration values
