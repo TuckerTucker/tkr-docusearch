@@ -1,0 +1,111 @@
+{
+  "answer": "The 2008 financial crisis was primarily caused by the collapse of the housing market bubble [1][2]. Banks engaged in risky lending practices, issuing subprime mortgages to borrowers with poor credit [3]. These mortgages were bundled into complex financial instruments called mortgage-backed securities [4].",
+  "citations": [
+    {
+      "id": 1,
+      "start": 98,
+      "end": 101,
+      "marker": "[1]"
+    },
+    {
+      "id": 2,
+      "start": 101,
+      "end": 104,
+      "marker": "[2]"
+    },
+    {
+      "id": 3,
+      "start": 190,
+      "end": 193,
+      "marker": "[3]"
+    },
+    {
+      "id": 4,
+      "start": 289,
+      "end": 292,
+      "marker": "[4]"
+    }
+  ],
+  "citation_map": {
+    "1": [
+      {
+        "sentence_index": 0,
+        "sentence_text": "The 2008 financial crisis was primarily caused by the collapse of the housing market bubble [1][2]."
+      }
+    ],
+    "2": [
+      {
+        "sentence_index": 0,
+        "sentence_text": "The 2008 financial crisis was primarily caused by the collapse of the housing market bubble [1][2]."
+      }
+    ],
+    "3": [
+      {
+        "sentence_index": 1,
+        "sentence_text": "Banks engaged in risky lending practices, issuing subprime mortgages to borrowers with poor credit [3]."
+      }
+    ],
+    "4": [
+      {
+        "sentence_index": 2,
+        "sentence_text": "These mortgages were bundled into complex financial instruments called mortgage-backed securities [4]."
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": 1,
+      "doc_id": "report-2024-abc123",
+      "filename": "financial-crisis-analysis.pdf",
+      "page": 5,
+      "extension": "pdf",
+      "thumbnail_path": "/images/report-2024-abc123/page005_thumb.jpg",
+      "date_added": "2025-10-15T14:30:00Z",
+      "relevance_score": 0.92,
+      "chunk_id": "report-2024-abc123-chunk0012"
+    },
+    {
+      "id": 2,
+      "doc_id": "presentation-xyz789",
+      "filename": "market-crash-slides.pptx",
+      "page": 3,
+      "extension": "pptx",
+      "thumbnail_path": "/images/presentation-xyz789/page003_thumb.jpg",
+      "date_added": "2025-10-16T09:15:00Z",
+      "relevance_score": 0.88,
+      "chunk_id": null
+    },
+    {
+      "id": 3,
+      "doc_id": "report-2024-abc123",
+      "filename": "financial-crisis-analysis.pdf",
+      "page": 7,
+      "extension": "pdf",
+      "thumbnail_path": "/images/report-2024-abc123/page007_thumb.jpg",
+      "date_added": "2025-10-15T14:30:00Z",
+      "relevance_score": 0.85,
+      "chunk_id": "report-2024-abc123-chunk0018"
+    },
+    {
+      "id": 4,
+      "doc_id": "whitepaper-def456",
+      "filename": "mortgage-backed-securities.pdf",
+      "page": 12,
+      "extension": "pdf",
+      "thumbnail_path": "/images/whitepaper-def456/page012_thumb.jpg",
+      "date_added": "2025-10-14T16:45:00Z",
+      "relevance_score": 0.81,
+      "chunk_id": "whitepaper-def456-chunk0045"
+    }
+  ],
+  "metadata": {
+    "total_sources": 4,
+    "context_tokens": 3250,
+    "context_truncated": false,
+    "model_used": "gpt-4-turbo",
+    "search_mode": "hybrid",
+    "processing_time_ms": 2450,
+    "llm_latency_ms": 1850,
+    "search_latency_ms": 240
+  }
+}

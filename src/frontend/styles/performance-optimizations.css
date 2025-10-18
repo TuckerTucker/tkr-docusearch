@@ -1,0 +1,433 @@
+/**
+ * Performance Optimizations CSS
+ *
+ * GPU acceleration, containment, and rendering optimizations for
+ * bidirectional highlighting feature and overall application performance.
+ *
+ * Wave 3 - Agent 13: Performance Optimizer
+ *
+ * Key Techniques:
+ * - GPU acceleration via transform: translateZ(0) and will-change
+ * - CSS containment to isolate layout/paint/style recalculation
+ * - Optimized compositing layers for animations
+ * - Reduced repaints and reflows
+ * - Hardware acceleration hints
+ */
+
+/* ============================================================================
+   GPU Acceleration for Animations
+   ============================================================================ */
+
+/**
+ * GPU-accelerate bounding box rectangles.
+ * Forces creation of composite layer for smooth opacity transitions.
+ */
+.bbox-rect {
+  /* Create composite layer for GPU acceleration */
+  transform: translateZ(0);
+  will-change: opacity, fill-opacity;
+
+  /* Enable hardware acceleration for filters */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  /* Optimize for frequent opacity changes */
+  transition: fill-opacity 0.15s ease-out;
+}
+
+/**
+ * Hover and active states should not cause reflows.
+ * Only opacity changes, which are GPU-accelerated.
+ */
+.bbox-rect.bbox-hover,
+.bbox-rect.bbox-active {
+  /* Opacity changes are handled by GPU */
+  /* No layout or paint, only composite */
+}
+
+/**
+ * GPU-accelerate chunk highlighting in markdown.
+ */
+.chunk-hover,
+.chunk-active {
+  /* Create composite layer */
+  transform: translateZ(0);
+  will-change: background-color, outline;
+
+  /* Smooth transitions */
+  transition: background-color 0.2s ease-out, outline 0.2s ease-out;
+
+  /* Prevent subpixel rendering issues */
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+/**
+ * Optimize SVG overlay container.
+ */
+.bbox-overlay {
+  /* Force GPU layer for entire overlay */
+  transform: translateZ(0);
+  will-change: transform;
+
+  /* Optimize rendering */
+  backface-visibility: hidden;
+
+  /* Prevent pointer events from causing unnecessary work */
+  pointer-events: none;
+
+  /* Allow rect children to handle pointer events */
+}
+
+.bbox-overlay > * {
+  pointer-events: auto;
+}
+
+/* ============================================================================
+   CSS Containment for Layout Isolation
+   ============================================================================ */
+
+/**
+ * Contain layout/style/paint for bounding box overlay.
+ * Prevents changes within overlay from affecting external layout.
+ */
+.bbox-overlay {
+  contain: layout style paint;
+}
+
+/**
+ * Contain markdown sections to prevent layout thrashing.
+ * Changes within a chunk don't affect siblings.
+ */
+[data-chunk-id] {
+  contain: layout style;
+}
+
+/**
+ * Contain accordion content sections.
+ */
+.accordion-content {
+  contain: layout style;
+}
+
+/**
+ * Contain slideshow to prevent layout recalculation on page change.
+ */
+#slideshow-container {
+  contain: layout style;
+}
+
+/**
+ * Contain filter bar to isolate from document list.
+ */
+.filter-bar {
+  contain: layout style;
+}
+
+/* ============================================================================
+   Optimized Compositing Layers
+   ============================================================================ */
+
+/**
+ * Promote frequently animated elements to composite layers.
+ */
+.loading-spinner,
+.connection-status.reconnecting,
+.progress-bar-fill {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/**
+ * Modal overlays should be on separate composite layer.
+ */
+.modal-overlay,
+.upload-modal-overlay {
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+/**
+ * Sticky header should be on composite layer.
+ */
+header {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ============================================================================
+   Reduce Repaints and Reflows
+   ============================================================================ */
+
+/**
+ * Prevent layout shifts from image loading.
+ */
+#slideshow-image {
+  /* Reserve space during load */
+  min-height: 400px;
+
+  /* Prevent layout shift */
+  contain: layout;
+
+  /* Optimize image rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/**
+ * Optimize document card grid for rendering performance.
+ */
+.document-grid {
+  /* Contain grid to prevent external layout impact */
+  contain: layout style;
+
+  /* Use subgrid if available for better performance */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+
+  /* Optimize for many children */
+  will-change: scroll-position;
+}
+
+/**
+ * Individual document cards should be contained.
+ */
+.document-card {
+  contain: layout style paint;
+
+  /* Optimize for hover effects */
+  backface-visibility: hidden;
+}
+
+/* ============================================================================
+   Hardware Acceleration Hints
+   ============================================================================ */
+
+/**
+ * Optimize scrollable containers.
+ */
+.accordion-content,
+.markdown-content,
+#slideshow-container {
+  /* Enable momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+
+  /* Hint browser to optimize scrolling */
+  scroll-behavior: smooth;
+}
+
+/**
+ * Optimize text rendering for performance.
+ */
+body {
+  /* Balance between quality and performance */
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/**
+ * High-quality text rendering for markdown content.
+ */
+.markdown-content,
+.accordion-content {
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================================
+   Animation Performance
+   ============================================================================ */
+
+/**
+ * Optimize fade-in animations.
+ */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+
+  /* GPU-accelerate animation */
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/**
+ * Optimize slide-up animations.
+ */
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+
+  /* GPU-accelerate animation */
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+/**
+ * Reduce motion for users who prefer it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Remove will-change to save memory */
+  * {
+    will-change: auto !important;
+  }
+}
+
+/* ============================================================================
+   Memory Optimization
+   ============================================================================ */
+
+/**
+ * Limit will-change to only actively animating elements.
+ * Remove will-change after animation completes to free memory.
+ */
+.bbox-rect:not(.bbox-hover):not(.bbox-active) {
+  will-change: auto;
+}
+
+.chunk-hover:not(:hover),
+.chunk-active:not(.active) {
+  will-change: auto;
+}
+
+/**
+ * Optimize large lists with virtual scrolling hints.
+ */
+.document-grid {
+  /* Hint for virtual scrolling */
+  content-visibility: auto;
+}
+
+.document-card {
+  /* Allow browser to defer rendering of off-screen cards */
+  content-visibility: auto;
+
+  /* Maintain aspect ratio to prevent layout shift */
+  aspect-ratio: 4 / 3;
+}
+
+/* ============================================================================
+   Rendering Optimization for High DPI Displays
+   ============================================================================ */
+
+/**
+ * Optimize for high DPI displays.
+ */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .bbox-rect {
+    /* Sharper rendering on retina displays */
+    shape-rendering: geometricPrecision;
+  }
+
+  #slideshow-image {
+    /* Better image quality on high DPI */
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* ============================================================================
+   Performance Optimizations for Dark Mode
+   ============================================================================ */
+
+/**
+ * Optimize dark mode transitions.
+ */
+[data-theme="dark"] {
+  /* Smooth theme transition */
+  transition: background-color 0.3s ease-out, color 0.3s ease-out;
+
+  /* GPU-accelerate theme switch */
+  transform: translateZ(0);
+}
+
+/**
+ * Prevent FOIT (Flash of Invisible Text) during theme switch.
+ */
+[data-theme] * {
+  transition: background-color 0.2s ease-out, color 0.2s ease-out,
+    border-color 0.2s ease-out, fill 0.2s ease-out;
+}
+
+/* ============================================================================
+   Debugging and Performance Monitoring
+   ============================================================================ */
+
+/**
+ * Visual debug mode for composite layers (development only).
+ * Enable in DevTools: Rendering > Layer Borders
+ */
+.debug-composite-layers .bbox-rect,
+.debug-composite-layers .chunk-hover,
+.debug-composite-layers .chunk-active {
+  outline: 2px solid red;
+  outline-offset: -2px;
+}
+
+/**
+ * Performance budget warnings (development only).
+ */
+@supports (content-visibility: auto) {
+  /* Browser supports modern rendering optimizations */
+}
+
+/* ============================================================================
+   Browser-Specific Optimizations
+   ============================================================================ */
+
+/**
+ * Safari-specific optimizations.
+ */
+@supports (-webkit-appearance: none) {
+  .bbox-overlay,
+  .bbox-rect {
+    /* Improve Safari rendering performance */
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/**
+ * Firefox-specific optimizations.
+ */
+@-moz-document url-prefix() {
+  .bbox-rect {
+    /* Improve Firefox SVG performance */
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/**
+ * Chrome-specific optimizations.
+ */
+@supports (-webkit-appearance: none) and (not (-moz-appearance: none)) {
+  .bbox-overlay {
+    /* Chrome composite layer optimization */
+    transform: translate3d(0, 0, 0);
+  }
+}

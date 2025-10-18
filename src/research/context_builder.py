@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from .chunk_extractor import extract_chunk_id
+
 logger = structlog.get_logger(__name__)
 
 
@@ -63,6 +65,9 @@ class SourceDocument:
     # Search relevance
     relevance_score: float = 0.0  # Search score (0-1)
 
+    # Chunk identifier for bidirectional highlighting
+    chunk_id: Optional[str] = None  # Format: "{doc_id}-chunk{NNNN}" for text, None for visual
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict for API response"""
         return {
@@ -76,6 +81,7 @@ class SourceDocument:
             "section_path": self.section_path,
             "parent_heading": self.parent_heading,
             "relevance_score": self.relevance_score,
+            "chunk_id": self.chunk_id,
         }
 
 
@@ -307,6 +313,10 @@ class ContextBuilder:
         # Extract page-specific content
         page_content = self._extract_page_from_markdown(full_markdown, page)
 
+        # Extract chunk_id for bidirectional highlighting
+        # Returns None for visual results, formatted string for text results
+        chunk_id = extract_chunk_id(metadata, doc_id)
+
         return SourceDocument(
             doc_id=doc_id,
             filename=metadata.get("filename", "unknown"),
@@ -319,6 +329,7 @@ class ContextBuilder:
             parent_heading=metadata.get("parent_heading"),
             markdown_content=page_content,
             relevance_score=score,
+            chunk_id=chunk_id,
         )
 
     def format_source_citation(self, source: SourceDocument, citation_num: int) -> str:

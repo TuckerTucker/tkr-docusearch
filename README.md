@@ -437,6 +437,159 @@ MIT License - See LICENSE file for details.
 
 ---
 
+## Enhanced Mode (NEW) 📍
+
+DocuSearch now supports **Enhanced Mode** with bidirectional highlighting between document visuals and text.
+
+### What is Enhanced Mode?
+
+Enhanced Mode adds document structure extraction with bounding box coordinates, enabling:
+
+- **Visual structure overlay** - See document structure (headings, paragraphs, tables) overlaid on page images
+- **Bidirectional highlighting** - Click regions to jump to text, hover text to highlight regions
+- **Precise research citations** - Jump from research citations directly to specific document sections
+- **Structure-aware navigation** - Understand document layout at a glance
+
+### Key Features
+
+✨ **Click-to-Navigate** - Click any region on a page image → jump to corresponding text
+🎯 **Hover-to-Highlight** - Hover over text → see its location highlighted on the page
+📍 **Research Integration** - Research citations include chunk indicators for precise navigation
+🏗️ **Structure Visualization** - See headings, paragraphs, lists, tables, and figures as colored regions
+⚡ **Fast & Cached** - Structure data compressed and cached for performance
+
+### Enabling Enhanced Mode
+
+**Step 1: Set Environment Variable**
+
+```bash
+export ENHANCED_MODE=true
+```
+
+Or add to `docker/.env`:
+```bash
+ENHANCED_MODE=true
+```
+
+**Step 2: Restart Services**
+
+```bash
+./scripts/stop-all.sh
+./scripts/start-all.sh
+```
+
+**Step 3: Process/Reprocess Documents**
+
+New documents automatically use enhanced mode. For existing documents:
+
+```bash
+# Option A: Reprocess all documents (thorough but slow)
+python scripts/migrate_enhanced_mode.py --reprocess-all
+
+# Option B: Lazy migration (fast, on-demand)
+python scripts/migrate_enhanced_mode.py --lazy
+
+# Option C: Specific document only
+python scripts/migrate_enhanced_mode.py --doc-id "doc_12345"
+```
+
+**Validation:**
+
+```bash
+# Validate migration completed successfully
+python scripts/validate_migration.py
+
+# Count documents by status
+python scripts/validate_migration.py --count-documents
+```
+
+### Using Enhanced Features
+
+**1. Research with Precise Citations**
+
+When using the research bot, look for the 📍 icon next to citations:
+
+```
+"Revenue increased 15% [1]📍 in Q4 2024..."
+```
+
+Click "Details" on the citation → automatically jump to the exact section in the document.
+
+**2. Visual Document Exploration**
+
+Open any document details page to see:
+- Colored regions on page images (blue=headings, green=paragraphs, purple=tables, etc.)
+- Click any region to jump to corresponding text
+- Hover over text to highlight its location on the page
+
+**3. Keyboard Navigation**
+
+| Key | Action |
+|-----|--------|
+| Tab | Navigate between regions |
+| Enter | Jump to selected region's text |
+| Escape | Clear all highlights |
+
+### Performance Impact
+
+Enhanced mode adds ~30% processing time per document but enables powerful navigation features:
+
+| Metric | Standard Mode | Enhanced Mode | Overhead |
+|--------|---------------|---------------|----------|
+| 10-page PDF | 23s | 30s | +30% |
+| Storage per page | ~10KB | ~12KB | +20% |
+| Search latency | 239ms | 239ms | No change |
+
+### Documentation
+
+Complete documentation available:
+
+- **[Enhanced Mode User Guide](docs/ENHANCED_MODE.md)** - Complete user documentation
+- **[Bidirectional Highlighting Guide](docs/BIDIRECTIONAL_HIGHLIGHTING.md)** - Technical architecture
+- **[API Reference](docs/API_ENHANCED_ENDPOINTS.md)** - Complete API documentation
+- **[Developer Guide: Bounding Boxes](docs/DEVELOPER_GUIDE_BBOX.md)** - Coordinate system deep-dive
+- **[Migration Guide](scripts/migrate_enhanced_mode.py)** - Migration scripts
+- **[Validation Tools](scripts/validate_migration.py)** - Validation scripts
+
+### Configuration Options
+
+```bash
+# Core settings
+ENHANCED_MODE=true              # Enable/disable (default: false)
+STRUCTURE_CACHE_SIZE=20         # Cache size in pages (default: 20)
+STRUCTURE_COMPRESSION=true      # Enable gzip compression (default: true)
+
+# Advanced settings
+STRUCTURE_EXTRACTION_TIMEOUT=30 # Max seconds per page (default: 30)
+STRUCTURE_MIN_CONFIDENCE=0.7    # Min confidence for elements (default: 0.7)
+```
+
+### Compatibility
+
+| Feature | PDF | DOCX | PPTX | Audio |
+|---------|-----|------|------|-------|
+| Structure Extraction | ✅ Full | ✅ Full | ✅ Full | ❌ N/A |
+| Bounding Boxes | ✅ Accurate | ⚠️ Approximate | ✅ Accurate | ❌ N/A |
+| Bidirectional Highlighting | ✅ | ✅ | ✅ | ❌ |
+
+### FAQ
+
+**Q: Do I need enhanced mode?**
+A: It's optional. Use it if you want precise citation navigation and visual document exploration.
+
+**Q: Can I disable it later?**
+A: Yes, set `ENHANCED_MODE=false` and restart. Existing structure data is preserved.
+
+**Q: Does it slow down search?**
+A: No, search performance is unchanged. Only document processing takes ~30% longer.
+
+**Q: What if migration fails?**
+A: Documents continue working normally. Enhanced features gracefully degrade for documents without structure data.
+
+See [Enhanced Mode User Guide](docs/ENHANCED_MODE.md) for complete details.
+
+---
+
 ## Contact
 
 **Project Lead**: Tucker

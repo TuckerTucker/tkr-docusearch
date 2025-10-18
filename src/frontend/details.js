@@ -13,6 +13,7 @@ import { Accordion } from './accordion.js';
 import { DocumentsAPIClient } from './api-client.js';
 import { applyEarlyTheme, initTheme } from './theme-toggle.js';
 import { initStyleSelector } from './style-selector.js';
+import { DetailsController } from './details-controller.js';
 
 // Apply theme immediately to avoid flash
 applyEarlyTheme();
@@ -27,6 +28,7 @@ class DetailsPage {
         this.slideshow = null;
         this.audioPlayer = null;
         this.accordion = null;
+        this.detailsController = null; // Bidirectional highlighting controller
 
         this.init();
     }
@@ -152,10 +154,32 @@ class DetailsPage {
             if (this.audioPlayer) {
                 this.accordion.registerAudioPlayer(this.audioPlayer);
             }
+
+            // Initialize DetailsController for bidirectional highlighting
+            // Wait for accordion to finish loading markdown
+            this.initializeDetailsController();
         } else {
             // No text content available
             const container = document.getElementById('accordion-container');
             container.innerHTML = '<p>No text content available</p>';
+        }
+    }
+
+    async initializeDetailsController() {
+        try {
+            // Wait a bit for accordion to finish rendering markdown
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            this.detailsController = new DetailsController(
+                this.slideshow,
+                this.accordion,
+                this.docId
+            );
+
+            await this.detailsController.init();
+            console.log('✅ DetailsController initialized - bidirectional highlighting active');
+        } catch (error) {
+            console.error('⚠️ Failed to initialize DetailsController:', error);
         }
     }
 

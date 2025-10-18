@@ -1,0 +1,516 @@
+/**
+ * Accessibility Styles CSS
+ *
+ * Core accessibility features:
+ * - Screen reader only content
+ * - Focus indicators
+ * - Skip links
+ * - High contrast mode support
+ * - Keyboard navigation indicators
+ *
+ * WCAG 2.1 AA Compliant
+ */
+
+/* ===== Screen Reader Only Content ===== */
+
+/* Hide visually but keep for screen readers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Allow focus on sr-only elements */
+.sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* ===== Skip Links ===== */
+
+/* Skip links container */
+.skip-links {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+}
+
+/* Individual skip link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 0 0 4px 0;
+    transition: top 0.2s ease;
+    z-index: 9999;
+}
+
+/* Show skip link on focus */
+.skip-link:focus {
+    top: 0;
+    outline: 2px solid white;
+    outline-offset: -2px;
+}
+
+/* Skip link hover state */
+.skip-link:hover {
+    background: var(--highlight-focus, oklch(0.5680 0.0878 65.5444));
+}
+
+/* Multiple skip links positioning */
+.skip-link:nth-child(2) {
+    left: 120px;
+}
+
+.skip-link:nth-child(3) {
+    left: 240px;
+}
+
+/* ===== Focus Indicators ===== */
+
+/* Default focus visible style */
+*:focus-visible {
+    outline: 2px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline-offset: 2px;
+}
+
+/* Remove default focus outline (we use focus-visible) */
+*:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Enhanced focus for interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible {
+    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline-offset: 2px;
+    z-index: 10;
+}
+
+/* Focus within containers */
+.bbox-overlay:focus-within,
+.markdown-content:focus-within,
+.references-list:focus-within {
+    position: relative;
+    z-index: 5;
+}
+
+/* ===== Keyboard Navigation Indicators ===== */
+
+/* Body class added when using keyboard */
+.keyboard-navigating .bbox-rect:focus,
+.keyboard-navigating [data-chunk-id]:focus {
+    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline-offset: 4px;
+}
+
+/* Visible focus ring for keyboard users */
+.keyboard-navigating button:focus,
+.keyboard-navigating a:focus,
+.keyboard-navigating [role="button"]:focus {
+    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline-offset: 3px;
+    box-shadow: 0 0 0 5px rgba(97, 130, 68, 0.1);
+}
+
+/* ===== High Contrast Mode Support ===== */
+
+@media (prefers-contrast: high) {
+    /* Increase border widths */
+    .bbox-rect {
+        stroke-width: 3px !important;
+        stroke: black !important;
+    }
+
+    /* Increase chunk border */
+    [data-chunk-id].chunk-active {
+        border-left-width: 6px !important;
+        border-left-color: black !important;
+    }
+
+    /* Increase focus indicator */
+    *:focus-visible {
+        outline: 4px solid black !important;
+        outline-offset: 2px;
+    }
+
+    /* High contrast backgrounds */
+    [data-chunk-id].chunk-hover,
+    [data-chunk-id].chunk-active {
+        background-color: yellow !important;
+        color: black !important;
+    }
+
+    /* High contrast citations */
+    .citation-link {
+        border: 2px solid black !important;
+        background: yellow !important;
+        color: black !important;
+    }
+
+    /* High contrast buttons */
+    button,
+    [role="button"] {
+        border: 2px solid black !important;
+    }
+
+    /* Reference cards */
+    .reference-card {
+        border: 3px solid black !important;
+    }
+
+    .reference-card.highlighted {
+        background: yellow !important;
+        color: black !important;
+    }
+}
+
+/* ===== Dark Mode High Contrast ===== */
+
+@media (prefers-contrast: high) and (prefers-color-scheme: dark) {
+    .bbox-rect {
+        stroke: white !important;
+    }
+
+    *:focus-visible {
+        outline-color: white !important;
+    }
+
+    button,
+    [role="button"],
+    .reference-card {
+        border-color: white !important;
+    }
+}
+
+/* ===== Focus Trap (for modals) ===== */
+
+/* Style for modal focus trap */
+.modal-focus-trap {
+    position: relative;
+}
+
+.modal-focus-trap:focus {
+    outline: none;
+}
+
+/* First and last focusable elements in trap */
+.modal-focus-trap .focus-trap-start,
+.modal-focus-trap .focus-trap-end {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ===== ARIA Live Regions ===== */
+
+/* Live region containers */
+[aria-live="polite"],
+[aria-live="assertive"],
+[role="status"],
+[role="alert"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Visible status messages (optional) */
+.status-message-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 12px 16px;
+    margin: 8px 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    border: 2px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    border-radius: 4px;
+    background: var(--highlight-hover, oklch(0.8348 0.0426 88.8064));
+}
+
+/* ===== Accessible Form Controls ===== */
+
+/* Form input focus */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline-offset: 0;
+    border-color: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+}
+
+/* Required field indicator */
+[required]::after,
+[aria-required="true"]::after {
+    content: " *";
+    color: var(--error-color, oklch(0.5471 0.1438 32.9149));
+}
+
+/* Error state */
+[aria-invalid="true"] {
+    border-color: var(--error-color, oklch(0.5471 0.1438 32.9149)) !important;
+    outline-color: var(--error-color, oklch(0.5471 0.1438 32.9149)) !important;
+}
+
+/* Error message */
+.error-message {
+    color: var(--error-color, oklch(0.5471 0.1438 32.9149));
+    font-size: 0.875rem;
+    margin-top: 4px;
+}
+
+/* ===== Accessible Buttons ===== */
+
+/* Disabled state */
+button:disabled,
+[role="button"][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Pressed state */
+[aria-pressed="true"] {
+    background: var(--highlight-active, oklch(0.6180 0.0778 65.5444));
+    border-color: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+}
+
+/* Expanded state */
+[aria-expanded="true"] {
+    /* Add visual indicator for expanded state */
+}
+
+/* ===== Accessible Navigation ===== */
+
+/* Current page/item indicator */
+[aria-current="page"],
+[aria-current="true"] {
+    font-weight: 700;
+    border-left: 4px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    padding-left: 12px;
+}
+
+/* Navigation list */
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    margin: 0;
+}
+
+/* ===== Tooltips (Accessible) ===== */
+
+/* Tooltip container */
+[role="tooltip"] {
+    position: absolute;
+    z-index: 1000;
+    padding: 8px 12px;
+    background: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    color: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Tooltip arrow */
+[role="tooltip"]::before {
+    content: "";
+    position: absolute;
+    border: 4px solid transparent;
+}
+
+/* ===== Table Accessibility ===== */
+
+/* Table headers */
+th {
+    font-weight: 700;
+    text-align: left;
+}
+
+/* Table captions */
+caption {
+    font-weight: 700;
+    text-align: left;
+    padding: 8px 0;
+}
+
+/* ===== Link Accessibility ===== */
+
+/* External links indicator */
+a[target="_blank"]::after {
+    content: " ↗";
+    font-size: 0.8em;
+    vertical-align: super;
+}
+
+/* Skip external indicator for screen readers */
+a[target="_blank"] .sr-only {
+    content: " (opens in new tab)";
+}
+
+/* ===== Image Accessibility ===== */
+
+/* Images without alt text warning (development only) */
+img:not([alt]) {
+    outline: 3px solid red;
+}
+
+/* Decorative images */
+img[alt=""],
+img[role="presentation"] {
+    outline: none;
+}
+
+/* ===== Reduced Motion ===== */
+
+/* Already handled in highlighting-animations.css */
+/* This is here for completeness */
+
+@media (prefers-reduced-motion: reduce) {
+    /* Remove all animations */
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    /* Disable smooth scrolling */
+    html,
+    * {
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===== Print Accessibility ===== */
+
+@media print {
+    /* Show skip link targets */
+    .skip-link {
+        position: static;
+        display: block;
+    }
+
+    /* Show URLs for links */
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+    }
+
+    /* Don't show URLs for internal links */
+    a[href^="#"]::after,
+    a[href^="javascript:"]::after {
+        content: "";
+    }
+
+    /* Remove focus indicators */
+    *:focus,
+    *:focus-visible {
+        outline: none;
+    }
+}
+
+/* ===== Color Blindness Support ===== */
+
+/* Use patterns in addition to colors */
+.error,
+.warning,
+.success,
+.info {
+    position: relative;
+}
+
+/* Add icon/pattern indicators */
+.error::before {
+    content: "⚠ ";
+}
+
+.success::before {
+    content: "✓ ";
+}
+
+.info::before {
+    content: "ℹ ";
+}
+
+/* ===== Touch Target Sizing ===== */
+
+/* Minimum touch target size (44x44px) */
+button,
+a,
+[role="button"],
+[role="link"],
+input[type="checkbox"],
+input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Smaller elements need padding */
+.small-button,
+.small-link {
+    padding: 12px;
+}
+
+/* ===== Responsive Text ===== */
+
+/* Ensure text can scale up to 200% */
+html {
+    font-size: 100%;
+}
+
+@media (min-width: 1920px) {
+    html {
+        font-size: 112.5%; /* 18px base */
+    }
+}
+
+/* ===== Language Support ===== */
+
+/* Right-to-left language support */
+[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] [data-chunk-id].chunk-active {
+    border-left: none;
+    border-right: 4px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    padding-left: 1rem;
+    padding-right: calc(1rem - 4px);
+}

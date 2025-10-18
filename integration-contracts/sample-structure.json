@@ -1,0 +1,42 @@
+{
+  "headings": [],
+  "tables": [],
+  "pictures": [
+    {
+      "picture_id": "picture-0",
+      "page_num": 1,
+      "picture_type": "OTHER",
+      "caption": null,
+      "confidence": 0.0,
+      "bbox": [
+        49.34263610839844,
+        559.1575965881348,
+        742.2379760742188,
+        537.937858581543
+      ]
+    }
+  ],
+  "code_blocks": [],
+  "formulas": [],
+  "summary": {
+    "total_sections": 0,
+    "max_heading_depth": 0,
+    "has_table_of_contents": false,
+    "size_estimate_kb": 0.3173828125
+  },
+  "_metadata": {
+    "source_document": "Endless Inspiration Board 3.0 Driver - Master.pdf",
+    "num_pages": 1,
+    "extraction_config": {
+      "enable_table_structure": true,
+      "enable_picture_classification": true,
+      "enable_code_enrichment": true,
+      "enable_formula_enrichment": true
+    }
+  },
+  "_coordinate_system": {
+    "format": "[x1, y1, x2, y2]",
+    "origin": "See integration-contracts/docling-structure-spec.md",
+    "units": "See integration-contracts/docling-structure-spec.md"
+  }
+}
