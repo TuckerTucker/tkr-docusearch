@@ -209,6 +209,114 @@
 }
 
 /* ============================================
+   Audio Player Component
+   ============================================ */
+.audio-container {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.audio-header {
+  margin-bottom: 1rem;
+}
+
+.audio-header h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.audio-metadata {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.audio-metadata .metadata-item {
+  margin: 0.25rem 0;
+}
+
+.audio-metadata strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* Album Art Styles */
+.album-art-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.album-art {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px hsl(28 13% 20% / 0.15);
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.album-art.loading {
+  opacity: 0;
+}
+
+.album-art.loaded {
+  opacity: 1;
+}
+
+/* Caption overlay on album art */
+.current-caption {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  color: rgb(22, 20, 20);
+  padding: 1rem 1.5rem;
+  min-height: 60px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.current-caption.active {
+  opacity: 1;
+}
+
+/* Audio player wrapper */
+.audio-player-wrapper {
+  margin-bottom: 1rem;
+}
+
+.audio-player-wrapper .audio-element {
+  width: 100%;
+  border-radius: calc(var(--radius) / 2);
+  outline: none;
+}
+
+.audio-player-wrapper .audio-element:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
    Responsive Design
    ============================================ */
 @media (max-width: 1024px) {
@@ -239,6 +347,28 @@
   .details-content {
     padding: 1rem;
     gap: 1rem;
+  }
+
+  /* Audio player responsive adjustments */
+  .audio-container {
+    padding: 1rem;
+  }
+
+  /* Responsive album art (200x200px on mobile) */
+  .album-art-container {
+    max-width: 200px;
+  }
+
+  .album-art {
+    max-width: 200px;
+  }
+
+  /* Smaller caption text on mobile */
+  .current-caption {
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+    min-height: 50px;
+    width: 85%;
   }
 }
 

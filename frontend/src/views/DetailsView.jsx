@@ -34,6 +34,9 @@ export default function DetailsView() {
   // Clipboard for download actions
   const { copy } = useClipboard();
 
+  // Ref to access audio player methods (for accordion click-to-seek)
+  const audioPlayerRef = useRef(null);
+
   // State for bidirectional sync
   const [activeChunk, setActiveChunk] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,9 +72,10 @@ export default function DetailsView() {
 
   // Handle timestamp click in accordion (for audio seeking)
   const handleTimestampClick = (timestamp) => {
-    // Access audio player's seekTo method
-    if (document?._audioPlayerSeekTo) {
-      document._audioPlayerSeekTo(timestamp);
+    // Access audio player's seekTo method via ref
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.seekTo(timestamp);
+      console.log(`[DetailsView] Seeking audio to ${timestamp}s`);
     }
   };
 
@@ -181,6 +185,7 @@ export default function DetailsView() {
             chunks={chunks}
             onTimeUpdate={handleTimeUpdate}
             onPageChange={handlePageChange}
+            audioPlayerRef={audioPlayerRef}
           />
         </div>
 

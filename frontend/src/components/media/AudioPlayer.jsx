@@ -1,32 +1,44 @@
 /**
  * AudioPlayer Component
  *
- * HTML5 audio player with VTT caption support and chunk sync.
- * Ported from src/frontend/audio-player.js
+ * HTML5 audio player with VTT caption support, markdown fallback, and chunk sync.
+ * Complete reimplementation ported from src/frontend/audio-player.js
  *
- * Wave 2 - Details Agent
+ * Features:
+ * - Dual caption system: VTT (priority) + Markdown segments (fallback)
+ * - Album art with progressive loading
+ * - Bidirectional sync with accordion
+ * - Throttled updates for performance
+ * - Responsive design
+ *
+ * Wave 3 - Complete Audio Player Reimplementation
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import AlbumArt from './AlbumArt.jsx';
 
 /**
- * Audio player with album art and VTT captions
+ * Audio player with album art and dual caption system
+ *
+ * Exposes seekTo method via ref for accordion click-to-seek integration.
  *
  * @param {Object} props - Component props
  * @param {Object} props.document - Document with audio metadata
  * @param {Array} [props.chunks=[]] - Text chunks with timestamps for sync
  * @param {Function} [props.onTimeUpdate] - Callback for time updates (for accordion sync)
+ * @param {React.Ref} ref - Forwarded ref to expose seekTo method
  */
-export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
+const AudioPlayer = forwardRef(function AudioPlayer({ document, chunks = [], onTimeUpdate }, ref) {
   const audioRef = useRef(null);
   const trackRef = useRef(null);
   const [currentCaption, setCurrentCaption] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
+  const [markdownSegments, setMarkdownSegments] = useState([]);
 
   // Throttle accordion sync updates
   const lastSyncTimeRef = useRef(0);
   const lastActiveChunkIdRef = useRef(null);
+  const lastCaptionTimeRef = useRef(-1);
   const SYNC_THROTTLE_MS = 300;
 
   const docId = document?.doc_id;
@@ -37,6 +49,72 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
   const audioUrl = `/documents/${docId}/audio`;
   const vttUrl = metadata.vtt_available ? `/documents/${docId}/vtt` : null;
   const coverArtUrl = metadata.has_album_art ? metadata.album_art_url : null;
+
+  // Fetch and parse markdown for caption fallback
+  useEffect(() => {
+    if (!metadata.markdown_available || metadata.vtt_available) {
+      return; // Skip if no markdown or VTT is available
+    }
+
+    const fetchMarkdown = async () => {
+      try {
+        const response = await fetch(`/documents/${docId}/markdown`);
+        if (response.ok) {
+          const markdown = await response.text();
+          const segments = parseMarkdownSegments(markdown);
+          setMarkdownSegments(segments);
+          console.log(`[AudioPlayer] Loaded ${segments.length} markdown caption segments`);
+        }
+      } catch (err) {
+        console.error('[AudioPlayer] Error fetching markdown:', err);
+      }
+    };
+
+    fetchMarkdown();
+  }, [docId, metadata.markdown_available, metadata.vtt_available]);
+
+  /**
+   * Parse markdown for [time: X-Y] segments
+   * Returns array of {startTime, endTime, text}
+   */
+  const parseMarkdownSegments = (markdown) => {
+    if (!markdown) return [];
+
+    const segments = [];
+    const timeRegex = /\[time:\s*([\d.]+)-([\d.]+)\]/g;
+    const matches = [];
+    let match;
+
+    // Collect all timestamp positions
+    while ((match = timeRegex.exec(markdown)) !== null) {
+      matches.push({
+        index: match.index,
+        startTime: parseFloat(match[1]),
+        endTime: parseFloat(match[2]),
+        fullMatch: match[0]
+      });
+    }
+
+    // Extract text between timestamps
+    for (let i = 0; i < matches.length; i++) {
+      const currentMatch = matches[i];
+      const nextMatch = matches[i + 1];
+
+      const textStart = currentMatch.index + currentMatch.fullMatch.length;
+      const textEnd = nextMatch ? nextMatch.index : markdown.length;
+      const text = markdown.substring(textStart, textEnd).trim();
+
+      if (text) {
+        segments.push({
+          startTime: currentMatch.startTime,
+          endTime: currentMatch.endTime,
+          text
+        });
+      }
+    }
+
+    return segments;
+  };
 
   // Handle audio loaded
   const handleLoaded = useCallback(() => {
@@ -61,6 +139,17 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
     }
   }, []);
 
+  // Set up VTT track cuechange event listener
+  useEffect(() => {
+    const track = trackRef.current?.track;
+    if (track) {
+      track.addEventListener('cuechange', handleCueChange);
+      return () => {
+        track.removeEventListener('cuechange', handleCueChange);
+      };
+    }
+  }, [handleCueChange, vttUrl]);
+
   // Handle time updates (for accordion sync and markdown captions)
   const handleTimeUpdate = useCallback(() => {
     const audio = audioRef.current;
@@ -68,6 +157,29 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
 
     const currentTime = audio.currentTime;
     const now = Date.now();
+
+    // Caption display: Prefer VTT (via handleCueChange), fallback to markdown
+    // Only use markdown parsing if VTT is not available
+    if (!metadata.vtt_available && markdownSegments.length > 0) {
+      const activeSegment = markdownSegments.find(seg =>
+        currentTime >= seg.startTime && currentTime < seg.endTime
+      );
+
+      if (activeSegment) {
+        // Only update if changed (avoid unnecessary re-renders)
+        if (Math.floor(activeSegment.startTime) !== lastCaptionTimeRef.current) {
+          setCurrentCaption(activeSegment.text);
+          lastCaptionTimeRef.current = Math.floor(activeSegment.startTime);
+        }
+      } else {
+        // Clear caption when no active segment
+        if (currentCaption !== '') {
+          setCurrentCaption('');
+          lastCaptionTimeRef.current = -1;
+        }
+      }
+    }
+    // Note: When VTT is available, captions are handled by handleCueChange()
 
     // Throttle accordion sync
     if (now - lastSyncTimeRef.current < SYNC_THROTTLE_MS) {
@@ -112,7 +224,7 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
         lastSyncTimeRef.current = now;
       }
     }
-  }, [chunks, onTimeUpdate]);
+  }, [chunks, onTimeUpdate, metadata.vtt_available, markdownSegments, currentCaption]);
 
   // Seek to specific time (for accordion click-to-seek)
   const seekTo = useCallback((timeInSeconds) => {
@@ -159,19 +271,10 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
     console.log(`[AudioPlayer] Seeked to ${timeInSeconds.toFixed(2)}s`);
   }, []);
 
-  // Expose seekTo method to parent via ref callback
-  useEffect(() => {
-    if (onTimeUpdate) {
-      // Store seekTo reference for parent components
-      document._audioPlayerSeekTo = seekTo;
-    }
-
-    return () => {
-      if (document._audioPlayerSeekTo) {
-        delete document._audioPlayerSeekTo;
-      }
-    };
-  }, [document, seekTo, onTimeUpdate]);
+  // Expose seekTo method via ref for parent components (React-idiomatic)
+  useImperativeHandle(ref, () => ({
+    seekTo
+  }), [seekTo]);
 
   // Format time display
   const formatTime = (seconds) => {
@@ -188,58 +291,65 @@ export default function AudioPlayer({ document, chunks = [], onTimeUpdate }) {
   };
 
   return (
-    <div className="audio-player-container">
+    <div className="audio-container">
+      <div className="audio-header">
+        <h2>Audio Playback</h2>
+        <div className="audio-metadata">
+          {rawMetadata.title && (
+            <div className="metadata-item">
+              <strong>Title:</strong> {rawMetadata.title}
+            </div>
+          )}
+          {rawMetadata.artist && (
+            <div className="metadata-item">
+              <strong>Artist:</strong> {rawMetadata.artist}
+            </div>
+          )}
+          {rawMetadata.album && (
+            <div className="metadata-item">
+              <strong>Album:</strong> {rawMetadata.album}
+            </div>
+          )}
+          {rawMetadata.duration_seconds && (
+            <div className="metadata-item">
+              <strong>Duration:</strong> {formatTime(rawMetadata.duration_seconds)}
+            </div>
+          )}
+        </div>
+      </div>
+
       <AlbumArt
         coverArtUrl={coverArtUrl}
         altText={rawMetadata.title ? `Album art for ${rawMetadata.title}` : 'Album art'}
         currentCaption={currentCaption}
       />
 
-      <div className="audio-metadata">
-        {rawMetadata.title && (
-          <div className="metadata-item">
-            <strong>Title:</strong> {rawMetadata.title}
-          </div>
-        )}
-        {rawMetadata.artist && (
-          <div className="metadata-item">
-            <strong>Artist:</strong> {rawMetadata.artist}
-          </div>
-        )}
-        {rawMetadata.album && (
-          <div className="metadata-item">
-            <strong>Album:</strong> {rawMetadata.album}
-          </div>
-        )}
-        {rawMetadata.duration_seconds && (
-          <div className="metadata-item">
-            <strong>Duration:</strong> {formatTime(rawMetadata.duration_seconds)}
-          </div>
-        )}
+      <div className="audio-player-wrapper">
+        <audio
+          ref={audioRef}
+          controls
+          className="audio-element"
+          preload="metadata"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoaded}
+          onError={handleError}
+        >
+          <source src={audioUrl} type="audio/mpeg" />
+          {vttUrl && (
+            <track
+              ref={trackRef}
+              kind="captions"
+              src={vttUrl}
+              srcLang="en"
+              label="English"
+              default
+            />
+          )}
+          Your browser does not support the audio element.
+        </audio>
       </div>
-
-      <audio
-        ref={audioRef}
-        controls
-        className="audio-element"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoaded}
-        onError={handleError}
-      >
-        <source src={audioUrl} type="audio/mpeg" />
-        {vttUrl && (
-          <track
-            ref={trackRef}
-            kind="subtitles"
-            src={vttUrl}
-            srcLang="en"
-            label="English"
-            default
-            onCueChange={handleCueChange}
-          />
-        )}
-        Your browser does not support the audio element.
-      </audio>
     </div>
   );
-}
+});
+
+export default AudioPlayer;

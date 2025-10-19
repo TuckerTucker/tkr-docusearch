@@ -2,12 +2,18 @@
  * AlbumArt Component
  *
  * Displays album art for audio files with fallback to default SVG.
- * Supports caption overlay for VTT subtitles.
+ * Supports caption overlay for VTT/markdown subtitles.
  *
- * Wave 2 - Details Agent
+ * Features:
+ * - Progressive loading with opacity transition
+ * - Error fallback to default SVG
+ * - Responsive sizing (300px desktop / 200px mobile)
+ * - Caption overlay with backdrop blur
+ *
+ * Wave 3 - Complete Audio Player Reimplementation
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DEFAULT_ALBUM_ART_SVG } from '../../utils/assets.js';
 
 /**
@@ -16,7 +22,7 @@ import { DEFAULT_ALBUM_ART_SVG } from '../../utils/assets.js';
  * @param {Object} props - Component props
  * @param {string} [props.coverArtUrl] - URL to album art image
  * @param {string} [props.altText='Album art'] - Alt text for image
- * @param {string} [props.currentCaption] - Current VTT caption to overlay
+ * @param {string} [props.currentCaption] - Current caption to overlay (from VTT or markdown)
  * @param {string} [props.className=''] - Additional CSS classes
  */
 export default function AlbumArt({
@@ -28,7 +34,16 @@ export default function AlbumArt({
   const [isLoading, setIsLoading] = useState(!!coverArtUrl);
   const [hasError, setHasError] = useState(false);
 
+  // Reset loading state when coverArtUrl changes
+  useEffect(() => {
+    if (coverArtUrl) {
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [coverArtUrl]);
+
   const handleLoad = () => {
+    console.log('[AlbumArt] Album art loaded successfully');
     setIsLoading(false);
   };
 
@@ -40,7 +55,7 @@ export default function AlbumArt({
 
   // Determine which image to display
   const imageSrc = (coverArtUrl && !hasError) ? coverArtUrl : DEFAULT_ALBUM_ART_SVG;
-  const imageClass = `album-art-image ${isLoading ? 'loading' : 'loaded'} ${className}`;
+  const imageClass = `album-art ${isLoading ? 'loading' : 'loaded'} ${className}`;
 
   return (
     <div className="album-art-container">
@@ -48,15 +63,15 @@ export default function AlbumArt({
         src={imageSrc}
         alt={altText}
         className={imageClass}
+        loading="lazy"
         onLoad={handleLoad}
         onError={handleError}
       />
 
-      {currentCaption && (
-        <div className="album-art-caption" aria-live="polite">
-          {currentCaption}
-        </div>
-      )}
+      {/* Caption overlay - shown only when caption text exists */}
+      <div className={`current-caption ${currentCaption ? 'active' : ''}`} aria-live="polite">
+        {currentCaption}
+      </div>
     </div>
   );
 }

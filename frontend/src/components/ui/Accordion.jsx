@@ -8,7 +8,7 @@
  * Wave 2 - Details Agent
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useClipboard } from '../../hooks/useClipboard.js';
 
@@ -151,12 +151,22 @@ export default function Accordion({
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
   };
 
-  // Auto-open section when it becomes active (for audio sync)
-  const handleSetActive = (sectionId) => {
-    if (sectionId !== openSectionId) {
-      setOpenSectionId(sectionId);
+  // Auto-open section when it becomes active (for audio/slideshow sync)
+  // This effect runs whenever activeSectionId changes
+  useEffect(() => {
+    if (activeSectionId && activeSectionId !== openSectionId) {
+      console.log(`[Accordion] Auto-opening section: ${activeSectionId}`);
+      setOpenSectionId(activeSectionId);
+
+      // Scroll section into view
+      setTimeout(() => {
+        const sectionElement = document.querySelector(`[data-section-id="${activeSectionId}"]`);
+        if (sectionElement) {
+          sectionElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
     }
-  };
+  }, [activeSectionId, openSectionId]);
 
   if (sections.length === 0) {
     return (
