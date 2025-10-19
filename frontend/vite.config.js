@@ -42,9 +42,9 @@ export default defineConfig({
         target: 'http://localhost:8002',
         changeOrigin: true,
       },
-      // Research API endpoints (if mounted)
+      // Research API endpoints (separate service on port 8004)
       '/api/research': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8004',
         changeOrigin: true,
       },
       // WebSocket for status updates

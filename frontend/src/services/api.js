@@ -309,7 +309,7 @@ const research = {
       throw new APIError('Query must be between 3 and 500 characters', 400, 'research.ask');
     }
 
-    const url = `${API_BASE_URL}/research/ask`;
+    const url = `${API_BASE_URL}/api/research/ask`;
     const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: DEFAULT_HEADERS,
@@ -324,7 +324,7 @@ const research = {
    * @returns {Promise<Object>} Health status
    */
   async getHealth() {
-    const url = `${API_BASE_URL}/research/health`;
+    const url = `${API_BASE_URL}/api/research/health`;
     const response = await fetchWithTimeout(url);
     return handleResponse(response, url);
   },
