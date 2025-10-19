@@ -5,7 +5,7 @@
 # Platform: linux/arm64 (M1 Mac compatible)
 # ============================================================================
 
-FROM --platform=linux/arm64 python:3.11-slim
+FROM --platform=linux/arm64 python:3.14-slim
 
 LABEL maintainer="Tucker <tucker@example.com>"
 LABEL description="Copyparty file server with DocuSearch event hooks"
