@@ -204,7 +204,7 @@ body {
 
 .header__title {
   margin: 0;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg); /* Reduced from xl (20px) to lg (18px) */
   font-weight: 700;
   color: var(--primary);
 }
@@ -1348,7 +1348,7 @@ body {
 .footer {
   background-color: var(--card);
   border-top: 1px solid var(--border);
-  padding: var(--space-6);
+  padding: var(--space-3) var(--space-6); /* Reduced vertical padding */
   margin-top: auto;
 }
 

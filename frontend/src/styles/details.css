@@ -149,8 +149,9 @@
 
 .details-viewer {
   position: sticky;
-  top: 2rem;
+  top: calc(var(--header-height) + 1rem); /* Stick below header with 1rem gap */
   height: fit-content;
+  z-index: 1; /* Below header (z-index: 1020) */
 }
 
 .details-text {
@@ -618,12 +619,329 @@
 }
 
 /* ============================================
+   Text Accordion Component
+   ============================================ */
+.text-accordion {
+  width: 100%;
+}
+
+.text-accordion-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  background: var(--card);
+  border-radius: var(--radius-lg);
+}
+
+/* Accordion container */
+.accordion {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.accordion-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+/* Accordion section */
+.accordion-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.accordion-section:last-child {
+  border-bottom: none;
+}
+
+/* Accordion header (clickable) */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--background);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.accordion-header:hover {
+  background: var(--muted);
+}
+
+.accordion-header:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* Active section highlighting (bidirectional sync) */
+.accordion-section.active .accordion-header {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.accordion-section.active .accordion-header:hover {
+  background: var(--primary);
+  opacity: 0.95;
+}
+
+/* Accordion title */
+.accordion-title {
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* Timestamp display */
+.accordion-timestamp {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.accordion-section.active .accordion-timestamp {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Accordion actions (toggle arrow) */
+.accordion-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.accordion-toggle {
+  font-size: 1.25rem;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+}
+
+.accordion-header.open .accordion-toggle {
+  transform: rotate(90deg);
+}
+
+/* Accordion content (expandable) */
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-content.open {
+  max-height: 5000px;
+}
+
+/* Accordion body */
+.accordion-body {
+  padding: 1.5rem;
+  background: var(--card);
+  max-width: 65ch; /* Optimal reading width (~65 characters) */
+  margin: 0 auto; /* Center the content */
+}
+
+/* Body actions (copy button, etc.) */
+.accordion-body-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  border-radius: calc(var(--radius) / 2);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-icon:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+.btn-icon:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn-icon.success {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+/* Body text (markdown content) */
+.accordion-body-text {
+  line-height: 1.8;
+  color: var(--foreground);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.accordion-body-text p {
+  margin: 0 0 1rem 0;
+}
+
+.accordion-body-text p:last-child {
+  margin-bottom: 0;
+}
+
+.accordion-body-text h1,
+.accordion-body-text h2,
+.accordion-body-text h3,
+.accordion-body-text h4,
+.accordion-body-text h5,
+.accordion-body-text h6 {
+  margin: 1.5rem 0 0.75rem 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.accordion-body-text h1:first-child,
+.accordion-body-text h2:first-child,
+.accordion-body-text h3:first-child {
+  margin-top: 0;
+}
+
+.accordion-body-text ul,
+.accordion-body-text ol {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.accordion-body-text code {
+  background: var(--muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: calc(var(--radius) / 2);
+  font-size: 0.875em;
+  font-family: var(--font-mono);
+}
+
+.accordion-body-text pre {
+  background: var(--muted);
+  padding: 1rem;
+  border-radius: calc(var(--radius) / 2);
+  overflow-x: auto;
+  margin: 0 0 1rem 0;
+}
+
+.accordion-body-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.accordion-body-text blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 1rem;
+  margin: 0 0 1rem 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.accordion-body-text a {
+  color: var(--primary);
+  text-decoration: underline;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-body-text a:hover {
+  opacity: 0.8;
+}
+
+/* Responsive accordion */
+@media (max-width: 768px) {
+  .accordion-header {
+    padding: 0.875rem 1rem;
+  }
+
+  .accordion-title {
+    font-size: 0.9375rem;
+  }
+
+  .accordion-timestamp {
+    font-size: 0.8125rem;
+  }
+
+  .accordion-body {
+    padding: 1rem;
+  }
+
+  .accordion-body-text {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
+}
+
+/* Dark mode accordion */
+.dark .accordion {
+  background: var(--card);
+}
+
+.dark .accordion-header {
+  background: var(--background);
+}
+
+.dark .accordion-header:hover {
+  background: var(--muted);
+}
+
+.dark .accordion-section.active .accordion-header {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.dark .accordion-body {
+  background: var(--card);
+}
+
+.dark .btn-icon {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.dark .btn-icon:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+/* ============================================
    Accessibility
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
   .details-header .back-button,
   .details-actions .btn-secondary,
-  .details-error .btn-primary {
+  .details-error .btn-primary,
+  .accordion-header,
+  .accordion-toggle,
+  .accordion-content,
+  .btn-icon {
     transition-duration: 0.01ms;
   }
 }

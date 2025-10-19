@@ -98,3 +98,40 @@ export function formatRelativeTime(dateString) {
 
     return formatDate(dateString);
 }
+
+/**
+ * Format filename to human-readable display name
+ * Removes extension, timestamps, and cleans up formatting
+ *
+ * @param {string} filename - Full filename with extension
+ * @returns {string} Formatted display name
+ *
+ * @example
+ * formatFilename('my_document.pdf') // 'my document'
+ * formatFilename('report_2024.docx') // 'report 2024'
+ * formatFilename('file-1750130928.pdf') // 'file'
+ */
+export function formatFilename(filename) {
+    if (!filename) return '';
+
+    // Remove file extension
+    const parts = filename.split('.');
+    if (parts.length > 1) {
+        parts.pop();
+    }
+    let name = parts.join('.');
+
+    // Replace underscores and hyphens with spaces
+    name = name.replace(/[_-]/g, ' ');
+
+    // Remove timestamp suffixes (e.g., " 1750130928" or "-1750130928")
+    name = name.replace(/[\s-]+\d{10,}$/, '');
+
+    // Remove copyparty suffixes (e.g., "-1760832421.322159-jwX_TZK1")
+    name = name.replace(/[\s-]+\d+\.\d+-[a-zA-Z0-9_-]+$/, '');
+
+    // Clean up multiple spaces
+    name = name.replace(/\s+/g, ' ').trim();
+
+    return name;
+}

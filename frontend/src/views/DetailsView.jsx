@@ -20,6 +20,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentDetails } from '../hooks/useDocumentDetails.js';
 import { useTitle } from '../contexts/TitleContext.jsx';
+import { formatFilename } from '../utils/formatting.js';
 import ContentViewer from '../features/details/ContentViewer.jsx';
 import TextAccordion from '../features/details/TextAccordion.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
@@ -38,9 +39,10 @@ export default function DetailsView() {
     setTitleLoading(true);
 
     if (document?.filename) {
-      setTitle(document.filename);
+      const displayName = formatFilename(document.filename);
+      setTitle(displayName);
       setTitleLoading(false);
-      window.document.title = document.filename;
+      window.document.title = displayName;
     }
 
     return () => {
