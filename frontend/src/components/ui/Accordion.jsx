@@ -62,7 +62,9 @@ function AccordionSection({
   onToggle,
   onCopy,
   onTimestampClick,
-  timestamp
+  onPageClick,
+  timestamp,
+  pageNumber
 }) {
   const { copy, isCopied } = useClipboard();
 
@@ -76,8 +78,15 @@ function AccordionSection({
 
   const handleHeaderClick = () => {
     onToggle();
+
+    // Handle timestamp click (audio navigation)
     if (timestamp && onTimestampClick) {
       onTimestampClick(timestamp.start);
+    }
+
+    // Handle page click (slideshow navigation)
+    if (pageNumber && onPageClick) {
+      onPageClick(pageNumber);
     }
   };
 
@@ -195,7 +204,9 @@ export default function Accordion({
           isActive={activeSectionId === section.id}
           onToggle={() => handleToggle(section.id)}
           onTimestampClick={onTimestampClick}
+          onPageClick={onPageClick}
           timestamp={section.timestamp}
+          pageNumber={section.pageNumber}
         />
       ))}
     </div>

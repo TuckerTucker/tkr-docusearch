@@ -19,13 +19,15 @@ import AudioPlayer from '../../components/media/AudioPlayer.jsx';
  * @param {Function} [props.onTimeUpdate] - Audio time update callback
  * @param {Function} [props.onPageChange] - Slideshow page change callback
  * @param {React.Ref} [props.audioPlayerRef] - Ref to access audio player methods
+ * @param {React.Ref} [props.slideshowRef] - Ref to access slideshow methods
  */
 export default function ContentViewer({
   document,
   chunks = [],
   onTimeUpdate,
   onPageChange,
-  audioPlayerRef
+  audioPlayerRef,
+  slideshowRef
 }) {
   if (!document) {
     return (
@@ -60,6 +62,7 @@ export default function ContentViewer({
     console.log('[ContentViewer] Rendering Slideshow');
     return (
       <Slideshow
+        ref={slideshowRef}
         document={document}
         onPageChange={onPageChange}
       />

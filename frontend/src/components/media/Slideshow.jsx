@@ -7,23 +7,25 @@
  * Wave 2 - Details Agent
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav.js';
 
 /**
  * Slideshow for PDF/DOCX/PPTX page images
  *
  * @param {Object} props - Component props
- * @param {Object} props.document - Document with pageImages array
+ * @param {Object} props.document - Document with pages array
  * @param {number} [props.initialPage=1] - Initial page number
  * @param {Function} [props.onPageChange] - Callback when page changes
+ * @param {React.Ref} ref - Ref to expose navigateToPage method
  */
-export default function Slideshow({ document, initialPage = 1, onPageChange }) {
+const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onPageChange }, ref) {
   const pages = document?.pages || [];
   const totalPages = pages.length;
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageInput, setPageInput] = useState(String(initialPage));
+  const isInitialMount = useRef(true);
 
   // Update internal state when document changes
   useEffect(() => {
@@ -31,12 +33,17 @@ export default function Slideshow({ document, initialPage = 1, onPageChange }) {
     setPageInput(String(initialPage));
   }, [document?.doc_id, initialPage]);
 
-  // Notify parent of page changes
+  // Notify parent of page changes (skip initial mount to avoid infinite loop)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     if (onPageChange) {
       onPageChange(currentPage);
     }
-  }, [currentPage, onPageChange]);
+  }, [currentPage]);
 
   const goToPage = (pageNumber) => {
     // Type validation
@@ -54,6 +61,14 @@ export default function Slideshow({ document, initialPage = 1, onPageChange }) {
     setCurrentPage(pageNumber);
     setPageInput(String(pageNumber));
   };
+
+  // Expose navigateToPage method to parent via ref
+  useImperativeHandle(ref, () => ({
+    navigateToPage: (pageNumber) => {
+      console.log(`[Slideshow] External navigation to page ${pageNumber}`);
+      goToPage(pageNumber);
+    }
+  }));
 
   const previousPage = () => {
     if (currentPage > 1) {
@@ -164,4 +179,6 @@ export default function Slideshow({ document, initialPage = 1, onPageChange }) {
       </div>
     </div>
   );
-}
+});
+
+export default Slideshow;

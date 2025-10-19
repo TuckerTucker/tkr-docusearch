@@ -39,6 +39,7 @@ function stripFrontmatter(markdown) {
  * @param {Function} [props.onTimestampClick] - Audio seek callback
  * @param {Function} [props.onPageClick] - Slideshow navigation callback
  * @param {Object} [props.activeChunk] - Currently active chunk (for audio sync)
+ * @param {number} [props.currentPage] - Current page number (for slideshow sync)
  */
 export default function TextAccordion({
   document,
@@ -46,17 +47,29 @@ export default function TextAccordion({
   chunks = [],
   onTimestampClick,
   onPageClick,
-  activeChunk
+  activeChunk,
+  currentPage
 }) {
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(null);
 
-  // Update active section when active chunk changes
+  // Update active section when active chunk changes (for audio sync)
   useEffect(() => {
     if (activeChunk) {
       setActiveSectionId(activeChunk.chunk_id);
     }
   }, [activeChunk]);
+
+  // Update active section when current page changes (for slideshow sync)
+  useEffect(() => {
+    if (currentPage && sections && sections.length > 0) {
+      // Find section with matching page number
+      const matchingSection = sections.find(section => section.pageNumber === currentPage);
+      if (matchingSection) {
+        setActiveSectionId(matchingSection.id);
+      }
+    }
+  }, [currentPage, sections]);
 
   // Build sections from markdown and chunks
   useEffect(() => {
@@ -86,17 +99,32 @@ export default function TextAccordion({
 
     // Section 3: Per-chunk sections
     if (chunks && chunks.length > 0) {
+      // Determine if this is a visual document with pages
+      const hasPages = document?.pages && document.pages.length > 0;
+      const pageCount = hasPages ? document.pages.length : 0;
+
       chunks.forEach((chunk, index) => {
         const hasTimestamp = chunk.has_timestamps &&
           chunk.start_time !== null &&
           chunk.end_time !== null;
 
+        // For visual documents (PDF/PPTX), infer page number from chunk index
+        // Assumption: chunks are ordered by page (chunk 0 = page 1, chunk 1 = page 2, etc.)
+        let inferredPageNumber = null;
+        if (hasPages && chunks.length === pageCount) {
+          // 1:1 mapping between chunks and pages
+          inferredPageNumber = index + 1;
+        }
+
         let title;
+        let pageNumber = chunk.page_number || inferredPageNumber;
+
         if (hasTimestamp) {
           title = `Segment ${index + 1}`;
+        } else if (pageNumber) {
+          title = `Page ${pageNumber}`;
         } else {
-          const pageNum = chunk.page_number || null;
-          title = pageNum ? `Chunk ${index + 1} (Page ${pageNum})` : `Chunk ${index + 1}`;
+          title = `Chunk ${index + 1}`;
         }
 
         newSections.push({
@@ -107,7 +135,7 @@ export default function TextAccordion({
             start: chunk.start_time,
             end: chunk.end_time
           } : null,
-          pageNumber: chunk.page_number || null
+          pageNumber: pageNumber
         });
       });
     }

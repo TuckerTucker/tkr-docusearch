@@ -50,8 +50,9 @@ export default function DetailsView() {
     };
   }, [document, setTitle, setTitleLoading]);
 
-  // Ref to access audio player methods (for accordion click-to-seek)
+  // Refs to access media player methods
   const audioPlayerRef = useRef(null);
+  const slideshowRef = useRef(null);
 
   // State for bidirectional sync
   const [activeChunk, setActiveChunk] = useState(null);
@@ -76,9 +77,17 @@ export default function DetailsView() {
     }
   };
 
-  // Handle page change in slideshow
+  // Handle page change in slideshow (for accordion sync)
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
+  };
+
+  // Handle page click in accordion (for slideshow navigation)
+  const handlePageClick = (pageNumber) => {
+    if (slideshowRef.current && slideshowRef.current.navigateToPage) {
+      slideshowRef.current.navigateToPage(pageNumber);
+      console.log(`[DetailsView] Navigating slideshow to page ${pageNumber}`);
+    }
   };
 
   // Loading state
@@ -146,6 +155,7 @@ export default function DetailsView() {
             onTimeUpdate={handleTimeUpdate}
             onPageChange={handlePageChange}
             audioPlayerRef={audioPlayerRef}
+            slideshowRef={slideshowRef}
           />
         </div>
 
@@ -155,7 +165,9 @@ export default function DetailsView() {
             markdown={markdown?.content || markdown}
             chunks={chunks}
             onTimestampClick={handleTimestampClick}
+            onPageClick={handlePageClick}
             activeChunk={activeChunk}
+            currentPage={currentPage}
           />
         </div>
       </div>
