@@ -270,13 +270,12 @@ show_summary() {
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:3000${NC} (NEW - React 19)"
+    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:3000${NC} (React 19)"
     echo -e "  ${GREEN}→${NC} Copyparty:        ${BLUE}http://localhost:8000${NC} (File upload)"
     echo -e "  ${GREEN}→${NC} ChromaDB:         ${BLUE}http://localhost:8001${NC}"
     echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
     echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
     echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
-    echo -e "  ${GREEN}→${NC} Legacy Frontend:  ${BLUE}http://localhost:8000/frontend${NC} (src/frontend)"
 
     if [ "$MODE" = "gpu" ]; then
         echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU${NC}"
