@@ -106,20 +106,6 @@ export default function Slideshow({ document, initialPage = 1, onPageChange }) {
 
   return (
     <div className="slideshow">
-      <div className="slideshow-image-container">
-        {imageSrc ? (
-          <img
-            src={imageSrc}
-            alt={`Page ${currentPage}`}
-            className="slideshow-image"
-          />
-        ) : (
-          <div className="slideshow-no-image">
-            <p>No image available for page {currentPage}</p>
-          </div>
-        )}
-      </div>
-
       <div className="slideshow-controls">
         <button
           className="slideshow-button"
@@ -157,6 +143,20 @@ export default function Slideshow({ document, initialPage = 1, onPageChange }) {
         >
           Next →
         </button>
+      </div>
+
+      <div className="slideshow-image-container">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={`Page ${currentPage}`}
+            className="slideshow-image"
+          />
+        ) : (
+          <div className="slideshow-no-image">
+            <p>No image available for page {currentPage}</p>
+          </div>
+        )}
       </div>
 
       <div className="slideshow-keyboard-hint" aria-live="polite">
