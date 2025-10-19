@@ -17,7 +17,7 @@ import './Layout.css';
  */
 export default function Layout() {
   const location = useLocation();
-  const { title, isLoading } = useTitle();
+  const { title, isLoading, headerContent } = useTitle();
 
   // Determine header props based on current route
   const getHeaderProps = () => {
@@ -30,7 +30,7 @@ export default function Layout() {
         title: isLoading ? '' : title,
         showBackButton: true,
         backTo: '/',
-        showResearchLink: false
+        filterBar: null
       };
     }
 
@@ -40,15 +40,15 @@ export default function Layout() {
         title: 'Research',
         showBackButton: true,
         backTo: '/',
-        showResearchLink: false
+        filterBar: null
       };
     }
 
     // Default (library/home)
     return {
-      title: 'Document Library',
+      title: '',
       showBackButton: false,
-      showResearchLink: true
+      filterBar: headerContent
     };
   };
 

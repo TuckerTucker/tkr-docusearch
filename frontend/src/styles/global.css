@@ -559,6 +559,15 @@ body {
   color: var(--foreground);
 }
 
+/* Filter bar in header - no wrap, compact layout */
+.header__filter-bar .filter-bar {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+}
+
 .filter-bar__search {
   flex: 1;
   min-width: 240px;

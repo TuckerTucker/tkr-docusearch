@@ -10,13 +10,13 @@ import './Header.css';
  * @param {string} props.title - Page title to display
  * @param {boolean} props.showBackButton - Whether to show back button
  * @param {string} props.backTo - Route to navigate back to (default: '/')
- * @param {boolean} props.showResearchLink - Whether to show research link
+ * @param {React.ReactNode} props.filterBar - Filter bar component to render
  */
 export default function Header({
   title = 'Document Search',
   showBackButton = false,
   backTo = '/',
-  showResearchLink = false
+  filterBar = null
 }) {
   return (
     <header className="header" role="banner">
@@ -41,30 +41,9 @@ export default function Header({
               <span className="header__back-text">Back to Library</span>
             </Link>
           )}
-          <h1 className="header__title">{title}</h1>
+          {title && <h1 className="header__title">{title}</h1>}
+          {filterBar && <div className="header__filter-bar">{filterBar}</div>}
         </div>
-
-        {showResearchLink && (
-          <nav className="header__nav">
-            <Link to="/research" className="header__nav-link">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <span>Research</span>
-            </Link>
-          </nav>
-        )}
       </div>
     </header>
   );

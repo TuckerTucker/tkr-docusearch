@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { useDocumentStore } from '../stores/useDocumentStore.js';
+import { useTitle } from '../contexts/TitleContext.jsx';
 import { WS_URL } from '../constants/config.js';
 import FilterBar from '../features/library/FilterBar.jsx';
 import DocumentGrid from '../components/document/DocumentGrid.jsx';
@@ -26,6 +27,7 @@ import UploadModal from '../features/library/UploadModal.jsx';
  */
 export default function LibraryView() {
   const navigate = useNavigate();
+  const { setHeaderContent } = useTitle();
 
   // Get filters from store
   const filters = useDocumentStore((state) => state.filters);
@@ -165,6 +167,14 @@ export default function LibraryView() {
     []
   );
 
+  // Set FilterBar in header on mount, clear on unmount
+  useEffect(() => {
+    setHeaderContent(<FilterBar totalCount={totalCount} onFilterChange={handleFilterChange} />);
+    return () => {
+      setHeaderContent(null);
+    };
+  }, [totalCount, handleFilterChange, setHeaderContent]);
+
   // Show error state
   if (error) {
     return (
@@ -180,9 +190,6 @@ export default function LibraryView() {
 
   return (
     <div className="library-view">
-      {/* Filter bar */}
-      <FilterBar totalCount={totalCount} onFilterChange={handleFilterChange} />
-
       {/* Document grid */}
       <div className="library-content">
         <DocumentGrid

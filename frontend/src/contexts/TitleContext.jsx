@@ -1,7 +1,7 @@
 /**
  * TitleContext
  *
- * Provides page title state that can be set by child routes
+ * Provides page title and header content state that can be set by child routes
  * and consumed by the Layout/Header
  */
 import { createContext, useContext, useState } from 'react';
@@ -11,9 +11,10 @@ const TitleContext = createContext();
 export function TitleProvider({ children }) {
   const [title, setTitle] = useState('Document Library');
   const [isLoading, setIsLoading] = useState(false);
+  const [headerContent, setHeaderContent] = useState(null);
 
   return (
-    <TitleContext.Provider value={{ title, setTitle, isLoading, setIsLoading }}>
+    <TitleContext.Provider value={{ title, setTitle, isLoading, setIsLoading, headerContent, setHeaderContent }}>
       {children}
     </TitleContext.Provider>
   );
