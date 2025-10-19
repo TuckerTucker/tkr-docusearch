@@ -21,30 +21,30 @@
 
 /* Connected state */
 .connection-status--connected .connection-status__indicator {
-  color: var(--color-status-ok, #22c55e);
+  color: oklch(0.60 0.15 145);
 }
 
 .connection-status--connected .connection-status__text {
-  color: var(--color-status-ok, #22c55e);
+  color: oklch(0.60 0.15 145);
 }
 
 /* Disconnected state */
 .connection-status--disconnected .connection-status__indicator {
-  color: var(--color-text-tertiary, #9ca3af);
+  color: var(--muted-foreground);
 }
 
 .connection-status--disconnected .connection-status__text {
-  color: var(--color-text-tertiary, #9ca3af);
+  color: var(--muted-foreground);
 }
 
 /* Reconnecting state */
 .connection-status--reconnecting .connection-status__indicator {
-  color: var(--color-status-warn, #f59e0b);
+  color: oklch(0.70 0.15 85);
   animation: connection-status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .connection-status--reconnecting .connection-status__text {
-  color: var(--color-status-warn, #f59e0b);
+  color: oklch(0.70 0.15 85);
 }
 
 @keyframes connection-status-pulse {
@@ -59,5 +59,5 @@
 /* Dark theme support */
 .dark .connection-status--disconnected .connection-status__indicator,
 .dark .connection-status--disconnected .connection-status__text {
-  color: var(--color-text-tertiary, #6b7280);
+  color: var(--muted-foreground);
 }

@@ -47,12 +47,12 @@ export default function DetailsView() {
   const handleDownloadMarkdown = () => {
     if (document?.doc_id) {
       const url = `/documents/${document.doc_id}/markdown`;
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.download = '';
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     }
   };
 
