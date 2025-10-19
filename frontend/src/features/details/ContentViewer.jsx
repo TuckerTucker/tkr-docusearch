@@ -36,24 +36,25 @@ export default function ContentViewer({
   }
 
   const fileType = document.file_type?.toLowerCase();
+  const fileExtension = document.filename?.split('.').pop()?.toLowerCase();
 
   // Debug logging
   console.log('[ContentViewer] Document:', document);
   console.log('[ContentViewer] File type:', fileType);
+  console.log('[ContentViewer] File extension:', fileExtension);
   console.log('[ContentViewer] Filename:', document.filename);
 
   // Document types with visual pages (PDF, DOCX, PPTX)
+  // Check both file_type field AND file extension (fallback for when file_type is null)
   const visualTypes = ['pdf', 'docx', 'pptx'];
-  const isVisual = visualTypes.includes(fileType);
+  const isVisual = visualTypes.includes(fileType) || visualTypes.includes(fileExtension);
 
   // Audio types (MP3, WAV) - check file type AND file extension
   const audioTypes = ['mp3', 'wav', 'audio'];
-  const fileExtension = document.filename?.split('.').pop()?.toLowerCase();
   const isAudio = audioTypes.includes(fileType) || ['mp3', 'wav'].includes(fileExtension);
 
-  console.log('[ContentViewer] File extension:', fileExtension);
-  console.log('[ContentViewer] Is audio?', isAudio);
   console.log('[ContentViewer] Is visual?', isVisual);
+  console.log('[ContentViewer] Is audio?', isAudio);
 
   if (isVisual && document.pages && document.pages.length > 0) {
     console.log('[ContentViewer] Rendering Slideshow');
