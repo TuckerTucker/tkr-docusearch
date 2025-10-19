@@ -31,6 +31,7 @@ export const useDocumentStore = create(
       // State
       filters: { ...initialFilters },
       tempDocuments: new Map(), // Not persisted
+      tempDocumentsVersion: 0, // Increment to trigger re-renders
 
       // Filter actions
       setFilters: (partial) =>
@@ -67,15 +68,21 @@ export const useDocumentStore = create(
         }),
 
       // Temp documents actions (for optimistic UI during upload)
-      addTempDocument: (tempId, filename) =>
+      // tempId is now actually doc_id from server pre-registration
+      addTempDocument: (doc_id, filename) =>
         set((state) => {
           const newMap = new Map(state.tempDocuments);
-          newMap.set(tempId, {
+          newMap.set(doc_id, {
+            doc_id,  // Store doc_id in the document data
             filename,
             status: 'uploading',
             progress: 0,
           });
-          return { tempDocuments: newMap };
+          console.log(`[Store] addTempDocument: ${doc_id.slice(0, 8)} - Map size: ${newMap.size}`);
+          return {
+            tempDocuments: newMap,
+            tempDocumentsVersion: state.tempDocumentsVersion + 1
+          };
         }),
 
       updateTempDocumentProgress: (tempId, progress) =>
@@ -85,24 +92,37 @@ export const useDocumentStore = create(
           if (doc) {
             newMap.set(tempId, { ...doc, progress });
           }
-          return { tempDocuments: newMap };
+          return {
+            tempDocuments: newMap,
+            tempDocumentsVersion: state.tempDocumentsVersion + 1
+          };
         }),
 
-      setTempDocumentStatus: (tempId, status) =>
+      setTempDocumentStatus: (doc_id, status, stage) =>
         set((state) => {
           const newMap = new Map(state.tempDocuments);
-          const doc = newMap.get(tempId);
+          const doc = newMap.get(doc_id);
           if (doc) {
-            newMap.set(tempId, { ...doc, status });
+            newMap.set(doc_id, {
+              ...doc,
+              status,
+              ...(stage && { stage })
+            });
           }
-          return { tempDocuments: newMap };
+          return {
+            tempDocuments: newMap,
+            tempDocumentsVersion: state.tempDocumentsVersion + 1
+          };
         }),
 
       removeTempDocument: (tempId) =>
         set((state) => {
           const newMap = new Map(state.tempDocuments);
           newMap.delete(tempId);
-          return { tempDocuments: newMap };
+          return {
+            tempDocuments: newMap,
+            tempDocumentsVersion: state.tempDocumentsVersion + 1
+          };
         }),
     }),
     {

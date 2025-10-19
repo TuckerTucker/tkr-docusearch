@@ -27,6 +27,7 @@ export class WebSocketManager {
     this.reconnectAttempts = 0;
     this.isIntentionallyClosed = false;
     this.reconnectTimeout = null;
+    this.messageHandlers = []; // Additional message handlers (for one-time requests)
   }
 
   /**
@@ -52,6 +53,16 @@ export class WebSocketManager {
       };
 
       this.ws.onmessage = (event) => {
+        // Call all registered message handlers
+        this.messageHandlers.forEach(handler => {
+          try {
+            handler(event);
+          } catch (err) {
+            console.error('[WebSocket] Message handler error:', err);
+          }
+        });
+
+        // Call primary message handler
         if (this.options.onMessage) {
           this.options.onMessage(event);
         }
@@ -115,6 +126,7 @@ export class WebSocketManager {
     }
 
     const message = typeof data === 'string' ? data : JSON.stringify(data);
+    console.log('[WebSocket] Sending message:', message.substring(0, 200));
     this.ws.send(message);
   }
 
@@ -156,5 +168,26 @@ export class WebSocketManager {
    */
   getReconnectAttempts() {
     return this.reconnectAttempts;
+  }
+
+  /**
+   * Add a message handler (for one-time requests like registration)
+   *
+   * @param {Function} handler - Message handler function
+   */
+  addMessageHandler(handler) {
+    this.messageHandlers.push(handler);
+  }
+
+  /**
+   * Remove a message handler
+   *
+   * @param {Function} handler - Message handler to remove
+   */
+  removeMessageHandler(handler) {
+    const index = this.messageHandlers.indexOf(handler);
+    if (index > -1) {
+      this.messageHandlers.splice(index, 1);
+    }
   }
 }

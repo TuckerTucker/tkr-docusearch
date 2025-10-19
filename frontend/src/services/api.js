@@ -117,7 +117,22 @@ const documents = {
 
     const url = `${API_BASE_URL}/documents?${params.toString()}`;
     const response = await fetchWithTimeout(url);
-    return handleResponse(response, url);
+    const data = await handleResponse(response, url);
+
+    // Transform documents: fix field names and make thumbnail URLs absolute
+    if (data.documents) {
+      data.documents = data.documents.map((doc) => ({
+        ...doc,
+        // Rename date_added to upload_date for consistency with frontend
+        upload_date: doc.date_added,
+        // Make thumbnail URL absolute
+        thumbnail_url: doc.first_page_thumb?.startsWith('/')
+          ? `${API_BASE_URL}${doc.first_page_thumb}`
+          : doc.first_page_thumb,
+      }));
+    }
+
+    return data;
   },
 
   /**
@@ -207,9 +222,10 @@ const upload = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      formData.append('file', file);
+      // Copyparty expects "act=bput" for basic PUT uploads
+      formData.append('act', 'bput');
+      formData.append('f', file);
 
       // Track upload progress
       if (onProgress) {
@@ -227,14 +243,13 @@ const upload = {
           resolve({
             success: true,
             filename: file.name,
-            temp_id: tempId,
           });
         } else {
           reject(
             new APIError(
               `Upload failed: ${xhr.statusText}`,
               xhr.status,
-              'http://localhost:8000/uploads/'
+              '/uploads/'
             )
           );
         }
@@ -246,7 +261,7 @@ const upload = {
           new APIError(
             'Upload failed: Network error',
             0,
-            'http://localhost:8000/uploads/'
+            '/uploads/'
           )
         );
       });
@@ -256,13 +271,22 @@ const upload = {
           new APIError(
             'Upload failed: Timeout',
             408,
-            'http://localhost:8000/uploads/'
+            '/uploads/'
           )
         );
       });
 
       // Configure and send
-      xhr.open('POST', 'http://localhost:8000/uploads/');
+      // Use relative URL to work through Vite proxy in dev and direct in prod
+      xhr.open('POST', '/uploads/');
+
+      // Add Basic Authentication for Copyparty uploader account
+      // Credentials are loaded from environment variables (VITE_UPLOAD_USERNAME/PASSWORD)
+      const username = import.meta.env.VITE_UPLOAD_USERNAME || 'uploader';
+      const password = import.meta.env.VITE_UPLOAD_PASSWORD || 'docusearch2024';
+      const credentials = btoa(`${username}:${password}`);
+      xhr.setRequestHeader('Authorization', `Basic ${credentials}`);
+
       xhr.timeout = REQUEST_TIMEOUT;
       xhr.send(formData);
     });

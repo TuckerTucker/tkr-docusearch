@@ -93,8 +93,68 @@ export function useWebSocket(url, options = {}) {
     }
   };
 
+  /**
+   * Register upload batch and wait for response
+   *
+   * @param {Array<{filename: string, size: number}>} files - Files to register
+   * @returns {Promise<Array<{filename: string, doc_id: string, expected_size: number}>>} Registrations
+   */
+  const registerUploadBatch = (files) => {
+    return new Promise((resolve, reject) => {
+      if (!wsRef.current || !isConnected) {
+        reject(new Error('WebSocket not connected'));
+        return;
+      }
+
+      console.log('📤 Sending registration request for', files.length, 'files');
+
+      let timeoutId;
+
+      // Create one-time message handler for registration response
+      const handleRegistrationResponse = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📨 Registration handler received:', data.type);
+
+          if (data.type === 'upload_batch_registered') {
+            console.log('✅ Registration response received:', data.registrations.length, 'doc_ids');
+            // Remove this temporary handler
+            wsRef.current.removeMessageHandler(handleRegistrationResponse);
+            clearTimeout(timeoutId);
+            resolve(data.registrations);
+          } else if (data.type === 'error') {
+            console.error('❌ Registration error:', data.message);
+            wsRef.current.removeMessageHandler(handleRegistrationResponse);
+            clearTimeout(timeoutId);
+            reject(new Error(data.message || 'Registration failed'));
+          }
+        } catch (err) {
+          console.error('Error parsing registration response:', err);
+          // Not a registration response, ignore
+        }
+      };
+
+      // Add temporary message handler
+      wsRef.current.addMessageHandler(handleRegistrationResponse);
+
+      // Send registration request
+      wsRef.current.send({
+        type: 'register_upload_batch',
+        files: files.map(f => ({ filename: f.name, size: f.size }))
+      });
+
+      // Timeout after 10 seconds
+      timeoutId = setTimeout(() => {
+        console.error('⏱️ Registration request timeout after 10s');
+        wsRef.current.removeMessageHandler(handleRegistrationResponse);
+        reject(new Error('Registration request timeout'));
+      }, 10000);
+    });
+  };
+
   return {
     send,
+    registerUploadBatch,
     isConnected,
     reconnectAttempts,
   };
