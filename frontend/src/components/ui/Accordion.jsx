@@ -8,7 +8,7 @@
  * Wave 2 - Details Agent
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useClipboard } from '../../hooks/useClipboard.js';
 
@@ -146,17 +146,24 @@ export default function Accordion({
   activeSectionId
 }) {
   const [openSectionId, setOpenSectionId] = useState(null);
+  const lastActiveSectionRef = useRef(null);
 
   const handleToggle = (sectionId) => {
+    // User manually toggled - allow full toggle behavior
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
   };
 
   // Auto-open section when it becomes active (for audio/slideshow sync)
-  // This effect runs whenever activeSectionId changes
+  // This mimics the original openSection() method which is separate from toggleSection()
   useEffect(() => {
-    if (activeSectionId && activeSectionId !== openSectionId) {
+    if (!activeSectionId) return;
+
+    // Only auto-open if this is a NEW active section
+    // Prevents repeated opens of the same section
+    if (activeSectionId !== lastActiveSectionRef.current) {
       console.log(`[Accordion] Auto-opening section: ${activeSectionId}`);
       setOpenSectionId(activeSectionId);
+      lastActiveSectionRef.current = activeSectionId;
 
       // Scroll section into view
       setTimeout(() => {
@@ -166,7 +173,7 @@ export default function Accordion({
         }
       }, 100);
     }
-  }, [activeSectionId, openSectionId]);
+  }, [activeSectionId]);
 
   if (sections.length === 0) {
     return (
