@@ -115,7 +115,7 @@ function UploadProgressItem({ filename, progress, status, error }) {
  * @param {Function} [props.onUploadComplete] - Upload completion callback
  * @returns {JSX.Element} Upload modal
  */
-export default function UploadModal({ onUploadComplete }) {
+export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploads, setUploads] = useState([]);
@@ -199,68 +199,96 @@ export default function UploadModal({ onUploadComplete }) {
     }
   };
 
-  // Upload files
+  // Upload files with pre-registration
   const uploadFiles = async (files) => {
     setIsUploading(true);
 
+    // Validate all files first
+    const validatedFiles = files.map((file) => ({
+      file,
+      validation: validateFile(file),
+    }));
+
+    const validFiles = validatedFiles.filter((f) => f.validation.valid);
+    const invalidFiles = validatedFiles.filter((f) => !f.validation.valid);
+
     // Initialize upload progress items
-    const initialUploads = files.map((file) => ({
+    const initialUploads = files.map((file, i) => ({
       filename: file.name,
       progress: 0,
-      status: 'uploading',
-      error: null,
+      status: validatedFiles[i].validation.valid ? 'uploading' : 'error',
+      error: validatedFiles[i].validation.valid ? null : validatedFiles[i].validation.error,
     }));
     setUploads(initialUploads);
 
     let successCount = 0;
-    let failCount = 0;
+    let failCount = invalidFiles.length;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    // STEP 1: Pre-register all valid files via WebSocket (single round-trip)
+    let registrations = [];
+    try {
+      console.log(`📋 Pre-registering ${validFiles.length} files...`);
+      registrations = await registerUploadBatch(validFiles.map((f) => f.file));
+      console.log(`✅ Received ${registrations.length} doc_ids from server`);
+    } catch (error) {
+      console.error('❌ Failed to register uploads:', error);
+      // Mark all as failed
+      setUploads((prev) =>
+        prev.map((item) => ({
+          ...item,
+          status: 'error',
+          error: error.message || 'Failed to register upload',
+        }))
+      );
+      setIsUploading(false);
+      return;
+    }
 
-      // Validate file
-      const validation = validateFile(file);
-      if (!validation.valid) {
-        setUploads((prev) =>
-          prev.map((item, idx) =>
-            idx === i
-              ? { ...item, status: 'error', error: validation.error, progress: 100 }
-              : item
-          )
-        );
-        failCount++;
-        continue;
-      }
+    // STEP 2: Create temp documents immediately with real doc_ids
+    registrations.forEach((reg) => {
+      console.log(`💾 Creating temp doc: ${reg.filename} → ${reg.doc_id.slice(0, 8)}...`);
+      addTempDocument(reg.doc_id, reg.filename);
+    });
+
+    // STEP 3: Upload all files in parallel
+    const uploadPromises = validFiles.map(async ({file}, i) => {
+      const registration = registrations[i];
+      const fileIndex = files.indexOf(file);
 
       try {
         // Upload file with progress tracking
-        const result = await api.upload.uploadFile(file, (progress) => {
+        await api.upload.uploadFile(file, (progress) => {
           setUploads((prev) =>
-            prev.map((item, idx) => (idx === i ? { ...item, progress } : item))
+            prev.map((item, idx) => (idx === fileIndex ? { ...item, progress } : item))
           );
         });
 
-        // Add to temp documents for optimistic UI
-        addTempDocument(result.temp_id, file.name);
-
         // Mark as complete
         setUploads((prev) =>
-          prev.map((item, idx) => (idx === i ? { ...item, status: 'complete', progress: 100 } : item))
+          prev.map((item, idx) =>
+            idx === fileIndex ? { ...item, status: 'complete', progress: 100 } : item
+          )
         );
 
-        successCount++;
+        return { success: true, file: file.name };
       } catch (error) {
         // Mark as failed
         setUploads((prev) =>
           prev.map((item, idx) =>
-            idx === i
+            idx === fileIndex
               ? { ...item, status: 'error', error: error.message, progress: 100 }
               : item
           )
         );
-        failCount++;
+
+        return { success: false, file: file.name, error: error.message };
       }
-    }
+    });
+
+    // Wait for all uploads to complete
+    const results = await Promise.all(uploadPromises);
+    successCount = results.filter((r) => r.success).length;
+    failCount += results.filter((r) => !r.success).length;
 
     setIsUploading(false);
 
@@ -269,12 +297,12 @@ export default function UploadModal({ onUploadComplete }) {
       onUploadComplete({ total: files.length, successful: successCount, failed: failCount });
     }
 
-    // Auto-hide after 2 seconds if all successful
+    // Auto-hide after 0.5 seconds if all successful
     if (failCount === 0) {
       setTimeout(() => {
         setIsVisible(false);
         setUploads([]);
-      }, 2000);
+      }, 500);
     }
   };
 

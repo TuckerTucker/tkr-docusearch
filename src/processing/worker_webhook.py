@@ -7,6 +7,7 @@ Extracts text, generates embeddings, and stores in ChromaDB.
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -71,6 +72,9 @@ WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
 # Processing status tracking
 processing_status: Dict[str, Dict[str, Any]] = {}
 
+# Pre-registered uploads (doc_id -> registration info)
+pending_uploads: Dict[str, Dict[str, Any]] = {}
+
 # Global components (initialized at startup)
 document_processor: Optional[DocumentProcessor] = None
 parser: Optional[DoclingParser] = None
@@ -95,7 +99,8 @@ app = FastAPI(
 
 # Add CORS middleware with environment-based whitelist
 allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:8001,http://localhost:8002"
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8000,http://localhost:8001,http://localhost:8002",
 ).split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -419,14 +424,45 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
 
-    # Generate doc_id from file content hash (SHA-256)
-    try:
-        with open(file_path, "rb") as f:
-            content = f.read()
-            doc_id = hashlib.sha256(content).hexdigest()
-    except Exception as e:
-        logger.error(f"Failed to generate doc_id for {request.filename}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+    # Check if this file was pre-registered via WebSocket
+    doc_id = None
+
+    # Try to match filename with pending uploads
+    # Copyparty may add timestamp suffix, so strip it for matching
+    base_filename = request.filename
+    # Remove Copyparty timestamp pattern: filename.ext-timestamp-random.ext
+    import re
+
+    match = re.match(r"(.+?)-\d+\.\d+-[A-Za-z0-9]+(\.[^.]+)$", request.filename)
+    if match:
+        base_filename = match.group(1) + match.group(2)
+        logger.info(
+            f"Detected Copyparty filename modification: {request.filename} → {base_filename}"
+        )
+
+    # Look for matching pre-registration
+    for registered_doc_id, registration_info in list(pending_uploads.items()):
+        if (
+            registration_info["base_filename"] == base_filename
+            or registration_info["filename"] == request.filename
+        ):
+            doc_id = registered_doc_id
+            del pending_uploads[registered_doc_id]  # Consume registration
+            logger.info(f"✅ Matched pre-registered upload: {request.filename} → {doc_id[:8]}...")
+            break
+
+    # Fallback: Generate doc_id from file content hash if not pre-registered
+    if not doc_id:
+        logger.info(
+            f"No pre-registration found for {request.filename}, generating doc_id from file hash"
+        )
+        try:
+            with open(file_path, "rb") as f:
+                content = f.read()
+                doc_id = hashlib.sha256(content).hexdigest()
+        except Exception as e:
+            logger.error(f"Failed to generate doc_id for {request.filename}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
     # Create status entry via StatusManager
     try:
@@ -598,13 +634,74 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
+async def handle_upload_registration(websocket: WebSocket, message: Dict[str, Any]):
+    """
+    Handle batch upload registration request.
+
+    Client sends list of files to upload, server generates doc_ids and returns them.
+    Files are matched to doc_ids when webhook receives upload notification.
+
+    Args:
+        websocket: WebSocket connection
+        message: Registration message with 'files' list
+    """
+    files = message.get("files", [])
+
+    if not files:
+        await get_broadcaster().send_to_client(
+            websocket, {"type": "error", "message": "No files provided in registration"}
+        )
+        return
+
+    logger.info(f"📋 Registering batch upload: {len(files)} files")
+
+    registrations = []
+    for file_info in files:
+        filename = file_info.get("filename")
+        size = file_info.get("size", 0)
+
+        if not filename:
+            logger.warning("File registration missing filename, skipping")
+            continue
+
+        # Generate doc_id from filename + timestamp for uniqueness
+        # This ensures each upload gets a unique doc_id even if filename is reused
+        unique_string = f"{filename}_{datetime.now().isoformat()}_{size}"
+        doc_id = hashlib.sha256(unique_string.encode()).hexdigest()
+
+        # Store pending upload
+        pending_uploads[doc_id] = {
+            "filename": filename,
+            "size": size,
+            "registered_at": datetime.now().isoformat(),
+            "base_filename": filename,  # Store base filename for matching against Copyparty-modified names
+        }
+
+        registrations.append({"filename": filename, "doc_id": doc_id, "expected_size": size})
+
+        logger.info(f"  ✓ Registered: {filename} → {doc_id[:8]}...")
+
+    # Send response with all doc_ids
+    await get_broadcaster().send_to_client(
+        websocket,
+        {
+            "type": "upload_batch_registered",
+            "registrations": registrations,
+            "count": len(registrations),
+        },
+    )
+
+    logger.info(f"✅ Batch registration complete: {len(registrations)} files")
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time monitoring.
+    WebSocket endpoint for real-time monitoring and upload registration.
 
-    Clients can connect to receive live updates about document processing,
-    including status changes, log messages, and statistics.
+    Clients can:
+    - Receive live updates about document processing
+    - Pre-register upload batches to get doc_ids before uploading
     """
     broadcaster = get_broadcaster()
     await broadcaster.connect(websocket)
@@ -612,12 +709,27 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Keep connection alive and listen for client messages
         while True:
-            # Receive any client messages (keep-alive, commands, etc.)
+            # Receive client messages
             data = await websocket.receive_text()
+            logger.info(f"📨 WebSocket received: {data[:200]}...")  # Log first 200 chars
 
-            # Handle client commands if needed
-            # For now, just acknowledge receipt
-            logger.debug(f"Received WebSocket message: {data}")
+            try:
+                message = json.loads(data)
+                message_type = message.get("type")
+                logger.info(f"📬 Message type: {message_type}")
+
+                if message_type == "register_upload_batch":
+                    # Handle batch upload registration
+                    logger.info("🔄 Calling handle_upload_registration...")
+                    await handle_upload_registration(websocket, message)
+                else:
+                    logger.debug(f"Received WebSocket message: {message_type}")
+
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON received: {data}")
+            except Exception as e:
+                logger.error(f"Error handling WebSocket message: {e}")
+                await broadcaster.send_to_client(websocket, {"type": "error", "message": str(e)})
 
     except WebSocketDisconnect:
         await broadcaster.disconnect(websocket)
@@ -708,6 +820,41 @@ async def startup_event():
     logger.info(f"  Listening on port: {WORKER_PORT}")
     logger.info(f"  Waiting for webhook requests...")
     logger.info("=" * 70)
+
+    # Start background cleanup task for stale registrations
+    asyncio.create_task(cleanup_stale_registrations())
+
+
+async def cleanup_stale_registrations():
+    """
+    Background task to cleanup stale upload registrations.
+
+    Runs every 5 minutes and removes registrations older than 10 minutes.
+    This handles cases where files were registered but never uploaded.
+    """
+    while True:
+        try:
+            await asyncio.sleep(300)  # Run every 5 minutes
+
+            from datetime import timedelta
+
+            cutoff_time = datetime.now() - timedelta(minutes=10)
+
+            stale_doc_ids = []
+            for doc_id, info in list(pending_uploads.items()):
+                registered_at = datetime.fromisoformat(info["registered_at"])
+                if registered_at < cutoff_time:
+                    stale_doc_ids.append(doc_id)
+                    del pending_uploads[doc_id]
+                    logger.warning(
+                        f"🧹 Cleaned stale registration: {info['filename']} (registered {registered_at.isoformat()})"
+                    )
+
+            if stale_doc_ids:
+                logger.info(f"🧹 Cleanup: Removed {len(stale_doc_ids)} stale registrations")
+
+        except Exception as e:
+            logger.error(f"Error in cleanup task: {e}", exc_info=True)
 
 
 @app.on_event("shutdown")

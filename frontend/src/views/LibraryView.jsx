@@ -30,6 +30,13 @@ export default function LibraryView() {
   // Get filters from store
   const filters = useDocumentStore((state) => state.filters);
   const tempDocuments = useDocumentStore((state) => state.tempDocuments);
+  const tempDocumentsVersion = useDocumentStore((state) => state.tempDocumentsVersion);
+  const getTempDocument = useCallback((doc_id) => {
+    return useDocumentStore.getState().tempDocuments.get(doc_id);
+  }, []);
+  const getTempDocumentCount = useCallback(() => {
+    return useDocumentStore.getState().tempDocuments.size;
+  }, []);
   const removeTempDocument = useDocumentStore((state) => state.removeTempDocument);
   const setTempDocumentStatus = useDocumentStore((state) => state.setTempDocumentStatus);
   const updateTempDocumentProgress = useDocumentStore(
@@ -51,47 +58,52 @@ export default function LibraryView() {
       upload_date: new Date().toISOString(),
       status: data.status,
       processing_progress: data.progress / 100,
-      processing_stage: data.status === 'uploading' ? 'Uploading...' : 'Processing...',
+      processing_stage: data.stage || (data.status === 'uploading' ? 'Uploading...' : 'Processing...'),
     }));
 
     // Merge temp docs at the beginning (newest first)
     return [...tempDocs, ...(documents || [])];
-  }, [documents, tempDocuments.size]); // Use tempDocuments.size to avoid reference issues
+  }, [documents, tempDocumentsVersion]); // Re-render when temp documents change
 
   // WebSocket for real-time document status updates
-  const { isConnected } = useWebSocket(WS_URL, {
+  const { isConnected, registerUploadBatch } = useWebSocket(WS_URL, {
     onMessage: useCallback(
       (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log('📨 WebSocket message received:', data);
 
-          if (data.type === 'document_status') {
-            const { filename, status, stage, progress } = data;
+          // Handle both 'document_status' and 'status_update' message types
+          if (data.type === 'document_status' || data.type === 'status_update') {
+            const { doc_id, status, stage, progress } = data;
+            console.log('📊 Status update:', { doc_id, status, stage, progress });
 
-            // Find temp document by filename
-            const tempDoc = Array.from(tempDocuments.entries()).find(
-              ([, doc]) => doc.filename === filename
-            );
+            // Look up temp document by doc_id (using fresh state to avoid stale closures)
+            const tempDoc = getTempDocument(doc_id);
+
+            console.log('🔍 Looking for temp doc:', { doc_id: doc_id?.slice(0, 8), found: !!tempDoc, tempDocCount: getTempDocumentCount() });
 
             if (tempDoc) {
-              const [tempId] = tempDoc;
-
               if (status === 'completed') {
                 // Remove temp document and refetch to get real document
-                removeTempDocument(tempId);
+                console.log('✅ Document completed, removing temp and refetching');
+                removeTempDocument(doc_id);
                 refetch();
-              } else if (status === 'processing') {
-                // Update status and progress
-                setTempDocumentStatus(tempId, 'processing');
+              } else if (status === 'processing' || status === 'parsing' || status === 'embedding_visual' || status === 'embedding_text' || status === 'storing') {
+                // Update status, stage, and progress (all processing states)
+                console.log('🔄 Updating temp document:', { doc_id: doc_id?.slice(0, 8), status: 'processing', stage, progress });
+                setTempDocumentStatus(doc_id, 'processing', stage);
                 if (progress !== undefined) {
-                  updateTempDocumentProgress(tempId, Math.round(progress * 100));
+                  updateTempDocumentProgress(doc_id, Math.round(progress * 100));
                 }
               } else if (status === 'failed') {
                 // Mark as failed
-                setTempDocumentStatus(tempId, 'failed');
+                console.log('❌ Document failed');
+                setTempDocumentStatus(doc_id, 'failed');
               }
             } else if (status === 'completed') {
               // Document completed but no temp doc found, just refetch
+              console.log('⚠️ No temp doc found but status is completed, refetching');
               refetch();
             }
           }
@@ -100,7 +112,8 @@ export default function LibraryView() {
         }
       },
       [
-        tempDocuments,
+        getTempDocument,
+        getTempDocumentCount,
         removeTempDocument,
         setTempDocumentStatus,
         updateTempDocumentProgress,
@@ -181,7 +194,10 @@ export default function LibraryView() {
       </div>
 
       {/* Upload modal (global drag-drop) */}
-      <UploadModal onUploadComplete={handleUploadComplete} />
+      <UploadModal
+        onUploadComplete={handleUploadComplete}
+        registerUploadBatch={registerUploadBatch}
+      />
     </div>
   );
 }
