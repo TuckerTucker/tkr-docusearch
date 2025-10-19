@@ -1,0 +1,279 @@
+/**
+ * Details Page Styles
+ *
+ * Comprehensive styling for document details page with:
+ * - Two-column layout (viewer + accordion)
+ * - Slideshow and audio player components
+ * - Text accordion with chunking
+ * - Bidirectional highlighting
+ * - Responsive design
+ * - WCAG 2.1 AA compliant
+ */
+
+/* ============================================
+   Details View Container
+   ============================================ */
+.details-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ============================================
+   Details Header
+   ============================================ */
+.details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  flex-wrap: wrap;
+}
+
+.details-header .back-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--foreground);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.details-header .back-button:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateX(-2px);
+}
+
+.details-header .back-button:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.details-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.details-title h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-metadata-inline {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.file-type-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-radius: calc(var(--radius) / 2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.upload-date {
+  color: var(--muted-foreground);
+}
+
+.details-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.details-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.details-actions .btn-secondary:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+}
+
+.details-actions .btn-secondary:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Details Content (Two-Column Layout)
+   ============================================ */
+.details-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+  flex: 1;
+}
+
+.details-viewer {
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+}
+
+.details-text {
+  min-height: 400px;
+}
+
+/* ============================================
+   Loading and Error States
+   ============================================ */
+.details-loading,
+.details-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 3rem;
+  text-align: center;
+  gap: 1.5rem;
+}
+
+.details-loading p,
+.details-error p {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+}
+
+.details-error h2 {
+  color: var(--destructive);
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.details-error .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.details-error .btn-primary:hover {
+  opacity: 0.9;
+}
+
+.details-error .btn-primary:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+@media (max-width: 1024px) {
+  .details-content {
+    grid-template-columns: 1fr;
+  }
+
+  .details-viewer {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .details-header {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .details-header .back-button {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .details-title h1 {
+    font-size: 1.25rem;
+  }
+
+  .details-content {
+    padding: 1rem;
+    gap: 1rem;
+  }
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+.dark .details-view {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.dark .details-header {
+  border-bottom-color: var(--border);
+  background: var(--background);
+}
+
+.dark .details-header .back-button {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.dark .details-header .back-button:hover {
+  background: var(--muted);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .details-header .back-button,
+  .details-actions .btn-secondary,
+  .details-error .btn-primary {
+    transition-duration: 0.01ms;
+  }
+}

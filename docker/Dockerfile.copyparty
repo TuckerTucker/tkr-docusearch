@@ -71,9 +71,12 @@ CMD ["copyparty", \
     "--no-readme", \
     "-e2dsa", \
     "-a", "admin:admin", \
+    "-a", "uploader:docusearch2024", \
     "--xau", "/hooks/on_upload.py", \
     "--xad", "/hooks/on_delete.py", \
-    "-v", "/uploads::r:rwmd,admin"]
+    "--acao", "*", \
+    "--acam", "GET,POST,PUT,DELETE,OPTIONS", \
+    "-v", "/uploads:uploads:r:rw,uploader"]
 
 # ============================================================================
 # Usage

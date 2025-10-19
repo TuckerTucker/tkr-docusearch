@@ -53,7 +53,7 @@
     position: absolute;
     top: -40px;
     left: 0;
-    background: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    background: var(--primary);
     color: white;
     padding: 8px 16px;
     text-decoration: none;
@@ -72,7 +72,7 @@
 
 /* Skip link hover state */
 .skip-link:hover {
-    background: var(--highlight-focus, oklch(0.5680 0.0878 65.5444));
+    background: var(--primary);
 }
 
 /* Multiple skip links positioning */
@@ -88,7 +88,7 @@
 
 /* Default focus visible style */
 *:focus-visible {
-    outline: 2px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
 
@@ -105,7 +105,7 @@ select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible,
 [role="link"]:focus-visible {
-    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline: 3px solid var(--primary);
     outline-offset: 2px;
     z-index: 10;
 }
@@ -123,7 +123,7 @@ textarea:focus-visible,
 /* Body class added when using keyboard */
 .keyboard-navigating .bbox-rect:focus,
 .keyboard-navigating [data-chunk-id]:focus {
-    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline: 3px solid var(--primary);
     outline-offset: 4px;
 }
 
@@ -131,9 +131,9 @@ textarea:focus-visible,
 .keyboard-navigating button:focus,
 .keyboard-navigating a:focus,
 .keyboard-navigating [role="button"]:focus {
-    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline: 3px solid var(--primary);
     outline-offset: 3px;
-    box-shadow: 0 0 0 5px rgba(97, 130, 68, 0.1);
+    box-shadow: 0 0 0 5px var(--accent);
 }
 
 /* ===== High Contrast Mode Support ===== */
@@ -255,9 +255,9 @@ textarea:focus-visible,
     overflow: visible;
     clip: auto;
     white-space: normal;
-    border: 2px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    border: 2px solid var(--primary);
     border-radius: 4px;
-    background: var(--highlight-hover, oklch(0.8348 0.0426 88.8064));
+    background: var(--accent);
 }
 
 /* ===== Accessible Form Controls ===== */
@@ -266,27 +266,27 @@ textarea:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-    outline: 3px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    outline: 3px solid var(--primary);
     outline-offset: 0;
-    border-color: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    border-color: var(--primary);
 }
 
 /* Required field indicator */
 [required]::after,
 [aria-required="true"]::after {
     content: " *";
-    color: var(--error-color, oklch(0.5471 0.1438 32.9149));
+    color: var(--destructive);
 }
 
 /* Error state */
 [aria-invalid="true"] {
-    border-color: var(--error-color, oklch(0.5471 0.1438 32.9149)) !important;
-    outline-color: var(--error-color, oklch(0.5471 0.1438 32.9149)) !important;
+    border-color: var(--destructive) !important;
+    outline-color: var(--destructive) !important;
 }
 
 /* Error message */
 .error-message {
-    color: var(--error-color, oklch(0.5471 0.1438 32.9149));
+    color: var(--destructive);
     font-size: 0.875rem;
     margin-top: 4px;
 }
@@ -303,8 +303,8 @@ button:disabled,
 
 /* Pressed state */
 [aria-pressed="true"] {
-    background: var(--highlight-active, oklch(0.6180 0.0778 65.5444));
-    border-color: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
 /* Expanded state */
@@ -318,7 +318,7 @@ button:disabled,
 [aria-current="page"],
 [aria-current="true"] {
     font-weight: 700;
-    border-left: 4px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    border-left: 4px solid var(--primary);
     padding-left: 12px;
 }
 
@@ -340,7 +340,7 @@ nav ul li {
     position: absolute;
     z-index: 1000;
     padding: 8px 12px;
-    background: var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    background: var(--primary);
     color: white;
     border-radius: 4px;
     font-size: 0.875rem;
@@ -510,7 +510,7 @@ html {
 
 [dir="rtl"] [data-chunk-id].chunk-active {
     border-left: none;
-    border-right: 4px solid var(--primary-color, oklch(0.6180 0.0778 65.5444));
+    border-right: 4px solid var(--primary);
     padding-left: 1rem;
     padding-right: calc(1rem - 4px);
 }

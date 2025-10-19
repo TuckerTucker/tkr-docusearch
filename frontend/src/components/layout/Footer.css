@@ -3,19 +3,23 @@
  */
 
 .footer {
-  background: var(--color-bg-primary, #ffffff);
-  border-top: 1px solid var(--color-border, #e5e7eb);
+  background: var(--background);
+  border-top: 1px solid var(--border);
   margin-top: auto;
+  /* Allow dropdown to overflow footer bounds */
+  overflow: visible;
 }
 
 .footer__container {
-  max-width: var(--layout-max-width, 1440px);
+  max-width: 1440px;
   margin: 0 auto;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
+  /* Allow dropdown to overflow container bounds */
+  overflow: visible;
 }
 
 @media (max-width: 640px) {
@@ -30,6 +34,10 @@
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  /* Ensure relative positioning for absolute children */
+  position: relative;
+  /* Allow dropdown to overflow */
+  overflow: visible;
 }
 
 .footer__status {
@@ -39,6 +47,6 @@
 
 /* Dark theme styles */
 .dark .footer {
-  background: var(--color-bg-primary, #1f2937);
-  border-top-color: var(--color-border, #374151);
+  background: var(--background);
+  border-top-color: var(--border);
 }

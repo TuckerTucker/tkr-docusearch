@@ -58,14 +58,32 @@ function loadStyle(style) {
     existingLink.remove();
   }
 
-  // Add new style link (if not default kraft-paper)
-  if (style !== 'kraft-paper') {
+  // Force a small delay to ensure the old stylesheet is fully removed
+  // This helps prevent FOUC and ensures clean CSS variable replacement
+  setTimeout(() => {
+    // Always add a new style link (all themes including kraft-paper)
     const link = document.createElement('link');
     link.id = 'theme-style-link';
     link.rel = 'stylesheet';
-    link.href = `/styles/themes/${style}.css`;
+    // Add cache-busting parameter to force reload
+    link.href = `/styles/themes/${style}.css?t=${Date.now()}`;
+
+    // Force a repaint to ensure CSS variables are applied
+    link.onload = () => {
+      document.body.style.display = 'none';
+      document.body.offsetHeight; // Trigger reflow
+      document.body.style.display = '';
+    };
+
     document.head.appendChild(link);
-  }
+
+    // Dispatch custom event for style change
+    window.dispatchEvent(
+      new CustomEvent('stylechange', {
+        detail: { style },
+      })
+    );
+  }, 50); // Small delay to ensure clean removal
 }
 
 /**

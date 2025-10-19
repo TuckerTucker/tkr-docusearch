@@ -285,12 +285,7 @@ export default function DocumentCard({ document, onDelete, onViewDetails }) {
         {/* Status-specific content */}
         {status === 'uploading' && (
           <>
-            <div className="document-card__processing-info">
-              <div className="document-card__status">
-                <LoadingSpinner size="small" />
-                <div className="document-card__status-label">Uploading...</div>
-              </div>
-            </div>
+            <ProcessingInfo stage={processing_stage || 'Uploading...'} progress={processing_progress} />
             <button className="document-card__button" disabled aria-label="Uploading - details unavailable">
               Details
             </button>

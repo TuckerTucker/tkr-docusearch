@@ -739,7 +739,7 @@ body {
   height: 285px;
   background-color: var(--card);
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
@@ -1084,7 +1084,7 @@ body {
 
 /* Failed/Error States */
 .document-card--failed .document-card__badge {
-  background-color: rgba(239, 68, 68, 0.85);
+  background-color: var(--destructive);
 }
 
 .document-card__error-info {

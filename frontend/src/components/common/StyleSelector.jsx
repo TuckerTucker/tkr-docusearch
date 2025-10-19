@@ -49,30 +49,34 @@ export default function StyleSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const isOpeningRef = useRef(false);
 
   const currentTheme = THEMES[style] || THEMES['kraft-paper'];
   const themeList = Object.values(THEMES);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside - register once on mount
   useEffect(() => {
     function handleClickOutside(event) {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
+        !isOpen ||
+        (dropdownRef.current && dropdownRef.current.contains(event.target)) ||
+        (buttonRef.current && buttonRef.current.contains(event.target))
       ) {
-        setIsOpen(false);
+        return;
       }
+
+      console.log('Clicking outside, closing dropdown');
+      setIsOpen(false);
     }
 
-    if (isOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => {
-        document.removeEventListener('click', handleClickOutside);
-      };
-    }
-  }, [isOpen]);
+    // Register listener once on mount
+    document.addEventListener('click', handleClickOutside);
+
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]); // Include isOpen in deps so handler has current value
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
@@ -87,13 +91,20 @@ export default function StyleSelector() {
     setIsOpen(false);
   };
 
+  const handleButtonClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Button clicked, target:', e.target, 'currentTarget:', e.currentTarget, 'isOpen:', isOpen, '-> toggling to:', !isOpen);
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="style-selector">
       <button
         ref={buttonRef}
         type="button"
         className="style-selector__button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleButtonClick}
         onKeyDown={handleKeyDown}
         aria-label="Select visual style"
         aria-expanded={isOpen}
@@ -116,52 +127,51 @@ export default function StyleSelector() {
         </svg>
       </button>
 
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          className="style-selector__dropdown"
-          role="listbox"
-          aria-label="Visual style themes"
-          onKeyDown={handleKeyDown}
-        >
-          <ul className="style-selector__list">
-            {themeList.map((theme) => (
-              <li key={theme.id} className="style-selector__item">
-                <button
-                  type="button"
-                  className={`style-selector__option ${
-                    theme.id === style ? 'style-selector__option--active' : ''
-                  }`}
-                  onClick={() => handleSelectStyle(theme.id)}
-                  role="option"
-                  aria-selected={theme.id === style}
-                >
-                  <div className="style-selector__option-content">
-                    <div className="style-selector__option-name">{theme.name}</div>
-                    <div className="style-selector__option-description">{theme.description}</div>
-                  </div>
-                  {theme.id === style && (
-                    <svg
-                      className="style-selector__checkmark"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div
+        ref={dropdownRef}
+        className={`style-selector__dropdown ${isOpen ? 'style-selector__dropdown--open' : ''}`}
+        role="listbox"
+        aria-label="Visual style themes"
+        aria-hidden={!isOpen}
+        onKeyDown={handleKeyDown}
+      >
+        <ul className="style-selector__list">
+          {themeList.map((theme) => (
+            <li key={theme.id} className="style-selector__item">
+              <button
+                type="button"
+                className={`style-selector__option ${
+                  theme.id === style ? 'style-selector__option--active' : ''
+                }`}
+                onClick={() => handleSelectStyle(theme.id)}
+                role="option"
+                aria-selected={theme.id === style}
+              >
+                <div className="style-selector__option-content">
+                  <div className="style-selector__option-name">{theme.name}</div>
+                  <div className="style-selector__option-description">{theme.description}</div>
+                </div>
+                {theme.id === style && (
+                  <svg
+                    className="style-selector__checkmark"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
