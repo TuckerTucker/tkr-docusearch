@@ -1123,6 +1123,216 @@ body {
   font-weight: 500;
 }
 
+/* ============================================================================
+   Delete Button Styles
+   ============================================================================ */
+
+/* Container for delete button - positioned in top-left of thumbnail */
+.delete-button {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 10;
+  transition: all var(--trans-base) var(--trans-ease);
+}
+
+/* Small delete button (hover state) */
+.delete-button--small {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(82, 82, 82, 0.9);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all var(--trans-base) var(--trans-ease);
+}
+
+/* Show delete button on card hover */
+.document-card:hover .delete-button--small {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.delete-button--small:hover {
+  background-color: rgba(60, 60, 60, 0.95);
+  transform: scale(1.05);
+}
+
+.delete-button--small:active {
+  transform: scale(0.95);
+}
+
+.delete-button--small:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.delete-button--small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Confirmation state (delete + cancel buttons) */
+.delete-button--confirming {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background-color: rgba(82, 82, 82, 0.95);
+  padding: var(--space-3);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  animation: fadeIn var(--trans-base) var(--trans-ease);
+  /* Center horizontally, align to top */
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* Confirm delete button */
+.delete-button__confirm {
+  width: 100%;
+  height: 40px;
+  padding: var(--space-2) var(--space-4);
+  background-color: #EF4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans-fast) var(--trans-ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.delete-button__confirm:hover {
+  background-color: #DC2626;
+  transform: translateY(-1px);
+}
+
+.delete-button__confirm:active {
+  transform: translateY(0);
+}
+
+.delete-button__confirm:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.delete-button__confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Cancel button */
+.delete-button__cancel {
+  width: 100%;
+  height: 36px;
+  padding: var(--space-2) var(--space-3);
+  background-color: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--trans-fast) var(--trans-ease);
+}
+
+.delete-button__cancel:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.delete-button__cancel:active {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.delete-button__cancel:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.delete-button__cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Loading spinner */
+.delete-button__spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-button__spinner-icon {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Accessibility - High contrast mode */
+@media (prefers-contrast: more) {
+  .delete-button--small {
+    border: 2px solid white;
+  }
+
+  .delete-button--confirming {
+    border: 2px solid white;
+  }
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .delete-button,
+  .delete-button--small,
+  .delete-button__confirm,
+  .delete-button__cancel {
+    transition-duration: 0.01ms;
+  }
+
+  .delete-button__spinner-icon {
+    animation-duration: 2s;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
 /* ============================================
    Upload Modal
    ============================================ */

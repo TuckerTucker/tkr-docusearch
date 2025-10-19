@@ -9,10 +9,15 @@ Consumers: ui-agent (Wave 4)
 Contract: integration-contracts/03-documents-api.contract.md
 """
 
+import base64
 import logging
+import os
 import re
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -21,8 +26,11 @@ from pydantic import BaseModel, Field
 from src.config.filter_groups import resolve_filter_group
 from src.config.image_config import PAGE_IMAGE_DIR
 from src.processing.api import structure_router
+from src.processing.cover_art_utils import delete_document_cover_art
 from src.processing.file_validator import get_supported_extensions
+from src.processing.image_utils import cleanup_temp_directories, delete_document_images
 from src.storage import ChromaClient
+from src.storage.markdown_utils import delete_document_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +149,21 @@ class SupportedFormatsResponse(BaseModel):
     groups: List[FormatGroup] = Field(..., description="Format groups for filtering")
 
 
+class DeleteDocumentResponse(BaseModel):
+    """Response model for DELETE /documents/{doc_id}."""
+
+    success: bool = Field(..., description="Whether deletion was successful")
+    doc_id: str = Field(..., description="Document identifier")
+    filename: Optional[str] = Field(None, description="Original filename")
+    deleted: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Details of what was deleted (chromadb, images, markdown, etc.)",
+    )
+    errors: List[str] = Field(
+        default_factory=list, description="Non-critical errors during cleanup"
+    )
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -168,6 +191,59 @@ def validate_filename(filename: str) -> bool:
         True if valid, False otherwise
     """
     return bool(FILENAME_PATTERN.match(filename))
+
+
+def delete_from_copyparty(filename: str) -> bool:
+    """Delete file from copyparty file server.
+
+    This is STAGE 6 of document deletion - removes the original uploaded file from copyparty.
+
+    Args:
+        filename: Original filename in uploads directory
+
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    # Get copyparty configuration from environment
+    copyparty_host = os.getenv("COPYPARTY_HOST", "localhost")
+    copyparty_port = os.getenv("COPYPARTY_PORT", "8000")
+    copyparty_user = os.getenv("COPYPARTY_USER", "admin")
+    copyparty_password = os.getenv("COPYPARTY_PASSWORD", "admin")
+
+    # Build DELETE request URL
+    # URL format: http://localhost:8000/uploads/{filename}
+    url = f"http://{copyparty_host}:{copyparty_port}/uploads/{quote(filename)}"
+
+    try:
+        # Create request with Basic Authentication
+        credentials = f"{copyparty_user}:{copyparty_password}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+        req = urllib.request.Request(
+            url,
+            method="DELETE",
+            headers={"Authorization": f"Basic {encoded_credentials}"},
+        )
+
+        # Send DELETE request
+        with urllib.request.urlopen(req, timeout=10) as response:
+            response_text = response.read().decode("utf-8")
+            logger.info(f"Copyparty DELETE response: {response_text}")
+            return True
+
+    except urllib.error.HTTPError as e:
+        # Log but don't fail - file might already be deleted
+        error_body = e.read().decode("utf-8") if e.fp else ""
+        logger.warning(
+            f"Copyparty DELETE failed for {filename}: {e.code} {e.reason} - {error_body}"
+        )
+        return False
+    except urllib.error.URLError as e:
+        logger.warning(f"Copyparty DELETE network error for {filename}: {e.reason}")
+        return False
+    except Exception as e:
+        logger.warning(f"Copyparty DELETE unexpected error for {filename}: {e}")
+        return False
 
 
 def get_chroma_client() -> ChromaClient:
@@ -1361,3 +1437,196 @@ async def get_image(doc_id: str, filename: str):
             "Cache-Control": "max-age=86400",  # 24 hours
         },
     )
+
+
+@router.delete(
+    "/documents/{doc_id}",
+    response_model=DeleteDocumentResponse,
+    summary="Delete document",
+    description="Permanently delete a document and all associated data (embeddings, images, metadata)",
+)
+async def delete_document(doc_id: str):  # noqa: C901
+    """Delete a document and all associated data.
+
+    This performs a comprehensive 6-stage deletion:
+    1. ChromaDB embeddings (visual and text) - CRITICAL
+    2. Page images and thumbnails - HIGH
+    3. Cover art (audio files) - MEDIUM
+    4. Markdown files - MEDIUM
+    5. Temporary directories - LOW
+    6. Original file from copyparty - MEDIUM
+
+    Args:
+        doc_id: Document identifier (SHA-256 hash)
+
+    Returns:
+        DeleteDocumentResponse with deletion details
+
+    Raises:
+        HTTPException: 404 if document not found, 400 if invalid doc_id, 500 on critical errors
+    """
+    # Validate doc_id
+    if not validate_doc_id(doc_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Invalid document ID format",
+                "code": "INVALID_DOC_ID",
+                "details": {"doc_id": doc_id},
+            },
+        )
+
+    # Track what was deleted and any errors
+    deleted = {}
+    errors = []
+    filename = None
+
+    try:
+        client = get_chroma_client()
+
+        # First, check if document exists and get filename
+        visual_data = client._visual_collection.get(where={"doc_id": doc_id}, limit=1)
+        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
+
+        if not visual_data["ids"] and not text_data["ids"]:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Document not found",
+                    "code": "DOCUMENT_NOT_FOUND",
+                    "details": {"doc_id": doc_id},
+                },
+            )
+
+        # Extract filename for response
+        if visual_data.get("metadatas"):
+            filename = visual_data["metadatas"][0].get("filename")
+        elif text_data.get("metadatas"):
+            filename = text_data["metadatas"][0].get("filename")
+
+        # STAGE 1: Delete ChromaDB embeddings (CRITICAL)
+        try:
+            visual_count, text_count = client.delete_document(doc_id)
+            deleted["chromadb"] = {
+                "visual_embeddings": visual_count,
+                "text_embeddings": text_count,
+                "status": "deleted",
+            }
+            logger.info(
+                f"Deleted ChromaDB embeddings for {doc_id}: "
+                f"{visual_count} visual, {text_count} text"
+            )
+        except Exception as e:
+            error_msg = f"Failed to delete ChromaDB embeddings: {str(e)}"
+            logger.error(error_msg)
+            # This is critical - raise exception
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "Failed to delete document embeddings",
+                    "code": "CHROMADB_DELETE_ERROR",
+                    "details": {"doc_id": doc_id, "message": str(e)},
+                },
+            )
+
+        # STAGE 2: Delete page images (HIGH priority)
+        try:
+            page_count, thumb_count = delete_document_images(doc_id)
+            deleted["page_images"] = {
+                "pages": page_count,
+                "thumbnails": thumb_count,
+                "status": "deleted",
+            }
+            logger.info(
+                f"Deleted page images for {doc_id}: {page_count} pages, {thumb_count} thumbnails"
+            )
+        except Exception as e:
+            error_msg = f"Failed to delete page images: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["page_images"] = {"status": "error", "message": str(e)}
+
+        # STAGE 3: Delete cover art (MEDIUM priority - audio files only)
+        try:
+            cover_deleted = delete_document_cover_art(doc_id)
+            deleted["cover_art"] = {
+                "deleted": cover_deleted,
+                "status": "deleted" if cover_deleted else "not_found",
+            }
+            if cover_deleted:
+                logger.info(f"Deleted cover art for {doc_id}")
+        except Exception as e:
+            error_msg = f"Failed to delete cover art: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["cover_art"] = {"status": "error", "message": str(e)}
+
+        # STAGE 4: Delete markdown (MEDIUM priority)
+        try:
+            markdown_deleted = delete_document_markdown(doc_id)
+            deleted["markdown"] = {
+                "deleted": markdown_deleted,
+                "status": "deleted" if markdown_deleted else "not_found",
+            }
+            if markdown_deleted:
+                logger.info(f"Deleted markdown for {doc_id}")
+        except Exception as e:
+            error_msg = f"Failed to delete markdown: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["markdown"] = {"status": "error", "message": str(e)}
+
+        # STAGE 5: Cleanup temp directories (LOW priority)
+        try:
+            temp_cleaned = cleanup_temp_directories(doc_id)
+            deleted["temp_directories"] = {
+                "cleaned": temp_cleaned,
+                "status": "cleaned" if temp_cleaned else "none_found",
+            }
+            if temp_cleaned:
+                logger.info(f"Cleaned up temp directories for {doc_id}")
+        except Exception as e:
+            error_msg = f"Failed to cleanup temp directories: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["temp_directories"] = {"status": "error", "message": str(e)}
+
+        # STAGE 6: Delete file from copyparty (MEDIUM priority)
+        if filename:
+            try:
+                copyparty_deleted = delete_from_copyparty(filename)
+                deleted["copyparty"] = {
+                    "deleted": copyparty_deleted,
+                    "status": "deleted" if copyparty_deleted else "failed",
+                }
+                if copyparty_deleted:
+                    logger.info(f"Deleted file from copyparty: {filename}")
+                else:
+                    logger.warning(f"Failed to delete file from copyparty: {filename}")
+            except Exception as e:
+                error_msg = f"Failed to delete from copyparty: {str(e)}"
+                logger.warning(error_msg)
+                errors.append(error_msg)
+                deleted["copyparty"] = {"status": "error", "message": str(e)}
+        else:
+            deleted["copyparty"] = {"status": "skipped", "message": "No filename available"}
+
+        # Log summary
+        logger.info(f"Document deletion complete for {doc_id}: {len(errors)} non-critical errors")
+
+        return DeleteDocumentResponse(
+            success=True, doc_id=doc_id, filename=filename, deleted=deleted, errors=errors
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error deleting document {doc_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Internal server error during deletion",
+                "code": "DELETE_ERROR",
+                "details": {"doc_id": doc_id, "message": str(e)},
+            },
+        )

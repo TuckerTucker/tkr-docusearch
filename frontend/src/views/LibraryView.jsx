@@ -141,14 +141,25 @@ export default function LibraryView() {
 
   // Handle document deletion
   const handleDeleteDocument = useCallback(
-    async (docId) => {
-      if (window.confirm('Are you sure you want to delete this document?')) {
-        try {
-          await deleteDocument(docId);
-        } catch (err) {
-          console.error('Error deleting document:', err);
-          alert(`Failed to delete document: ${err.message}`);
-        }
+    async (docId, filename) => {
+      // Two-step confirmation handled by DeleteButton component
+      try {
+        const result = await deleteDocument(docId);
+        console.log(`✓ Document deleted: ${filename}`, result);
+
+        // Show success message (using console for now, can add toast later)
+        // Success feedback is implicit - card fades out with optimistic update
+      } catch (err) {
+        console.error('Error deleting document:', err);
+
+        // Show error message (using alert for now, can add toast later)
+        const errorMessage = err.statusCode === 404
+          ? 'Document not found. It may have already been deleted.'
+          : err.statusCode === 500
+          ? 'Server error while deleting document. Please try again.'
+          : `Failed to delete document: ${err.message}`;
+
+        alert(errorMessage);
       }
     },
     [deleteDocument]

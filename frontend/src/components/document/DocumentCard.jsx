@@ -9,7 +9,9 @@
  */
 
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import DocumentBadge from './DocumentBadge.jsx';
+import DeleteButton from './DeleteButton.jsx';
 import LoadingSpinner from '../common/LoadingSpinner.jsx';
 import { DEFAULT_ALBUM_ART_SVG } from '../../utils/assets.js';
 
@@ -232,11 +234,12 @@ function ErrorInfo({ message }) {
  * @param {string} [props.document.cover_art_url] - Cover art URL (audio files)
  * @param {string} [props.document.status='completed'] - Document status
  * @param {string} [props.document.error_message] - Error message (if failed)
- * @param {Function} [props.onDelete] - Delete handler
+ * @param {Function} [props.onDelete] - Delete handler (called with doc_id, filename)
  * @param {Function} [props.onViewDetails] - View details handler
  * @returns {JSX.Element} Document card
  */
 export default function DocumentCard({ document, onDelete, onViewDetails }) {
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     doc_id,
     filename,
@@ -264,9 +267,25 @@ export default function DocumentCard({ document, onDelete, onViewDetails }) {
     .filter(Boolean)
     .join(' ');
 
+  // Handle delete with loading state
+  const handleDelete = async (docId, filename) => {
+    if (!onDelete) {
+      console.warn('No onDelete handler provided to DocumentCard');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(docId, filename);
+    } catch (error) {
+      console.error('Delete error:', error);
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <article className={cardClasses} role="article" aria-label={`Document: ${filename}`}>
-      {/* Left column: Thumbnail + Badge */}
+      {/* Left column: Thumbnail + Badge + Delete Button */}
       <div className="document-card__left">
         <Thumbnail
           url={thumbnailSrc}
@@ -275,6 +294,16 @@ export default function DocumentCard({ document, onDelete, onViewDetails }) {
           status={status}
         />
         <DocumentBadge filename={filename} uploadDate={upload_date} />
+
+        {/* Delete button - only show for completed documents */}
+        {status === 'completed' && onDelete && (
+          <DeleteButton
+            docId={doc_id}
+            filename={filename}
+            onDelete={handleDelete}
+            isDeleting={isDeleting}
+          />
+        )}
       </div>
 
       {/* Right column: Title + Status/Button */}

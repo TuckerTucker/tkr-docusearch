@@ -328,8 +328,15 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
   };
 
   // Proceed with actual upload after duplicate check
-  const proceedWithUpload = async (validFiles, registrations, allFiles, successCount, failCount) => {
+  const proceedWithUpload = async (validFiles, registrations, allFiles, successCount = 0, failCount = 0) => {
     setIsUploading(true);
+
+    // Get skipped files from uploads state (files marked as duplicate that user chose to skip)
+    const skippedFiles = new Set(
+      uploads
+        .filter(u => u.status === 'duplicate' && !u.forceUpload)
+        .map(u => u.filename)
+    );
 
     // Filter out skipped files
     const filesToUpload = validFiles.filter((vf) => !skippedFiles.has(vf.file.name));

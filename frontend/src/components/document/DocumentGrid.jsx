@@ -84,7 +84,7 @@ export default function DocumentGrid({
         <DocumentCard
           key={doc.doc_id || doc.temp_id}
           document={doc}
-          onDelete={onDeleteDocument ? () => onDeleteDocument(doc.doc_id) : undefined}
+          onDelete={onDeleteDocument ? (docId, filename) => onDeleteDocument(docId, filename) : undefined}
           onViewDetails={onViewDetails}
         />
       ))}
