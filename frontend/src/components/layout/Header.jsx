@@ -38,7 +38,7 @@ export default function Header({
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
-              <span className="header__back-text">Back</span>
+              <span className="header__back-text">Back to Library</span>
             </Link>
           )}
           <h1 className="header__title">{title}</h1>

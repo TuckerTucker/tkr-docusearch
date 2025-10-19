@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useTitle } from '../../contexts/TitleContext';
 import Header from './Header';
 import Footer from './Footer';
 import './Layout.css';
@@ -11,20 +12,22 @@ import './Layout.css';
  *
  * Route-specific header props:
  * - / → Document Library (with research link)
- * - /details/:id → Document Details (with back button)
+ * - /details/:id → Dynamic filename (with back button)
  * - /research → Research (with back button)
  */
 export default function Layout() {
   const location = useLocation();
+  const { title, isLoading } = useTitle();
 
   // Determine header props based on current route
   const getHeaderProps = () => {
     const path = location.pathname;
 
-    // Details page
+    // Details page - use dynamic title from context
+    // Don't render title until loaded to prevent flash
     if (path.startsWith('/details/')) {
       return {
-        title: 'Document Details',
+        title: isLoading ? '' : title,
         showBackButton: true,
         backTo: '/',
         showResearchLink: false

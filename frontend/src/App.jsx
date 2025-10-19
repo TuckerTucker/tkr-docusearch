@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
+import { TitleProvider } from './contexts/TitleContext'
 import Layout from './components/layout/Layout'
 import LibraryView from './views/LibraryView'
 import DetailsView from './views/DetailsView'
@@ -24,13 +25,15 @@ import ResearchView from './views/ResearchView'
 function App() {
   return (
     <ErrorBoundary>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<LibraryView />} />
-          <Route path="/details/:id" element={<DetailsView />} />
-          <Route path="/research" element={<ResearchView />} />
-        </Route>
-      </Routes>
+      <TitleProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<LibraryView />} />
+            <Route path="/details/:id" element={<DetailsView />} />
+            <Route path="/research" element={<ResearchView />} />
+          </Route>
+        </Routes>
+      </TitleProvider>
     </ErrorBoundary>
   )
 }

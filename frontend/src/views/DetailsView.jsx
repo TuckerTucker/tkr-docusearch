@@ -16,10 +16,10 @@
  * Wave 2 - Details Agent
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentDetails } from '../hooks/useDocumentDetails.js';
-import { useClipboard } from '../hooks/useClipboard.js';
+import { useTitle } from '../contexts/TitleContext.jsx';
 import ContentViewer from '../features/details/ContentViewer.jsx';
 import TextAccordion from '../features/details/TextAccordion.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
@@ -27,12 +27,28 @@ import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
 export default function DetailsView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { setTitle, setIsLoading: setTitleLoading } = useTitle();
 
   // Fetch document and markdown
   const { document, markdown, isLoading, error } = useDocumentDetails(id);
 
-  // Clipboard for download actions
-  const { copy } = useClipboard();
+  // Update page title when document loads
+  useEffect(() => {
+    // Set loading state immediately on mount
+    setTitleLoading(true);
+
+    if (document?.filename) {
+      setTitle(document.filename);
+      setTitleLoading(false);
+      window.document.title = document.filename;
+    }
+
+    return () => {
+      setTitle('Document Library');
+      setTitleLoading(false);
+      window.document.title = 'frontend'; // Reset on unmount
+    };
+  }, [document, setTitle, setTitleLoading]);
 
   // Ref to access audio player methods (for accordion click-to-seek)
   const audioPlayerRef = useRef(null);
@@ -44,25 +60,6 @@ export default function DetailsView() {
   // Handle back navigation
   const handleBack = () => {
     navigate('/');
-  };
-
-  // Handle download markdown
-  const handleDownloadMarkdown = () => {
-    if (document?.doc_id) {
-      const url = `/documents/${document.doc_id}/markdown`;
-      const link = window.document.createElement('a');
-      link.href = url;
-      link.download = '';
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
-    }
-  };
-
-  // Handle copy document link
-  const handleCopyLink = () => {
-    const url = `${window.location.origin}/details/${id}`;
-    copy(url);
   };
 
   // Handle audio time update (for accordion sync)
@@ -141,43 +138,6 @@ export default function DetailsView() {
 
   return (
     <div className="details-view">
-      <header className="details-header">
-        <button onClick={handleBack} className="back-button" aria-label="Back to library">
-          ← Back to Library
-        </button>
-
-        <div className="details-title">
-          <h1>{document.filename || 'Document Details'}</h1>
-          <div className="details-metadata-inline">
-            <span className="file-type-badge">{document.file_type?.toUpperCase()}</span>
-            {document.upload_date && (
-              <span className="upload-date">
-                Uploaded: {new Date(document.upload_date).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="details-actions">
-          {document.metadata?.markdown_available && (
-            <button
-              onClick={handleDownloadMarkdown}
-              className="btn-secondary"
-              aria-label="Download markdown"
-            >
-              📥 Download
-            </button>
-          )}
-          <button
-            onClick={handleCopyLink}
-            className="btn-secondary"
-            aria-label="Copy link"
-          >
-            🔗 Copy Link
-          </button>
-        </div>
-      </header>
-
       <div className="details-content">
         <div className="details-viewer">
           <ContentViewer
