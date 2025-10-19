@@ -55,7 +55,7 @@ export default function ContentViewer({
   console.log('[ContentViewer] Is audio?', isAudio);
   console.log('[ContentViewer] Is visual?', isVisual);
 
-  if (isVisual && document.pageImages && document.pageImages.length > 0) {
+  if (isVisual && document.pages && document.pages.length > 0) {
     console.log('[ContentViewer] Rendering Slideshow');
     return (
       <Slideshow

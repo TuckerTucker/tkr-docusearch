@@ -19,7 +19,7 @@ import { useKeyboardNav } from '../../hooks/useKeyboardNav.js';
  * @param {Function} [props.onPageChange] - Callback when page changes
  */
 export default function Slideshow({ document, initialPage = 1, onPageChange }) {
-  const pages = document?.pageImages || [];
+  const pages = document?.pages || [];
   const totalPages = pages.length;
 
   const [currentPage, setCurrentPage] = useState(initialPage);
