@@ -431,11 +431,17 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     # Copyparty may add timestamp suffix, so strip it for matching
     base_filename = request.filename
     # Remove Copyparty timestamp pattern: filename.ext-timestamp-random.ext
+    # Pattern: original.ext-1234567890.123456-AbCdEf.ext
+    # We want to extract: original.ext
     import re
 
-    match = re.match(r"(.+?)-\d+\.\d+-[A-Za-z0-9]+(\.[^.]+)$", request.filename)
+    # Match pattern: (anything)-digits.digits-random_string.extension
+    # Group 1: everything before the timestamp (the original filename with extension)
+    # The random string can contain letters, numbers, dashes, and underscores
+    match = re.match(r"(.+)-\d+\.\d+-[A-Za-z0-9_-]+\.[^.]+$", request.filename)
     if match:
-        base_filename = match.group(1) + match.group(2)
+        # The base filename is just group 1 (which already includes the original extension)
+        base_filename = match.group(1)
         logger.info(
             f"Detected Copyparty filename modification: {request.filename} → {base_filename}"
         )
@@ -641,11 +647,14 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
     Client sends list of files to upload, server generates doc_ids and returns them.
     Files are matched to doc_ids when webhook receives upload notification.
 
+    Also checks for duplicate filenames and returns existing document info.
+
     Args:
         websocket: WebSocket connection
         message: Registration message with 'files' list
     """
     files = message.get("files", [])
+    force_upload = message.get("force_upload", False)  # Allow forcing duplicate uploads
 
     if not files:
         await get_broadcaster().send_to_client(
@@ -653,7 +662,22 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
         )
         return
 
-    logger.info(f"📋 Registering batch upload: {len(files)} files")
+    logger.info(f"📋 Registering batch upload: {len(files)} files (force={force_upload})")
+
+    # If force_upload=True, clean up any previous registrations for the same filenames
+    # This ensures we don't have multiple pending registrations for the same file
+    if force_upload:
+        filenames_to_register = {f.get("filename") for f in files if f.get("filename")}
+        stale_doc_ids = [
+            doc_id
+            for doc_id, info in list(pending_uploads.items())
+            if info.get("base_filename") in filenames_to_register
+        ]
+        for doc_id in stale_doc_ids:
+            logger.info(
+                f"🧹 Removing stale registration: {pending_uploads[doc_id]['base_filename']} → {doc_id[:8]}..."
+            )
+            del pending_uploads[doc_id]
 
     registrations = []
     for file_info in files:
@@ -663,6 +687,69 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
         if not filename:
             logger.warning("File registration missing filename, skipping")
             continue
+
+        # Check for existing document with same filename (unless forced)
+        is_duplicate = False
+        existing_doc = None
+
+        if not force_upload:
+            try:
+                # Query ChromaDB directly to check for existing files
+                # (Avoid HTTP self-call which causes timeout)
+                from src.storage.chroma_client import ChromaClient
+
+                chroma = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+
+                # Get all documents from text collection (contains metadata)
+                try:
+                    all_docs = chroma._text_collection.get(include=["metadatas"])
+
+                    # Extract unique filenames from metadata
+                    seen_filenames = set()
+                    for metadata in all_docs.get("metadatas", []):
+                        if metadata and "filename" in metadata:
+                            stored_filename = metadata["filename"]
+
+                            # Skip if already checked
+                            if stored_filename in seen_filenames:
+                                continue
+                            seen_filenames.add(stored_filename)
+
+                            # Exact match (for non-Copyparty uploads)
+                            if stored_filename == filename:
+                                is_duplicate = True
+                                existing_doc = {
+                                    "doc_id": metadata.get("doc_id", ""),
+                                    "filename": stored_filename,
+                                    "date_added": metadata.get("date_added", ""),
+                                    "file_type": metadata.get("file_type", ""),
+                                }
+                                logger.info(f"  ⚠️  Duplicate detected (exact): {filename}")
+                                break
+
+                            # Prefix match (for Copyparty deduplication)
+                            # Check if stored filename starts with original filename + "-"
+                            # Example: "file.pdf" matches "file.pdf-1234567890.123456-abc123.pdf"
+                            if stored_filename.startswith(filename + "-"):
+                                is_duplicate = True
+                                existing_doc = {
+                                    "doc_id": metadata.get("doc_id", ""),
+                                    "filename": stored_filename,
+                                    "date_added": metadata.get("date_added", ""),
+                                    "file_type": metadata.get("file_type", ""),
+                                }
+                                logger.info(
+                                    f"  ⚠️  Duplicate detected (Copyparty suffix): {filename} → {stored_filename}"
+                                )
+                                break
+
+                except Exception as coll_err:
+                    logger.debug(f"Text collection query failed (may be empty): {coll_err}")
+                    # Collection might not exist yet or be empty - this is OK
+
+            except Exception as e:
+                logger.warning(f"Could not check for duplicates: {e}")
+                # Continue with registration even if duplicate check fails
 
         # Generate doc_id from filename + timestamp for uniqueness
         # This ensures each upload gets a unique doc_id even if filename is reused
@@ -677,11 +764,29 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
             "base_filename": filename,  # Store base filename for matching against Copyparty-modified names
         }
 
-        registrations.append({"filename": filename, "doc_id": doc_id, "expected_size": size})
+        logger.info(
+            f"📝 Stored pending upload: base_filename='{filename}' → doc_id={doc_id[:8]}... (force={force_upload})"
+        )
 
-        logger.info(f"  ✓ Registered: {filename} → {doc_id[:8]}...")
+        registration = {
+            "filename": filename,
+            "doc_id": doc_id,
+            "expected_size": size,
+            "is_duplicate": is_duplicate,
+        }
 
-    # Send response with all doc_ids
+        # Include existing document info if duplicate
+        if is_duplicate and existing_doc:
+            registration["existing_doc"] = existing_doc
+
+        registrations.append(registration)
+
+        if is_duplicate:
+            logger.info(f"  ⚠️  Registered (duplicate): {filename} → {doc_id[:8]}...")
+        else:
+            logger.info(f"  ✓ Registered: {filename} → {doc_id[:8]}...")
+
+    # Send response with all doc_ids and duplicate info
     await get_broadcaster().send_to_client(
         websocket,
         {
@@ -691,7 +796,10 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
         },
     )
 
-    logger.info(f"✅ Batch registration complete: {len(registrations)} files")
+    duplicate_count = sum(1 for r in registrations if r.get("is_duplicate"))
+    logger.info(
+        f"✅ Batch registration complete: {len(registrations)} files ({duplicate_count} duplicates detected)"
+    )
 
 
 @app.websocket("/ws")

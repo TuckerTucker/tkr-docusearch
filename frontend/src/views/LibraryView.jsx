@@ -82,8 +82,14 @@ export default function LibraryView() {
 
             // Look up temp document by doc_id (using fresh state to avoid stale closures)
             const tempDoc = getTempDocument(doc_id);
+            const allTempDocs = useDocumentStore.getState().tempDocuments;
 
-            console.log('🔍 Looking for temp doc:', { doc_id: doc_id?.slice(0, 8), found: !!tempDoc, tempDocCount: getTempDocumentCount() });
+            console.log('🔍 Looking for temp doc:', {
+              incoming_doc_id: doc_id,
+              found: !!tempDoc,
+              tempDocCount: getTempDocumentCount(),
+              all_temp_doc_ids: Array.from(allTempDocs.keys())
+            });
 
             if (tempDoc) {
               if (status === 'completed') {

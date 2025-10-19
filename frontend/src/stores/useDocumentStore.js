@@ -78,7 +78,8 @@ export const useDocumentStore = create(
             status: 'uploading',
             progress: 0,
           });
-          console.log(`[Store] addTempDocument: ${doc_id.slice(0, 8)} - Map size: ${newMap.size}`);
+          console.log(`[Store] addTempDocument: FULL doc_id=${doc_id}, filename=${filename}, Map size: ${newMap.size}`);
+          console.log(`[Store] All temp doc_ids in map:`, Array.from(newMap.keys()));
           return {
             tempDocuments: newMap,
             tempDocumentsVersion: state.tempDocumentsVersion + 1
@@ -123,6 +124,12 @@ export const useDocumentStore = create(
             tempDocuments: newMap,
             tempDocumentsVersion: state.tempDocumentsVersion + 1
           };
+        }),
+
+      clearAllTempDocuments: () =>
+        set({
+          tempDocuments: new Map(),
+          tempDocumentsVersion: 0
         }),
     }),
     {

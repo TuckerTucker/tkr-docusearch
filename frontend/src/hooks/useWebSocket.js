@@ -97,16 +97,17 @@ export function useWebSocket(url, options = {}) {
    * Register upload batch and wait for response
    *
    * @param {Array<{filename: string, size: number}>} files - Files to register
-   * @returns {Promise<Array<{filename: string, doc_id: string, expected_size: number}>>} Registrations
+   * @param {boolean} [forceUpload=false] - Force upload even if duplicates exist
+   * @returns {Promise<Array<{filename: string, doc_id: string, expected_size: number, is_duplicate: boolean, existing_doc?: Object}>>} Registrations
    */
-  const registerUploadBatch = (files) => {
+  const registerUploadBatch = (files, forceUpload = false) => {
     return new Promise((resolve, reject) => {
       if (!wsRef.current || !isConnected) {
         reject(new Error('WebSocket not connected'));
         return;
       }
 
-      console.log('📤 Sending registration request for', files.length, 'files');
+      console.log('📤 Sending registration request for', files.length, 'files', forceUpload ? '(forced)' : '');
 
       let timeoutId;
 
@@ -140,7 +141,8 @@ export function useWebSocket(url, options = {}) {
       // Send registration request
       wsRef.current.send({
         type: 'register_upload_batch',
-        files: files.map(f => ({ filename: f.name, size: f.size }))
+        files: files.map(f => ({ filename: f.name, size: f.size })),
+        force_upload: forceUpload
       });
 
       // Timeout after 10 seconds
