@@ -76,7 +76,7 @@ CMD ["copyparty", \
     "--xad", "/hooks/on_delete.py", \
     "--acao", "*", \
     "--acam", "GET,POST,PUT,DELETE,OPTIONS", \
-    "-v", "/uploads:uploads:r:rw,uploader"]
+    "-v", "/uploads:uploads:r:rwmd,admin:rw,uploader"]
 
 # ============================================================================
 # Usage
