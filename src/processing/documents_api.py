@@ -13,6 +13,7 @@ import base64
 import logging
 import os
 import re
+import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -43,6 +44,35 @@ router.include_router(structure_router)
 # Validation patterns (security)
 DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
 FILENAME_PATTERN = re.compile(r"^(page\d{3}(_thumb\.jpg|\.png)|cover\.(jpg|jpeg|png|svg))$")
+
+
+def _sanitize_filename_for_header(filename: str) -> str:
+    """
+    Sanitize filename for Content-Disposition header.
+
+    Removes non-ASCII characters that can't be encoded in latin-1.
+    Converts Unicode characters to ASCII equivalents where possible.
+
+    Args:
+        filename: Original filename (may contain Unicode)
+
+    Returns:
+        ASCII-safe filename for HTTP headers
+
+    Example:
+        "Screenshot 2025-10-18 at 8.45.25\u202fPM.png"
+        → "Screenshot 2025-10-18 at 8.45.25 PM.png"
+    """
+    # Normalize Unicode to closest ASCII equivalent (NFKD decomposition)
+    normalized = unicodedata.normalize("NFKD", filename)
+
+    # Encode to ASCII, ignoring non-ASCII characters
+    ascii_filename = normalized.encode("ascii", "ignore").decode("ascii")
+
+    # Clean up any double spaces that might result
+    ascii_filename = " ".join(ascii_filename.split())
+
+    return ascii_filename
 
 
 # ============================================================================
@@ -1005,13 +1035,15 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
 
                 logger.info(f"Generated markdown with {len(chunks)} chunk markers for {doc_id}")
 
-                # Return temporary file
+                # Return temporary file with sanitized filename
+                safe_filename = _sanitize_filename_for_header(filename)
                 return FileResponse(
                     path=temp_path,
                     media_type="text/markdown",
-                    filename=filename,
+                    filename=safe_filename,
                     headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"',
+                        "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                        "Access-Control-Allow-Origin": "*",
                     },
                 )
             else:
@@ -1021,13 +1053,15 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
             logger.warning(f"Failed to insert chunk markers for {doc_id}: {e}", exc_info=True)
             # Fall through to return original markdown
 
-    # Return file with appropriate headers
+    # Return file with appropriate headers and sanitized filename
+    safe_filename = _sanitize_filename_for_header(filename)
     return FileResponse(
         path=markdown_path,
         media_type="text/markdown",
-        filename=filename,
+        filename=safe_filename,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1096,13 +1130,15 @@ async def get_vtt(doc_id: str):
         logger.warning(f"Failed to get filename from ChromaDB: {e}")
         filename = f"{doc_id}.vtt"
 
-    # Return file with appropriate headers
+    # Return file with appropriate headers and sanitized filename
+    safe_filename = _sanitize_filename_for_header(filename)
     return FileResponse(
         path=vtt_path,
         media_type="text/vtt",
-        filename=filename,
+        filename=safe_filename,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1206,6 +1242,7 @@ async def get_audio(doc_id: str):
             headers={
                 "Accept-Ranges": "bytes",  # Enable seeking
                 "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                "Access-Control-Allow-Origin": "*",
             },
         )
 
@@ -1291,6 +1328,7 @@ async def get_cover(doc_id: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=31536000, immutable",  # 1 year
+            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1435,6 +1473,7 @@ async def get_image(doc_id: str, filename: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=86400",  # 24 hours
+            "Access-Control-Allow-Origin": "*",
         },
     )
 

@@ -106,6 +106,10 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
     enabled: totalPages > 0,
   });
 
+  // Debug logging
+  console.log('[Slideshow] Total pages:', totalPages, 'Type:', typeof totalPages);
+  console.log('[Slideshow] Should show controls?', totalPages > 1);
+
   // No pages available
   if (totalPages === 0) {
     return (
@@ -121,44 +125,46 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
 
   return (
     <div className="slideshow">
-      <div className="slideshow-controls">
-        <button
-          className="slideshow-button"
-          onClick={previousPage}
-          disabled={currentPage === 1}
-          aria-label="Previous page"
-        >
-          ← Previous
-        </button>
+      {totalPages > 1 && (
+        <div className="slideshow-controls">
+          <button
+            className="slideshow-button"
+            onClick={previousPage}
+            disabled={currentPage === 1}
+            aria-label="Previous page"
+          >
+            ← Previous
+          </button>
 
-        <form onSubmit={handlePageInputSubmit} className="slideshow-page-input">
-          <label htmlFor="page-number" className="sr-only">
-            Page number
-          </label>
-          <input
-            id="page-number"
-            type="number"
-            min="1"
-            max={totalPages}
-            value={pageInput}
-            onChange={handlePageInputChange}
-            className="page-input"
-            aria-label="Current page"
-          />
-          <span className="page-total" aria-label="Total pages">
-            / {totalPages}
-          </span>
-        </form>
+          <form onSubmit={handlePageInputSubmit} className="slideshow-page-input">
+            <label htmlFor="page-number" className="sr-only">
+              Page number
+            </label>
+            <input
+              id="page-number"
+              type="number"
+              min="1"
+              max={totalPages}
+              value={pageInput}
+              onChange={handlePageInputChange}
+              className="page-input"
+              aria-label="Current page"
+            />
+            <span className="page-total" aria-label="Total pages">
+              / {totalPages}
+            </span>
+          </form>
 
-        <button
-          className="slideshow-button"
-          onClick={nextPage}
-          disabled={currentPage === totalPages}
-          aria-label="Next page"
-        >
-          Next →
-        </button>
-      </div>
+          <button
+            className="slideshow-button"
+            onClick={nextPage}
+            disabled={currentPage === totalPages}
+            aria-label="Next page"
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       <div className="slideshow-image-container">
         {imageSrc ? (
@@ -174,9 +180,11 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
         )}
       </div>
 
-      <div className="slideshow-keyboard-hint" aria-live="polite">
-        Use arrow keys (← →) to navigate
-      </div>
+      {totalPages > 1 && (
+        <div className="slideshow-keyboard-hint" aria-live="polite">
+          Use arrow keys (← →) to navigate
+        </div>
+      )}
     </div>
   );
 });

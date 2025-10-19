@@ -46,9 +46,9 @@ export default function ContentViewer({
   console.log('[ContentViewer] File extension:', fileExtension);
   console.log('[ContentViewer] Filename:', document.filename);
 
-  // Document types with visual pages (PDF, DOCX, PPTX)
+  // Document types with visual pages (PDF, DOCX, PPTX, Images)
   // Check both file_type field AND file extension (fallback for when file_type is null)
-  const visualTypes = ['pdf', 'docx', 'pptx'];
+  const visualTypes = ['pdf', 'docx', 'pptx', 'png', 'jpg', 'jpeg', 'tiff', 'bmp', 'webp', 'visual'];
   const isVisual = visualTypes.includes(fileType) || visualTypes.includes(fileExtension);
 
   // Audio types (MP3, WAV) - check file type AND file extension
