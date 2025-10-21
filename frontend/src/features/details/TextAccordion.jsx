@@ -30,6 +30,65 @@ function stripFrontmatter(markdown) {
 }
 
 /**
+ * Parse VTT content into readable transcript
+ * Converts WebVTT format to plain text with timestamps
+ *
+ * @param {string} vttText - Raw VTT file content
+ * @returns {string} Formatted transcript with timestamps
+ */
+function parseVTT(vttText) {
+  if (!vttText) return '';
+
+  const lines = vttText.split('\n');
+  const segments = [];
+  let currentTimestamp = '';
+  let currentText = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Skip WEBVTT header and NOTE lines
+    if (line.startsWith('WEBVTT') || line.startsWith('NOTE')) {
+      continue;
+    }
+
+    // Check if line is a timestamp (HH:MM:SS.mmm --> HH:MM:SS.mmm)
+    if (line.includes('-->')) {
+      // Extract start time only
+      const startTime = line.split('-->')[0].trim();
+      currentTimestamp = startTime;
+      continue;
+    }
+
+    // Skip cue identifiers (numeric lines before timestamps)
+    if (line && /^\d+$/.test(line)) {
+      continue;
+    }
+
+    // Skip empty lines
+    if (!line) {
+      // If we have accumulated text, save the segment
+      if (currentText && currentTimestamp) {
+        segments.push(`[${currentTimestamp}] ${currentText}`);
+        currentText = '';
+        currentTimestamp = '';
+      }
+      continue;
+    }
+
+    // Accumulate caption text
+    currentText += (currentText ? ' ' : '') + line;
+  }
+
+  // Don't forget the last segment
+  if (currentText && currentTimestamp) {
+    segments.push(`[${currentTimestamp}] ${currentText}`);
+  }
+
+  return segments.join('\n\n');
+}
+
+/**
  * Text accordion with chunk and markdown sections
  *
  * @param {Object} props - Component props
@@ -52,6 +111,7 @@ export default function TextAccordion({
 }) {
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(null);
+  const [vttContent, setVttContent] = useState(null);
 
   // Update active section when active chunk changes (for audio sync)
   useEffect(() => {
@@ -71,6 +131,35 @@ export default function TextAccordion({
     }
   }, [currentPage, sections]);
 
+  // Fetch VTT content if available
+  useEffect(() => {
+    const metadata = document?.metadata || {};
+
+    if (metadata.vtt_available && document.doc_id) {
+      const fetchVTT = async () => {
+        try {
+          const response = await fetch(`/documents/${document.doc_id}/vtt`);
+          if (response.ok) {
+            const vttText = await response.text();
+            const parsed = parseVTT(vttText);
+            setVttContent(parsed);
+            console.log('[TextAccordion] Loaded VTT transcript');
+          } else {
+            console.error('[TextAccordion] Failed to fetch VTT:', response.status);
+            setVttContent('Failed to load VTT transcript.');
+          }
+        } catch (err) {
+          console.error('[TextAccordion] Error fetching VTT:', err);
+          setVttContent('Error loading VTT transcript.');
+        }
+      };
+
+      fetchVTT();
+    } else {
+      setVttContent(null);
+    }
+  }, [document]);
+
   // Build sections from markdown and chunks
   useEffect(() => {
     const newSections = [];
@@ -88,11 +177,15 @@ export default function TextAccordion({
     // Section 2: VTT transcript (if available)
     const metadata = document?.metadata || {};
     if (metadata.vtt_available && document.doc_id) {
-      // Note: VTT content is handled separately, we just show a placeholder
+      // Use fetched VTT content or show loading message
+      const content = vttContent !== null
+        ? vttContent
+        : 'Loading VTT transcript...';
+
       newSections.push({
         id: 'vtt-transcript',
         title: 'VTT Transcript',
-        content: 'VTT transcript available for download.',
+        content: content,
         timestamp: null
       });
     }
@@ -141,7 +234,7 @@ export default function TextAccordion({
     }
 
     setSections(newSections);
-  }, [document, markdown, chunks]);
+  }, [document, markdown, chunks, vttContent]);
 
   // Handle timestamp click (for audio seeking)
   const handleTimestampClick = (timestamp) => {
