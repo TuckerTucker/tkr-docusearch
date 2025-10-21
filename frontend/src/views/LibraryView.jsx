@@ -221,6 +221,7 @@ export default function LibraryView() {
       <UploadModal
         onUploadComplete={handleUploadComplete}
         registerUploadBatch={registerUploadBatch}
+        isWebSocketConnected={isConnected}
       />
     </div>
   );

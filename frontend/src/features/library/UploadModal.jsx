@@ -153,14 +153,17 @@ function UploadProgressItem({
  *
  * @param {Object} props - Component props
  * @param {Function} [props.onUploadComplete] - Upload completion callback
+ * @param {Function} props.registerUploadBatch - WebSocket upload batch registration
+ * @param {boolean} props.isWebSocketConnected - WebSocket connection status
  * @returns {JSX.Element} Upload modal
  */
-export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
+export default function UploadModal({ onUploadComplete, registerUploadBatch, isWebSocketConnected }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploads, setUploads] = useState([]);
   const [fileMap, setFileMap] = useState(new Map()); // Store File objects by filename
   const dragCounterRef = useRef(0);
+  const pendingFilesRef = useRef(null); // Store files waiting for WebSocket connection
 
   const addTempDocument = useDocumentStore((state) => state.addTempDocument);
   const updateTempDocumentProgress = useDocumentStore(
@@ -213,13 +216,37 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
     };
   }, []);
 
+  // Watch for WebSocket connection and process pending files
+  useEffect(() => {
+    if (isWebSocketConnected && pendingFilesRef.current) {
+      console.log('✅ WebSocket connected, processing pending files');
+      const files = pendingFilesRef.current;
+      pendingFilesRef.current = null;
+      uploadFiles(files);
+    }
+  }, [isWebSocketConnected]);
+
   // Listen for manual upload events from Upload button
   useEffect(() => {
     const handleManualUpload = (e) => {
       const files = e.detail?.files;
       if (files && files.length > 0) {
-        setIsVisible(true);
-        uploadFiles(files);
+        // Check WebSocket connection before uploading
+        if (!isWebSocketConnected) {
+          console.warn('⚠️ WebSocket not connected, waiting for connection...');
+          // Store files to process once connected
+          pendingFilesRef.current = files;
+          // Show modal with a "connecting" state
+          setIsVisible(true);
+          setUploads([{
+            filename: 'Connecting to server...',
+            status: 'pending',
+            progress: 0
+          }]);
+        } else {
+          setIsVisible(true);
+          uploadFiles(files);
+        }
       }
     };
 
@@ -228,7 +255,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
     return () => {
       window.removeEventListener('manualUpload', handleManualUpload);
     };
-  }, []); // Dependencies will be handled by uploadFiles function scope
+  }, [isWebSocketConnected]);
 
   // Hide modal
   const handleClose = () => {
