@@ -18,7 +18,6 @@ from typing import Any, Dict, Optional
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config.processing_config import EnhancedModeConfig, ProcessingConfig
@@ -119,29 +118,19 @@ logger.info(
     "Mounted documents API: GET /documents, GET /documents/{doc_id}, GET /images/{doc_id}/{filename}"
 )
 
-# Mount static files for monitor UI
-STATIC_DIR = Path(__file__).parent / "static"
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
-    logger.info(f"Mounted monitor UI at /static (directory: {STATIC_DIR})")
-else:
-    logger.warning(f"Static directory not found: {STATIC_DIR}")
-
-# Mount legacy UI if exists
-UI_DIR = Path(__file__).parent.parent / "ui"
-if UI_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
-    logger.info(f"Mounted UI at /ui (directory: {UI_DIR})")
-else:
-    logger.warning(f"UI directory not found: {UI_DIR}")
-
-# Mount frontend (Library UI)
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
-    logger.info(f"Mounted Library UI at /frontend (directory: {FRONTEND_DIR})")
-else:
-    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
+# ============================================================================
+# Static File Serving - REMOVED
+# ============================================================================
+# Legacy static file serving has been removed. The Worker API now serves only
+# REST API endpoints. User interface is provided by the React frontend on port 3000.
+#
+# Removed mounts:
+# - /static (monitor UI)
+# - /ui (legacy UI)
+# - /frontend (legacy library UI)
+#
+# All UI functionality migrated to React frontend (frontend/ directory).
+# See .archive/ARCHIVE_NOTES.md for rollback instructions if needed.
 
 
 # ============================================================================

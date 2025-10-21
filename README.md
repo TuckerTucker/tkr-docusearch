@@ -124,14 +124,17 @@ python3 src/test_end_to_end.py
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     User Browser                             │
-│                  (Copyparty Web UI)                          │
-│                  Login: admin / admin                        │
+│               React Frontend (port 3000)                     │
+│              Modern React 19 + Vite Dev Server               │
 └───────────────┬─────────────────────────────────────────────┘
-                │ HTTP (port 8000)
+                │ HTTP (proxied by Vite)
+                ├─→ /documents, /images → Worker API (8002)
+                ├─→ /api/research → Research API (8004)
+                └─→ /uploads → Copyparty (8000)
 ┌───────────────▼─────────────────────────────────────────────┐
 │           Copyparty Container (Docker)                       │
-│  - File upload/browsing                                     │
-│  - Authentication                                            │
+│  - File upload server (port 8000)                           │
+│  - Authentication (admin/admin)                              │
 │  - Webhook: /hooks/on_upload.py                             │
 └───────────────┬─────────────────────────────────────────────┘
                 │ HTTP POST (webhook)
@@ -142,6 +145,7 @@ python3 src/test_end_to_end.py
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Docling Parser → Visual + Text Processing →            │ │
 │  │ ColPali Embeddings (MPS) → ChromaDB Storage            │ │
+│  │ REST API Endpoints (port 8002)                         │ │
 │  └────────────────────────────────────────────────────────┘ │
 └───────────────┬─────────────────────────────────────────────┘
                 │ HTTP API (port 8001)
@@ -152,12 +156,17 @@ python3 src/test_end_to_end.py
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**User Interface:**
+- **Primary UI**: React frontend at http://localhost:3000 (React 19 + Vite)
+- **Upload Server**: Copyparty at http://localhost:8000 (file uploads only)
+
 **Webhook Flow:**
-1. User uploads PDF to Copyparty (authenticated)
+1. User uploads file via React UI or directly to Copyparty
 2. Copyparty triggers `--xau /hooks/on_upload.py`
 3. Webhook script translates container path to host path
 4. HTTP POST to native worker at http://host.docker.internal:8002/process
 5. Worker processes with Metal GPU and stores in ChromaDB
+6. React UI updates via WebSocket status notifications
 
 ### Multi-Vector Embedding Strategy
 
@@ -344,17 +353,21 @@ docker-compose logs chromadb
 
 ```
 tkr-docusearch/
+├── frontend/                      # React 19 UI (PRIMARY USER INTERFACE)
+│   ├── src/                       # React components, hooks, services
+│   ├── vite.config.js             # Vite dev server + API proxy
+│   └── package.json               # Dependencies
 ├── docker/
-│   ├── docker-compose.yml        # Service orchestration
+│   ├── docker-compose.yml         # Service orchestration
 │   ├── Dockerfile.copyparty       # File server
-│   ├── Dockerfile.processing-worker  # Processing worker
 │   └── .env                       # Configuration
 ├── src/
 │   ├── storage/                   # ChromaDB integration
 │   ├── embeddings/                # ColPali wrapper
 │   ├── processing/                # Document processing
 │   ├── search/                    # Two-stage search
-│   ├── ui/                        # Web UI
+│   ├── api/                       # Backend REST APIs
+│   ├── research/                  # LLM research service
 │   └── config/                    # Configuration classes
 ├── data/
 │   ├── uploads/                   # Uploaded documents

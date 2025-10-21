@@ -13,7 +13,8 @@
 ./scripts/stop-all.sh
 ```
 
-Upload files at: **http://localhost:8000**
+**Primary Interface**: **http://localhost:3000** (React UI)
+**File Uploads**: **http://localhost:8000** (Copyparty)
 
 ---
 
@@ -79,15 +80,17 @@ Upload files at: **http://localhost:8000**
 
 ## Service URLs
 
-| Service | URL | Purpose | Credentials |
-|---------|-----|---------|-------------|
-| **Upload UI** | http://localhost:8000 | Upload documents | admin / admin |
-| **ChromaDB** | http://localhost:8001 | Vector database | None |
-| **Worker API** | http://localhost:8002 | Document processing | None |
-| **Worker Status** | http://localhost:8002/status | Processing stats | None |
-| **Health Check** | http://localhost:8002/health | Worker health | None |
+| Service | URL | Purpose | Notes |
+|---------|-----|---------|-------|
+| **React Frontend** | http://localhost:3000 | **Primary user interface** | Search, browse, research |
+| **Copyparty** | http://localhost:8000 | File upload server | Login: admin/admin |
+| **ChromaDB** | http://localhost:8001 | Vector database (backend) | API only |
+| **Worker API** | http://localhost:8002 | Processing API (backend) | API only |
+| **Research API** | http://localhost:8004 | LLM research (backend) | API only |
 
-**Note**: The upload UI requires authentication. Use username `admin` and password `admin` to log in.
+**Primary Interface**: Use the React frontend at **http://localhost:3000** for all user interactions (search, document viewing, research).
+
+**File Uploads**: The Copyparty server at port 8000 handles file uploads and requires authentication (admin/admin).
 
 ## Architecture Modes
 
@@ -96,8 +99,12 @@ Upload files at: **http://localhost:8000**
 ┌─────────────────────────────────┐
 │         Host (macOS)            │
 │  ┌─────────────────────────┐    │
+│  │ React Frontend (Vite)   │    │
+│  │ Port: 3000              │    │
+│  └─────────────────────────┘    │
+│  ┌─────────────────────────┐    │
 │  │  Worker (Native - GPU)  │    │
-│  │  Port: 8002             │    │
+│  │  Port: 8002, 8004       │    │
 │  └─────────────────────────┘    │
 │  ┌───────────┐ ┌───────────┐    │
 │  │ Copyparty │ │ ChromaDB  │    │
@@ -117,6 +124,13 @@ Upload files at: **http://localhost:8000**
 
 ### CPU Mode (Docker Worker)
 ```
+┌─────────────────────────────────┐
+│         Host (macOS)            │
+│  ┌─────────────────────────┐    │
+│  │ React Frontend (Vite)   │    │
+│  │ Port: 3000              │    │
+│  └─────────────────────────┘    │
+└─────────────────────────────────┘
 ┌─────────────────────────────────┐
 │      Docker Containers          │
 │  ┌───────────┐ ┌───────────┐    │
