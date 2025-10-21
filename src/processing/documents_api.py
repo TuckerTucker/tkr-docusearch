@@ -30,6 +30,7 @@ from src.processing.api import structure_router
 from src.processing.cover_art_utils import delete_document_cover_art
 from src.processing.file_validator import get_supported_extensions
 from src.processing.image_utils import cleanup_temp_directories, delete_document_images
+from src.processing.vtt_utils import delete_document_vtt
 from src.storage import ChromaClient
 from src.storage.markdown_utils import delete_document_markdown
 
@@ -1487,13 +1488,14 @@ async def get_image(doc_id: str, filename: str):
 async def delete_document(doc_id: str):  # noqa: C901
     """Delete a document and all associated data.
 
-    This performs a comprehensive 6-stage deletion:
+    This performs a comprehensive 7-stage deletion:
     1. ChromaDB embeddings (visual and text) - CRITICAL
     2. Page images and thumbnails - HIGH
     3. Cover art (audio files) - MEDIUM
-    4. Markdown files - MEDIUM
-    5. Temporary directories - LOW
-    6. Original file from copyparty - MEDIUM
+    4. VTT caption files (audio files) - MEDIUM
+    5. Markdown files - MEDIUM
+    6. Temporary directories - LOW
+    7. Original file from copyparty - MEDIUM
 
     Args:
         doc_id: Document identifier (SHA-256 hash)
@@ -1600,7 +1602,22 @@ async def delete_document(doc_id: str):  # noqa: C901
             errors.append(error_msg)
             deleted["cover_art"] = {"status": "error", "message": str(e)}
 
-        # STAGE 4: Delete markdown (MEDIUM priority)
+        # STAGE 4: Delete VTT caption files (MEDIUM priority - audio files only)
+        try:
+            vtt_deleted = delete_document_vtt(doc_id)
+            deleted["vtt_captions"] = {
+                "deleted": vtt_deleted,
+                "status": "deleted" if vtt_deleted else "not_found",
+            }
+            if vtt_deleted:
+                logger.info(f"Deleted VTT captions for {doc_id}")
+        except Exception as e:
+            error_msg = f"Failed to delete VTT captions: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["vtt_captions"] = {"status": "error", "message": str(e)}
+
+        # STAGE 5: Delete markdown (MEDIUM priority)
         try:
             markdown_deleted = delete_document_markdown(doc_id)
             deleted["markdown"] = {
@@ -1615,7 +1632,7 @@ async def delete_document(doc_id: str):  # noqa: C901
             errors.append(error_msg)
             deleted["markdown"] = {"status": "error", "message": str(e)}
 
-        # STAGE 5: Cleanup temp directories (LOW priority)
+        # STAGE 6: Cleanup temp directories (LOW priority)
         try:
             temp_cleaned = cleanup_temp_directories(doc_id)
             deleted["temp_directories"] = {
@@ -1630,7 +1647,7 @@ async def delete_document(doc_id: str):  # noqa: C901
             errors.append(error_msg)
             deleted["temp_directories"] = {"status": "error", "message": str(e)}
 
-        # STAGE 6: Delete file from copyparty (MEDIUM priority)
+        # STAGE 7: Delete file from copyparty (MEDIUM priority)
         if filename:
             try:
                 copyparty_deleted = delete_from_copyparty(filename)
