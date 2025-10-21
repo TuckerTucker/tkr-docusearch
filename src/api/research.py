@@ -94,6 +94,10 @@ class ResearchMetadata(BaseModel):
     processing_time_ms: int
     llm_latency_ms: int
     search_latency_ms: int
+    # Vision metadata
+    vision_enabled: bool = False
+    images_sent: int = 0
+    image_tokens: int = 0
 
 
 class ResearchResponse(BaseModel):
@@ -267,11 +271,46 @@ async def ask_research_question(request: ResearchRequest):
                 detail="No relevant documents found for your query. Try rephrasing or uploading more documents.",
             )
 
-        # Step 2: Generate answer with LLM
+        # Step 2: Extract image URLs for vision-capable queries
+        vision_enabled = os.getenv("RESEARCH_VISION_ENABLED", "true").lower() == "true"
+        max_images = int(os.getenv("RESEARCH_MAX_IMAGES", "10"))
+
+        # Get ngrok URL from environment, fallback to localhost
+        ngrok_url = os.getenv("NGROK_URL", "http://localhost:8002")
+
+        # Validate vision setup
+        if vision_enabled and not os.getenv("NGROK_URL"):
+            logger.warning("Vision enabled but NGROK_URL not set - falling back to text-only")
+            vision_enabled = False
+        elif vision_enabled and ngrok_url and not ngrok_url.startswith("https://"):
+            logger.warning("NGROK_URL should be HTTPS for security", ngrok_url=ngrok_url)
+
+        image_urls = []
+        if vision_enabled:
+            # Get absolute URLs for visual sources
+            all_image_urls = context.get_visual_image_urls(base_url=ngrok_url)
+            # Limit to max_images
+            image_urls = all_image_urls[:max_images]
+
+            logger.debug(
+                "Vision support",
+                enabled=vision_enabled,
+                visual_sources=len(all_image_urls),
+                images_to_send=len(image_urls),
+                base_url=ngrok_url,
+            )
+
+        # Estimate image token cost
+        image_tokens = 0
+        if image_urls:
+            image_tokens = app.state.llm_client.estimate_image_tokens(len(image_urls))
+
+        # Step 3: Generate answer with LLM (with or without vision)
         llm_start = time.time()
-        llm_response = await app.state.llm_client.complete_with_context(
+        llm_response = await app.state.llm_client.complete_with_context_and_images(
             query=request.query,
             context=context.formatted_text,
+            image_urls=image_urls,
             system_message=RESEARCH_SYSTEM_PROMPT,
             temperature=request.temperature,
             model=request.model,
@@ -283,6 +322,8 @@ async def ask_research_question(request: ResearchRequest):
             model=llm_response.model,
             tokens=llm_response.usage["total_tokens"],
             latency_ms=llm_latency,
+            vision_used=len(image_urls) > 0,
+            images_sent=len(image_urls),
         )
 
         # Step 3: Parse citations
@@ -334,6 +375,9 @@ async def ask_research_question(request: ResearchRequest):
                 processing_time_ms=total_time,
                 llm_latency_ms=llm_latency,
                 search_latency_ms=search_latency,
+                vision_enabled=vision_enabled,
+                images_sent=len(image_urls),
+                image_tokens=image_tokens,
             ),
         )
 

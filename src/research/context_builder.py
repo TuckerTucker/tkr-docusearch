@@ -48,7 +48,7 @@ class SourceDocument:
     doc_id: str  # Unique document identifier
     filename: str  # Original filename (e.g., "report.pdf")
     page: int  # Page number (1-indexed)
-    extension: str  # File extension ("pdf", "docx", etc.)
+    extension: str  # File extension ("pdf", "docx", etc.")
 
     # Paths for frontend display
     thumbnail_path: Optional[str] = None  # Path to thumbnail image
@@ -67,6 +67,9 @@ class SourceDocument:
 
     # Chunk identifier for bidirectional highlighting
     chunk_id: Optional[str] = None  # Format: "{doc_id}-chunk{NNNN}" for text, None for visual
+
+    # Search type tracking for vision support
+    is_visual: bool = False  # True if from visual collection, False if from text collection
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict for API response"""
@@ -93,6 +96,12 @@ class ResearchContext:
     sources: List[SourceDocument]  # Source documents in citation order
     total_tokens: int  # Approximate token count
     truncated: bool  # Whether context was truncated to fit budget
+    image_urls: List[str] = None  # URLs for visual sources (for multimodal LLM)
+
+    def __post_init__(self):
+        """Initialize image_urls if not provided"""
+        if self.image_urls is None:
+            self.image_urls = []
 
     def get_citation_map(self) -> Dict[int, SourceDocument]:
         """
@@ -102,6 +111,31 @@ class ResearchContext:
             Dict mapping citation IDs (1, 2, 3...) to SourceDocument
         """
         return {i + 1: source for i, source in enumerate(self.sources)}
+
+    def get_visual_image_urls(self, base_url: str = "http://localhost:8002") -> List[str]:
+        """
+        Extract absolute image URLs from visual sources
+
+        Args:
+            base_url: Base URL for worker API (default: http://localhost:8002)
+
+        Returns:
+            List of absolute URLs to page thumbnails for visual sources
+
+        Note:
+            Converts relative paths like '/images/abc/page001_thumb.jpg'
+            to absolute URLs like 'http://localhost:8002/images/abc/page001_thumb.jpg'
+        """
+        urls = []
+        for source in self.sources:
+            if source.is_visual and source.thumbnail_path:
+                # Convert relative path to absolute URL
+                if source.thumbnail_path.startswith("/"):
+                    url = f"{base_url}{source.thumbnail_path}"
+                else:
+                    url = source.thumbnail_path
+                urls.append(url)
+        return urls
 
 
 class ContextBuilder:
@@ -317,6 +351,10 @@ class ContextBuilder:
         # Returns None for visual results, formatted string for text results
         chunk_id = extract_chunk_id(metadata, doc_id)
 
+        # Determine if this is a visual or text result
+        # Visual results have no chunk_id, text results have chunk_id format: "{doc_id}-chunk{NNNN}"
+        is_visual = chunk_id is None
+
         return SourceDocument(
             doc_id=doc_id,
             filename=metadata.get("filename", "unknown"),
@@ -330,6 +368,7 @@ class ContextBuilder:
             markdown_content=page_content,
             relevance_score=score,
             chunk_id=chunk_id,
+            is_visual=is_visual,
         )
 
     def format_source_citation(self, source: SourceDocument, citation_num: int) -> str:
@@ -342,8 +381,13 @@ class ContextBuilder:
 
         Returns:
             Formatted citation string
+
+        Note:
+            Adds [Visual Match] indicator for sources found via visual search
         """
-        citation = f"[Document {citation_num}: {source.filename}, Page {source.page}]\n"
+        # Add visual indicator for visual search results
+        match_type = "[Visual Match] " if source.is_visual else ""
+        citation = f"{match_type}[Document {citation_num}: {source.filename}, Page {source.page}]\n"
         citation += source.markdown_content.strip()
         return citation
 

@@ -8,7 +8,7 @@ Provides consistent error handling, retry logic, and streaming support.
 import os
 import time
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Dict, Optional
+from typing import AsyncIterator, Dict, List, Optional
 
 import structlog
 
@@ -263,6 +263,130 @@ class LiteLLMClient:
 
         raise LLMError("Max retries exceeded")
 
+    async def complete_with_images(
+        self, prompt: str, image_urls: List[str], system_message: Optional[str] = None, **kwargs
+    ) -> LLMResponse:
+        """
+        Generate completion with vision support (images + text)
+
+        Args:
+            prompt: User prompt/query text
+            image_urls: List of image URLs to analyze
+            system_message: System instructions (optional)
+            **kwargs: Override config (temperature, max_tokens, etc.)
+
+        Returns:
+            LLMResponse with generated text and metadata
+
+        Raises:
+            Same exceptions as complete()
+
+        Note:
+            Uses OpenAI vision message format with content array
+        """
+        start_time = time.time()
+
+        # Build multimodal content for user message
+        content = []
+
+        # Add text content
+        content.append({"type": "text", "text": prompt})
+
+        # Add image content
+        for image_url in image_urls:
+            content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+        # Build messages with multimodal content
+        messages = []
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+        messages.append({"role": "user", "content": content})
+
+        # Merge config with kwargs
+        params = {
+            "model": self.config.model_name,
+            "messages": messages,
+            "temperature": kwargs.get("temperature", self.config.temperature),
+            "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+            "timeout": kwargs.get("timeout", self.config.timeout),
+        }
+
+        # Override model if specified (and not None)
+        if "model" in kwargs and kwargs["model"] is not None:
+            params["model"] = kwargs["model"]
+
+        # Add API base for local models
+        if self.config.api_base:
+            params["api_base"] = self.config.api_base
+
+        # Retry logic
+        max_retries = 3
+        retry_delays = [2, 4, 8]
+
+        for attempt in range(max_retries):
+            try:
+                logger.debug(
+                    "Calling LLM with vision",
+                    model=params["model"],
+                    num_images=len(image_urls),
+                    attempt=attempt + 1,
+                )
+
+                response = await self.litellm.acompletion(**params)
+
+                latency_ms = int((time.time() - start_time) * 1000)
+
+                llm_response = LLMResponse(
+                    content=response.choices[0].message.content,
+                    model=response.model,
+                    provider=self.config.provider,
+                    usage={
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens,
+                    },
+                    finish_reason=response.choices[0].finish_reason,
+                    latency_ms=latency_ms,
+                )
+
+                logger.info(
+                    "LLM vision completion successful",
+                    model=response.model,
+                    num_images=len(image_urls),
+                    tokens=llm_response.usage["total_tokens"],
+                    latency_ms=latency_ms,
+                )
+
+                return llm_response
+
+            except self.litellm.RateLimitError as e:
+                if attempt < max_retries - 1:
+                    delay = retry_delays[attempt]
+                    logger.warning("Rate limit hit, retrying", attempt=attempt + 1, delay=delay)
+                    await self._async_sleep(delay)
+                else:
+                    raise RateLimitError(str(e), retry_after=60)
+
+            except self.litellm.Timeout as e:
+                raise TimeoutError(f"Request timed out: {str(e)}")
+
+            except self.litellm.AuthenticationError as e:
+                raise AuthenticationError(f"Authentication failed: {str(e)}")
+
+            except self.litellm.ContextWindowExceededError as e:
+                raise ContextLengthError(str(e))
+
+            except Exception as e:
+                logger.error("LLM vision error", error=str(e), exc_info=True)
+                if attempt < max_retries - 1:
+                    delay = retry_delays[attempt]
+                    logger.warning("Transient error, retrying", delay=delay)
+                    await self._async_sleep(delay)
+                else:
+                    raise LLMError(f"LLM vision request failed: {str(e)}")
+
+        raise LLMError("Max retries exceeded")
+
     async def complete_with_context(
         self, query: str, context: str, system_message: str, **kwargs
     ) -> LLMResponse:
@@ -282,6 +406,46 @@ class LiteLLMClient:
         full_prompt = f"{context}\n\nQuery: {query}"
 
         return await self.complete(prompt=full_prompt, system_message=system_message, **kwargs)
+
+    async def complete_with_context_and_images(
+        self,
+        query: str,
+        context: str,
+        image_urls: List[str],
+        system_message: str,
+        **kwargs,
+    ) -> LLMResponse:
+        """
+        Research query with both text context and images (multimodal)
+
+        Args:
+            query: User's research question
+            context: Retrieved document context (text)
+            image_urls: Page thumbnails from visual search
+            system_message: Research assistant instructions
+            **kwargs: Override config
+
+        Returns:
+            LLMResponse with answer and citations
+
+        Note:
+            Automatically falls back to text-only if image_urls is empty
+        """
+        # Build full prompt with context
+        full_prompt = f"{context}\n\nQuery: {query}"
+
+        # Use vision if images provided, otherwise text-only
+        if image_urls:
+            logger.debug("Using multimodal completion", num_images=len(image_urls))
+            return await self.complete_with_images(
+                prompt=full_prompt,
+                image_urls=image_urls,
+                system_message=system_message,
+                **kwargs,
+            )
+        else:
+            logger.debug("Using text-only completion (no images)")
+            return await self.complete(prompt=full_prompt, system_message=system_message, **kwargs)
 
     async def stream_complete(
         self, prompt: str, system_message: Optional[str] = None, **kwargs
@@ -375,6 +539,31 @@ class LiteLLMClient:
 
         # Heuristic: ~4 characters per token
         return len(text) // 4
+
+    def estimate_image_tokens(self, num_images: int, image_detail: str = "auto") -> int:
+        """
+        Estimate token cost for vision inputs
+
+        Args:
+            num_images: Number of images to send
+            image_detail: "low" (~85 tokens) or "high" (~1000 tokens) or "auto"
+
+        Returns:
+            int: Estimated total image tokens
+
+        Note:
+            Based on OpenAI vision pricing:
+            - Low detail: ~85 tokens per image
+            - High detail: ~170 + (512x512 tiles) tokens, avg ~1000 per page
+            - Auto: defaults to high for quality
+        """
+        if image_detail == "low":
+            tokens_per_image = 85
+        else:  # "high" or "auto"
+            # Typical document page thumbnail is ~1000 tokens
+            tokens_per_image = 1000
+
+        return num_images * tokens_per_image
 
     async def _async_sleep(self, seconds: int):
         """Async sleep helper"""
