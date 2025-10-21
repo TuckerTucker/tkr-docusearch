@@ -57,6 +57,16 @@ export default function AlbumArt({
   const imageSrc = (coverArtUrl && !hasError) ? coverArtUrl : DEFAULT_ALBUM_ART_SVG;
   const imageClass = `album-art ${isLoading ? 'loading' : 'loaded'} ${className}`;
 
+  // Debug caption state
+  useEffect(() => {
+    if (currentCaption) {
+      console.log('[AlbumArt] Caption updated:', currentCaption);
+      console.log('[AlbumArt] Caption div should have "active" class');
+    } else {
+      console.log('[AlbumArt] Caption cleared - no active class');
+    }
+  }, [currentCaption]);
+
   return (
     <div className="album-art-container">
       <img
@@ -69,7 +79,7 @@ export default function AlbumArt({
       />
 
       {/* Caption overlay - shown only when caption text exists */}
-      <div className={`current-caption ${currentCaption ? 'active' : ''}`} aria-live="polite">
+      <div className={`current-caption ${currentCaption ? 'active' : ''}`}>
         {currentCaption}
       </div>
     </div>

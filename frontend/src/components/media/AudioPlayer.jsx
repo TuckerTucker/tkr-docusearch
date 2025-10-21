@@ -131,23 +131,49 @@ const AudioPlayer = forwardRef(function AudioPlayer({ document, chunks = [], onT
   // Handle VTT cue changes
   const handleCueChange = useCallback(() => {
     const track = trackRef.current?.track;
+    console.log('[AudioPlayer] Cue change event fired, track:', track);
     if (track && track.activeCues && track.activeCues.length > 0) {
       const activeCue = track.activeCues[0];
+      console.log('[AudioPlayer] Active cue:', activeCue.text);
       setCurrentCaption(activeCue.text);
     } else {
+      console.log('[AudioPlayer] No active cues');
       setCurrentCaption('');
     }
   }, []);
 
   // Set up VTT track cuechange event listener
   useEffect(() => {
-    const track = trackRef.current?.track;
-    if (track) {
-      track.addEventListener('cuechange', handleCueChange);
-      return () => {
-        track.removeEventListener('cuechange', handleCueChange);
-      };
+    const trackElement = trackRef.current;
+    if (!trackElement) return;
+
+    const track = trackElement.track;
+    if (!track) return;
+
+    // Handle track load event to ensure track is ready before setting mode
+    const handleTrackLoad = () => {
+      console.log('[AudioPlayer] Track loaded, readyState:', track.readyState);
+      // Explicitly set track mode to 'showing' to enable cuechange events
+      // Without this, the track defaults to 'disabled' and cues won't fire
+      track.mode = 'showing';
+      console.log('[AudioPlayer] Track mode set to:', track.mode);
+    };
+
+    // Check if track is already loaded
+    if (track.readyState === 2) { // LOADED = 2
+      handleTrackLoad();
+    } else {
+      // Wait for track to load
+      trackElement.addEventListener('load', handleTrackLoad);
     }
+
+    // Set up cuechange listener
+    track.addEventListener('cuechange', handleCueChange);
+
+    return () => {
+      trackElement.removeEventListener('load', handleTrackLoad);
+      track.removeEventListener('cuechange', handleCueChange);
+    };
   }, [handleCueChange, vttUrl]);
 
   // Handle time updates (for accordion sync and markdown captions)
