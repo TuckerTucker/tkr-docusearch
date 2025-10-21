@@ -227,6 +227,9 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
     e.preventDefault();
     e.stopPropagation();
 
+    // Reset drag counter to ensure modal can show again on next drag
+    dragCounterRef.current = 0;
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       await uploadFiles(files);
@@ -412,8 +415,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
       setTimeout(() => {
         setIsVisible(false);
         setUploads([]);
-        setSkippedFiles(new Set());
-        setForcedFiles(new Set());
+        setFileMap(new Map()); // Clear file map to allow re-upload
       }, 500);
     }
   };
