@@ -7,14 +7,19 @@ in HTML5 audio/video players.
 
 Wave 1 - Integration Contract IC-002
 Wave 2 - Enhanced with fine-grained caption extraction from [time: X-Y] markers
+Wave 3 - Intelligent caption splitting for optimal readability
 """
 
 import logging
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
+from .caption_splitter import split_long_caption
 from .types import Page, TextChunk
+
+if TYPE_CHECKING:
+    from src.config.processing_config import AsrConfig
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +104,13 @@ def extract_all_timestamp_markers(text: str) -> List[tuple]:
     return captions
 
 
-def validate_vtt(vtt_content: str) -> bool:
+def validate_vtt(vtt_content: str, warn_on_issues: bool = True) -> bool:
     """
     Validate VTT content format.
 
     Args:
         vtt_content: VTT file content
+        warn_on_issues: Log warnings for quality issues (default True)
 
     Returns:
         True if valid VTT format, False otherwise
@@ -113,6 +119,8 @@ def validate_vtt(vtt_content: str) -> bool:
         - Starts with "WEBVTT"
         - Has valid timestamp format
         - Cues are properly formatted
+        - Caption durations are reasonable (optional warnings)
+        - Reading speeds are acceptable (optional warnings)
     """
     if not vtt_content:
         return False
@@ -124,23 +132,89 @@ def validate_vtt(vtt_content: str) -> bool:
         return False
 
     # Check for at least one valid timestamp line
-    timestamp_pattern = re.compile(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}")
-    has_timestamp = any(timestamp_pattern.match(line) for line in lines)
+    timestamp_pattern = re.compile(
+        r"(\d{2}):(\d{2}):(\d{2})\.(\d{3}) --> (\d{2}):(\d{2}):(\d{2})\.(\d{3})"
+    )
+    has_timestamp = False
+
+    # Track quality issues for warnings
+    long_captions = []
+    fast_captions = []
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        match = timestamp_pattern.match(line)
+
+        if match:
+            has_timestamp = True
+
+            if warn_on_issues:
+                # Parse timestamp
+                start_h, start_m, start_s, start_ms = map(int, match.groups()[:4])
+                end_h, end_m, end_s, end_ms = map(int, match.groups()[4:])
+
+                start_time = start_h * 3600 + start_m * 60 + start_s + start_ms / 1000
+                end_time = end_h * 3600 + end_m * 60 + end_s + end_ms / 1000
+                duration = end_time - start_time
+
+                # Get caption text (next non-empty line)
+                text = ""
+                j = i + 1
+                while j < len(lines) and lines[j].strip():
+                    text += lines[j].strip() + " "
+                    j += 1
+                text = text.strip()
+
+                # Check caption duration
+                if duration > 10.0:
+                    long_captions.append((duration, text[:50]))
+
+                # Check reading speed
+                if text and duration > 0:
+                    chars_per_sec = len(text) / duration
+                    if chars_per_sec > 20.0:
+                        fast_captions.append((chars_per_sec, text[:50]))
+
+        i += 1
+
+    # Log warnings if quality issues found
+    if warn_on_issues:
+        if long_captions:
+            logger.warning(
+                f"Found {len(long_captions)} captions longer than 10s "
+                f"(longest: {max(long_captions)[0]:.1f}s)"
+            )
+
+        if fast_captions:
+            logger.warning(
+                f"Found {len(fast_captions)} captions with >20 chars/sec "
+                f"(fastest: {max(fast_captions)[0]:.1f} chars/sec)"
+            )
 
     return has_timestamp
 
 
-def generate_vtt(chunks: List[TextChunk], filename: str, pages: Optional[List[Page]] = None) -> str:
+def generate_vtt(
+    chunks: List[TextChunk],
+    filename: str,
+    pages: Optional[List[Page]] = None,
+    asr_config: Optional["AsrConfig"] = None,
+) -> str:
     """
     Generate WebVTT content from text chunks with timestamps.
 
     Wave 2: If pages provided (audio), extracts ALL [time: X-Y] markers for
     fine-grained captions. Otherwise falls back to chunk-level timestamps.
 
+    Wave 3: Intelligently splits long captions into readable segments based on
+    natural language boundaries and optimal reading speeds.
+
     Args:
         chunks: List of TextChunk objects with start_time/end_time
         filename: Original filename (for metadata comment)
         pages: Optional list of Page objects with original transcript text
+        asr_config: Optional ASR configuration for caption splitting parameters
 
     Returns:
         Complete VTT file content as string
@@ -198,6 +272,34 @@ def generate_vtt(chunks: List[TextChunk], filename: str, pages: Optional[List[Pa
                 captions.append((chunk.start_time, chunk.end_time, chunk.text))
 
         logger.info(f"Generating VTT from {len(captions)} captions")
+
+        # 3.5. Apply caption splitting if ASR config provided
+        if asr_config:
+            logger.info("Applying intelligent caption splitting")
+            split_captions = []
+            split_count = 0
+
+            for start_time, end_time, text in captions:
+                # Split long captions
+                segments = split_long_caption(
+                    start_time,
+                    end_time,
+                    text,
+                    max_duration=asr_config.max_caption_duration,
+                    max_chars=asr_config.max_caption_chars,
+                    min_duration=asr_config.min_caption_duration,
+                )
+
+                split_captions.extend(segments)
+
+                if len(segments) > 1:
+                    split_count += 1
+
+            logger.info(
+                f"Caption splitting complete: {len(captions)} captions -> "
+                f"{len(split_captions)} segments ({split_count} split)"
+            )
+            captions = split_captions
 
         # 4. Generate cues from captions
         cue_number = 1

@@ -373,6 +373,10 @@ class AsrConfig:
         word_timestamps: Enable word-level timestamps
         temperature: Sampling temperature for generation (0.0 = deterministic)
         max_time_chunk: Maximum audio chunk duration (seconds)
+        max_caption_duration: Maximum duration for a single caption (seconds)
+        max_caption_chars: Maximum characters per caption
+        min_caption_duration: Minimum duration for a caption (seconds)
+        target_chars_per_second: Target reading speed (chars/sec)
     """
 
     enabled: bool = True
@@ -382,6 +386,12 @@ class AsrConfig:
     word_timestamps: bool = True
     temperature: float = 0.0  # 0.0-1.0, lower = more deterministic
     max_time_chunk: float = 30.0  # seconds
+
+    # Caption splitting configuration
+    max_caption_duration: float = 6.0  # seconds
+    max_caption_chars: int = 100  # characters
+    min_caption_duration: float = 1.0  # seconds
+    target_chars_per_second: float = 15.0  # reading speed
 
     def __post_init__(self):
         """Validate configuration values."""
@@ -402,6 +412,31 @@ class AsrConfig:
         # Validate max_time_chunk
         if self.max_time_chunk <= 0:
             raise ValueError(f"max_time_chunk must be positive, got {self.max_time_chunk}")
+
+        # Validate caption splitting parameters
+        if self.max_caption_duration <= 0:
+            raise ValueError(
+                f"max_caption_duration must be positive, got {self.max_caption_duration}"
+            )
+
+        if self.max_caption_chars <= 0:
+            raise ValueError(f"max_caption_chars must be positive, got {self.max_caption_chars}")
+
+        if self.min_caption_duration <= 0:
+            raise ValueError(
+                f"min_caption_duration must be positive, got {self.min_caption_duration}"
+            )
+
+        if self.min_caption_duration > self.max_caption_duration:
+            raise ValueError(
+                f"min_caption_duration ({self.min_caption_duration}) must be <= "
+                f"max_caption_duration ({self.max_caption_duration})"
+            )
+
+        if self.target_chars_per_second <= 0:
+            raise ValueError(
+                f"target_chars_per_second must be positive, got {self.target_chars_per_second}"
+            )
 
     def to_docling_model_spec(self):
         """Convert to Docling ASR model specification.
@@ -467,6 +502,10 @@ class AsrConfig:
             ASR_WORD_TIMESTAMPS: Enable word timestamps (default: true)
             ASR_TEMPERATURE: Sampling temperature (default: 0.0)
             ASR_MAX_TIME_CHUNK: Max chunk duration (default: 30.0)
+            ASR_MAX_CAPTION_DURATION: Max caption duration (default: 6.0)
+            ASR_MAX_CAPTION_CHARS: Max caption characters (default: 100)
+            ASR_MIN_CAPTION_DURATION: Min caption duration (default: 1.0)
+            ASR_TARGET_CHARS_PER_SECOND: Target reading speed (default: 15.0)
 
         Returns:
             AsrConfig instance loaded from environment
@@ -498,6 +537,31 @@ class AsrConfig:
                 logger.warning("Invalid ASR_MAX_TIME_CHUNK, using default 30.0")
                 max_time_chunk = 30.0
 
+            # Parse caption splitting parameters
+            try:
+                max_caption_duration = float(os.getenv("ASR_MAX_CAPTION_DURATION", "6.0"))
+            except ValueError:
+                logger.warning("Invalid ASR_MAX_CAPTION_DURATION, using default 6.0")
+                max_caption_duration = 6.0
+
+            try:
+                max_caption_chars = int(os.getenv("ASR_MAX_CAPTION_CHARS", "100"))
+            except ValueError:
+                logger.warning("Invalid ASR_MAX_CAPTION_CHARS, using default 100")
+                max_caption_chars = 100
+
+            try:
+                min_caption_duration = float(os.getenv("ASR_MIN_CAPTION_DURATION", "1.0"))
+            except ValueError:
+                logger.warning("Invalid ASR_MIN_CAPTION_DURATION, using default 1.0")
+                min_caption_duration = 1.0
+
+            try:
+                target_chars_per_second = float(os.getenv("ASR_TARGET_CHARS_PER_SECOND", "15.0"))
+            except ValueError:
+                logger.warning("Invalid ASR_TARGET_CHARS_PER_SECOND, using default 15.0")
+                target_chars_per_second = 15.0
+
             config = cls(
                 enabled=enabled,
                 model=model,
@@ -506,11 +570,16 @@ class AsrConfig:
                 word_timestamps=word_timestamps,
                 temperature=temperature,
                 max_time_chunk=max_time_chunk,
+                max_caption_duration=max_caption_duration,
+                max_caption_chars=max_caption_chars,
+                min_caption_duration=min_caption_duration,
+                target_chars_per_second=target_chars_per_second,
             )
 
             logger.info(
                 f"Loaded ASR config: model={model}, language={language}, "
-                f"device={device}, enabled={enabled}"
+                f"device={device}, enabled={enabled}, "
+                f"caption_split=({min_caption_duration}s-{max_caption_duration}s, {max_caption_chars}chars)"
             )
 
             return config
@@ -539,11 +608,16 @@ class AsrConfig:
             "word_timestamps": self.word_timestamps,
             "temperature": self.temperature,
             "max_time_chunk": self.max_time_chunk,
+            "max_caption_duration": self.max_caption_duration,
+            "max_caption_chars": self.max_caption_chars,
+            "min_caption_duration": self.min_caption_duration,
+            "target_chars_per_second": self.target_chars_per_second,
         }
 
     def __repr__(self) -> str:
         """String representation of configuration."""
         return (
             f"AsrConfig(model={self.model}, language={self.language}, "
-            f"device={self.device}, enabled={self.enabled})"
+            f"device={self.device}, enabled={self.enabled}, "
+            f"caption_duration={self.min_caption_duration}-{self.max_caption_duration}s)"
         )

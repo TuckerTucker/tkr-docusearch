@@ -329,13 +329,22 @@ class DocumentProcessor:
 
                 if has_timestamps:
                     try:
+                        from src.config.processing_config import AsrConfig
+
                         from .vtt_generator import generate_vtt, save_vtt
 
                         logger.info(f"Generating VTT for audio file: {filename}")
 
+                        # Load ASR config for caption splitting parameters
+                        asr_config = AsrConfig.from_env()
+
                         # Pass pages to enable fine-grained caption extraction
+                        # Pass asr_config to enable intelligent caption splitting
                         vtt_content = generate_vtt(
-                            parsed_doc.text_chunks, filename, pages=parsed_doc.pages
+                            parsed_doc.text_chunks,
+                            filename,
+                            pages=parsed_doc.pages,
+                            asr_config=asr_config,
                         )
                         vtt_path = save_vtt(doc_id, vtt_content)
 
