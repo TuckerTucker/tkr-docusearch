@@ -668,14 +668,15 @@ body {
 }
 
 .filter-bar__upload {
+  margin-left: auto;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid transparent;
+  border: 1px solid var(--primary);
   border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   font-weight: 500;
   font-family: inherit;
-  color: white;
-  background-color: var(--primary);
+  color: var(--primary);
+  background-color: transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
   display: inline-flex;
@@ -685,7 +686,8 @@ body {
 }
 
 .filter-bar__upload:hover {
-  background-color: var(--primary-hover, hsl(from var(--primary) h s calc(l * 0.9)));
+  background-color: var(--primary);
+  color: white;
 }
 
 .filter-bar__upload:focus-visible {
@@ -694,7 +696,6 @@ body {
 }
 
 .filter-bar__research {
-  margin-left: auto;
   padding: var(--space-2) var(--space-4);
   border: 1px solid transparent;
   border-radius: var(--radius-full);
