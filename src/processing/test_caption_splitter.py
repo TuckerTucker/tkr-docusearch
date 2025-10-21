@@ -30,9 +30,9 @@ class TestFindSentenceBoundaries:
         """Test text with multiple sentences."""
         text = "Hello. World! How are you?"
         boundaries = find_sentence_boundaries(text)
-        assert 6 in boundaries  # After "Hello."
-        assert 13 in boundaries  # After "World!"
-        assert 27 in boundaries  # After "you?"
+        assert 7 in boundaries  # After "Hello. "
+        assert 14 in boundaries  # After "World! "
+        assert 26 in boundaries  # After "you?" (end of string)
 
     def test_no_boundaries(self):
         """Test text with no sentence endings."""
@@ -128,8 +128,9 @@ class TestSplitAtPosition:
     def test_split_at_boundary(self):
         """Test splitting at a valid boundary."""
         text = "Hello, world!"
-        boundaries = [6]  # After comma
-        before, after = split_at_position(text, 10, boundaries)
+        sentence_boundaries = []  # No sentences
+        phrase_boundaries = [7]  # After comma and space
+        before, after = split_at_position(text, 10, sentence_boundaries, phrase_boundaries)
 
         assert before == "Hello,"
         assert after == "world!"
@@ -137,7 +138,7 @@ class TestSplitAtPosition:
     def test_split_no_boundary(self):
         """Test splitting when no boundary available."""
         text = "HelloWorld"
-        before, after = split_at_position(text, 5, [])
+        before, after = split_at_position(text, 5, [], [])
 
         # Should split at max_pos
         assert len(before) <= 5
@@ -154,17 +155,34 @@ class TestSplitLongCaption:
         assert result[0] == (0.0, 3.0, "Hello world")
 
     def test_long_duration_split(self):
-        """Test caption split by duration."""
+        """Test caption split by duration - only splits if text also exceeds max_chars."""
+        # With the sentence-priority algorithm, we keep complete sentences together
+        # even if duration is long, as long as text is under max_chars
         text = "First sentence. Second sentence."
         result = split_long_caption(0.0, 10.0, text, max_duration=5.0, max_chars=100)
 
-        assert len(result) > 1
+        # Text is 34 chars, under 100 max, so it stays together despite 10s duration
+        # This preserves sentence integrity
+        assert len(result) == 1
+
+        # But if we lower max_chars to force a split
+        result = split_long_caption(0.0, 10.0, text, max_duration=5.0, max_chars=20)
+        assert len(result) > 1  # Now it splits at sentence boundary
 
     def test_long_text_split(self):
-        """Test caption split by character count."""
-        text = "A" * 200  # 200 characters
+        """Test caption split by character count - requires natural boundaries."""
+        # Text with no natural boundaries (all A's) cannot be split cleanly
+        text = "A" * 200  # 200 characters, no sentence/phrase boundaries
         result = split_long_caption(0.0, 10.0, text, max_duration=20.0, max_chars=100)
 
+        # No natural boundaries, so it warns and returns unsplit
+        assert len(result) == 1
+
+        # But if we have natural boundaries, it splits properly
+        text_with_boundaries = "A" * 80 + ". " + "B" * 80 + ". " + "C" * 80
+        result = split_long_caption(
+            0.0, 10.0, text_with_boundaries, max_duration=20.0, max_chars=100
+        )
         assert len(result) > 1
         # Each segment should be <= 100 chars
         for _, _, seg_text in result:

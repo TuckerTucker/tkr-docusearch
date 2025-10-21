@@ -9,10 +9,16 @@ Overview:
     VTT captions generated from Whisper/Docling often contain very long segments
     (20+ seconds, 200+ characters) which are difficult to read. This module splits
     them into shorter, more digestible chunks while preserving:
-    - Natural sentence and phrase boundaries
+    - Complete sentences (prioritized to avoid mid-sentence breaks)
+    - Natural phrase boundaries (used only when sentences are too long)
     - Proportional timestamp distribution
     - Minimum duration constraints
     - Optimal reading speeds (15 chars/sec target)
+
+Splitting Priority:
+    1. Sentence boundaries (. ! ?) - ALWAYS preferred to keep sentences intact
+    2. Phrase boundaries (commas, conjunctions) - Used only if sentence too long
+    3. Word boundaries - Fallback if no natural breaks available
 
 Functions:
     find_sentence_boundaries: Detect sentence endings in text
@@ -209,37 +215,53 @@ def distribute_timestamps(
     return timestamps
 
 
-def split_at_position(text: str, max_pos: int, boundaries: List[int]) -> Tuple[str, str]:
+def split_at_position(
+    text: str,
+    max_pos: int,
+    sentence_boundaries: List[int],
+    phrase_boundaries: List[int],
+) -> Tuple[str, str]:
     """
     Split text at best boundary position before max_pos.
+
+    Prioritizes sentence boundaries over phrase boundaries to avoid breaking
+    sentences in the middle. Only uses phrase boundaries if no sentence
+    boundary is available.
 
     Args:
         text: Text to split
         max_pos: Maximum position to split at
-        boundaries: List of valid split positions
+        sentence_boundaries: List of sentence boundary positions
+        phrase_boundaries: List of phrase boundary positions
 
     Returns:
         Tuple of (before, after) strings
 
     Example:
-        >>> split_at_position("Hello, world!", 10, [6])
+        >>> split_at_position("Hello, world!", 10, [13], [6])
         ("Hello,", " world!")
     """
-    # Find best boundary before max_pos
-    valid_boundaries = [b for b in boundaries if b < max_pos]
+    # Priority 1: Try sentence boundaries first
+    valid_sentence_boundaries = [b for b in sentence_boundaries if b < max_pos]
 
-    if not valid_boundaries:
-        # No boundary found - split at max_pos on word boundary
-        # Find last space before max_pos
-        space_pos = text.rfind(" ", 0, max_pos)
-        if space_pos > 0:
-            split_pos = space_pos + 1
-        else:
-            # No space - hard split at max_pos
-            split_pos = max_pos
+    if valid_sentence_boundaries:
+        # Use last valid sentence boundary
+        split_pos = max(valid_sentence_boundaries)
     else:
-        # Use last valid boundary
-        split_pos = max(valid_boundaries)
+        # Priority 2: Try phrase boundaries
+        valid_phrase_boundaries = [b for b in phrase_boundaries if b < max_pos]
+
+        if valid_phrase_boundaries:
+            # Use last valid phrase boundary
+            split_pos = max(valid_phrase_boundaries)
+        else:
+            # Priority 3: Split at word boundary
+            space_pos = text.rfind(" ", 0, max_pos)
+            if space_pos > 0:
+                split_pos = space_pos + 1
+            else:
+                # Last resort: hard split at max_pos
+                split_pos = max_pos
 
     before = text[:split_pos].strip()
     after = text[split_pos:].strip()
@@ -297,10 +319,8 @@ def split_long_caption(
     sentence_boundaries = find_sentence_boundaries(text)
     phrase_boundaries = find_phrase_boundaries(text)
 
-    # Prioritize sentence boundaries, fallback to phrases
-    all_boundaries = sorted(set(sentence_boundaries + phrase_boundaries))
-
-    if not all_boundaries:
+    # Check if any boundaries exist
+    if not sentence_boundaries and not phrase_boundaries:
         # No natural boundaries - can't split cleanly
         logger.warning(f"No natural boundaries found in: {text[:50]}...")
         return [(start_time, end_time, text)]
@@ -320,15 +340,23 @@ def split_long_caption(
             break
 
         # Find boundaries relative to current position
-        relative_boundaries = [b - current_pos for b in all_boundaries if b > current_pos]
+        relative_sentence_boundaries = [
+            b - current_pos for b in sentence_boundaries if b > current_pos
+        ]
+        relative_phrase_boundaries = [b - current_pos for b in phrase_boundaries if b > current_pos]
 
-        if not relative_boundaries:
+        if not relative_sentence_boundaries and not relative_phrase_boundaries:
             # No more boundaries - take remaining text
             segments.append(remaining_text)
             break
 
-        # Split at best boundary
-        before, after = split_at_position(remaining_text, target_chars, relative_boundaries)
+        # Split at best boundary (prioritizes sentences over phrases)
+        before, after = split_at_position(
+            remaining_text,
+            target_chars,
+            relative_sentence_boundaries,
+            relative_phrase_boundaries,
+        )
 
         if not before:
             # Split failed - take whole remaining text
