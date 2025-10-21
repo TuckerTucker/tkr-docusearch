@@ -84,8 +84,8 @@ const documents = {
    *
    * @param {Object} filters - Query filters
    * @param {string} [filters.search] - Search query
-   * @param {string} [filters.sort_by] - Sort order
-   * @param {string} [filters.file_type_group] - File type group filter
+   * @param {string} [filters.sortBy] - Sort order
+   * @param {string} [filters.fileTypeGroup] - File type group filter
    * @param {number} [filters.limit=50] - Page size
    * @param {number} [filters.offset=0] - Pagination offset
    * @returns {Promise<Object>} Documents list response
@@ -93,8 +93,8 @@ const documents = {
   async list(filters = {}) {
     const {
       search,
-      sort_by = 'newest_first',
-      file_type_group = 'all',
+      sortBy = 'newest_first',
+      fileTypeGroup = 'all',
       limit = 50,
       offset = 0,
     } = filters;
@@ -107,12 +107,12 @@ const documents = {
       params.set('search', search);
     }
 
-    if (sort_by) {
-      params.set('sort_by', sort_by);
+    if (sortBy) {
+      params.set('sort_by', sortBy);
     }
 
-    if (file_type_group && file_type_group !== 'all') {
-      params.set('file_type_group', file_type_group);
+    if (fileTypeGroup && fileTypeGroup !== 'all') {
+      params.set('file_type_group', fileTypeGroup);
     }
 
     const url = `${API_BASE_URL}/documents?${params.toString()}`;
