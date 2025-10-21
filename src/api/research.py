@@ -177,7 +177,9 @@ async def lifespan(app: FastAPI):
         ModelConfig(
             provider=os.getenv("LLM_PROVIDER", "openai"),
             model_name=os.getenv("LLM_MODEL", "gpt-4-turbo"),
-            temperature=0.3,
+            temperature=float(os.getenv("LLM_TEMPERATURE", "0.3")),
+            max_tokens=int(os.getenv("LLM_MAX_TOKENS", "4000")),
+            timeout=int(os.getenv("LLM_TIMEOUT", "30")),
         )
     )
 

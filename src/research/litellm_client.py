@@ -54,9 +54,9 @@ class ModelConfig:
 
     provider: str  # "openai", "anthropic", "google", "local"
     model_name: str  # e.g., "gpt-4", "claude-3-opus-20240229"
-    temperature: float = 0.3  # Lower for factual responses
-    max_tokens: int = 2000
-    timeout: int = 30
+    temperature: float = 0.3  # 0.0-1.0, lower for factual responses
+    max_tokens: int = 4000  # Output tokens, increased for vision queries
+    timeout: int = 30  # Request timeout in seconds
     api_key: Optional[str] = None  # From env if not provided
     api_base: Optional[str] = None  # For local models
 
@@ -335,6 +335,25 @@ class LiteLLMClient:
                 response = await self.litellm.acompletion(**params)
 
                 latency_ms = int((time.time() - start_time) * 1000)
+
+                # Debug: Log the raw response structure
+                logger.debug(
+                    "Raw LLM vision response",
+                    model=response.model,
+                    finish_reason=response.choices[0].finish_reason,
+                    content_type=type(response.choices[0].message.content).__name__,
+                    content_length=(
+                        len(str(response.choices[0].message.content))
+                        if response.choices[0].message.content
+                        else 0
+                    ),
+                    content_preview=(
+                        str(response.choices[0].message.content)[:200]
+                        if response.choices[0].message.content
+                        else "NONE"
+                    ),
+                    message_dict=str(response.choices[0].message)[:500],
+                )
 
                 llm_response = LLMResponse(
                     content=response.choices[0].message.content,
