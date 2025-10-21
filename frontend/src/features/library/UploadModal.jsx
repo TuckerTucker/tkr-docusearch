@@ -213,6 +213,23 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch }) {
     };
   }, []);
 
+  // Listen for manual upload events from Upload button
+  useEffect(() => {
+    const handleManualUpload = (e) => {
+      const files = e.detail?.files;
+      if (files && files.length > 0) {
+        setIsVisible(true);
+        uploadFiles(files);
+      }
+    };
+
+    window.addEventListener('manualUpload', handleManualUpload);
+
+    return () => {
+      window.removeEventListener('manualUpload', handleManualUpload);
+    };
+  }, []); // Dependencies will be handled by uploadFiles function scope
+
   // Hide modal
   const handleClose = () => {
     if (!isUploading) {

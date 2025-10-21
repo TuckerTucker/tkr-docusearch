@@ -31,6 +31,19 @@ export default function FilterBar({ totalCount = 0, onFilterChange }) {
   const [searchValue, setSearchValue] = useState(filters.search);
   const [searchTimeout, setSearchTimeout] = useState(null);
 
+  // Handle file selection from upload button
+  const handleUploadFileChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Dispatch custom event for UploadModal to handle
+      const event = new CustomEvent('manualUpload', { detail: { files: Array.from(files) } });
+      window.dispatchEvent(event);
+
+      // Reset input to allow uploading same files again
+      e.target.value = '';
+    }
+  };
+
   // Sync local search with store
   useEffect(() => {
     setSearchValue(filters.search);
@@ -182,6 +195,42 @@ export default function FilterBar({ totalCount = 0, onFilterChange }) {
       >
         Clear Filters
       </button>
+
+      {/* Upload button */}
+      <button
+        className="filter-bar__upload"
+        onClick={() => document.getElementById('filter-bar-upload-input')?.click()}
+        aria-label="Upload files"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        Upload
+      </button>
+
+      {/* Hidden file input */}
+      <input
+        id="filter-bar-upload-input"
+        type="file"
+        multiple
+        accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.html,.xhtml,.md,.asciidoc,.csv,.mp3,.wav,.vtt,.png,.jpg,.jpeg,.tiff,.bmp,.webp"
+        style={{ display: 'none' }}
+        onChange={handleUploadFileChange}
+        aria-hidden="true"
+      />
 
       {/* Research button - aligned right */}
       <Link
