@@ -1,8 +1,8 @@
 # MLX Whisper Support Monitoring
 
-## Status: ✅ MERGED - Awaiting PyPI Release
+## Status: ✅ IMPLEMENTED - Docling 2.58.0
 
-Track progress on Docling MLX Whisper integration for 19x performance improvement on Apple Silicon.
+MLX Whisper integration successfully implemented with Docling 2.58.0 for 19x performance improvement on Apple Silicon.
 
 ## PR Information
 
@@ -16,13 +16,23 @@ Track progress on Docling MLX Whisper integration for 19x performance improvemen
 ## Release Status
 
 1. **PR Status:** ✅ Merged (October 21, 2025)
-2. **Latest PyPI Release:** 2.57.0 (October 15, 2025) - Does NOT include MLX
-3. **Latest GitHub Release:** v2.57.0 (October 15, 2025) - Does NOT include MLX
-4. **Next Release:** TBD (will include MLX support)
+2. **PyPI Release:** ✅ 2.58.0 (October 22, 2025) - **INCLUDES MLX Whisper**
+3. **GitHub Release:** ✅ v2.58.0 (October 22, 2025) - **INCLUDES MLX Whisper**
+4. **Implementation:** ✅ Upgraded and configured (October 22, 2025)
 
-## Current Blockers
+## Implementation Summary
 
-None - PR successfully merged with 2/2 approvals
+**Upgrade completed October 22, 2025:**
+- ✅ Docling upgraded from 2.57.0 → 2.58.0
+- ✅ MLX Whisper dependencies verified (mlx-whisper 0.4.3, lightning-whisper-mlx 0.0.10)
+- ✅ Configuration updated to enable MPS device for Whisper ASR
+- ✅ Automatic fallback to CPU for non-Apple systems implemented
+- ⏳ Performance benchmarking pending (requires audio processing test)
+
+**Configuration Changes:**
+- File: `src/config/processing_config.py` (lines 470-481)
+- Changed from: Force CPU for all Whisper operations
+- Changed to: Use MPS (Metal) on Apple Silicon, CUDA on NVIDIA, CPU fallback otherwise
 
 ## Expected Performance Gains
 
@@ -30,20 +40,22 @@ None - PR successfully merged with 2/2 approvals
 - Comparison: Current CPU baseline ~250-300 frames/sec → MLX ~4,750-5,700 frames/sec
 - Seamless fallback to native Whisper on non-Apple systems
 
-## Implementation Changes Required (Once Merged)
+## Implementation Details
 
-### 1. Update Docling
+### Actual Implementation (October 22, 2025)
 
+**1. Docling Upgrade:**
 ```bash
 source .venv-native/bin/activate
-pip install --upgrade docling
+pip install --upgrade docling==2.58.0
+# Result: Successfully installed docling-2.58.0
 ```
 
-### 2. Update Configuration
+**2. Configuration Update:**
 
-**File:** `src/config/processing_config.py`
+**File:** `src/config/processing_config.py` (lines 470-481)
 
-**Current (lines 433-436):**
+**Before:**
 ```python
 # IMPORTANT: Whisper uses sparse tensors which are NOT supported by MPS
 # Force CPU for Whisper ASR even when MPS is available for other models
@@ -51,66 +63,50 @@ pip install --upgrade docling
 accelerator_device = AcceleratorDevice.CPU
 ```
 
-**After merge (expected):**
+**After:**
 ```python
-# MLX Whisper is now supported on Apple Silicon (PR #2366)
-# Use automatic device selection or explicit MLX variant
+# MLX Whisper support added in Docling 2.58.0 (PR #2366)
+# Provides 19x performance improvement on Apple Silicon
+# Automatic fallback to CPU for non-Apple systems
 if self.device.lower() == "mps":
-    # MLX variant for Apple Silicon
+    # Use MPS (Metal) for Apple Silicon - enables MLX Whisper backend
     accelerator_device = AcceleratorDevice.MPS
 elif self.device.lower() == "cuda":
+    # Use CUDA for NVIDIA GPUs
     accelerator_device = AcceleratorDevice.CUDA
 else:
+    # Fallback to CPU for other systems
     accelerator_device = AcceleratorDevice.CPU
 ```
 
-**Alternative (if explicit variants are required):**
-```python
-# Map to explicit MLX/Native variants
-model_map = {
-    "turbo": "turbo_mlx" if self.device.lower() == "mps" else "turbo",
-    "base": "base_mlx" if self.device.lower() == "mps" else "base",
-    # ... etc
-}
-```
+**3. MLX Dependencies:**
+Already installed in environment:
+- `mlx-whisper==0.4.3`
+- `lightning-whisper-mlx==0.0.10`
 
-### 3. Install MLX Dependencies (if needed)
+**4. Testing:**
+Configuration validated with successful Python syntax check and module import.
 
-```bash
-# May be required after merge
-pip install mlx-whisper
-```
+## Next Steps
 
-### 4. Test Audio Processing
+### Remaining Tasks
 
-```bash
-# Test with sample audio file
-./scripts/run-worker-native.sh run
+1. **Performance Benchmarking** (User action required)
+   - Start worker: `./scripts/start-all.sh`
+   - Upload test audio file via Copyparty
+   - Monitor `logs/worker-native.log` for MLX initialization and performance metrics
+   - Compare frames/sec against CPU baseline (~250-300 fps)
+   - Expected improvement: 19x (target ~4,750-5,700 fps)
 
-# Upload test audio file via Copyparty
-# Monitor logs/worker-native.log for performance improvement
-```
+2. **Production Validation**
+   - Process multiple audio file types (MP3, WAV, M4A)
+   - Verify VTT generation quality
+   - Confirm search functionality works correctly
+   - Test with various audio lengths and qualities
 
-## Monitoring Plan
-
-### Weekly Checks
-
-**PyPI Releases:** https://pypi.org/project/docling/
-**GitHub Releases:** https://github.com/docling-project/docling/releases
-
-Check for:
-- New PyPI release (2.58.0 or later)
-- New GitHub release with MLX support
-- Release notes mentioning MLX/Whisper improvements
-
-### Post-Merge Actions
-
-1. Update docling to version containing MLX support
-2. Test MLX Whisper with sample audio
-3. Benchmark performance improvement
-4. Update configuration as needed
-5. Document actual implementation vs. expected changes
-6. Update this tracking document with final status
+3. **Documentation Updates**
+   - Update performance metrics in README.md once benchmarked
+   - Note MLX Whisper support in feature documentation
 
 ## Links
 
@@ -129,5 +125,5 @@ Check for:
 ---
 
 **Last Updated:** October 22, 2025
-**Next Check:** October 29, 2025
-**Status:** ✅ PR Merged - Awaiting official PyPI release (expected within 1-2 weeks)
+**Implementation Date:** October 22, 2025
+**Status:** ✅ IMPLEMENTED - Ready for performance benchmarking

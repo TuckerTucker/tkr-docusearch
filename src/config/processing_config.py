@@ -467,10 +467,18 @@ class AsrConfig:
 
         repo_id = model_map[self.model]
 
-        # IMPORTANT: Whisper uses sparse tensors which are NOT supported by MPS
-        # Force CPU for Whisper ASR even when MPS is available for other models
-        # See: https://github.com/pytorch/pytorch/issues/87886
-        accelerator_device = AcceleratorDevice.CPU
+        # MLX Whisper support added in Docling 2.58.0 (PR #2366)
+        # Provides 19x performance improvement on Apple Silicon
+        # Automatic fallback to CPU for non-Apple systems
+        if self.device.lower() == "mps":
+            # Use MPS (Metal) for Apple Silicon - enables MLX Whisper backend
+            accelerator_device = AcceleratorDevice.MPS
+        elif self.device.lower() == "cuda":
+            # Use CUDA for NVIDIA GPUs
+            accelerator_device = AcceleratorDevice.CUDA
+        else:
+            # Fallback to CPU for other systems
+            accelerator_device = AcceleratorDevice.CPU
 
         # Build kwargs dynamically - omit language if "auto"
         kwargs = {
