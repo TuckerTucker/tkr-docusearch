@@ -299,17 +299,29 @@ class ContextBuilder:
         Raises:
             ValueError: If document not found in ChromaDB
         """
-        # Query visual collection for page metadata
+        # Try visual collection first for page metadata
         visual_results = self.chroma_client._visual_collection.get(
             where={"$and": [{"doc_id": {"$eq": doc_id}}, {"page": {"$eq": page}}]},
             include=["metadatas"],
             limit=1,
         )
 
-        if not visual_results["ids"]:
-            raise ValueError(f"Document {doc_id} page {page} not found")
-
-        metadata = visual_results["metadatas"][0]
+        metadata = None
+        if visual_results["ids"]:
+            metadata = visual_results["metadatas"][0]
+        else:
+            # Fallback to text collection if not in visual
+            text_results = self.chroma_client._text_collection.get(
+                where={"$and": [{"doc_id": {"$eq": doc_id}}, {"page": {"$eq": page}}]},
+                include=["metadatas"],
+                limit=1,
+            )
+            if text_results["ids"]:
+                metadata = text_results["metadatas"][0]
+            else:
+                raise ValueError(
+                    f"Document {doc_id} page {page} not found in visual or text collections"
+                )
 
         # Get full markdown from file or compressed metadata
         full_markdown = None
@@ -355,12 +367,18 @@ class ContextBuilder:
         # Visual results have no chunk_id, text results have chunk_id format: "{doc_id}-chunk{NNNN}"
         is_visual = chunk_id is None
 
+        # Get thumbnail path - prefer thumb_path (visual docs) or album_art_path (audio)
+        thumbnail = metadata.get("thumb_path") or metadata.get("album_art_path")
+
+        # Get extension - prefer extension field, fallback to format
+        extension = metadata.get("extension") or metadata.get("format", "")
+
         return SourceDocument(
             doc_id=doc_id,
             filename=metadata.get("filename", "unknown"),
             page=page,
-            extension=metadata.get("extension", ""),
-            thumbnail_path=_convert_path_to_url(metadata.get("thumb_path")),
+            extension=extension,
+            thumbnail_path=_convert_path_to_url(thumbnail),
             image_path=_convert_path_to_url(metadata.get("image_path")),
             timestamp=metadata.get("timestamp", ""),
             section_path=metadata.get("section_path"),

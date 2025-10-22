@@ -124,6 +124,19 @@ class ChromaClient:
         """Public accessor for text collection."""
         return self._text_collection
 
+    def heartbeat(self) -> bool:
+        """Check if ChromaDB connection is healthy.
+
+        Returns:
+            True if ChromaDB is reachable, False otherwise
+        """
+        try:
+            self.client.heartbeat()
+            return True
+        except Exception as e:
+            logger.error(f"ChromaDB heartbeat failed: {str(e)}")
+            return False
+
     def _get_or_create_collection(
         self, name: str, metadata: Optional[Dict[str, Any]] = None
     ) -> Collection:
