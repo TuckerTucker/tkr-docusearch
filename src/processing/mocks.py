@@ -345,7 +345,10 @@ class MockStorageClient:
         return len(visual_ids), len(text_ids)
 
     def search_visual(
-        self, query_embedding: np.ndarray, n_results: int = 100, filters: Dict[str, Any] = None
+        self,
+        query_embedding: np.ndarray,
+        n_results: int = 100,
+        filters: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
         """Mock visual search (not implemented for Wave 2).
 
@@ -354,7 +357,10 @@ class MockStorageClient:
         raise NotImplementedError("Search functionality will be implemented in Wave 3")
 
     def search_text(
-        self, query_embedding: np.ndarray, n_results: int = 100, filters: Dict[str, Any] = None
+        self,
+        query_embedding: np.ndarray,
+        n_results: int = 100,
+        filters: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
         """Mock text search (not implemented for Wave 2).
 

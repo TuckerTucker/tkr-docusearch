@@ -746,7 +746,14 @@ class ChromaClient:
                 raise MetadataCompressionError(f"Missing embedding data for {embedding_id}")
 
             # Parse shape string "(seq_length, 768)" -> tuple
-            shape = tuple(map(int, shape_str.strip("()").split(",")))
+            shape_parts = tuple(map(int, shape_str.strip("()").split(",")))
+
+            if len(shape_parts) != 2:
+                raise MetadataCompressionError(
+                    f"Invalid embedding shape for {embedding_id}: expected 2 dimensions, got {len(shape_parts)}"
+                )
+
+            shape: tuple[int, int] = (shape_parts[0], shape_parts[1])
 
             # Decompress
             embeddings = decompress_embeddings(compressed, shape)

@@ -58,7 +58,7 @@ class AudioMetadata:
 
         Returns dict with only non-None values to keep metadata lean.
         """
-        metadata = {}
+        metadata: Dict[str, Any] = {}
 
         # ID3 tags with audio_ prefix
         if self.title:

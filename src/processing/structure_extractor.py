@@ -105,7 +105,7 @@ def _extract_headings(doc: DoclingDocument) -> List[HeadingInfo]:
     Returns:
         List of HeadingInfo objects
     """
-    headings = []
+    headings: List[HeadingInfo] = []
 
     # Map Docling labels to heading levels
     LABEL_TO_LEVEL = {
@@ -164,7 +164,7 @@ def _extract_tables(doc: DoclingDocument) -> List[TableInfo]:
     Returns:
         List of TableInfo objects
     """
-    tables = []
+    tables: List[TableInfo] = []
 
     if not hasattr(doc, "tables") or not doc.tables:
         return tables
@@ -233,7 +233,7 @@ def _extract_pictures(doc: DoclingDocument) -> List[PictureInfo]:
     Returns:
         List of PictureInfo objects
     """
-    pictures = []
+    pictures: List[PictureInfo] = []
 
     if not hasattr(doc, "pictures") or not doc.pictures:
         return pictures
@@ -297,7 +297,7 @@ def _extract_code_blocks(doc: DoclingDocument) -> List[CodeBlockInfo]:
     Returns:
         List of CodeBlockInfo objects
     """
-    code_blocks = []
+    code_blocks: List[CodeBlockInfo] = []
 
     if not hasattr(doc, "texts") or not doc.texts:
         return code_blocks
@@ -354,7 +354,7 @@ def _extract_formulas(doc: DoclingDocument) -> List[FormulaInfo]:
     Returns:
         List of FormulaInfo objects
     """
-    formulas = []
+    formulas: List[FormulaInfo] = []
 
     if not hasattr(doc, "texts") or not doc.texts:
         return formulas

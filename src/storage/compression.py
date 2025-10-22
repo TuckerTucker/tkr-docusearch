@@ -6,6 +6,7 @@ multi-vector embeddings in ChromaDB metadata fields (max 2MB per entry).
 """
 
 import base64
+import binascii
 import gzip
 import json
 from typing import Any, Dict, Tuple
@@ -327,7 +328,7 @@ def decompress_markdown(compressed: str) -> str:
 
     except gzip.BadGzipFile as e:
         raise CorruptedDataError(f"Invalid gzip data: {str(e)}") from e
-    except base64.binascii.Error as e:
+    except binascii.Error as e:
         raise CorruptedDataError(f"Invalid base64 encoding: {str(e)}") from e
     except UnicodeDecodeError as e:
         raise CorruptedDataError(f"Invalid UTF-8 data: {str(e)}") from e
