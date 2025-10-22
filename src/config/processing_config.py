@@ -455,41 +455,29 @@ class AsrConfig:
                 "Docling ASR not installed. Install with: pip install docling[asr]"
             ) from e
 
+        # Map our model names to Docling repo_ids
         # MLX Whisper support added in Docling 2.58.0 (PR #2366)
-        # Use explicit MLX variants on Apple Silicon for 19x performance improvement
-        # Automatic fallback to native Whisper on non-Apple systems
-        if self.device.lower() == "mps":
-            # Use MLX Whisper variants on Apple Silicon
-            model_map = {
-                "turbo": "turbo_mlx",
-                "base": "base_mlx",
-                "small": "small_mlx",
-                "medium": "medium_mlx",
-                "large": "large_mlx",
-            }
-            accelerator_device = AcceleratorDevice.MPS
-        elif self.device.lower() == "cuda":
-            # Use native Whisper on CUDA
-            model_map = {
-                "turbo": "turbo",
-                "base": "base",
-                "small": "small",
-                "medium": "medium",
-                "large": "large",
-            }
-            accelerator_device = AcceleratorDevice.CUDA
-        else:
-            # Use native Whisper on CPU
-            model_map = {
-                "turbo": "turbo",
-                "base": "base",
-                "small": "small",
-                "medium": "medium",
-                "large": "large",
-            }
-            accelerator_device = AcceleratorDevice.CPU
+        # Docling automatically selects MLX backend when MPS device is specified
+        # and mlx-whisper is installed (no model name changes needed)
+        model_map = {
+            "turbo": "turbo",
+            "base": "base",
+            "small": "small",
+            "medium": "medium",
+            "large": "large",
+        }
 
         repo_id = model_map[self.model]
+
+        # Select accelerator device based on configuration
+        # When MPS is used, Docling 2.58.0 automatically uses MLX Whisper backend
+        # providing 19x performance improvement on Apple Silicon
+        if self.device.lower() == "mps":
+            accelerator_device = AcceleratorDevice.MPS
+        elif self.device.lower() == "cuda":
+            accelerator_device = AcceleratorDevice.CUDA
+        else:
+            accelerator_device = AcceleratorDevice.CPU
 
         # Build kwargs dynamically - omit language if "auto"
         kwargs = {
