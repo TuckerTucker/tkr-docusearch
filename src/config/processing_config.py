@@ -142,7 +142,7 @@ class ProcessingConfig:
         }
 
     def __repr__(self) -> str:
-        """String representation of configuration."""
+        """Return string representation of configuration."""
         return (
             f"ProcessingConfig("
             f"max_size={self.max_file_size_mb}MB, "
@@ -520,6 +520,24 @@ class AsrConfig:
 
             return InlineAsrNativeWhisperOptions(**kwargs)
 
+    @staticmethod
+    def _parse_float_env(var_name: str, default: float) -> float:
+        """Parse float environment variable with error handling."""
+        try:
+            return float(os.getenv(var_name, str(default)))
+        except ValueError:
+            logger.warning(f"Invalid {var_name}, using default {default}")
+            return default
+
+    @staticmethod
+    def _parse_int_env(var_name: str, default: int) -> int:
+        """Parse int environment variable with error handling."""
+        try:
+            return int(os.getenv(var_name, str(default)))
+        except ValueError:
+            logger.warning(f"Invalid {var_name}, using default {default}")
+            return default
+
     @classmethod
     def from_env(cls) -> "AsrConfig":
         """Load configuration from environment variables.
@@ -554,43 +572,13 @@ class AsrConfig:
             device = os.getenv("ASR_DEVICE", "mps")
             word_timestamps = os.getenv("ASR_WORD_TIMESTAMPS", "true").lower() == "true"
 
-            # Parse numeric values with error handling
-            try:
-                temperature = float(os.getenv("ASR_TEMPERATURE", "0.0"))
-            except ValueError:
-                logger.warning("Invalid ASR_TEMPERATURE, using default 0.0")
-                temperature = 0.0
-
-            try:
-                max_time_chunk = float(os.getenv("ASR_MAX_TIME_CHUNK", "30.0"))
-            except ValueError:
-                logger.warning("Invalid ASR_MAX_TIME_CHUNK, using default 30.0")
-                max_time_chunk = 30.0
-
-            # Parse caption splitting parameters
-            try:
-                max_caption_duration = float(os.getenv("ASR_MAX_CAPTION_DURATION", "6.0"))
-            except ValueError:
-                logger.warning("Invalid ASR_MAX_CAPTION_DURATION, using default 6.0")
-                max_caption_duration = 6.0
-
-            try:
-                max_caption_chars = int(os.getenv("ASR_MAX_CAPTION_CHARS", "100"))
-            except ValueError:
-                logger.warning("Invalid ASR_MAX_CAPTION_CHARS, using default 100")
-                max_caption_chars = 100
-
-            try:
-                min_caption_duration = float(os.getenv("ASR_MIN_CAPTION_DURATION", "1.0"))
-            except ValueError:
-                logger.warning("Invalid ASR_MIN_CAPTION_DURATION, using default 1.0")
-                min_caption_duration = 1.0
-
-            try:
-                target_chars_per_second = float(os.getenv("ASR_TARGET_CHARS_PER_SECOND", "15.0"))
-            except ValueError:
-                logger.warning("Invalid ASR_TARGET_CHARS_PER_SECOND, using default 15.0")
-                target_chars_per_second = 15.0
+            # Parse numeric values using helper methods
+            temperature = cls._parse_float_env("ASR_TEMPERATURE", 0.0)
+            max_time_chunk = cls._parse_float_env("ASR_MAX_TIME_CHUNK", 30.0)
+            max_caption_duration = cls._parse_float_env("ASR_MAX_CAPTION_DURATION", 6.0)
+            max_caption_chars = cls._parse_int_env("ASR_MAX_CAPTION_CHARS", 100)
+            min_caption_duration = cls._parse_float_env("ASR_MIN_CAPTION_DURATION", 1.0)
+            target_chars_per_second = cls._parse_float_env("ASR_TARGET_CHARS_PER_SECOND", 15.0)
 
             config = cls(
                 enabled=enabled,
@@ -645,7 +633,7 @@ class AsrConfig:
         }
 
     def __repr__(self) -> str:
-        """String representation of configuration."""
+        """Return string representation of configuration."""
         return (
             f"AsrConfig(model={self.model}, language={self.language}, "
             f"device={self.device}, enabled={self.enabled}, "

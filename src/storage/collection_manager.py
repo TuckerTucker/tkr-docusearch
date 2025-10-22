@@ -171,7 +171,7 @@ class CollectionManager:
         if not confirm:
             raise ValueError("Reset requires explicit confirmation (confirm=True)")
 
-        report = {
+        report: Dict[str, Any] = {
             "status": "success",
             "collections_reset": [],
             "items_deleted": 0,
@@ -288,7 +288,7 @@ class CollectionManager:
                 "count": int
             }
         """
-        orphans = {"visual_orphans": [], "text_orphans": [], "count": 0}
+        orphans: Dict[str, Any] = {"visual_orphans": [], "text_orphans": [], "count": 0}
 
         try:
             # Check visual collection
@@ -341,7 +341,12 @@ class CollectionManager:
         if not confirm:
             raise ValueError("Cleanup requires explicit confirmation (confirm=True)")
 
-        report = {"status": "success", "visual_deleted": 0, "text_deleted": 0, "total_deleted": 0}
+        report: Dict[str, Any] = {
+            "status": "success",
+            "visual_deleted": 0,
+            "text_deleted": 0,
+            "total_deleted": 0,
+        }
 
         try:
             # Find orphans

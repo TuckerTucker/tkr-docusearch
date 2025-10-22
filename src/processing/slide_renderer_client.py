@@ -58,7 +58,7 @@ class SlideRendererClient:
             logger.warning(f"Slide renderer health check failed: {e}")
             return False
 
-    def render_slides(
+    def render_slides(  # noqa: C901
         self, pptx_path: str, output_dir: str, dpi: int = 150, max_retries: int = 3
     ) -> List[str]:
         """Render PPTX slides to PNG images.
@@ -91,7 +91,7 @@ class SlideRendererClient:
         logger.info(f"Rendering slides: {Path(pptx_path).name} → {output_dir} @ {dpi} DPI")
 
         # Retry loop for transient errors
-        last_error = None
+        last_error: Optional[Exception] = None
         for attempt in range(1, max_retries + 1):
             try:
                 response = requests.post(

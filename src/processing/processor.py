@@ -116,7 +116,7 @@ class DocumentProcessor:
             f"visual_batch={visual_batch_size}, text_batch={text_batch_size})"
         )
 
-    def process_document(
+    def process_document(  # noqa: C901
         self,
         file_path: str,
         chunk_size_words: int = 250,
@@ -487,7 +487,7 @@ class DocumentProcessor:
         doc_metadata: Dict[str, Any],
         filename: str,
         file_path: str,
-        pages: List = None,  # Wave 1: Optional pages for image paths
+        pages: Optional[List] = None,  # Wave 1: Optional pages for image paths
     ) -> StorageConfirmation:
         """Store embeddings in ChromaDB with enhanced metadata.
 

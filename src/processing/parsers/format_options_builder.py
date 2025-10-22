@@ -106,7 +106,7 @@ class FormatOptionsBuilder:
     @staticmethod
     def build_format_options(
         file_path: str, pipeline_options, config: Optional[Any] = None
-    ) -> Dict:
+    ) -> Optional[Dict]:
         """
         Build format options based on file extension.
 
