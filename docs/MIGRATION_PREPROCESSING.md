@@ -76,21 +76,43 @@ This allows easy rollback if needed.
 
 ---
 
-### Step 2: Install MLX Dependencies
+### Step 2: Download and Setup MLX Model
 
-**Install MLX-LM library:**
+**Option A: Automated Setup (Recommended)**
 
-```bash
-pip install mlx-lm>=0.26.3
-```
-
-**Verify installation:**
+Use the automated setup script:
 
 ```bash
-python -c "import mlx_lm; print('MLX-LM version:', mlx_lm.__version__)"
+cd /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch
+./scripts/setup-mlx-model.sh
 ```
 
-Expected output: `MLX-LM version: 0.26.3` (or higher)
+This script will:
+- Check system requirements (disk space, dependencies)
+- Download gpt-oss-20B model (~11GB, 4-bit quantized)
+- Validate model files
+- Test model loading
+- Verify .env configuration
+
+**Option B: Manual Setup**
+
+If you prefer manual setup:
+
+1. **Install dependencies:**
+   ```bash
+   pip install mlx-lm>=0.19.3 huggingface-hub
+   ```
+
+2. **Download model:**
+   ```bash
+   huggingface-cli download InferenceIllusionist/gpt-oss-20b-MLX-4bit \
+     --local-dir /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/models/gpt-oss-20b-MLX-4bit
+   ```
+
+3. **Verify installation:**
+   ```bash
+   python -c "import mlx_lm; print('MLX-LM version:', mlx_lm.__version__)"
+   ```
 
 **Troubleshooting:**
 

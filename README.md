@@ -516,6 +516,27 @@ python scripts/validate_migration.py
 python scripts/validate_migration.py --count-documents
 ```
 
+### Using Research Bot with Local Preprocessing (Optional)
+
+**Enable cost-optimized research with local LLM preprocessing:**
+
+```bash
+# One-command setup (downloads model, configures .env)
+./scripts/setup-mlx-model.sh
+
+# Restart services to activate
+./scripts/stop-all.sh && ./scripts/start-all.sh
+```
+
+**Benefits:**
+- ~60% reduction in foundation model API costs
+- Process more documents within token limits
+- Enhanced privacy (more local processing)
+
+See [Migration Guide](docs/MIGRATION_PREPROCESSING.md) for details.
+
+---
+
 ### Using Enhanced Features
 
 **1. Research with Precise Citations**
