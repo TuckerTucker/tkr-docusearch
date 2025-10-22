@@ -190,7 +190,8 @@ async def lifespan(app: FastAPI):
     )
 
     # Initialize local LLM preprocessor if enabled
-    if os.getenv("LLM_PROVIDER") == "mlx":
+    preprocessing_enabled = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
+    if preprocessing_enabled:
         from src.research.local_preprocessor import LocalLLMPreprocessor
         from src.research.mlx_llm_client import MLXLLMClient
 
