@@ -14,6 +14,7 @@ export default function ResearchPanel({
   query,
   answer,
   references,
+  metadata,
   isLoading,
   error,
   onQuerySubmit,
@@ -113,6 +114,7 @@ export default function ResearchPanel({
             <AnswerDisplay
               answer={answer}
               references={references}
+              metadata={metadata}
               activeReference={activeReference}
               onCitationClick={onCitationClick}
               onCitationHover={onCitationHover}
@@ -128,6 +130,7 @@ ResearchPanel.propTypes = {
   query: PropTypes.string,
   answer: PropTypes.string,
   references: PropTypes.array,
+  metadata: PropTypes.object,
   isLoading: PropTypes.bool,
   error: PropTypes.object,
   onQuerySubmit: PropTypes.func.isRequired,

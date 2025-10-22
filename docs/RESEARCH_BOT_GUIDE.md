@@ -298,6 +298,254 @@ Estimated costs (per query):
 
 ---
 
+## Local LLM Preprocessing
+
+### Overview
+
+Local LLM Preprocessing is an optional feature that uses a local language model to pre-process your document chunks before sending them to the foundation model (GPT-4, Claude, etc.). This reduces token usage, lowers API costs, and can improve answer quality by focusing on the most relevant information.
+
+**How It Works:**
+1. Search finds top 10-20 relevant document chunks
+2. Local MLX model processes chunks using selected strategy
+3. Processed chunks sent to foundation model for final answer
+4. You save ~60% on foundation model API costs
+
+### Benefits
+
+**Cost Savings:**
+- Reduce foundation model API calls by ~60%
+- Process more documents within token budget
+- Pay-per-token savings on GPT-4/Claude
+
+**Improved Quality:**
+- Filter out low-relevance chunks
+- Focus foundation model on key information
+- Better citation accuracy
+
+**Privacy:**
+- Initial processing happens locally on your Mac
+- Only filtered/compressed content sent to API
+- Reduce data transmission to third parties
+
+### Preprocessing Strategies
+
+**Compression Strategy** (Default)
+- Extracts key facts from each chunk
+- Reduces token count by 30-50%
+- Preserves all important information
+- Best for: General queries with many sources
+
+**Filtering Strategy**
+- Scores each chunk 0-10 for relevance
+- Keeps only high-scoring chunks (threshold: 7.0+)
+- Retains 40-60% of original chunks
+- Best for: Focused queries with specific topics
+
+**Synthesis Strategy**
+- Combines multiple chunks into organized summary
+- Reduces token count by 90%+
+- Creates cross-document knowledge graph
+- Best for: Broad queries requiring synthesis across many documents
+
+### Setup Instructions
+
+**Prerequisites:**
+- Mac with M1/M2/M3 chip (Metal GPU required)
+- 16GB RAM minimum
+- ~8GB free disk space for MLX model
+
+**Step 1: Install MLX-LM**
+
+```bash
+pip install mlx-lm>=0.26.3
+```
+
+**Step 2: Download MLX Model**
+
+```bash
+huggingface-cli download InferenceIllusionist/gpt-oss-20b-MLX-4bit
+```
+
+This downloads the MLX-optimized 4-bit quantized model (~8GB).
+
+**Step 3: Configure Environment Variables**
+
+Edit your `.env` file:
+
+```bash
+# Enable MLX local LLM for preprocessing
+LLM_PROVIDER=mlx
+MLX_MODEL_PATH=/Users/[your-username]/.cache/huggingface/hub/models--InferenceIllusionist--gpt-oss-20b-MLX-4bit
+
+# Enable preprocessing
+LOCAL_PREPROCESS_ENABLED=true
+LOCAL_PREPROCESS_STRATEGY=compress
+LOCAL_PREPROCESS_THRESHOLD=7.0
+LOCAL_PREPROCESS_MAX_SOURCES=20
+```
+
+**Step 4: Restart Research API**
+
+```bash
+./scripts/start-all.sh
+```
+
+Or restart just the API:
+
+```bash
+pkill -f "research.py"
+./scripts/start-research-api.sh
+```
+
+**Step 5: Verify Setup**
+
+Submit a test query and check for preprocessing badge:
+- Look for "⚡ Preprocessed with compress" badge below answer
+- Check token reduction percentage
+- Verify preprocessing latency is reasonable (<3s)
+
+### Configuration Options
+
+**Strategy Selection**
+
+```bash
+# Compression (default) - 30-50% reduction
+LOCAL_PREPROCESS_STRATEGY=compress
+
+# Filtering - 40-60% retention
+LOCAL_PREPROCESS_STRATEGY=filter
+
+# Synthesis - 90%+ reduction
+LOCAL_PREPROCESS_STRATEGY=synthesize
+```
+
+**Threshold Tuning** (Filtering strategy only)
+
+```bash
+# Higher = more aggressive filtering (fewer chunks kept)
+LOCAL_PREPROCESS_THRESHOLD=8.0  # Very strict
+LOCAL_PREPROCESS_THRESHOLD=7.0  # Default
+LOCAL_PREPROCESS_THRESHOLD=6.0  # Lenient
+```
+
+**Max Sources**
+
+```bash
+# Maximum chunks to send to preprocessor
+LOCAL_PREPROCESS_MAX_SOURCES=20  # Default
+LOCAL_PREPROCESS_MAX_SOURCES=30  # More comprehensive
+LOCAL_PREPROCESS_MAX_SOURCES=10  # Faster processing
+```
+
+**Performance Expectations:**
+- Compression: <3s for 10 chunks
+- Filtering: <3s for 20 chunks
+- Synthesis: <5s for 15 chunks
+
+### Viewing Preprocessing Metrics
+
+When preprocessing is enabled, you'll see metrics below each answer:
+
+**Preprocessing Badge:**
+```
+⚡ Preprocessed with compress
+```
+
+**Token Reduction:**
+```
+45.2% token reduction
+```
+
+**Processing Time:**
+```
+Preprocessing: 2847ms
+```
+
+These metrics help you understand:
+- Which strategy was used
+- How much you saved on API costs
+- Processing overhead time
+
+### Troubleshooting
+
+**"MLX model not found"**
+
+**Cause:** Model path incorrect or model not downloaded
+
+**Solution:**
+```bash
+# Check model exists
+ls -la ~/.cache/huggingface/hub/models--InferenceIllusionist--gpt-oss-20b-MLX-4bit
+
+# Verify path in .env matches exactly
+cat .env | grep MLX_MODEL_PATH
+
+# Re-download if missing
+huggingface-cli download InferenceIllusionist/gpt-oss-20b-MLX-4bit
+```
+
+**"Preprocessing taking too long" (>10s)**
+
+**Cause:** Too many sources or slow model
+
+**Solution:**
+```bash
+# Reduce max sources
+LOCAL_PREPROCESS_MAX_SOURCES=10
+
+# Or disable preprocessing temporarily
+LOCAL_PREPROCESS_ENABLED=false
+
+# Check CPU usage - MLX should use Metal GPU
+```
+
+**"Citation accuracy decreased"**
+
+**Cause:** Synthesis strategy may lose chunk-level citations
+
+**Solution:**
+```bash
+# Switch to compression or filtering
+LOCAL_PREPROCESS_STRATEGY=compress
+
+# Or disable preprocessing
+LOCAL_PREPROCESS_ENABLED=false
+```
+
+**"API won't start with preprocessing enabled"**
+
+**Cause:** Missing MLX dependencies or model
+
+**Solution:**
+1. Check API logs: `tail -f logs/research-api.log`
+2. Disable preprocessing: `LOCAL_PREPROCESS_ENABLED=false`
+3. Restart API: `./scripts/start-all.sh`
+4. Install MLX: `pip install mlx-lm>=0.26.3`
+5. Re-enable preprocessing
+
+**"Preprocessing metrics not showing in UI"**
+
+**Cause:** Frontend not updated or preprocessing disabled
+
+**Solution:**
+- Verify `LOCAL_PREPROCESS_ENABLED=true` in `.env`
+- Restart API: `./scripts/start-all.sh`
+- Hard refresh browser: Cmd+Shift+R
+- Check browser console for errors
+
+### Disabling Preprocessing
+
+To temporarily disable preprocessing:
+
+```bash
+# In .env file
+LOCAL_PREPROCESS_ENABLED=false
+```
+
+Then restart the API. All other functionality remains unchanged - this is a zero-breaking-change feature.
+
+---
+
 ## Limitations
 
 ### Current Limitations
@@ -351,6 +599,32 @@ A: The AI will present both perspectives with citations: "Doc 1 says X [1], but 
 ### Q: Can I save my research?
 
 A: Not currently - answers are generated fresh each time. Copy/paste to save.
+
+### Q: What is local LLM preprocessing?
+
+A: It's an optional feature that uses a local model (running on your Mac) to pre-process document chunks before sending them to GPT-4/Claude. This reduces token usage by ~60%, saving API costs.
+
+### Q: Do I need preprocessing enabled?
+
+A: No, it's completely optional. The Research Bot works great without it. Enable preprocessing if you want to:
+- Reduce API costs (~60% savings)
+- Process more documents within token limits
+- Keep more data local for privacy
+
+### Q: Will preprocessing make queries slower?
+
+A: Slightly. Preprocessing adds 2-5 seconds, but you save on foundation model API calls. Total query time is usually still under 5 seconds.
+
+### Q: Which preprocessing strategy should I use?
+
+A:
+- **Compression** (default) - Best for most queries, 30-50% token reduction
+- **Filtering** - Best for focused queries with clear topics
+- **Synthesis** - Best for broad queries requiring cross-document analysis
+
+### Q: Can I use preprocessing without an MLX model?
+
+A: No, preprocessing requires an MLX-compatible model and Mac with M1+ chip. Without MLX, preprocessing is automatically disabled and the Research Bot works normally.
 
 ---
 

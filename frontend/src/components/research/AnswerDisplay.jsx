@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import PropTypes from 'prop-types'
 import ReactMarkdown from 'react-markdown'
 import CitationLink from './CitationLink.jsx'
+import ResearchMetadata from './ResearchMetadata.jsx'
 
 /**
  * AnswerDisplay Component - Renders AI-generated answer with inline citations
@@ -17,6 +18,7 @@ import CitationLink from './CitationLink.jsx'
 export default function AnswerDisplay({
   answer,
   references,
+  metadata,
   activeReference,
   onCitationClick,
   onCitationHover,
@@ -65,6 +67,9 @@ export default function AnswerDisplay({
           {parsedAnswer}
         </ReactMarkdown>
       </div>
+
+      {/* Research Metadata - Show preprocessing and performance metrics */}
+      <ResearchMetadata metadata={metadata} />
     </div>
   )
 }
@@ -72,6 +77,7 @@ export default function AnswerDisplay({
 AnswerDisplay.propTypes = {
   answer: PropTypes.string,
   references: PropTypes.array,
+  metadata: PropTypes.object,
   activeReference: PropTypes.number,
   onCitationClick: PropTypes.func,
   onCitationHover: PropTypes.func,

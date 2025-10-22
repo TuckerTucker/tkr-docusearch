@@ -158,3 +158,147 @@ EXAMPLE_QUERIES = {
 def get_example_query(query_type: str = "factual") -> str:
     """Get example query by type"""
     return EXAMPLE_QUERIES.get(query_type, EXAMPLE_QUERIES["factual"])
+
+
+# ============================================================================
+# Preprocessing Prompts for Local LLM Strategies
+# ============================================================================
+
+CHUNK_COMPRESSION_PROMPT = """You are a research assistant extracting key information from document chunks.
+
+TASK: Extract the key facts from this document chunk that are relevant to the user's query.
+
+RULES:
+1. Preserve specific numbers, dates, names, and technical details exactly
+2. Remove boilerplate, introductory text, and tangential information
+3. Maintain factual accuracy - do not infer or add information
+4. Keep the summary dense and concise (aim for 30-50% of original length)
+5. Preserve context needed for citations (page numbers, section references)
+
+OUTPUT FORMAT:
+Provide ONLY the compressed facts. Do not include meta-commentary like "This document discusses..." or "The key points are...". Start directly with the factual content.
+
+QUERY: {query}
+
+DOCUMENT CHUNK:
+{chunk_content}
+
+COMPRESSED FACTS:"""
+
+RELEVANCE_SCORING_PROMPT = """You are evaluating the relevance of a document chunk to a specific query.
+
+TASK: Rate this chunk's relevance on a scale of 0-10.
+
+SCORING GUIDE:
+- 10: Directly answers the query with specific, detailed information
+- 7-9: Contains relevant information but may be incomplete or tangential
+- 4-6: Related topic but doesn't directly address the query
+- 1-3: Mentions query terms but provides minimal useful information
+- 0: Completely irrelevant to the query
+
+CONSIDER:
+- Direct information vs tangential mentions
+- Specificity and detail level
+- Completeness of information for answering the query
+- Factual content vs boilerplate text
+
+QUERY: {query}
+
+DOCUMENT CHUNK:
+{chunk_content}
+
+Provide ONLY a single number from 0-10. No explanation.
+
+SCORE:"""
+
+KNOWLEDGE_SYNTHESIS_PROMPT = """You are a research assistant synthesizing information from multiple document chunks.
+
+TASK: Organize key information by theme, preserving source citations.
+
+RULES:
+1. Group related facts together by theme
+2. CRITICAL: Cite sources using [N] format for every fact
+3. Note contradictions if documents disagree
+4. Note gaps if query aspects are unanswered
+
+OUTPUT FORMAT:
+## Theme 1: [Topic Name]
+- Fact: [statement] (Sources: [1], [3])
+- Fact: [statement] (Source: [2])
+
+## Contradictions (if any):
+- [Document 1] states X, but [Document 3] states Y
+
+## Information Gaps (if any):
+- No information found about [aspect]
+
+QUERY: {query}
+
+DOCUMENT CHUNKS:
+{numbered_chunks}
+
+SYNTHESIZED KNOWLEDGE:"""
+
+
+class PreprocessingPrompts:
+    """Prompt template management for preprocessing strategies."""
+
+    @staticmethod
+    def get_compression_prompt(query: str, chunk_content: str) -> str:
+        """
+        Build compression prompt with query and chunk.
+
+        Args:
+            query: User's research question
+            chunk_content: Document chunk text to compress
+
+        Returns:
+            Formatted prompt string ready for LLM
+        """
+        return CHUNK_COMPRESSION_PROMPT.format(query=query, chunk_content=chunk_content)
+
+    @staticmethod
+    def get_relevance_prompt(query: str, chunk_content: str) -> str:
+        """
+        Build relevance scoring prompt.
+
+        Args:
+            query: User's research question
+            chunk_content: Document chunk text to score
+
+        Returns:
+            Formatted prompt string ready for LLM
+        """
+        return RELEVANCE_SCORING_PROMPT.format(query=query, chunk_content=chunk_content)
+
+    @staticmethod
+    def get_synthesis_prompt(query: str, numbered_chunks: str) -> str:
+        """
+        Build knowledge synthesis prompt.
+
+        Args:
+            query: User's research question
+            numbered_chunks: All chunks formatted as "[1] content\\n[2] content\\n..."
+
+        Returns:
+            Formatted prompt string ready for LLM
+        """
+        return KNOWLEDGE_SYNTHESIS_PROMPT.format(query=query, numbered_chunks=numbered_chunks)
+
+    @staticmethod
+    def format_numbered_chunks(sources: list) -> str:
+        """
+        Format sources as numbered chunks for synthesis.
+
+        Args:
+            sources: List of SourceDocument objects
+
+        Returns:
+            Formatted string: "[1] content\\n\\n[2] content\\n\\n..."
+        """
+        formatted_parts = []
+        for i, source in enumerate(sources, start=1):
+            formatted_parts.append(
+                f"[{i}] {source.filename}, Page {source.page}\n{source.markdown_content}"
+            )
+        return "\n\n".join(formatted_parts)

@@ -17,7 +17,7 @@ import ReferencesPanel from '../features/research/ReferencesPanel.jsx'
  * - Empty, loading, error states
  */
 export default function ResearchView() {
-  const { ask, answer, references, query, isLoading, error, reset } = useResearch()
+  const { ask, answer, references, query, metadata, isLoading, error, reset } = useResearch()
 
   // Track active reference for bidirectional highlighting
   const [activeReference, setActiveReference] = useState(null)
@@ -112,6 +112,7 @@ export default function ResearchView() {
             query={query}
             answer={answer}
             references={references}
+            metadata={metadata}
             isLoading={isLoading}
             error={error}
             onQuerySubmit={handleQuerySubmit}

@@ -31,7 +31,8 @@ export function useResearch() {
     answer: mutation.data?.answer || null,
     references: mutation.data?.sources || [], // API returns 'sources' not 'references'
     query: mutation.data?.query || null,
-    model: mutation.data?.metadata?.model_used || null,
+    metadata: mutation.data?.metadata || null, // Full metadata object
+    model: mutation.data?.metadata?.model_used || null, // Backward compatibility
     isLoading: mutation.isPending,
     error: mutation.error,
     reset: mutation.reset,

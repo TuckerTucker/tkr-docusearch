@@ -98,6 +98,12 @@ class ResearchMetadata(BaseModel):
     vision_enabled: bool = False
     images_sent: int = 0
     image_tokens: int = 0
+    # Preprocessing metadata
+    preprocessing_enabled: bool = False
+    preprocessing_strategy: Optional[str] = None
+    preprocessing_latency_ms: int = 0
+    original_sources_count: int = 0
+    token_reduction_percent: float = 0.0
 
 
 class ResearchResponse(BaseModel):
@@ -182,6 +188,24 @@ async def lifespan(app: FastAPI):
             timeout=int(os.getenv("LLM_TIMEOUT", "30")),
         )
     )
+
+    # Initialize local LLM preprocessor if enabled
+    if os.getenv("LLM_PROVIDER") == "mlx":
+        from src.research.local_preprocessor import LocalLLMPreprocessor
+        from src.research.mlx_llm_client import MLXLLMClient
+
+        model_path = os.getenv("MLX_MODEL_PATH")
+        if not model_path or not os.path.exists(model_path):
+            logger.warning("MLX preprocessing disabled: model path not found", path=model_path)
+            app.state.local_preprocessor = None
+        else:
+            app.state.local_llm = MLXLLMClient(
+                model_path=model_path, max_tokens=int(os.getenv("MLX_MAX_TOKENS", "4000"))
+            )
+            app.state.local_preprocessor = LocalLLMPreprocessor(mlx_client=app.state.local_llm)
+            logger.info("Local LLM preprocessor initialized", model_path=model_path)
+    else:
+        app.state.local_preprocessor = None
 
     # Initialize citation parser
     app.state.citation_parser = CitationParser()
@@ -272,6 +296,90 @@ async def ask_research_question(request: ResearchRequest):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No relevant documents found for your query. Try rephrasing or uploading more documents.",
             )
+
+        # Step 1.5: Preprocessing with local LLM (if enabled)
+        preprocessing_enabled = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
+        preprocessing_strategy = None
+        preprocessing_latency_ms = 0
+        original_sources_count = len(context.sources)
+        token_reduction_percent = 0.0
+
+        if preprocessing_enabled and app.state.local_preprocessor:
+            preprocessing_start = time.time()
+            strategy = os.getenv("LOCAL_PREPROCESS_STRATEGY", "compress")
+            preprocessing_strategy = strategy
+
+            # Track original token count for reduction calculation
+            original_tokens = context.total_tokens
+
+            try:
+                if strategy == "compress":
+                    logger.info(
+                        "Applying compress preprocessing strategy", sources=len(context.sources)
+                    )
+                    context.sources = await app.state.local_preprocessor.compress_chunks(
+                        query=request.query, sources=context.sources
+                    )
+                    # Rebuild formatted_text from compressed sources
+                    context.formatted_text = app.state.context_builder._format_context(
+                        context.sources
+                    )
+
+                elif strategy == "filter":
+                    threshold = float(os.getenv("LOCAL_PREPROCESS_THRESHOLD", "7.0"))
+                    logger.info(
+                        "Applying filter preprocessing strategy",
+                        sources=len(context.sources),
+                        threshold=threshold,
+                    )
+                    context.sources = await app.state.local_preprocessor.filter_by_relevance(
+                        query=request.query, sources=context.sources, threshold=threshold
+                    )
+                    context.formatted_text = app.state.context_builder._format_context(
+                        context.sources
+                    )
+
+                elif strategy == "synthesize":
+                    logger.info(
+                        "Applying synthesize preprocessing strategy", sources=len(context.sources)
+                    )
+                    synthesized_text = await app.state.local_preprocessor.synthesize_knowledge(
+                        query=request.query, sources=context.sources
+                    )
+                    # Replace formatted_text with synthesis
+                    context.formatted_text = synthesized_text
+
+                preprocessing_latency_ms = int((time.time() - preprocessing_start) * 1000)
+
+                # Recalculate token count after preprocessing
+                from src.research.context_builder import ContextBuilder
+
+                new_tokens = ContextBuilder._count_tokens(context.formatted_text)
+
+                # Calculate token reduction percentage
+                if original_tokens > 0:
+                    token_reduction_percent = (
+                        (original_tokens - new_tokens) / original_tokens
+                    ) * 100.0
+
+                logger.info(
+                    "Preprocessing completed",
+                    strategy=strategy,
+                    latency_ms=preprocessing_latency_ms,
+                    original_sources=original_sources_count,
+                    final_sources=len(context.sources),
+                    original_tokens=original_tokens,
+                    final_tokens=new_tokens,
+                    reduction_percent=round(token_reduction_percent, 2),
+                )
+
+                # Update context token count
+                context.total_tokens = new_tokens
+
+            except Exception as e:
+                logger.error("Preprocessing failed, using original context", error=str(e))
+                preprocessing_enabled = False
+                preprocessing_strategy = None
 
         # Step 2: Extract image URLs for vision-capable queries
         vision_enabled = os.getenv("RESEARCH_VISION_ENABLED", "true").lower() == "true"
@@ -380,6 +488,11 @@ async def ask_research_question(request: ResearchRequest):
                 vision_enabled=vision_enabled,
                 images_sent=len(image_urls),
                 image_tokens=image_tokens,
+                preprocessing_enabled=preprocessing_enabled,
+                preprocessing_strategy=preprocessing_strategy,
+                preprocessing_latency_ms=preprocessing_latency_ms,
+                original_sources_count=original_sources_count,
+                token_reduction_percent=round(token_reduction_percent, 2),
             ),
         )
 
