@@ -39,567 +39,85 @@ meta:
   kit: tkr-context-kit
   fmt: 1
   type: multimodal-document-search-research
-  desc: "Production-ready local document search with real ColPali, ChromaDB, 2-stage search, hybrid Metal GPU/Docker + AI Research Bot"
-  ver: "0.10.0"
+  desc: "Production-ready local document search with real ColPali, ChromaDB, 2-stage search, hybrid Metal GPU/Docker + AI Research Bot + React 19 SPA"
+  ver: "0.11.0"
   author: "Tucker github.com/tuckertucker"
-  ts: "2025-10-17T00:00:00Z"
-  status: production-ready-99pct
-  phase: "Wave 6 Research Bot Complete + Wave 1-2 Critical Fixes"
+  ts: "2025-10-21T00:00:00Z"
+  status: production-ready-react-spa
+  phase: "Wave 7 React Migration Complete + Research API Thumbnail Fix"
   entry: "./scripts/start-all.sh"
-  stack: &stack "Python 3.13 + ColPali ColNomic 7B + ChromaDB + PyTorch MPS + Metal GPU + Hybrid + LiteLLM Research Bot"
-  cmds: [./scripts/start-all.sh, ./scripts/stop-all.sh, ./scripts/status.sh]
-
-# Dependency anchors for reuse
-deps: &deps
-  py: &py
-    # Anchors for common properties
-    ml: &ml {cat: ml_core}
-    llm: &llm {cat: llm_integration}
-    doc: &doc {cat: document_processing}
-    img: &img {cat: image_processing}
-    stor: &stor {cat: storage}
-    web: &web {cat: web_server}
-    util: &util {cat: utilities}
-    test: &test {cat: testing}
-
-    prod:
-      # ML Core (with CVE patches)
-      torch: {v: ">=2.8.0", <<: *ml, note: "CVE patch from 2.0.0"}
-      torchvision: {v: ">=0.15.0", <<: *ml}
-      transformers: {v: ">=4.30.0", <<: *ml}
-      sentence-transformers: {v: ">=2.2.0", <<: *ml}
-      colpali-engine: {v: ">=0.2.0", <<: *ml, note: "Multimodal embeddings"}
-
-      # LLM Integration (NEW)
-      litellm: {v: ">=1.0.0", <<: *llm, note: "Unified OpenAI/Anthropic/Google"}
-      tiktoken: {v: ">=0.5.0", <<: *llm, note: "Token counting"}
-
-      # Document Processing
-      docling: {v: ">=2.55.0", <<: *doc, extras: [asr], note: "Unified parser + audio"}
-      Pillow: {v: ">=10.0.0", <<: *img}
-
-      # Storage & Data
-      chromadb: {v: ">=0.4.0", <<: *stor, note: "128-dim vectors"}
-      numpy: {v: ">=1.24.0", <<: *util}
-
-      # Audio
-      mutagen: {v: ">=1.47.0", cat: audio_processing, note: "ID3 tags, album art"}
-
-      # Web Framework
-      fastapi: {v: ">=0.104.0", <<: *web}
-      uvicorn: {v: ">=0.24.0", <<: *web, extras: [standard]}
-      python-multipart: {v: ">=0.0.6", <<: *web}
-
-      # Utilities (with CVE patches)
-      pydantic: {v: ">=2.0.0", <<: *util}
-      python-dotenv: {v: ">=1.0.0", <<: *util}
-      tqdm: {v: ">=4.65.0", <<: *util}
-      structlog: {v: ">=23.1.0", <<: *util}
-      urllib3: {v: ">=2.5.0", <<: *util, note: "CVE patch"}
-      watchdog: {v: ">=3.0.0", <<: *util}
-
-    dev:
-      pytest: {v: ">=7.4.0", <<: *test}
-      pytest-cov: {v: ">=4.1.0", <<: *test}
-      pytest-asyncio: {v: ">=0.21.0", <<: *test}
-
-# Directory structure with compression
-struct:
-  _: {n: 3900, t: {md: 710, py: 720, rs: 477, json: 267, ts: 253, txt: 149, js: 145, tsx: 88, sh: 88, html: 7}, s: comprehensive}
-
-  src:
-    _: {n: 155, t: {py: 103, js: 19, md: 16, html: 7}, s: production-ready}
-
-    embeddings:
-      _: {n: 12, s: wave2-complete}
-      f: [__init__.py, colpali_wrapper.py, model_loader.py, scoring.py, types.py, exceptions.py, test_embeddings.py, verify_implementation.py, example_usage.py, run_tests.py, README.md, IMPLEMENTATION_SUMMARY.md]
-      feat: [Real ColPali, MPS accel, Late interaction, 128-dim]
-
-    storage:
-      _: {n: 16, s: wave2-complete}
-      f: [__init__.py, chroma_client.py, collection_manager.py, compression.py, markdown_utils.py, metadata_schema.py, test_storage.py, test_real_chromadb.py, test_compression.py, test_markdown_storage.py, requirements.txt, README.md, QUICK_REFERENCE.md, ARCHITECTURE.md, CONTRACT_VALIDATION.md, IMPLEMENTATION_SUMMARY.md]
-      feat: [Real ChromaDB, Multi-vector, Gzip compression, Markdown storage, Doc deletion utils]
-
-    processing:
-      _: {n: 52, t: {py: 44, md: 2, html: 1}, s: wave3-complete-with-deletion}
-      f: [__init__.py, processor.py, docling_parser.py, visual_processor.py, text_processor.py, worker_webhook.py, audio_metadata.py, cover_art_utils.py, file_validator.py, image_utils.py, markdown_utils.py, monitoring_utils.py, slide_renderer_client.py, smart_chunker.py, status_api.py, status_manager.py, status_models.py, structure_extractor.py, vtt_generator.py, websocket_broadcaster.py, documents_api.py, mocks.py, types.py, validate_mocks.py]
-      feat: [PDF/DOCX/PPTX/MP3/WAV, 5-stage deletion, Audio metadata, Slide renderer, VTT captions, WebSocket status, REST API]
-
-    search:
-      _: {n: 9, s: wave3-complete}
-      f: [__init__.py, search_engine.py, query_processor.py, result_ranker.py, mocks.py, test_search.py, validate_search.py, README.md, QUICK_START.md]
-      feat: [2-stage search, Late interaction re-rank, Hybrid modes]
-
-    research:
-      _: {n: 9, t: {py: 8, md: 1}, s: wave6-complete}
-      f: [__init__.py, litellm_client.py, context_builder.py, citation_parser.py, prompts.py, types.py, exceptions.py, test_citation_parser.py, README.md]
-      feat: [Multi-provider LLM, Citation extraction, Context formatting, Optimized prompts]
-      ln: {litellm_client: 400, context_builder: 350, citation_parser: 450, prompts: 150, test_citation_parser: 150}
-      tests: {total: 11, passed: 11, coverage: comprehensive}
-
-    frontend:
-      _: {n: 37, t: {js: 19, html: 6, css: 2}, s: production-ready}
-      feat: [Audio player, Album art, VTT captions, Markdown parsing, Theme toggle, Research interface, Bidirectional highlighting]
-      research: {_: {n: 8}, f: [research.html, research-controller.js, answer-display.js, reference-card.js], ln: {research_html: 300, answer_display: 250, reference_card: 300, research_controller: 250}}
-
-    config:
-      _: {n: 6, s: wave2-complete}
-      f: [__init__.py, model_config.py, processing_config.py, storage_config.py, image_config.py, test_asr_config.py]
-
-    api:
-      _: {n: 4}
-      f: [__init__.py, models.py, server.py, research.py]
-      research: {ln: 550, feat: [POST /api/research/ask, GET /api/research/health, GET /api/research/models, FastAPI + Pydantic, CORS, Error handling]}
-
-    utils:
-      _: {n: 2}
-      f: [__init__.py, environment.py]
-
-  scripts:
-    _: {n: 10, t: {sh: 10}, s: unified-management}
-    prod: [start-all.sh, stop-all.sh, status.sh, run-worker-native.sh, setup.sh, start.sh, stop.sh, monitor.sh]
-    legacy: {_: {n: 4}, f: [start-all.sh, stop-all.sh, start-api.sh, start-ui.sh, README.md]}
-
-  docker:
-    _: {n: 12, t: {yml: 4, py: 3, sh: 2}, s: hybrid-architecture}
-    f: [docker-compose.yml, docker-compose.native-worker.yml, docker-compose.slide-renderer.yml, docker-compose.override.yml, slide_renderer_api.py]
-    hooks: [on_upload.py, test_webhook.sh]
-
-  docs:
-    _: {n: 16, t: {md: 16}, s: comprehensive}
-    mgmt: [QUICK_START.md, SCRIPTS.md, GPU_ACCELERATION.md, NATIVE_WORKER_SETUP.md, RESEARCH_BOT_GUIDE.md]
-    arch: [ARCHITECTURE.md, DEPLOYMENT.md, WAVE_EXECUTION.md]
-    ref: [API_REFERENCE.md, CONTRIBUTING.md, TROUBLESHOOTING.md]
-
-  tests:
-    _: {n: 10, t: {py: 10}, s: comprehensive}
-    search: [__init__.py, test_search_api.py]
-    storage: [__init__.py, test_chroma_operations.py]
-    research: [test_citation_parser.py]
-
-  .context-kit:
-    _: {n: 3150, t: {md: 610, py: 555, rs: 400, json: 250}, s: orchestration-hub}
-    orch:
-      docusearch-mvp: {_: {n: 45, s: wave5-complete}, ic: 6}
-      audio-album-art: {_: {n: 15, s: wave1-complete}, ic: 3}
-      audio-timestamp-fix: {_: {n: 25, s: wave2-complete}, ic: 8}
-      custom-upload-ui: {_: {n: 20, s: in-progress}}
-      repo-critical-fixes: {_: {n: 25, s: wave1-2-complete}, gates: 12}
-      research-bot: {_: {n: 30, s: wave6-complete}, ic: 5, impl: [litellm_client, context_builder, citation_parser, prompts, api, frontend]}
-
-  .github:
-    _: {n: 5, s: new}
-    workflows: [ci.yml, pre-commit.yml, tests.yml]
-    templates: [bug_report.md, feature_request.md]
-
-  .claude:
-    _: {n: 65, t: {md: 60, json: 2, sh: 3}, s: agent-framework}
-    agents: 25
-    commands: 15
-
-  data:
-    _: {s: runtime-ignored}
-    dirs: [uploads, images, markdown, models, chroma_db, logs, copyparty, page_images]
-
-  logs:
-    _: {s: runtime-generated}
-    f: [worker-native.log, processing.log, api.log]
-
-  cfg:
-    _: {n: 15}
-    py: [requirements.txt, pyproject.toml, pytest.ini, conftest.py, setup.py]
-    pre: [.pre-commit-config.yaml]
-    git: [.gitignore, .gitattributes]
-    docs: [README.md, LICENSE, CLAUDE.local.md]
-
-# Design system (compressed W3C tokens)
-design:
-  theme: Kraft Paper
-  compliance: WCAG 2.1 AA
-
-  # Color anchors (OKLCH space)
-  colors: &colors
-    light:
-      bg: &l-bg {p: "oklch(0.9582 0.0152 90.2357)", s: "oklch(0.9914 0.0098 87.4695)"}
-      fg: &l-fg {p: "oklch(0.3760 0.0225 64.3434)", s: "oklch(0.4700 0.0350 71.1655)", t: "oklch(0.5400 0.0400 71.1655)"}
-      primary: &l-pri {b: "oklch(0.6180 0.0778 65.5444)", h: "oklch(0.5680 0.0878 65.5444)", l: "oklch(0.8348 0.0426 88.8064)"}
-      status: &l-stat {ok: "oklch(0.60 0.15 145)", warn: "oklch(0.70 0.15 85)", err: "oklch(0.5471 0.1438 32.9149)", info: "oklch(0.60 0.15 230)"}
-      citation: &l-cite {inline: "oklch(0.6180 0.0778 65.5444)", hover: "oklch(0.8348 0.0426 88.8064)", active: "oklch(0.5680 0.0878 65.5444)"}
-    dark:
-      bg: {p: "oklch(0.2747 0.0139 57.6523)", s: "oklch(0.3237 0.0155 59.0603)"}
-      fg: {p: "oklch(0.9239 0.0190 83.0636)", s: "oklch(0.7982 0.0243 82.1078)"}
-      primary: {b: "oklch(0.7264 0.0581 66.6967)"}
-      status: {ok: "oklch(0.65 0.15 145)", warn: "oklch(0.75 0.15 85)", err: "oklch(0.5471 0.1438 32.9149)", info: "oklch(0.65 0.15 230)"}
-      citation: {inline: "oklch(0.7264 0.0581 66.6967)", hover: "oklch(0.8348 0.0426 88.8064)", active: "oklch(0.6180 0.0778 65.5444)"}
-
-  # Typography
-  typo:
-    fam: {sans: "Chocolate Classical Sans, ui-sans-serif, sans-serif", serif: "Alice, ui-serif", mono: "Courier Prime, ui-monospace"}
-    size: [0.75rem, 0.875rem, 1rem, 1.125rem, 1.25rem, 1.5rem, 2rem]
-    lh: 1.5
-
-  # Spacing (8px system)
-  space: [0.25rem, 0.5rem, 0.75rem, 1rem, 1.25rem, 1.5rem, 2rem, 2.5rem, 3rem]
-
-  # Border radius
-  radius: [0.5rem, 0.625rem, 0.75rem, 1rem, 9999px]
-
-  # Shadows (kraft paper theme)
-  shadow: &shadow
-    base: "hsl(28 13% 20%)"
-    xs: "2px 3px 5px 0px hsl(28 13% 20% / 0.06)"
-    sm: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 1px 2px -1px hsl(28 13% 20% / 0.12)"
-    md: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 2px 4px -1px hsl(28 13% 20% / 0.12)"
-    lg: "2px 3px 5px 0px hsl(28 13% 20% / 0.12), 2px 4px 6px -1px hsl(28 13% 20% / 0.12)"
-
-  # Z-index
-  z: {base: 1, dropdown: 1000, sticky: 1020, modalBg: 1040, modal: 1050}
-
-  # Transitions
-  trans: {fast: 150ms, base: 200ms, slow: 300ms, ease: "cubic-bezier(0.4, 0, 0.2, 1)"}
-
-  # Layout
-  layout: {headerH: 64px, maxW: 1440px, researchPanel: {min: 400px, max: 600px}}
-
-  # Component specs (22 components - 5 new research components)
-  comp:
-    Header: {pos: sticky, z: var(--z-sticky), role: banner, feat: [Sticky top, Theme toggle, Connection status, Responsive]}
-    ThemeToggle: {size: 36x36, s: [default, hover, focus, light, dark], a11y: {kbd: [Enter, Space], outline: 2px}, anim: rotate90deg}
-    ConnectionStatus: {v: [connected, disconnected, reconnecting], role: status, anim: pulse}
-    FilterBar: {pos: sticky, top: var(--header-height), role: search, feat: [Search, Sort, File type filters, Pagination]}
-    DocumentCard: {v: [document, audio], dim: 385x285, s: [default, hover, focus, loading, processing, failed], feat: [Thumbnail, Badges, Action button, Processing states]}
-    Button: {v: [primary, secondary, outline], size: [sm, base], s: [default, hover, active, focus, disabled], a11y: {kbd: [Enter, Space]}}
-    UploadModal: {role: dialog, modal: true, s: [hidden, visible, uploading], a11y: {kbd: [Escape, Tab], trap: true}, feat: [Drag-drop, Validation, Progress, Multi-file]}
-    FormInput: {s: [default, hover, focus, disabled], a11y: {label: required, ring: 3px}}
-    FormSelect: {s: [default, hover, focus], a11y: {kbd: [Arrow, Enter]}}
-    Accordion: {s: [closed, open, active], feat: [Timestamp, Copy, Smooth transition], a11y: {kbd: [Enter, Space], expanded: true/false}}
-    Slideshow: {feat: [Prev/next, Page indicator, Kbd shortcuts], s: [default, firstPage, lastPage], a11y: {kbd: [Left, Right, Input]}}
-    AudioPlayer: {feat: [HTML5 audio, Album art, Caption overlay, Responsive 300px/200px], s: [loading, loaded]}
-    LoadingSpinner: {v: [small-20px, medium-40px], anim: {spin: 0.8s-linear-infinite}, role: status}
-    DocumentCardBadge: {dim: 200x72, feat: [File type icon, Extension, Upload date, Backdrop blur]}
-
-    # Research Bot Components (NEW)
-    ResearchPanel: {layout: two-panel, responsive: true, dim: "400-600px width", feat: [Query input, Answer display, Reference list, Model selector], s: [idle, loading, success, error]}
-    CitationLink: {type: inline, s: [default, hover, active], a11y: {role: link, kbd: [Enter, Space]}, feat: [Bidirectional highlighting, Tooltip, Superscript number]}
-    ReferenceCard: {v: [detailed, simple], feat: [Document metadata, Page info, Thumbnail, Expand/collapse, Highlight on hover], s: [default, hover, active, highlighted]}
-    AnswerDisplay: {feat: [Markdown rendering, Inline citations, Citation highlighting, Code blocks, Lists], a11y: {semantics: true, structure: hierarchical}}
-    ModelSelector: {type: dropdown, models: [GPT-4, Claude, Gemini], s: [default, open, selected], a11y: {kbd: [Arrow, Enter]}}
-
-  # Accessibility
-  a11y:
-    focus: {outline: 2px-solid-primary, offset: 2px, trap: [modal, upload-modal]}
-    kbd: {nav: [Tab, Shift+Tab, Enter, Space, Escape, Arrows], shortcuts: {slideshow: [Left, Right]}, research: [Enter-submit, Esc-clear]}
-    aria: {roles: [dialog, banner, search, status, button, link, article, region], attrs: [aria-modal, aria-labelledby, aria-label, aria-expanded, aria-disabled, aria-live, aria-describedby]}
-    contrast: {improvements: ["#4b5563 secondary", "#6b7280 tertiary"], ratios: [">7:1 primary", ">4.5:1 secondary"], citations: "WCAG AA compliant"}
-    motion: {prefersReducedMotion: 0.01ms}
-    hc: {prefersContrast: true, adj: [Pure black borders/text, Increased border width]}
-
-  # Animations
-  anim:
-    pulse: {kf: [1, 0.5, 1], dur: [2s-connected, 1s-reconnecting], ease: cubic-bezier(0.4,0,0.6,1), iter: infinite}
-    fadeIn: {kf: [0, 1], dur: var(--trans-base)}
-    slideUp: {kf: [{o: 0, t: translateY(20px)}, {o: 1, t: translateY(0)}], dur: var(--trans-slow)}
-    shimmer: {kf: [left-100%, left100%], dur: 1.5s, iter: infinite}
-    spin: {kf: [0deg, 360deg], dur: 0.8s, ease: linear, iter: infinite}
-    highlightCitation: {kf: [{bg: transparent}, {bg: var(--citation-hover)}, {bg: transparent}], dur: 1s, ease: ease-in-out}
-
-  # Responsive
-  resp:
-    mobile: {max: 480px, adj: [Single column, Reduced spacing, Small typo, Album art 200x200, Research panel full-width]}
-    tablet: {max: 768px, adj: [Header wraps, Vertical filter bar, Album art 200x200, Research panel stacked]}
-    desktop: {min: 769px, adj: [Multi-column grid, Horizontal nav, Album art 300x300, Research panel side-by-side]}
-
-# Architecture patterns
-arch:
-  stack: *stack
-  arch: "Hybrid Metal GPU + Docker, real ColPali, ChromaDB, 2-stage search, late interaction re-rank + Multi-provider LLM research"
-  comp: [ColPali Engine, ChromaDB, Doc Processor, 2-Stage Search, Webhook, Native Worker GPU, Docker Services, LiteLLM Research Bot]
-  lang: Python 3.13
-  runtime: "PyTorch MPS (M1/M2/M3) + Docker"
-  persistence: ChromaDB-128dim
-  model: ColNomic 7B
-  dim: 128
-  deploy: Hybrid-native-docker
-  mgmt: Unified bash scripts
-
-  patterns: &patterns
-    - Hybrid: Native Metal GPU worker + Docker services
-    - Unified mgmt scripts (GPU/CPU/Docker-only modes)
-    - 1-command startup/shutdown
-    - JSON status for automation
-    - Real ColPali 128-dim multi-vector
-    - 2-stage: HNSW retrieval + MaxSim re-rank
-    - ChromaDB gzip compression
-    - MPS acceleration 10-20x faster
-    - Late interaction MaxSim scoring
-    - Hybrid processing: visual + text
-    - Webhook-driven pipeline
-    - 5-stage comprehensive deletion
-    - Multimodal: PDF/DOCX/PPTX/MP3/WAV
-    - Interface-first dev with contracts
-    - Progressive validation with gates
-    - Multi-provider LLM abstraction (NEW)
-    - Citation extraction and bidirectional linking (NEW)
-
-  modes:
-    gpu: {desc: "Native Metal GPU worker (default)", arch: "Native Python + Docker", perf: 10-20x, use: "Dev, high-vol, M1/M2/M3", start: "./scripts/start-all.sh", comp: {worker: {loc: "Host macOS", port: 8002, dev: MPS, accel: 10-20x, logs: logs/worker-native.log, pid: .worker.pid}, docker: {chromadb: 8001, copyparty: 8000}}}
-    cpu: {desc: "All Docker CPU", arch: "All containerized", perf: 1x, use: "Simple deploy, low vol", start: "./scripts/start-all.sh --cpu", comp: {docker: {worker: 8002-CPU, chromadb: 8001, copyparty: 8000}}}
-    docker_only: {desc: "Docker services only", arch: "ChromaDB + Copyparty", use: "Dev, debug, custom", start: "./scripts/start-all.sh --docker-only"}
-
-  impl:
-    emb:
-      type: ColPali ColNomic 7B
-      dev: MPS
-      prec: FP16
-      shape: "(seq_len, 128) per doc"
-      feat: [img-1031x128, txt-30x128, query-22x128, MaxSim scoring]
-
-    stor:
-      type: Real ChromaDB HTTP
-      endpoint: localhost:8001
-      coll: [visual, text]
-      feat: [128-dim CLS retrieval, Full seq gzip in metadata, Validation, Collection mgmt]
-
-    search:
-      s1: {method: ChromaDB HNSW, input: "Query CLS 128-dim", output: Top-100, latency: 50-100ms}
-      s2: {method: "MaxSim late interaction", input: "Query seq + candidate seqs", output: Top-10, latency: "<1ms/doc", algo: "MaxSim(q_tok, doc_tok)"}
-      total: 239ms avg (target <300ms)
-
-    research:
-      type: LiteLLM multi-provider
-      providers: [OpenAI GPT-4, Anthropic Claude, Google Gemini]
-      pipeline: {s1: "2-stage doc search", s2: "Context builder", s3: "LLM inference", s4: "Citation parser"}
-      latency: {search: "~239ms", context: "<100ms", llm: "~2s", citation: "<50ms", total: "~2.5s"}
-      feat: [Inline citations [N], Bidirectional highlighting, Metadata extraction, Optimized prompts, Error handling]
-
-    webhook: {trigger: "Copyparty upload", endpoint: "http://host.docker.internal:8002/webhook", method: POST, payload: {event: str, path: str, filename: str}, proc: "Async pipeline"}
-
-    deletion:
-      desc: 5-stage comprehensive cleanup
-      endpoint: "DELETE /documents/delete"
-      payload: {filename: str}
-      stages: [ChromaDB-CRITICAL, Page imgs-HIGH, Cover art-MEDIUM, Markdown-MEDIUM, Temp dirs-LOW]
-      error: Non-blocking continues on non-critical
-      resp: [visual_deleted, text_deleted, page_images_deleted, cover_art_deleted, markdown_deleted, temp_dirs_cleaned]
-
-# Operations
-ops:
-  mgmt:
-    start:
-      script: ./scripts/start-all.sh
-      modes: {gpu: "--gpu or default - Native Metal GPU", cpu: "--cpu - Docker CPU", docker: "--docker-only - Services only"}
-      feat: [Pre-flight checks, Health verify, Auto venv setup, Colors, PID mgmt]
-
-    stop:
-      script: ./scripts/stop-all.sh
-      modes: {graceful: "default - SIGTERM 10s timeout", force: "--force - SIGKILL immediate"}
-      feat: [Native worker cleanup, Docker shutdown, PID removal, Orphan detect, Port verify]
-
-    status:
-      script: ./scripts/status.sh
-      modes: {text: "default - Human readable colors", json: "--json - Machine parseable"}
-      checks: [ChromaDB-8001, Copyparty-8000, Worker-8002, Port usage, Native PID, Processing stats]
-
-    run_worker:
-      script: ./scripts/run-worker-native.sh
-      cmds: {setup: "Install deps in venv", run: "Run with Metal GPU", check: "Check Metal/MPS avail"}
-      env: {DEVICE: mps, MODEL_NAME: vidore/colpali-v1.2, MODEL_PRECISION: fp16, BATCH_SIZE_VISUAL: 4, BATCH_SIZE_TEXT: 8, CHROMA_HOST: localhost, CHROMA_PORT: 8001}
-
-  workflow:
-    daily: {start: ./scripts/start-all.sh, status: ./scripts/status.sh, logs: "tail -f logs/worker-native.log", stop: ./scripts/stop-all.sh}
-    first_gpu: [./scripts/run-worker-native.sh setup, ./scripts/run-worker-native.sh check, ./scripts/start-all.sh, ./scripts/status.sh]
-    first_cpu: [./scripts/start-all.sh --cpu]
-    debug: {docker: "./scripts/start-all.sh --docker-only", worker: "export LOG_LEVEL=DEBUG && ./scripts/run-worker-native.sh run"}
-    monitor: {status: ./scripts/status.sh, json: "./scripts/status.sh --json", worker: "tail -f logs/worker-native.log", docker: "docker-compose -f docker/docker-compose.yml logs -f", gpu: "sudo powermetrics --samplers gpu_power -i 1000"}
-
-  urls: {ui: "http://localhost:8000", chromadb: "http://localhost:8001", worker: "http://localhost:8002", status: "http://localhost:8002/status", health: "http://localhost:8002/health", research: "http://localhost:8000/research.html"}
-
-  ports: &ports {copyparty: 8000, chromadb: 8001, worker: 8002}
-
-  targets:
-    proc: {img: "2.3s/img (✓ 2.6x faster)", txt: "0.24s/chunk (✓ 25x faster)"}
-    search: {avg: "239ms (✓)", target: 300ms, p95: "<500ms"}
-    research: {total: "~2.5s (✓)", target: "3s", breakdown: {search: "239ms", context: "<100ms", llm: "~2s", citation: "<50ms"}}
-    stor: {eff: "4x compression (✓)", meta: "<50KB/emb (✓)"}
-    gpu: {speedup: "10-20x Metal vs CPU", mode: MPS, platforms: "M1/M2/M3"}
-
-# Performance (Wave 3+4+5+6 validated)
-perf:
-  emb:
-    img: {actual: 2.3s/img, target: 6s, speedup: 2.6x, details: "1031 tok x 128 dim"}
-    txt: {actual: 0.24s/chunk, target: 6s, speedup: 25x, details: "30 tok x 128 dim"}
-    query: {actual: 0.2s/query, details: "22 tok x 128 dim"}
-
-  search:
-    avg: 239ms
-    target: 300ms
-    achievement: 21% faster
-    breakdown: {s1: "50-100ms HNSW", s2: "<1ms/doc MaxSim", total: "~200ms top-10"}
-
-  research:
-    total: ~2.5s
-    target: 3s
-    achievement: 17% faster
-    breakdown: {search: "239ms", context_build: "<100ms", llm_inference: "~2s", citation_parse: "<50ms"}
-    accuracy: {citation_extraction: "100%", bidirectional_mapping: "complete"}
-
-  accuracy:
-    queries: 3
-    top3: "100% (3/3)"
-    rank1: "100% (3/3)"
-    relevance: GOOD
-
-  stor:
-    dim: 128
-    compression: 4x-gzip
-    meta: "<50KB/emb"
-    eff: EXCEEDS
-
-  gpu:
-    cpu: 30-60s/page
-    metal: 5-10s/page
-    speedup: 10-20x
-    pps: {cpu: 0.5, metal: 5-10}
-    mem: {cpu: 4GB, metal: 8GB}
-
-  status: {colpali: WORKING, chromadb: WORKING, search: FUNCTIONAL, 128dim: SUPPORTED, mps: ACTIVE, webhook: WORKING, mgmt: COMPLETE, deletion: COMPLETE, multimodal: COMPLETE, research: WORKING}
-
-# Wave execution
+  stack: &stack "Python 3.13 + ColPali ColNomic 7B + ChromaDB + PyTorch MPS + Metal GPU + Hybrid + LiteLLM Research Bot + React 19 SPA"
+
+# Key Recent Changes (2025-10-21)
+recent_changes:
+  - "Research API thumbnail fix: Convert filesystem paths to URL format in hybrid search metadata"
+  - "React 19 SPA migration complete: 76 components, 10K+ LOC, feature parity with legacy frontend"
+  - "Wave 7 complete: Vite 7, React Router 7, React Query 5, Zustand 5, zero backend changes"
+
+# Quick Reference
+quick_ref:
+  start: "./scripts/start-all.sh"
+  frontend: "cd frontend && npm run dev"
+  status: "./scripts/status.sh"
+  urls: {ui: "http://localhost:3000", worker: "http://localhost:8002", chromadb: "http://localhost:8001"}
+  ports: {react_ui: 3000, copyparty: 8000, chromadb: 8001, worker: 8002, research_api: 8004}
+
+# Core Stack
+stack:
+  backend: [Python 3.13, ColPali ColNomic 7B, ChromaDB, PyTorch MPS, FastAPI, LiteLLM]
+  frontend: [React 19, Vite 7, React Router 7, React Query 5, Zustand 5]
+  infra: [Hybrid Metal GPU + Docker, Native worker, Unified bash scripts]
+  features: [2-stage search, Multi-provider LLM, Inline citations, Multimodal processing]
+
+# Architecture Highlights
+arch_highlights:
+  hybrid: "Native Metal GPU worker + Docker services (10-20x faster)"
+  search: "2-stage HNSW + MaxSim re-rank (239ms avg, target <300ms)"
+  research: "Multi-provider LLM with inline citations (~2.5s, target <3s)"
+  frontend: "Feature-based React SPA with complete legacy parity"
+  multimodal: "PDF/DOCX/PPTX/MP3/WAV with specialized metadata"
+  deletion: "5-stage comprehensive cleanup (ChromaDB, images, cover art, markdown, temp)"
+
+# Performance Targets (All Exceeded)
+performance:
+  search: {avg: "239ms ✓", target: "300ms"}
+  research: {total: "~2.5s ✓", target: "3s"}
+  embedding_img: {actual: "2.3s ✓", target: "6s", speedup: "2.6x"}
+  embedding_txt: {actual: "0.24s ✓", target: "6s", speedup: "25x"}
+  gpu_accel: "10-20x Metal vs CPU ✓"
+  frontend_hmr: "<200ms ✓"
+  storage: "4x compression ✓"
+
+# Waves Complete
 waves:
-  w1: {s: COMPLETE, dur: "Days 1-2", deliv: [Integration contracts, Dir structure, Env setup]}
-  w2: {s: COMPLETE, dur: "Days 3-7", deliv: [Real ColPali, Real ChromaDB, Doc processor, 2-stage search, Config modules], valid: "Unit tests pass, contracts verified"}
-  w3: {s: COMPLETE, dur: "Days 8-12", deliv: [E2E integration test, Real integration, Perf validation, Accuracy validation, Webhook], valid: "Tests pass, perf exceeds", achieve: ["239ms search", "2.3s img (2.6x)", "0.24s txt (25x)", "100% accuracy"]}
-  w4: {s: COMPLETE, dur: "Days 13-15", deliv: [Prod validation, Perf benchmarks, System integration, Webhook pipeline], remaining: [Scale test 100+ docs, Enhanced UI], readiness: 95%}
-  w5: {s: COMPLETE, dur: "Days 16-17", deliv: [Unified mgmt scripts, Hybrid arch support, Comprehensive docs, Docker override, JSON status, Legacy archival], achieve: [1-cmd startup/shutdown, Metal GPU 10-20x, Graceful shutdown, Health monitoring, Script docs]}
-  w6: {s: COMPLETE, dur: "2025-10-17", deliv: [LiteLLM integration, Research API, Citation parser, Frontend interface, Bidirectional highlighting, Comprehensive tests, User guide], valid: "11/11 tests pass, perf <3s", achieve: ["Multi-provider LLM", "~2.5s latency", "100% citation accuracy", "WCAG AA accessible", "Two-panel responsive UI"]}
-  critical_fixes: {s: "Wave 1-2 COMPLETE", dur: "2025-10-16", deliv: [Security patches (torch 2.8, urllib3 2.5), Accessibility WCAG 2.1 AA, Complexity reduction, Test coverage expansion], gates: [Security review, Dependency audit, Code quality, Complexity analysis, Test coverage, Architecture consistency]}
+  w1: "Foundation (contracts, structure, env)"
+  w2: "Components (ColPali, ChromaDB, 2-stage search)"
+  w3: "Integration (E2E tests, performance validation)"
+  w4: "Production (benchmarks, system integration)"
+  w5: "Management (unified scripts, hybrid arch, docs)"
+  w6: "Research Bot (LiteLLM, citations, bidirectional highlighting)"
+  w7: "React Migration (SPA, feature parity, thumbnail fix)"
+  critical_fixes: "Security, accessibility, complexity, testing"
 
-# Contracts (validated)
-contracts:
-  emb: {provider: embedding-agent, consumers: [processing-agent, search-agent], s: VALIDATED, methods: ["embed_images() → (seq, 128)", "embed_texts() → (seq, 128)", "score_multi_vector() → scores"], perf: ["Img 2.3s (2.6x)", "Txt 0.24s (25x)", "MPS ACTIVE"]}
-  stor: {provider: storage-agent, consumers: [processing-agent, search-agent], s: VALIDATED, methods: [add_visual_embedding, add_text_embedding, search], impl: ["Real ChromaDB localhost:8001", "128-dim CLS retrieval", "Compressed seq in metadata", "Collection mgmt"]}
-  proc: {provider: processing-agent, consumers: [ui-agent, webhook-system], s: INTEGRATED, feat: [Real emb integration, Real stor integration, Wave 3 tests pass, Webhook pipeline, Comprehensive deletion]}
-  deletion: {provider: "processing-agent + storage-agent", consumers: [worker-webhook, documents-api], s: COMPLETE, desc: 5-stage cleanup, stages: [{n: ChromaDB, m: chroma_client.delete_document, scope: "Visual & text emb", crit: CRITICAL}, {n: "Page images", m: image_utils.delete_document_images, scope: "Pages & thumbs", crit: HIGH}, {n: "Cover art", m: cover_art_utils.delete_document_cover_art, scope: MP3/WAV, crit: MEDIUM}, {n: Markdown, m: markdown_utils.delete_document_markdown, scope: "Extracted MD", crit: MEDIUM}, {n: "Temp dirs", m: image_utils.cleanup_temp_directories, scope: PPTX, crit: LOW}], feat: [Consistent across doc types, Non-blocking, Comprehensive logging, Filesystem cleanup, Orphan detection]}
-  search: {provider: search-agent, consumers: [ui-agent, research-bot], s: VALIDATED, feat: ["2-stage 239ms avg", "100% accuracy", "Real integration", "Hybrid modes"]}
-  research: {provider: research-agent, consumers: [ui-agent], s: COMPLETE, methods: ["search_and_ask() → answer+citations", "parse_citations() → bidirectional_map", "format_context() → prompt"], impl: [LiteLLM multi-provider, Citation extraction regex, Context builder, Optimized prompts], perf: ["~2.5s total", "100% citation accuracy", "Bidirectional mapping"]}
-  webhook: {provider: processing-agent, consumer: copyparty, s: WORKING, endpoint: "POST http://host.docker.internal:8002/webhook", payload: {event: str, path: str, filename: str}, proc: "Async with health tracking"}
+# Status Summary
+status:
+  overall: PRODUCTION-READY
+  completion: "99%"
+  remaining: [Scale test 100+ docs, UAT]
+  colpali: WORKING
+  chromadb: WORKING
+  search: FUNCTIONAL
+  research: WORKING
+  react_spa: PRODUCTION-READY
+  mgmt_scripts: COMPLETE
 
-# Validation (Wave 3+4+5+6 + Critical Fixes)
-valid:
-  w2_w3: {s: PASSED, r: [All unit tests pass, Real ColPali MPS loads, Real ChromaDB connected, Contracts verified]}
-  w3_w4: {s: PASSED, r: [E2E visual search works, ChromaDB 128-dim valid, 2-stage <300ms (239ms), 100% accuracy, Integration tests pass, Webhook working]}
-  w4_w5: {s: PASSED, r: [Unified scripts working, GPU 10-20x faster, CPU mode functional, Docker-only functional, Status monitoring working, JSON output working]}
-  w5_w6: {s: PASSED, r: [Research bot functional, LiteLLM integration working, Citation parser 11/11 tests, Frontend responsive, Bidirectional highlighting, WCAG AA accessible, Latency <3s (2.5s)]}
-  w6_prod: {s: "IN PROGRESS 99%", completed: [Perf exceeds targets, Accuracy validated, System integration complete, Real components working, Mgmt scripts complete, Hybrid arch validated, GPU accel working, Research bot working], remaining: [Scale test 100+ docs, UAT]}
-  critical_fixes_w1_w2: {s: PASSED, r: [Security patches applied (torch, urllib3), WCAG 2.1 AA compliance (contrast fixes), Complexity reduced (cyclomatic, cognitive, nesting), Test coverage expanded (pytest with coverage), Architecture consistency validated, Pre-commit hooks configured]}
-
-# Semantic hints for AI
+# Semantic Hints
 semantic:
   ~real_colpali: "Real ColPali with MPS accel, not mocks"
   ~real_chromadb: "Real ChromaDB localhost:8001, not in-memory"
   ~2stage_validated: "239ms avg, 100% accuracy, exceeds targets"
-  ~128dim: "128-dim fully supported and validated"
-  ~mps: "Metal Performance Shaders active M1/M2/M3"
-  ~late_interaction: "MaxSim algorithm for re-rank"
-  ~waves_complete: "Wave 1-6 + Critical Fixes Wave 1-2 complete"
-  ~prod_ready: "99% ready, scale testing remaining"
-  ~perf_exceeds: "All metrics exceed targets"
-  ~accuracy_perfect: "100% docs at rank 1"
   ~hybrid: "Native Metal GPU + Docker optimal perf"
-  ~unified_mgmt: "1-cmd startup/shutdown multi-mode"
-  ~gpu_accel: "10-20x faster Metal GPU vs CPU"
-  ~webhook: "Copyparty triggers async processing"
-  ~docs: "Complete guides: quick start, scripts, GPU, native worker, research bot"
-  ~deletion: "5-stage cleanup all filesystem artifacts"
-  ~multimodal: "PDF/DOCX/PPTX/MP3/WAV specialized metadata"
-  ~filesystem_cleanup: "Page imgs, cover art, markdown, temp dirs"
-  ~security: "CVE patches torch 2.8, urllib3 2.5"
-  ~a11y: "WCAG 2.1 AA contrast fixes, kbd nav, research accessible"
-  ~complexity: "Reduced cyclomatic, cognitive, nesting"
-  ~testing: "Expanded pytest coverage + research 11/11 tests"
-  ~pre_commit: "CI/CD hooks configured"
-  ~research_bot: "Multi-provider LLM with inline citations"
-  ~litellm: "Unified OpenAI/Anthropic/Google interface"
-  ~citations: "Bidirectional highlighting, inline [N] format"
-  ~research_perf: "~2.5s total latency, exceeds 3s target"
-
-# Notes
-notes:
-  # Research Bot Wave 6 (2025-10-17)
-  - "WAVE 6 COMPLETE: AI Research Bot with Multi-Provider LLM"
-  - "NEW MODULE: src/research/ - LiteLLM client, context builder, citation parser, prompts"
-  - "NEW API: POST /api/research/ask - Natural language queries with AI-generated answers"
-  - "NEW FRONTEND: research.html - Two-panel responsive UI with bidirectional highlighting"
-  - "LITELLM: Unified interface for GPT-4, Claude, Gemini"
-  - "CITATIONS: Inline [N] format with bidirectional hover highlighting"
-  - "PERFORMANCE: ~2.5s total (exceeds 3s target) - search 239ms + context <100ms + LLM ~2s + citation <50ms"
-  - "TESTS: 11/11 passing - citation extraction, bidirectional mapping, regex patterns"
-  - "ACCESSIBILITY: WCAG 2.1 AA compliant - citations, keyboard nav, semantic HTML"
-  - "DOCUMENTATION: RESEARCH_BOT_GUIDE.md - complete user guide with examples"
-  - "LINE COUNTS: litellm_client.py 400, context_builder.py 350, citation_parser.py 450, research.html 300"
-
-  # Critical Fixes Wave 1-2 (2025-10-16)
-  - "CRITICAL FIXES WAVE 1-2 COMPLETE: Security, Accessibility, Complexity, Testing"
-  - "SECURITY PATCHES: torch >=2.8.0 (CVE fix), urllib3 >=2.5.0 (CVE fix)"
-  - "ACCESSIBILITY: WCAG 2.1 AA compliance - contrast fixes #4b5563, #6b7280"
-  - "COMPLEXITY: Reduced cyclomatic (security-agent), cognitive (performance-agent), nesting limits"
-  - "TEST COVERAGE: Expanded pytest with coverage, comprehensive test suite"
-  - "ARCHITECTURE: Consistency validation, pre-commit hooks, GitHub workflows"
-  - "DOCUMENTATION: CONTRIBUTING.md, comprehensive test docs"
-
-  # Cleanup Enhancement (2025-10-12)
-  - "COMPREHENSIVE DELETION: 5-stage cleanup"
-  - "NEW MODULES: cover_art_utils.py, markdown_utils.py"
-  - "FILESYSTEM ARTIFACTS: All doc artifacts cleanly removed"
-  - "STAGES: ChromaDB → Page Imgs → Cover Art → Markdown → Temp Dirs"
-  - "ERROR RESILIENCE: Non-blocking continues on non-critical"
-  - "MULTIMODAL CONSISTENCY: Same flow PDF/DOCX/PPTX/MP3/WAV"
-  - "ORPHAN DETECTION: Cleanup utils detect/remove orphans"
-
-  # Wave 5 Management (2025-10-07)
-  - "WAVE 5 COMPLETE: Unified mgmt scripts GPU/CPU modes"
-  - "HYBRID ARCH: Native Metal GPU + Docker"
-  - "GPU ACCEL: 10-20x faster Metal Performance Shaders"
-  - "UNIFIED SCRIPTS: start-all, stop-all, status, run-worker-native"
-  - "1-CMD: ./scripts/start-all.sh complete startup"
-  - "DOCS SUITE: QUICK_START, SCRIPTS, GPU_ACCELERATION, NATIVE_WORKER_SETUP"
-  - "DOCKER OVERRIDE: docker-compose.native-worker.yml"
-  - "JSON STATUS: Machine parseable automation"
-  - "GRACEFUL SHUTDOWN: SIGTERM 10s timeout, force option"
-
-  # Wave 3+4 (2025-10-06)
-  - "WAVE 3+4 COMPLETE: Real ColPali + ChromaDB validated"
-  - "PERF EXCEEDS: 239ms search (target 300ms), 2.6x faster emb"
-  - "ACCURACY: 100% expected docs rank 1"
-  - "REAL IMPL: No mocks - ColPali MPS + ChromaDB localhost:8001"
-  - "128-DIM: Fully supported (1031 img, 30 txt, 22 query tokens)"
-  - "LATE INTERACTION: MaxSim scoring compressed seqs"
-  - "MPS ACCEL: Active M1/M2/M3"
-  - "WEBHOOK: Copyparty triggers async pipeline"
-
-  # Innovations
-  - "Production multi-vector arch from MVP"
-  - "Real ColPali integration (not prototypes)"
-  - "MPS-optimized deploy"
-  - "2-stage search late interaction re-rank"
-  - "128-dim emb (efficient vs 768-dim)"
-  - "Compressed seq storage ChromaDB metadata"
-  - "Hybrid arch optimal perf (GPU + Docker)"
-  - "Unified mgmt scripts ease of use"
-  - "Comprehensive docs suite"
-  - "5-stage comprehensive deletion"
-  - "Multimodal PDF/DOCX/PPTX/MP3/WAV"
-  - "Complete filesystem artifact cleanup"
-  - "Security patches CVE protection"
-  - "WCAG 2.1 AA accessibility"
-  - "Complexity reduction maintainability"
-  - "Expanded test coverage"
-  - "Multi-provider LLM abstraction (LiteLLM)"
-  - "Inline citation extraction and bidirectional highlighting"
-  - "Natural language research interface"
-  - "Two-panel responsive research UI"
-
-  # Next
-  - "Scale test 100+ docs"
-  - "Final 1% to production"
+  ~react_spa: "React 19 SPA with Vite 7, production-ready"
+  ~zero_backend: "Migration with zero backend changes"
+  ~thumbnail_fix: "Research API metadata path conversion 2025-10-21"
 ```
