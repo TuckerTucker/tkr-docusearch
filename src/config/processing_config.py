@@ -442,23 +442,24 @@ class AsrConfig:
         """Convert to Docling ASR model specification.
 
         Returns:
-            InlineAsrNativeWhisperOptions instance configured for Whisper ASR
+            InlineAsrMlxWhisperOptions for MPS (Apple Silicon) or
+            InlineAsrNativeWhisperOptions for CPU/CUDA
 
         Raises:
             ImportError: If Docling ASR modules not available
         """
         try:
             from docling.datamodel.accelerator_options import AcceleratorDevice
-            from docling.datamodel.pipeline_options_asr_model import InlineAsrNativeWhisperOptions
+            from docling.datamodel.pipeline_options_asr_model import (
+                InlineAsrMlxWhisperOptions,
+                InlineAsrNativeWhisperOptions,
+            )
         except ImportError as e:
             raise ImportError(
                 "Docling ASR not installed. Install with: pip install docling[asr]"
             ) from e
 
         # Map our model names to Docling repo_ids
-        # MLX Whisper support added in Docling 2.58.0 (PR #2366)
-        # Docling automatically selects MLX backend when MPS device is specified
-        # and mlx-whisper is installed (no model name changes needed)
         model_map = {
             "turbo": "turbo",
             "base": "base",
@@ -470,8 +471,6 @@ class AsrConfig:
         repo_id = model_map[self.model]
 
         # Select accelerator device based on configuration
-        # When MPS is used, Docling 2.58.0 automatically uses MLX Whisper backend
-        # providing 19x performance improvement on Apple Silicon
         if self.device.lower() == "mps":
             accelerator_device = AcceleratorDevice.MPS
         elif self.device.lower() == "cuda":
@@ -479,23 +478,40 @@ class AsrConfig:
         else:
             accelerator_device = AcceleratorDevice.CPU
 
-        # Build kwargs dynamically - omit language if "auto"
-        kwargs = {
-            "repo_id": repo_id,
-            "word_timestamps": self.word_timestamps,
-            "temperature": self.temperature,
-            "max_time_chunk": self.max_time_chunk,
-            "supported_devices": [
-                accelerator_device
-            ],  # FIXED: Use supported_devices with AcceleratorDevice enum
-        }
+        # MLX Whisper support added in Docling 2.58.0 (PR #2366)
+        # Use InlineAsrMlxWhisperOptions for MPS (Apple Silicon) - provides 19x performance
+        # Use InlineAsrNativeWhisperOptions for CPU/CUDA (PyTorch Whisper)
+        if accelerator_device == AcceleratorDevice.MPS:
+            # MLX Whisper for Apple Silicon
+            kwargs = {
+                "repo_id": repo_id,
+                "word_timestamps": self.word_timestamps,
+                "temperature": self.temperature,
+                "max_time_chunk": self.max_time_chunk,
+                "supported_devices": [AcceleratorDevice.MPS],
+                "task": "transcribe",  # MLX-specific parameter
+            }
 
-        # Only include language if not "auto" (for auto-detection, omit the parameter)
-        if self.language != "auto":
-            kwargs["language"] = self.language
+            # Only include language if not "auto"
+            if self.language != "auto":
+                kwargs["language"] = self.language
 
-        # Create Docling ASR options
-        return InlineAsrNativeWhisperOptions(**kwargs)
+            return InlineAsrMlxWhisperOptions(**kwargs)
+        else:
+            # Native PyTorch Whisper for CPU/CUDA
+            kwargs = {
+                "repo_id": repo_id,
+                "word_timestamps": self.word_timestamps,
+                "temperature": self.temperature,
+                "max_time_chunk": self.max_time_chunk,
+                "supported_devices": [accelerator_device],
+            }
+
+            # Only include language if not "auto"
+            if self.language != "auto":
+                kwargs["language"] = self.language
+
+            return InlineAsrNativeWhisperOptions(**kwargs)
 
     @classmethod
     def from_env(cls) -> "AsrConfig":
