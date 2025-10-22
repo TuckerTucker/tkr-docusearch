@@ -103,17 +103,6 @@ export default function ResearchPanel({
               </div>
               <h2 className="error-state__title">Research Failed</h2>
               <p className="error-state__message">{error.message || error}</p>
-              <button
-                type="button"
-                className="error-state__retry-btn"
-                onClick={() => {
-                  if (query && onQuerySubmit) {
-                    onQuerySubmit(query)
-                  }
-                }}
-              >
-                Try Again
-              </button>
             </div>
           </div>
         )}

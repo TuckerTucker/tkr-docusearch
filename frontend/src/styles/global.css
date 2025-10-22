@@ -2641,19 +2641,22 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  width: 24px;
+  height: 24px;
   background: oklch(0.3760 0.0225 64.3434);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 0.1em 0.4em;
+  padding: 0;
   margin: 0 0.2em;
-  font-size: 0.85em;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
-  vertical-align: super;
+  vertical-align: middle;
   line-height: 1;
-  font-family: var(--font-sans);
 }
 
 .citation-link:hover {
