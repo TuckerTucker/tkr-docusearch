@@ -455,30 +455,41 @@ class AsrConfig:
                 "Docling ASR not installed. Install with: pip install docling[asr]"
             ) from e
 
-        # Map our model names to Docling repo_ids
-        # Note: For native Whisper, use simple model names, not HuggingFace repo IDs
-        model_map = {
-            "turbo": "turbo",
-            "base": "base",
-            "small": "small",
-            "medium": "medium",
-            "large": "large",
-        }
-
-        repo_id = model_map[self.model]
-
         # MLX Whisper support added in Docling 2.58.0 (PR #2366)
-        # Provides 19x performance improvement on Apple Silicon
-        # Automatic fallback to CPU for non-Apple systems
+        # Use explicit MLX variants on Apple Silicon for 19x performance improvement
+        # Automatic fallback to native Whisper on non-Apple systems
         if self.device.lower() == "mps":
-            # Use MPS (Metal) for Apple Silicon - enables MLX Whisper backend
+            # Use MLX Whisper variants on Apple Silicon
+            model_map = {
+                "turbo": "turbo_mlx",
+                "base": "base_mlx",
+                "small": "small_mlx",
+                "medium": "medium_mlx",
+                "large": "large_mlx",
+            }
             accelerator_device = AcceleratorDevice.MPS
         elif self.device.lower() == "cuda":
-            # Use CUDA for NVIDIA GPUs
+            # Use native Whisper on CUDA
+            model_map = {
+                "turbo": "turbo",
+                "base": "base",
+                "small": "small",
+                "medium": "medium",
+                "large": "large",
+            }
             accelerator_device = AcceleratorDevice.CUDA
         else:
-            # Fallback to CPU for other systems
+            # Use native Whisper on CPU
+            model_map = {
+                "turbo": "turbo",
+                "base": "base",
+                "small": "small",
+                "medium": "medium",
+                "large": "large",
+            }
             accelerator_device = AcceleratorDevice.CPU
+
+        repo_id = model_map[self.model]
 
         # Build kwargs dynamically - omit language if "auto"
         kwargs = {
