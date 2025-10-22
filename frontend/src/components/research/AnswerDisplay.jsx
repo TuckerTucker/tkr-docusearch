@@ -49,6 +49,17 @@ export default function AnswerDisplay({
                 )}
               </p>
             ),
+            // Override list item renderer to include citation links
+            li: ({ children }) => (
+              <li>
+                {renderContentWithCitations(
+                  children,
+                  activeReference,
+                  onCitationClick,
+                  onCitationHover
+                )}
+              </li>
+            ),
           }}
         >
           {parsedAnswer}
