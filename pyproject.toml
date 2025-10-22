@@ -8,7 +8,7 @@ version = "0.9.0"
 description = "Production-ready local document search with real ColPali embeddings, ChromaDB storage, two-stage semantic search, and hybrid Metal GPU/Docker architecture"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Tucker", email = "github.com/tuckertucker"}
 ]

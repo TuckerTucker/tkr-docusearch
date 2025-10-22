@@ -4,7 +4,7 @@
 
 [![Status](https://img.shields.io/badge/status-Production%20Ready-success)]()
 [![Production](https://img.shields.io/badge/production-100%25%20ready-brightgreen)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)]()
 
 ---
 
@@ -418,7 +418,7 @@ Before Wave 3 integration, consumer agents review provider implementations.
 
 ## License
 
-MIT License - See LICENSE file for details.
+Apache License 2.0 - See LICENSE file for details.
 
 ---
 

@@ -353,4 +353,4 @@ Dependabot PRs are automatically labeled and grouped by update type (minor/patch
 
 ## License
 
-By contributing to tkr-docusearch, you agree that your contributions will be licensed under the MIT License.
+By contributing to tkr-docusearch, you agree that your contributions will be licensed under the Apache License 2.0.
