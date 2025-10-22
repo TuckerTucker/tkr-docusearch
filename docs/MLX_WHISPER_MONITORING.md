@@ -1,6 +1,6 @@
 # MLX Whisper Support Monitoring
 
-## Status: Pending Merge
+## Status: ✅ MERGED - Awaiting PyPI Release
 
 Track progress on Docling MLX Whisper integration for 19x performance improvement on Apple Silicon.
 
@@ -9,15 +9,20 @@ Track progress on Docling MLX Whisper integration for 19x performance improvemen
 **GitHub PR:** https://github.com/docling-project/docling/pull/2366
 **Issue:** https://github.com/docling-project/docling/issues/2364
 **Created:** October 14, 2025
-**Status:** Open (Under Review)
+**Merged:** October 21, 2025 by @dolfim-ibm
+**Commit:** 657ce8b
+**Status:** ✅ Merged into `main` branch
+
+## Release Status
+
+1. **PR Status:** ✅ Merged (October 21, 2025)
+2. **Latest PyPI Release:** 2.57.0 (October 15, 2025) - Does NOT include MLX
+3. **Latest GitHub Release:** v2.57.0 (October 15, 2025) - Does NOT include MLX
+4. **Next Release:** TBD (will include MLX support)
 
 ## Current Blockers
 
-1. **Review approval:** Needs 2 approvals (has 1 from PeterStaar-IBM)
-2. **Architecture feedback:** dolfim-ibm suggests adding explicit model variants:
-   - `WHISPER_X_MLX` - MLX-optimized for Apple Silicon
-   - `WHISPER_X_NATIVE` - Standard PyTorch Whisper
-   - Instead of automatic detection
+None - PR successfully merged with 2/2 approvals
 
 ## Expected Performance Gains
 
@@ -90,13 +95,13 @@ pip install mlx-whisper
 
 ### Weekly Checks
 
-**GitHub PR:** https://github.com/docling-project/docling/pull/2366
+**PyPI Releases:** https://pypi.org/project/docling/
+**GitHub Releases:** https://github.com/docling-project/docling/releases
 
 Check for:
-- Additional approvals
-- Architecture changes implemented
-- Merge status
-- New comments/feedback
+- New PyPI release (2.58.0 or later)
+- New GitHub release with MLX support
+- Release notes mentioning MLX/Whisper improvements
 
 ### Post-Merge Actions
 
@@ -123,5 +128,6 @@ Check for:
 
 ---
 
-**Last Updated:** October 15, 2025
-**Next Check:** October 22, 2025
+**Last Updated:** October 22, 2025
+**Next Check:** October 29, 2025
+**Status:** ✅ PR Merged - Awaiting official PyPI release (expected within 1-2 weeks)
