@@ -158,22 +158,36 @@ start_native_worker() {
         fi
     fi
 
-    # Start worker in background
-    nohup ./scripts/run-worker-native.sh run > logs/worker-native.log 2>&1 &
+    # Check ChromaDB is running first
+    if ! curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
+        print_status "Worker (Native)" "error" "ChromaDB not running (required for worker)"
+        return
+    fi
+
+    # Start worker in background using bash script
+    # The script will handle venv activation and all environment setup
+    nohup bash -c "cd '${PROJECT_ROOT}' && ./scripts/run-worker-native.sh run" > logs/worker-native.log 2>&1 &
     local worker_pid=$!
     echo $worker_pid > "$WORKER_PID_FILE"
 
-    # Wait for worker to start
-    sleep 3
+    print_status "Worker" "info" "Starting... (PID: $worker_pid)"
 
-    # Check if worker is running
-    if ps -p "$worker_pid" > /dev/null 2>&1; then
+    # Wait for worker to start (up to 15 seconds)
+    local count=0
+    local max_wait=15
+    while [ $count -lt $max_wait ]; do
         if curl -s http://localhost:8002/health > /dev/null 2>&1; then
             print_status "Worker (Native)" "ok" "Running on http://localhost:8002 (Metal GPU)"
             print_status "Worker PID" "info" "$worker_pid (saved to .worker.pid)"
-        else
-            print_status "Worker (Native)" "warn" "Starting... (check logs/worker-native.log)"
+            return
         fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    # Check if process is still running
+    if ps -p "$worker_pid" > /dev/null 2>&1; then
+        print_status "Worker (Native)" "warn" "Still starting... (check logs/worker-native.log)"
     else
         print_status "Worker (Native)" "error" "Failed to start (check logs/worker-native.log)"
         rm -f "$WORKER_PID_FILE"
