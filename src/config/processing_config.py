@@ -459,17 +459,6 @@ class AsrConfig:
                 "Docling ASR not installed. Install with: pip install docling[asr]"
             ) from e
 
-        # Map our model names to Docling repo_ids
-        model_map = {
-            "turbo": "turbo",
-            "base": "base",
-            "small": "small",
-            "medium": "medium",
-            "large": "large",
-        }
-
-        repo_id = model_map[self.model]
-
         # Select accelerator device based on configuration
         if self.device.lower() == "mps":
             accelerator_device = AcceleratorDevice.MPS
@@ -482,7 +471,16 @@ class AsrConfig:
         # Use InlineAsrMlxWhisperOptions for MPS (Apple Silicon) - provides 19x performance
         # Use InlineAsrNativeWhisperOptions for CPU/CUDA (PyTorch Whisper)
         if accelerator_device == AcceleratorDevice.MPS:
-            # MLX Whisper for Apple Silicon
+            # MLX Whisper for Apple Silicon - uses mlx-community HuggingFace repos
+            mlx_model_map = {
+                "turbo": "mlx-community/whisper-large-v3-turbo",
+                "base": "mlx-community/whisper-base-mlx",
+                "small": "mlx-community/whisper-small-mlx",
+                "medium": "mlx-community/whisper-medium-mlx",
+                "large": "mlx-community/whisper-large-v3-mlx",
+            }
+            repo_id = mlx_model_map[self.model]
+
             kwargs = {
                 "repo_id": repo_id,
                 "word_timestamps": self.word_timestamps,
@@ -498,7 +496,16 @@ class AsrConfig:
 
             return InlineAsrMlxWhisperOptions(**kwargs)
         else:
-            # Native PyTorch Whisper for CPU/CUDA
+            # Native PyTorch Whisper for CPU/CUDA - uses standard model names
+            native_model_map = {
+                "turbo": "turbo",
+                "base": "base",
+                "small": "small",
+                "medium": "medium",
+                "large": "large",
+            }
+            repo_id = native_model_map[self.model]
+
             kwargs = {
                 "repo_id": repo_id,
                 "word_timestamps": self.word_timestamps,
