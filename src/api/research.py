@@ -192,19 +192,29 @@ async def lifespan(app: FastAPI):
     # Initialize local LLM preprocessor if enabled
     preprocessing_enabled = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
     if preprocessing_enabled:
-        from src.research.local_preprocessor import LocalLLMPreprocessor
-        from src.research.mlx_llm_client import MLXLLMClient
-
         model_path = os.getenv("MLX_MODEL_PATH")
         if not model_path or not os.path.exists(model_path):
             logger.warning("MLX preprocessing disabled: model path not found", path=model_path)
             app.state.local_preprocessor = None
         else:
-            app.state.local_llm = MLXLLMClient(
-                model_path=model_path, max_tokens=int(os.getenv("MLX_MAX_TOKENS", "4000"))
-            )
-            app.state.local_preprocessor = LocalLLMPreprocessor(mlx_client=app.state.local_llm)
-            logger.info("Local LLM preprocessor initialized", model_path=model_path)
+            try:
+                from src.research.local_preprocessor import LocalLLMPreprocessor
+                from src.research.mlx_llm_client import MLXLLMClient
+
+                app.state.local_llm = MLXLLMClient(
+                    model_path=model_path, max_tokens=int(os.getenv("MLX_MAX_TOKENS", "4000"))
+                )
+                app.state.local_preprocessor = LocalLLMPreprocessor(mlx_client=app.state.local_llm)
+                logger.info("Local LLM preprocessor initialized", model_path=model_path)
+            except ImportError as e:
+                logger.warning(
+                    "MLX preprocessing disabled: mlx-lm not installed. Run: pip install mlx-lm>=0.26.3",
+                    error=str(e),
+                )
+                app.state.local_preprocessor = None
+            except Exception as e:
+                logger.error("Failed to initialize MLX preprocessor", error=str(e))
+                app.state.local_preprocessor = None
     else:
         app.state.local_preprocessor = None
 

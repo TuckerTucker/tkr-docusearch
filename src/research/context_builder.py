@@ -125,10 +125,27 @@ class ResearchContext:
         Note:
             Converts relative paths like '/images/abc/page001_thumb.jpg'
             to absolute URLs like 'http://localhost:8002/images/abc/page001_thumb.jpg'
+
+            Filters out unsupported formats (SVG) - OpenAI vision API only supports:
+            png, jpeg, gif, webp
         """
+        # OpenAI vision API supported formats
+        SUPPORTED_IMAGE_FORMATS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+
         urls = []
         for source in self.sources:
             if source.is_visual and source.thumbnail_path:
+                # Skip unsupported formats (e.g., SVG)
+                file_ext = source.thumbnail_path.lower().split(".")[-1]
+                if f".{file_ext}" not in SUPPORTED_IMAGE_FORMATS:
+                    logger.debug(
+                        "Skipping unsupported image format for LLM vision",
+                        path=source.thumbnail_path,
+                        format=file_ext,
+                        supported=list(SUPPORTED_IMAGE_FORMATS),
+                    )
+                    continue
+
                 # Convert relative path to absolute URL
                 if source.thumbnail_path.startswith("/"):
                     url = f"{base_url}{source.thumbnail_path}"
