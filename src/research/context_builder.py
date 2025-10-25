@@ -249,6 +249,32 @@ class ContextBuilder:
                     doc_id=result["doc_id"], page=result["page"], score=result.get("score", 0.0)
                 )
                 sources.append(source)
+
+                # For visual matches in hybrid mode, also add the corresponding text chunk
+                # This allows MLX preprocessing on text while keeping visual for foundation model
+                if search_mode == "hybrid" and source.is_visual and source.markdown_content:
+                    # Create a text version of the same page for preprocessing
+                    text_source = await self._get_text_chunk_for_visual(source)
+                    if text_source:
+                        sources.append(text_source)
+                        logger.info(
+                            "Added text chunk for visual match",
+                            doc_id=source.doc_id,
+                            page=source.page,
+                            text_length=len(text_source.markdown_content),
+                            is_visual=text_source.is_visual,
+                            chunk_id=text_source.chunk_id,
+                        )
+                    else:
+                        logger.debug(
+                            "Skipped text chunk (too short)",
+                            doc_id=source.doc_id,
+                            page=source.page,
+                            content_length=(
+                                len(source.markdown_content) if source.markdown_content else 0
+                            ),
+                        )
+
             except Exception as e:
                 logger.warning(
                     "Failed to get source metadata",
@@ -297,6 +323,42 @@ class ContextBuilder:
             sources=sources,
             total_tokens=total_tokens,
             truncated=truncated,
+        )
+
+    async def _get_text_chunk_for_visual(
+        self, visual_source: SourceDocument
+    ) -> Optional[SourceDocument]:
+        """
+        Create a text-only version of a visual source for preprocessing.
+
+        This allows MLX to compress the text chunk while the visual goes to the foundation model.
+
+        Args:
+            visual_source: Visual source document with markdown content
+
+        Returns:
+            SourceDocument marked as text (is_visual=False) with same content, or None if no text
+        """
+        # Skip if no meaningful text content (threshold is low to match preprocessor's 400 char minimum)
+        # Note: preprocessor will further filter chunks < 400 chars
+        if not visual_source.markdown_content or len(visual_source.markdown_content.strip()) < 100:
+            return None
+
+        # Create a copy of the visual source but mark it as text for preprocessing
+        return SourceDocument(
+            doc_id=visual_source.doc_id,
+            filename=visual_source.filename,
+            page=visual_source.page,
+            extension=visual_source.extension,
+            thumbnail_path=visual_source.thumbnail_path,
+            image_path=visual_source.image_path,
+            timestamp=visual_source.timestamp,
+            section_path=visual_source.section_path,
+            parent_heading=visual_source.parent_heading,
+            markdown_content=visual_source.markdown_content,
+            relevance_score=visual_source.relevance_score,
+            chunk_id=f"{visual_source.doc_id}-page{visual_source.page}",  # Synthetic chunk_id for text version
+            is_visual=False,  # Mark as text so it gets preprocessed
         )
 
     async def get_source_metadata(

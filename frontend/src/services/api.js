@@ -11,6 +11,7 @@
 // Base configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
+const RESEARCH_TIMEOUT = 120000; // 120 seconds (research queries include MLX preprocessing + LLM + vision processing)
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
 };
@@ -314,7 +315,7 @@ const research = {
       method: 'POST',
       headers: DEFAULT_HEADERS,
       body: JSON.stringify({ query }),
-    });
+    }, RESEARCH_TIMEOUT); // Use longer timeout for research queries
     return handleResponse(response, url);
   },
 

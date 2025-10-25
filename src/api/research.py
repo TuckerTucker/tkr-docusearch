@@ -104,6 +104,19 @@ class ResearchMetadata(BaseModel):
     preprocessing_latency_ms: int = 0
     original_sources_count: int = 0
     token_reduction_percent: float = 0.0
+    # Debug: Full inference flow
+    system_prompt: Optional[str] = None
+    user_prompt: Optional[str] = None
+    formatted_context: Optional[str] = None
+    image_urls_sent: Optional[List[str]] = None
+    llm_request_params: Optional[Dict] = None
+    llm_raw_response: Optional[str] = None
+    llm_usage_details: Optional[Dict] = None
+    # Debug: Preprocessing flow
+    preprocessing_original_context: Optional[str] = None
+    preprocessing_compressed_context: Optional[str] = None
+    preprocessing_model: Optional[str] = None
+    preprocessing_per_chunk_stats: Optional[List[Dict]] = None
 
 
 class ResearchResponse(BaseModel):
@@ -146,6 +159,24 @@ class ModelsResponse(BaseModel):
 
     models: List[ModelInfo]
     default: str
+
+
+class LocalInferenceRequest(BaseModel):
+    """Local MLX inference request"""
+
+    prompt: str = Field(..., min_length=1, max_length=5000, description="Prompt text for MLX model")
+    max_tokens: int = Field(default=500, ge=1, le=4000, description="Maximum tokens to generate")
+    temperature: float = Field(
+        default=0.3, ge=0.0, le=1.0, description="Sampling temperature (0.0-1.0)"
+    )
+    timeout: int = Field(default=60, ge=1, le=300, description="Request timeout in seconds")
+
+
+class LocalInferenceResponse(BaseModel):
+    """Local MLX inference response"""
+
+    content: str
+    metadata: Dict
 
 
 # Application lifespan
@@ -314,6 +345,10 @@ async def ask_research_question(request: ResearchRequest):
         preprocessing_latency_ms = 0
         original_sources_count = len(context.sources)
         token_reduction_percent = 0.0
+        preprocessing_original_context = None
+        preprocessing_compressed_context = None
+        preprocessing_model = None
+        preprocessing_per_chunk_stats = []
 
         if preprocessing_enabled and app.state.local_preprocessor:
             preprocessing_start = time.time()
@@ -323,18 +358,66 @@ async def ask_research_question(request: ResearchRequest):
             # Track original token count for reduction calculation
             original_tokens = context.total_tokens
 
+            # Capture original context for debugging
+            preprocessing_original_context = context.formatted_text
+            preprocessing_model = os.getenv("MLX_MODEL_NAME", "gpt-oss-20b-4bit")
+
             try:
                 if strategy == "compress":
                     logger.info(
                         "Applying compress preprocessing strategy", sources=len(context.sources)
                     )
+
+                    # Store per-chunk stats before compression
+                    for i, source in enumerate(context.sources):
+                        preprocessing_per_chunk_stats.append(
+                            {
+                                "chunk_id": source.chunk_id or f"{source.doc_id}-page{source.page}",
+                                "doc_id": source.doc_id,
+                                "page": source.page,
+                                "is_visual": source.is_visual,
+                                "original_length": (
+                                    len(source.markdown_content) if source.markdown_content else 0
+                                ),
+                                "original_tokens": (
+                                    len(source.markdown_content) // 4
+                                    if source.markdown_content
+                                    else 0
+                                ),
+                            }
+                        )
+
                     context.sources = await app.state.local_preprocessor.compress_chunks(
                         query=request.query, sources=context.sources
                     )
+
+                    # Update stats with compressed lengths
+                    for i, source in enumerate(context.sources):
+                        if i < len(preprocessing_per_chunk_stats):
+                            preprocessing_per_chunk_stats[i]["compressed_length"] = (
+                                len(source.markdown_content) if source.markdown_content else 0
+                            )
+                            preprocessing_per_chunk_stats[i]["compressed_tokens"] = (
+                                len(source.markdown_content) // 4 if source.markdown_content else 0
+                            )
+                            if preprocessing_per_chunk_stats[i]["original_tokens"] > 0:
+                                preprocessing_per_chunk_stats[i]["reduction_percent"] = round(
+                                    (
+                                        preprocessing_per_chunk_stats[i]["original_tokens"]
+                                        - preprocessing_per_chunk_stats[i]["compressed_tokens"]
+                                    )
+                                    / preprocessing_per_chunk_stats[i]["original_tokens"]
+                                    * 100,
+                                    1,
+                                )
+
                     # Rebuild formatted_text from compressed sources
                     context.formatted_text = app.state.context_builder._format_context(
                         context.sources
                     )
+
+                    # Capture compressed context for debugging
+                    preprocessing_compressed_context = context.formatted_text
 
                 elif strategy == "filter":
                     threshold = float(os.getenv("LOCAL_PREPROCESS_THRESHOLD", "7.0"))
@@ -428,6 +511,10 @@ async def ask_research_question(request: ResearchRequest):
 
         # Step 3: Generate answer with LLM (with or without vision)
         llm_start = time.time()
+
+        # Build the full prompt for debugging
+        full_user_prompt = f"{context.formatted_text}\n\nQuery: {request.query}"
+
         llm_response = await app.state.llm_client.complete_with_context_and_images(
             query=request.query,
             context=context.formatted_text,
@@ -504,6 +591,25 @@ async def ask_research_question(request: ResearchRequest):
                 preprocessing_latency_ms=preprocessing_latency_ms,
                 original_sources_count=original_sources_count,
                 token_reduction_percent=round(token_reduction_percent, 2),
+                # Debug fields
+                system_prompt=RESEARCH_SYSTEM_PROMPT,
+                user_prompt=full_user_prompt,
+                formatted_context=context.formatted_text,
+                image_urls_sent=image_urls if image_urls else None,
+                llm_request_params={
+                    "model": request.model or llm_response.model,
+                    "temperature": request.temperature or app.state.llm_client.config.temperature,
+                    "max_tokens": app.state.llm_client.config.max_tokens,
+                },
+                llm_raw_response=llm_response.content,
+                llm_usage_details=llm_response.usage,
+                # Debug: Preprocessing fields
+                preprocessing_original_context=preprocessing_original_context,
+                preprocessing_compressed_context=preprocessing_compressed_context,
+                preprocessing_model=preprocessing_model,
+                preprocessing_per_chunk_stats=(
+                    preprocessing_per_chunk_stats if preprocessing_per_chunk_stats else None
+                ),
             ),
         )
 
@@ -543,6 +649,92 @@ async def ask_research_question(request: ResearchRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error. Please try again later.",
+        )
+
+
+@app.post("/api/research/local-inference", response_model=LocalInferenceResponse)
+async def local_inference(request: LocalInferenceRequest):
+    """
+    Direct MLX local inference without search or preprocessing.
+
+    Test endpoint for evaluating local MLX model performance in isolation.
+    This bypasses search, context building, and preprocessing to measure
+    raw inference speed and quality.
+
+    Example request:
+        POST /api/research/local-inference
+        {
+            "prompt": "What is the capital of France?",
+            "max_tokens": 500,
+            "temperature": 0.3
+        }
+
+    Returns:
+        Generated text with performance metadata (latency, tokens/sec, token counts)
+    """
+    start_time = time.time()
+
+    try:
+        # Check if MLX client is available
+        if not hasattr(app.state, "local_llm") or app.state.local_llm is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Local MLX inference is not enabled. Set LOCAL_PREPROCESS_ENABLED=true and configure MLX_MODEL_PATH.",
+            )
+
+        logger.info(
+            "Local inference request",
+            prompt_length=len(request.prompt),
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
+
+        # Call MLX client directly
+        response = await app.state.local_llm.complete(
+            prompt=request.prompt,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            timeout=request.timeout,
+        )
+
+        total_time_ms = int((time.time() - start_time) * 1000)
+
+        logger.info(
+            "Local inference complete",
+            latency_ms=response.latency_ms,
+            total_time_ms=total_time_ms,
+            completion_tokens=response.usage["completion_tokens"],
+            tokens_per_sec=(
+                round(response.usage["completion_tokens"] / (response.latency_ms / 1000), 2)
+                if response.latency_ms > 0
+                else 0
+            ),
+        )
+
+        return LocalInferenceResponse(
+            content=response.content,
+            metadata={
+                "model": response.model,
+                "provider": response.provider,
+                "latency_ms": response.latency_ms,
+                "total_time_ms": total_time_ms,
+                "finish_reason": response.finish_reason,
+                "usage": response.usage,
+            },
+        )
+
+    except TimeoutError as e:
+        logger.error("Local inference timeout", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Inference request timed out: {str(e)}",
+        )
+
+    except Exception as e:
+        logger.error("Local inference failed", error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Inference failed: {str(e)}",
         )
 
 

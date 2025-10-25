@@ -16,6 +16,15 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+# Import MLX sampler utilities for temperature control
+try:
+    from mlx_lm.sample_utils import make_sampler
+
+    MLX_SAMPLER_AVAILABLE = True
+except ImportError:
+    logger.warning("mlx_lm.sample_utils not available, temperature control disabled")
+    MLX_SAMPLER_AVAILABLE = False
+
 
 # Exception hierarchy (reuse from litellm_client)
 class LLMError(Exception):
@@ -157,6 +166,11 @@ class MLXLLMClient:
         if system_message:
             full_prompt = f"{system_message}\n\n{prompt}"
 
+        # Add newline at end to signal completion of input
+        # Many models expect this to distinguish input from generation
+        if not full_prompt.endswith("\n"):
+            full_prompt = full_prompt + "\n"
+
         # Get parameters
         temperature = kwargs.get("temperature", self.temperature)
         max_tokens = kwargs.get("max_tokens", self.max_tokens)
@@ -260,13 +274,20 @@ class MLXLLMClient:
             Generated text string
         """
         try:
+            # MLX-LM 0.28.3: Use make_sampler() for temperature control
+            # Cannot pass temperature directly to generate()
+            sampler_kwargs = {}
+            if MLX_SAMPLER_AVAILABLE:
+                sampler = make_sampler(temp=temperature)
+                sampler_kwargs["sampler"] = sampler
+
             response = self.mlx_lm.generate(
                 model=self.model,
                 tokenizer=self.tokenizer,
                 prompt=prompt,
-                max_tokens=max_tokens,
-                temp=temperature,
                 verbose=False,  # Disable progress output
+                max_tokens=max_tokens,
+                **sampler_kwargs,
             )
             return response
         except Exception as e:

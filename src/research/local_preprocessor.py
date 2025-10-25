@@ -91,11 +91,13 @@ class LocalLLMPreprocessor:
                 # Skip very short chunks (<400 chars ≈ 100 tokens)
                 if len(source.markdown_content) < 400:
                     source_index_map.append((idx, source, False, 0))
-                    logger.debug(
-                        "Skipping short chunk",
+                    logger.info(
+                        "Skipping short chunk (below 400 char threshold)",
                         doc_id=source.doc_id,
                         page=source.page,
                         length=len(source.markdown_content),
+                        is_visual=source.is_visual,
+                        chunk_id=source.chunk_id,
                     )
                     continue
 
@@ -103,6 +105,15 @@ class LocalLLMPreprocessor:
                 source_index_map.append((idx, source, True, source_tokens))
                 original_token_count += source_tokens
                 tasks.append(self._compress_single_chunk(query, source))
+                logger.info(
+                    "Queuing chunk for compression",
+                    doc_id=source.doc_id,
+                    page=source.page,
+                    length=len(source.markdown_content),
+                    tokens=source_tokens,
+                    is_visual=source.is_visual,
+                    chunk_id=source.chunk_id,
+                )
 
             # Process all compression tasks in parallel
             compressed_results = []
