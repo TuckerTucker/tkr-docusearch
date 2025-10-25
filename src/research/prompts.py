@@ -240,6 +240,55 @@ DOCUMENT CHUNKS:
 SYNTHESIZED KNOWLEDGE:"""
 
 
+# ============================================================================
+# Harmony-Format Prompts for GPT-OSS-20B Optimization
+# ============================================================================
+
+HARMONY_CHUNK_COMPRESSION_PROMPT = """<|start|>developer<|message|># Instructions
+Compress text to key facts. Remove redundancy.
+Output JSON: {{"facts": "compressed text"}}
+Target: 50% reduction. Reasoning: low
+
+Example:
+Input: "The quarterly report shows strong performance. Revenue increased 15% year-over-year to $2.5M. The CEO noted positive market conditions and improved profit margins from 8% to 12%."
+Output: {{"facts": "Revenue +15% YoY to $2.5M. Profit margins 8%→12%. CEO cited positive market."}}
+<|end|><|start|>user<|message|>
+Query: {query}
+
+Text:
+{chunk_content}
+<|end|><|start|>assistant"""
+
+HARMONY_RELEVANCE_SCORING_PROMPT = """<|start|>developer<|message|># Instructions
+Score text relevance to query (0-10).
+Output JSON: {{"score": N}}
+Reasoning: low
+<|end|><|start|>user<|message|>
+Query: {query}
+
+Text:
+{chunk_content}
+<|end|><|start|>assistant"""
+
+
+# JSON Schema Definitions for Harmony Response Validation
+COMPRESSION_SCHEMA = {
+    "type": "object",
+    "required": ["facts"],
+    "properties": {
+        "facts": {"type": "string", "minLength": 1}
+    }
+}
+
+RELEVANCE_SCHEMA = {
+    "type": "object",
+    "required": ["score"],
+    "properties": {
+        "score": {"type": "integer", "minimum": 0, "maximum": 10}
+    }
+}
+
+
 class PreprocessingPrompts:
     """Prompt template management for preprocessing strategies."""
 
@@ -302,3 +351,39 @@ class PreprocessingPrompts:
                 f"[{i}] {source.filename}, Page {source.page}\n{source.markdown_content}"
             )
         return "\n\n".join(formatted_parts)
+
+    @staticmethod
+    def get_harmony_compression_prompt(query: str, chunk_content: str) -> str:
+        """
+        Build Harmony-format compression prompt with query and chunk.
+
+        This prompt uses the Harmony chat format (<|start|>role<|message|>...<|end|>)
+        optimized for GPT-OSS-20B model. Instructs model to compress text to key facts
+        and output JSON format with 50% reduction target.
+
+        Args:
+            query: User's research question
+            chunk_content: Document chunk text to compress
+
+        Returns:
+            Formatted Harmony-format prompt string ready for GPT-OSS-20B
+        """
+        return HARMONY_CHUNK_COMPRESSION_PROMPT.format(query=query, chunk_content=chunk_content)
+
+    @staticmethod
+    def get_harmony_relevance_prompt(query: str, chunk_content: str) -> str:
+        """
+        Build Harmony-format relevance scoring prompt.
+
+        This prompt uses the Harmony chat format (<|start|>role<|message|>...<|end|>)
+        optimized for GPT-OSS-20B model. Instructs model to score text relevance
+        to query on 0-10 scale and output JSON format.
+
+        Args:
+            query: User's research question
+            chunk_content: Document chunk text to score
+
+        Returns:
+            Formatted Harmony-format prompt string ready for GPT-OSS-20B
+        """
+        return HARMONY_RELEVANCE_SCORING_PROMPT.format(query=query, chunk_content=chunk_content)

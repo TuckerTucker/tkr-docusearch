@@ -5,11 +5,13 @@ This module provides:
 - LiteLLM client for unified LLM interface
 - Context builder for search result formatting
 - Citation parser for answer analysis
+- Response parser for Harmony-format LLM responses
 """
 
 from src.research.citation_parser import Citation, CitationParser, ParsedAnswer
 from src.research.context_builder import ContextBuilder, ResearchContext, SourceDocument
 from src.research.litellm_client import LiteLLMClient, LLMResponse, ModelConfig
+from src.research.response_parsers import HarmonyResponseParser
 
 __all__ = [
     "LiteLLMClient",
@@ -21,4 +23,5 @@ __all__ = [
     "CitationParser",
     "ParsedAnswer",
     "Citation",
+    "HarmonyResponseParser",
 ]

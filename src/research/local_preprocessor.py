@@ -10,6 +10,7 @@ All strategies preserve metadata for proper citation tracking and bidirectional 
 """
 
 import asyncio
+import os
 from typing import List
 
 import structlog
@@ -17,6 +18,7 @@ import structlog
 from src.research.context_builder import SourceDocument
 from src.research.mlx_llm_client import ContextLengthError, MLXLLMClient
 from src.research.prompts import PreprocessingPrompts
+from src.research.response_parsers import HarmonyResponseParser
 
 logger = structlog.get_logger(__name__)
 
@@ -34,9 +36,15 @@ class LocalLLMPreprocessor:
         Side Effects:
             - Stores reference to MLX client
             - Initializes performance tracking metrics
+            - Reads USE_HARMONY_PROMPTS env var (default: true)
         """
         self.local_llm = mlx_client
-        logger.info("LocalLLMPreprocessor initialized")
+        # Check environment flag for Harmony prompts (default: true)
+        self.use_harmony = os.getenv("USE_HARMONY_PROMPTS", "true").lower() == "true"
+        logger.info(
+            "LocalLLMPreprocessor initialized",
+            use_harmony_prompts=self.use_harmony
+        )
 
     async def compress_chunks(
         self, query: str, sources: List[SourceDocument]
@@ -343,7 +351,7 @@ class LocalLLMPreprocessor:
 
     async def _compress_single_chunk(self, query: str, source: SourceDocument) -> SourceDocument:
         """
-        Compress a single chunk using local LLM.
+        Compress a single chunk using local LLM with Harmony format.
 
         Args:
             query: User's research question
@@ -354,49 +362,107 @@ class LocalLLMPreprocessor:
 
         Raises:
             LLMError: If local LLM fails during compression
+
+        Changes:
+            - Uses Harmony-format prompt if use_harmony=True
+            - Parses JSON response and validates compression
+            - Falls back to original text if compression fails or expands
+            - Enhanced logging with token metrics
         """
         logger.debug(
             "Compressing chunk",
             doc_id=source.doc_id,
             page=source.page,
+            chunk_id=source.chunk_id,
             original_length=len(source.markdown_content),
+            use_harmony=self.use_harmony,
         )
 
-        # Build compression prompt
-        prompt = PreprocessingPrompts.get_compression_prompt(
-            query=query, chunk_content=source.markdown_content
+        # Build compression prompt (Harmony or legacy)
+        if self.use_harmony:
+            prompt = PreprocessingPrompts.get_harmony_compression_prompt(
+                query=query, chunk_content=source.markdown_content
+            )
+        else:
+            prompt = PreprocessingPrompts.get_compression_prompt(
+                query=query, chunk_content=source.markdown_content
+            )
+
+        # Call local LLM with increased timeout for safety
+        response = await self.local_llm.complete(
+            prompt=prompt,
+            max_tokens=500,
+            timeout=120  # Increased from default 60s
         )
 
-        # Call local LLM
-        response = await self.local_llm.complete(prompt=prompt, max_tokens=500)
+        # Parse response (Harmony JSON format or legacy plain text)
+        if self.use_harmony:
+            # Parse JSON response
+            parsed_result = HarmonyResponseParser.parse_json_response(
+                response=response.content,
+                schema_type="compression",
+                doc_id=source.doc_id,
+                chunk_id=source.chunk_id,
+            )
+            compressed_text = parsed_result["facts"]
+
+            # Validate compression effectiveness
+            is_valid = HarmonyResponseParser.validate_compression(
+                compressed=compressed_text,
+                original=source.markdown_content,
+            )
+
+            # Use original if compression failed (expansion detected)
+            if not is_valid:
+                logger.warning(
+                    "Compression rejected (expansion detected), using original",
+                    doc_id=source.doc_id,
+                    chunk_id=source.chunk_id,
+                    original_length=len(source.markdown_content),
+                    compressed_length=len(compressed_text),
+                )
+                compressed_text = source.markdown_content
+                compression_method = "rejected"
+            else:
+                compression_method = "harmony_json"
+        else:
+            # Legacy path: use response as-is
+            compressed_text = response.content
+            is_valid = len(compressed_text) < len(source.markdown_content)
+            compression_method = "legacy"
 
         # Calculate compression metrics
         original_tokens = len(source.markdown_content) // 4
-        compressed_tokens = len(response.content) // 4
+        compressed_tokens = len(compressed_text) // 4
         reduction_pct = (
             (1 - compressed_tokens / original_tokens) * 100 if original_tokens > 0 else 0
         )
 
-        logger.debug(
+        # Enhanced logging
+        logger.info(
             "Chunk compressed",
             doc_id=source.doc_id,
             page=source.page,
+            chunk_id=source.chunk_id,
             original_tokens=original_tokens,
             compressed_tokens=compressed_tokens,
             reduction_pct=round(reduction_pct, 1),
+            compression_valid=is_valid,
+            compression_method=compression_method,
+            latency_ms=response.latency_ms,
         )
 
         # Create a new SourceDocument with compressed content
         # Must not mutate original to maintain immutability
         from dataclasses import replace
 
-        compressed_source = replace(source, markdown_content=response.content)
+        compressed_source = replace(source, markdown_content=compressed_text)
 
         return compressed_source
 
     async def _score_chunk_relevance(self, query: str, source: SourceDocument) -> float:
         """
-        Score a single chunk's relevance 0-10.
+        Score a single chunk's relevance 0-10 using Harmony format.
 
         Args:
             query: User's research question
@@ -407,6 +473,11 @@ class LocalLLMPreprocessor:
 
         Note:
             Visual sources always score 9.0 (preserve visual matches)
+
+        Changes:
+            - Uses Harmony-format relevance prompt if use_harmony=True
+            - Parses JSON response: {"score": int}
+            - Falls back to neutral score (5.0) on parse failure (per contract)
         """
         # Visual sources always score high (preserve visual matches)
         if source.is_visual:
@@ -422,34 +493,71 @@ class LocalLLMPreprocessor:
             "Scoring chunk relevance",
             doc_id=source.doc_id,
             page=source.page,
+            chunk_id=source.chunk_id,
+            use_harmony=self.use_harmony,
         )
 
-        # Build relevance prompt
-        prompt = PreprocessingPrompts.get_relevance_prompt(
-            query=query, chunk_content=source.markdown_content
-        )
-
-        # Call local LLM (only need 1-2 digits)
-        response = await self.local_llm.complete(prompt=prompt, max_tokens=5)
-
-        # Parse score (handle non-numeric responses)
-        try:
-            score = float(response.content.strip())
-            # Clamp to 0-10 range
-            score = max(0.0, min(10.0, score))
-        except ValueError:
-            logger.warning(
-                "Invalid score from LLM, assigning 0",
-                doc_id=source.doc_id,
-                page=source.page,
-                llm_response=response.content,
+        # Build relevance prompt (Harmony or legacy)
+        if self.use_harmony:
+            prompt = PreprocessingPrompts.get_harmony_relevance_prompt(
+                query=query, chunk_content=source.markdown_content
             )
-            score = 0.0
+            max_tokens = 10  # Allow for JSON format
+        else:
+            prompt = PreprocessingPrompts.get_relevance_prompt(
+                query=query, chunk_content=source.markdown_content
+            )
+            max_tokens = 5  # Only need 1-2 digits
+
+        # Call local LLM
+        response = await self.local_llm.complete(
+            prompt=prompt,
+            max_tokens=max_tokens,
+            timeout=30
+        )
+
+        # Parse response (Harmony JSON format or legacy plain number)
+        if self.use_harmony:
+            # Parse JSON response
+            try:
+                parsed_result = HarmonyResponseParser.parse_json_response(
+                    response=response.content,
+                    schema_type="relevance",
+                    doc_id=source.doc_id,
+                    chunk_id=source.chunk_id,
+                )
+                score = float(parsed_result["score"])
+                # Clamp to 0-10 range
+                score = max(0.0, min(10.0, score))
+
+            except Exception as e:
+                logger.warning(
+                    "Relevance scoring failed, using neutral score",
+                    doc_id=source.doc_id,
+                    chunk_id=source.chunk_id,
+                    error=str(e),
+                )
+                score = 5.0  # Neutral fallback (per contract)
+        else:
+            # Legacy path: parse plain number
+            try:
+                score = float(response.content.strip())
+                # Clamp to 0-10 range
+                score = max(0.0, min(10.0, score))
+            except ValueError:
+                logger.warning(
+                    "Invalid score from LLM, assigning neutral score",
+                    doc_id=source.doc_id,
+                    page=source.page,
+                    llm_response=response.content,
+                )
+                score = 5.0  # Changed from 0.0 to match Harmony fallback
 
         logger.debug(
             "Chunk scored",
             doc_id=source.doc_id,
             page=source.page,
+            chunk_id=source.chunk_id,
             score=score,
         )
 

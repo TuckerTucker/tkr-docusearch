@@ -61,11 +61,15 @@ class MLXLLMClient:
     # Context window for gpt-oss-20B
     CONTEXT_WINDOW = 16384
 
+    # Valid reasoning effort levels
+    VALID_REASONING_EFFORTS = ["low", "medium", "high"]
+
     def __init__(
         self,
         model_path: str,
         max_tokens: int = 4000,
         temperature: float = 0.3,
+        reasoning_effort: str = "low",
     ):
         """
         Initialize MLX client with model loading.
@@ -74,11 +78,13 @@ class MLXLLMClient:
             model_path: Absolute path to MLX model directory
             max_tokens: Maximum output tokens (default: 4000)
             temperature: Sampling temperature (default: 0.3 for factual)
+            reasoning_effort: Reasoning level for Harmony prompts (default: "low")
+                             Valid values: "low" | "medium" | "high"
 
         Raises:
             FileNotFoundError: If model_path doesn't exist
             RuntimeError: If model fails to load
-            ValueError: If parameters are invalid
+            ValueError: If parameters are invalid (including reasoning_effort)
 
         Side Effects:
             - Loads ~13GB model into memory
@@ -86,6 +92,12 @@ class MLXLLMClient:
 
         Performance:
             Expected throughput: 15-20 tokens/sec on M1 Max with 4-bit quantization
+
+        Notes:
+            - "low" reasoning: Fast, for extraction/compression (30-50 tokens/sec)
+            - "medium" reasoning: Balanced, for analysis (15-25 tokens/sec)
+            - "high" reasoning: Slow, for complex reasoning (8-15 tokens/sec)
+            - Default "low" optimized for preprocessing tasks
         """
         # Validate parameters
         if not os.path.exists(model_path):
@@ -97,9 +109,16 @@ class MLXLLMClient:
         if not (0.0 <= temperature <= 1.0):
             raise ValueError(f"temperature must be in [0.0, 1.0], got: {temperature}")
 
+        if reasoning_effort not in self.VALID_REASONING_EFFORTS:
+            raise ValueError(
+                f"reasoning_effort must be one of {self.VALID_REASONING_EFFORTS}, "
+                f"got: {reasoning_effort}"
+            )
+
         self.model_path = model_path
         self.max_tokens = max_tokens
         self.temperature = temperature
+        self.reasoning_effort = reasoning_effort
 
         # Load model and tokenizer
         try:
@@ -140,6 +159,8 @@ class MLXLLMClient:
                 - temperature (float): Sampling temperature
                 - max_tokens (int): Output token limit
                 - timeout (int): Request timeout in seconds (default: 60)
+                - reasoning_effort (str): Override instance-level reasoning effort
+                                         Valid: "low" | "medium" | "high"
 
         Returns:
             LLMResponse with fields:
@@ -154,10 +175,16 @@ class MLXLLMClient:
             TimeoutError: If generation exceeds timeout
             ContextLengthError: If prompt exceeds model context window
             LLMError: For other generation failures
+            ValueError: If reasoning_effort override is invalid
 
         Performance:
             - Expected: 15-20 tokens/sec on M1 Max
             - Typical latency: 2-5 seconds for 200-token response
+
+        Notes:
+            - reasoning_effort kwarg overrides instance default
+            - Reasoning effort passed to Harmony prompt wrapper
+            - No change to non-Harmony callers (backward compatible)
         """
         start_time = time.time()
 
@@ -175,6 +202,17 @@ class MLXLLMClient:
         temperature = kwargs.get("temperature", self.temperature)
         max_tokens = kwargs.get("max_tokens", self.max_tokens)
         timeout = kwargs.get("timeout", 60)
+
+        # Get reasoning effort (instance default or override)
+        reasoning_effort = kwargs.get("reasoning_effort", self.reasoning_effort)
+
+        # Validate override if provided
+        if "reasoning_effort" in kwargs:
+            if reasoning_effort not in self.VALID_REASONING_EFFORTS:
+                raise ValueError(
+                    f"reasoning_effort must be one of {self.VALID_REASONING_EFFORTS}, "
+                    f"got: {reasoning_effort}"
+                )
 
         # Count prompt tokens
         try:
@@ -196,6 +234,7 @@ class MLXLLMClient:
             prompt_tokens=prompt_tokens,
             max_tokens=max_tokens,
             temperature=temperature,
+            reasoning_effort=reasoning_effort,
         )
 
         # Run generation in executor to avoid blocking event loop
@@ -257,6 +296,7 @@ class MLXLLMClient:
             total_tokens=llm_response.usage["total_tokens"],
             latency_ms=latency_ms,
             tokens_per_sec=tokens_per_sec,
+            reasoning_effort=reasoning_effort,
         )
 
         return llm_response
