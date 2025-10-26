@@ -60,7 +60,10 @@ export default function LocalInferenceView() {
       <div className="local-inference-header">
         <h1>Local MLX Inference Test</h1>
         <p className="subtitle">
-          Direct gpt-oss-20b-4bit inference on Metal GPU
+          Direct gpt-oss-20b-4bit inference on Metal GPU with Harmony formatting
+        </p>
+        <p className="info-note">
+          ℹ️ Prompts are automatically wrapped in Harmony format to prevent hallucination and ensure quality responses.
         </p>
       </div>
 

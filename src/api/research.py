@@ -445,10 +445,8 @@ async def ask_research_question(request: ResearchRequest):
 
                 preprocessing_latency_ms = int((time.time() - preprocessing_start) * 1000)
 
-                # Recalculate token count after preprocessing
-                from src.research.context_builder import ContextBuilder
-
-                new_tokens = ContextBuilder._count_tokens(context.formatted_text)
+                # Recalculate token count after preprocessing (using heuristic: ~4 chars per token)
+                new_tokens = len(context.formatted_text) // 4
 
                 # Calculate token reduction percentage
                 if original_tokens > 0:
@@ -655,11 +653,14 @@ async def ask_research_question(request: ResearchRequest):
 @app.post("/api/research/local-inference", response_model=LocalInferenceResponse)
 async def local_inference(request: LocalInferenceRequest):
     """
-    Direct MLX local inference without search or preprocessing.
+    Direct MLX local inference with Harmony formatting.
 
     Test endpoint for evaluating local MLX model performance in isolation.
-    This bypasses search, context building, and preprocessing to measure
-    raw inference speed and quality.
+    This bypasses search, context building, and preprocessing, but wraps
+    user prompts in Harmony format for better structured responses.
+
+    The Harmony format prevents hallucination and code generation on simple queries
+    by providing clear task framing to GPT-OSS-20B.
 
     Example request:
         POST /api/research/local-inference
@@ -689,9 +690,21 @@ async def local_inference(request: LocalInferenceRequest):
             temperature=request.temperature,
         )
 
-        # Call MLX client directly
+        # Wrap prompt in Harmony format for better structured responses
+        # This prevents hallucination and code generation on simple queries
+        from src.research.prompts import PreprocessingPrompts
+
+        formatted_prompt = PreprocessingPrompts.get_harmony_chat_prompt(request.prompt)
+
+        logger.debug(
+            "Using Harmony-formatted prompt",
+            original_length=len(request.prompt),
+            formatted_length=len(formatted_prompt),
+        )
+
+        # Call MLX client with formatted prompt
         response = await app.state.local_llm.complete(
-            prompt=request.prompt,
+            prompt=formatted_prompt,
             max_tokens=request.max_tokens,
             temperature=request.temperature,
             timeout=request.timeout,

@@ -270,22 +270,27 @@ Text:
 {chunk_content}
 <|end|><|start|>assistant"""
 
+HARMONY_CHAT_PROMPT = """<|start|>developer<|message|># Instructions
+You are a helpful AI assistant.
+Respond naturally to user questions and prompts.
+Be concise, factual, and helpful.
+Reasoning: low
+<|end|><|start|>user<|message|>
+{prompt}
+<|end|><|start|>assistant"""
+
 
 # JSON Schema Definitions for Harmony Response Validation
 COMPRESSION_SCHEMA = {
     "type": "object",
     "required": ["facts"],
-    "properties": {
-        "facts": {"type": "string", "minLength": 1}
-    }
+    "properties": {"facts": {"type": "string", "minLength": 1}},
 }
 
 RELEVANCE_SCHEMA = {
     "type": "object",
     "required": ["score"],
-    "properties": {
-        "score": {"type": "integer", "minimum": 0, "maximum": 10}
-    }
+    "properties": {"score": {"type": "integer", "minimum": 0, "maximum": 10}},
 }
 
 
@@ -387,3 +392,23 @@ class PreprocessingPrompts:
             Formatted Harmony-format prompt string ready for GPT-OSS-20B
         """
         return HARMONY_RELEVANCE_SCORING_PROMPT.format(query=query, chunk_content=chunk_content)
+
+    @staticmethod
+    def get_harmony_chat_prompt(prompt: str) -> str:
+        """
+        Build Harmony-format chat prompt for general inference.
+
+        This prompt wraps user input in Harmony chat format for better structured responses.
+        Prevents hallucination and code generation by providing clear task framing.
+
+        Args:
+            prompt: User's query or prompt
+
+        Returns:
+            Formatted Harmony-format prompt string ready for GPT-OSS-20B
+
+        Example:
+            >>> PreprocessingPrompts.get_harmony_chat_prompt("What is the capital of France?")
+            '<|start|>developer<|message|># Instructions...'
+        """
+        return HARMONY_CHAT_PROMPT.format(prompt=prompt)
