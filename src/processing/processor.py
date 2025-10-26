@@ -177,6 +177,9 @@ class DocumentProcessor:
             self._update_status(status, status_callback)
 
             logger.info(f"Starting document processing: {filename}")
+            print(f"DEBUG: DocumentProcessor.enhanced_mode_config = {self.enhanced_mode_config}")
+            print(f"DEBUG: Calling parser.parse_document with config={self.enhanced_mode_config}")
+            logger.info(f"DEBUG: enhanced_mode_config = {self.enhanced_mode_config}")
 
             parsed_doc = self.parser.parse_document(
                 file_path=file_path,

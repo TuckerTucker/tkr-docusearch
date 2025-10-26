@@ -49,13 +49,16 @@ from storage.markdown_utils import delete_document_markdown
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
+# Configure root logger to capture all logs
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Capture all levels
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler(LOG_FILE)],
+    handlers=[logging.StreamHandler(), logging.FileHandler(LOG_FILE, mode="a")],  # Append mode
+    force=True,  # Override any existing configuration
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Ensure this logger also captures DEBUG
 
 # ============================================================================
 # Configuration
@@ -849,6 +852,10 @@ async def startup_event():
     # Capture event loop for async broadcasts from sync context
     _loop = asyncio.get_event_loop()
 
+    # Use print for guaranteed visibility in logs
+    print("=" * 70)
+    print("DocuSearch Processing Worker Starting (Webhook Mode)...")
+    print("=" * 70)
     logger.info("=" * 70)
     logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")
     logger.info("=" * 70)
@@ -887,8 +894,15 @@ async def startup_event():
         logger.info("✓ ChromaDB connected")
 
         # Load enhanced mode configuration
+        print("Loading enhanced mode configuration...")
         logger.info("Loading enhanced mode configuration...")
         enhanced_config = EnhancedModeConfig.from_env()
+        print(
+            f"✓ Enhanced mode enabled: "
+            f"table_structure={enhanced_config.enable_table_structure}, "
+            f"picture_classification={enhanced_config.enable_picture_classification}, "
+            f"chunking={enhanced_config.chunking_strategy.value}"
+        )
         logger.info(
             f"✓ Enhanced mode enabled: "
             f"table_structure={enhanced_config.enable_table_structure}, "

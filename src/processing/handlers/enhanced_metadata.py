@@ -175,6 +175,9 @@ def prepare_enhanced_text_metadata(
     enhanced["element_type"] = chunk_context.element_type
     enhanced["is_page_boundary"] = chunk_context.is_page_boundary
 
+    # Store full context as JSON string for visual necessity and multi-modal decisions
+    enhanced["chunk_context_json"] = json.dumps(chunk_context.to_dict())
+
     # Add related elements (stored as JSON strings - ChromaDB limitation)
     enhanced["related_tables"] = json.dumps(chunk_context.related_tables)
     enhanced["related_pictures"] = json.dumps(chunk_context.related_pictures)

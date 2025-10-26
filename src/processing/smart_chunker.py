@@ -332,10 +332,13 @@ def create_chunker(config: EnhancedModeConfig):
         ChunkingError: If chunker creation fails
     """
     try:
-        if config.chunking_strategy == ChunkingStrategy.HYBRID:
+        # Compare by enum value instead of identity to avoid module reload issues
+        if config.chunking_strategy.value == "hybrid":
+            logger.info("Creating SmartChunker with hybrid strategy")
             return SmartChunker(config)
         else:
             # Legacy strategy
+            logger.info(f"Creating LegacyChunker (strategy={config.chunking_strategy.value})")
             return LegacyChunker(chunk_size_words=250, chunk_overlap_words=50)
     except Exception as e:
         logger.error(f"Failed to create chunker: {e}")
