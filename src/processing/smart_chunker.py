@@ -13,7 +13,7 @@ from docling.chunking import HybridChunker
 from docling_core.types.doc import DoclingDocument
 from transformers import AutoTokenizer
 
-from src.config.processing_config import ChunkingStrategy, EnhancedModeConfig
+from src.config.processing_config import EnhancedModeConfig
 from src.processing.types import Page, TextChunk
 from src.storage.metadata_schema import ChunkContext, DocumentStructure
 
