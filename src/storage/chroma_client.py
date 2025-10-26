@@ -553,10 +553,10 @@ class ChromaClient:
             metadata["element_type"] = chunk_context.element_type
             metadata["is_page_boundary"] = chunk_context.is_page_boundary
 
-            # Store full context as JSON string if needed for reconstruction
-            # (commented out for now - can be added if needed)
-            # import json
-            # metadata["chunk_context_json"] = json.dumps(chunk_context.to_dict())
+            # Store full context as JSON string for visual necessity and multi-modal decisions
+            import json
+
+            metadata["chunk_context_json"] = json.dumps(chunk_context.to_dict())
         else:
             metadata["has_context"] = False
 

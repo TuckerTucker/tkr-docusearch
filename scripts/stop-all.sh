@@ -324,6 +324,30 @@ check_ports() {
     fi
 }
 
+cleanup_python_cache() {
+    echo -e "\n${CYAN}Cleaning Python cache...${NC}\n"
+
+    # Count cache files before cleanup
+    local cache_count=$(find src -name "*.pyc" -o -name "__pycache__" -type d | wc -l | tr -d ' ')
+
+    if [ "$cache_count" -gt 0 ]; then
+        print_status "Python cache" "info" "Found $cache_count cached items"
+
+        # Remove .pyc files
+        find src -name "*.pyc" -delete 2>/dev/null || true
+
+        # Remove __pycache__ directories
+        find src -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+        # Also clean root-level cache if exists
+        rm -rf src/__pycache__ 2>/dev/null || true
+
+        print_status "Python cache" "ok" "Cleared (ensures fresh code on restart)"
+    else
+        print_status "Python cache" "ok" "Already clean"
+    fi
+}
+
 cleanup_logs() {
     echo -e "\n${CYAN}Log files:${NC}\n"
 
@@ -454,6 +478,7 @@ stop_native_worker
 stop_research_api
 stop_frontend
 stop_docker_services
+cleanup_python_cache
 check_ports
 cleanup_logs
 show_summary

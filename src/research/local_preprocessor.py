@@ -10,8 +10,10 @@ All strategies preserve metadata for proper citation tracking and bidirectional 
 """
 
 import asyncio
+import json
 import os
-from typing import List
+import re
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -19,6 +21,7 @@ from src.research.context_builder import SourceDocument
 from src.research.mlx_llm_client import ContextLengthError, MLXLLMClient
 from src.research.prompts import PreprocessingPrompts
 from src.research.response_parsers import HarmonyResponseParser
+from src.storage.metadata_schema import ChunkContext
 
 logger = structlog.get_logger(__name__)
 
@@ -41,10 +44,121 @@ class LocalLLMPreprocessor:
         self.local_llm = mlx_client
         # Check environment flag for Harmony prompts (default: true)
         self.use_harmony = os.getenv("USE_HARMONY_PROMPTS", "true").lower() == "true"
-        logger.info(
-            "LocalLLMPreprocessor initialized",
-            use_harmony_prompts=self.use_harmony
-        )
+        logger.info("LocalLLMPreprocessor initialized", use_harmony_prompts=self.use_harmony)
+
+    @staticmethod
+    def _parse_chunk_context(metadata: Dict[str, Any]) -> Optional[ChunkContext]:
+        """
+        Parse chunk_context_json from ChromaDB metadata.
+
+        Args:
+            metadata: Raw metadata dict from ChromaDB search result
+
+        Returns:
+            ChunkContext object if chunk_context_json exists, None otherwise
+
+        Example:
+            >>> metadata = {"chunk_context_json": '{"related_pictures": ["fig1.png"]}'}
+            >>> context = LocalLLMPreprocessor._parse_chunk_context(metadata)
+            >>> context.related_pictures
+            ['fig1.png']
+        """
+        if "chunk_context_json" not in metadata:
+            return None
+
+        try:
+            context_dict = json.loads(metadata["chunk_context_json"])
+            return ChunkContext.from_dict(context_dict)
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.warning(
+                "Failed to parse chunk_context_json",
+                error=str(e),
+                metadata_keys=list(metadata.keys()),
+            )
+            return None
+
+    @staticmethod
+    def _has_visual_dependency(
+        chunk_context: Optional[ChunkContext],
+        markdown_content: str,
+        element_type: Optional[str] = None,
+    ) -> bool:
+        """
+        Determine if a chunk requires visual context (images, charts, tables).
+
+        Uses multiple heuristics:
+        1. Docling metadata: related_pictures, related_tables, element_type
+        2. Markdown analysis: visual references ("Figure", "Chart", "Table", "diagram")
+
+        Args:
+            chunk_context: Parsed ChunkContext from metadata (can be None)
+            markdown_content: Text content of the chunk
+            element_type: Element type from metadata (fallback if no chunk_context)
+
+        Returns:
+            True if chunk has visual dependencies, False otherwise
+
+        Examples:
+            Text with related images:
+            >>> context = ChunkContext(related_pictures=["chart.png"])
+            >>> LocalLLMPreprocessor._has_visual_dependency(context, "Revenue data", "text")
+            True
+
+            Text referencing a figure:
+            >>> LocalLLMPreprocessor._has_visual_dependency(None, "As shown in Figure 3", "text")
+            True
+
+            Plain text:
+            >>> LocalLLMPreprocessor._has_visual_dependency(None, "This is plain text", "text")
+            False
+        """
+        # Heuristic 1: Docling metadata indicates visual relationships
+        if chunk_context:
+            if chunk_context.related_pictures:
+                logger.debug(
+                    "Visual dependency: related_pictures", count=len(chunk_context.related_pictures)
+                )
+                return True
+
+            if chunk_context.related_tables:
+                logger.debug(
+                    "Visual dependency: related_tables", count=len(chunk_context.related_tables)
+                )
+                return True
+
+            # Use chunk_context.element_type if available
+            element_type = chunk_context.element_type
+
+        # Heuristic 2: Element type suggests visual content
+        visual_element_types = {"table", "list_item", "picture", "figure"}
+        if element_type and element_type.lower() in visual_element_types:
+            logger.debug("Visual dependency: element_type", element_type=element_type)
+            return True
+
+        # Heuristic 3: Markdown contains visual references
+        visual_patterns = [
+            r"\bfigure\s+\d+\b",  # "Figure 3"
+            r"\btable\s+\d+\b",  # "Table 2"
+            r"\bchart\b",  # "chart"
+            r"\bdiagram\b",  # "diagram"
+            r"\bgraph\b",  # "graph"
+            r"\bsee\s+(figure|table|chart|diagram)\b",  # "see Figure"
+            r"\bas\s+shown\s+in\s+(figure|table|chart)\b",  # "as shown in Figure"
+            r"\bthe\s+(chart|diagram|graph)\s+shows\b",  # "the chart shows"
+            r"\bthe\s+(chart|diagram|graph)\s+illustrates\b",  # "the chart illustrates"
+        ]
+
+        content_lower = markdown_content.lower()
+        for pattern in visual_patterns:
+            if re.search(pattern, content_lower):
+                logger.debug(
+                    "Visual dependency: markdown pattern",
+                    pattern=pattern,
+                    match=re.search(pattern, content_lower).group(),
+                )
+                return True
+
+        return False
 
     async def compress_chunks(
         self, query: str, sources: List[SourceDocument]
@@ -109,6 +223,18 @@ class LocalLLMPreprocessor:
                     )
                     continue
 
+                # Detect visual necessity and populate related metadata
+                chunk_context = self._parse_chunk_context(source.raw_metadata)
+                has_visual_dep = self._has_visual_dependency(
+                    chunk_context, source.markdown_content, source.raw_metadata.get("element_type")
+                )
+
+                # Populate visual necessity fields
+                source.has_visual_dependency = has_visual_dep
+                if chunk_context:
+                    source.related_pictures = chunk_context.related_pictures
+                    source.related_tables = chunk_context.related_tables
+
                 # Queue compression task and track original tokens
                 source_index_map.append((idx, source, True, source_tokens))
                 original_token_count += source_tokens
@@ -121,6 +247,9 @@ class LocalLLMPreprocessor:
                     tokens=source_tokens,
                     is_visual=source.is_visual,
                     chunk_id=source.chunk_id,
+                    has_visual_dependency=has_visual_dep,
+                    related_pictures_count=len(source.related_pictures),
+                    related_tables_count=len(source.related_tables),
                 )
 
             # Process all compression tasks in parallel
@@ -165,6 +294,11 @@ class LocalLLMPreprocessor:
                 else 0.0
             )
 
+            # Calculate visual necessity metrics
+            visual_count = sum(1 for s in compressed if s.has_visual_dependency)
+            text_only_count = len(compressed) - visual_count
+            visual_pct = (visual_count / len(compressed) * 100) if compressed else 0.0
+
             logger.info(
                 "Chunk compression complete",
                 num_sources=len(sources),
@@ -172,6 +306,9 @@ class LocalLLMPreprocessor:
                 original_tokens=original_token_count,
                 compressed_tokens=compressed_token_count,
                 reduction_pct=round(reduction_pct, 1),
+                visual_dependent=visual_count,
+                text_only=text_only_count,
+                visual_pct=round(visual_pct, 1),
             )
 
             return compressed
@@ -378,21 +515,21 @@ class LocalLLMPreprocessor:
             use_harmony=self.use_harmony,
         )
 
-        # Build compression prompt (Harmony or legacy)
+        # Build compression prompt (Harmony or legacy, with visual-awareness)
         if self.use_harmony:
             prompt = PreprocessingPrompts.get_harmony_compression_prompt(
                 query=query, chunk_content=source.markdown_content
             )
         else:
             prompt = PreprocessingPrompts.get_compression_prompt(
-                query=query, chunk_content=source.markdown_content
+                query=query,
+                chunk_content=source.markdown_content,
+                has_visual_dependency=source.has_visual_dependency,
             )
 
         # Call local LLM with increased timeout for safety
         response = await self.local_llm.complete(
-            prompt=prompt,
-            max_tokens=500,
-            timeout=120  # Increased from default 60s
+            prompt=prompt, max_tokens=500, timeout=120  # Increased from default 60s
         )
 
         # Parse response (Harmony JSON format or legacy plain text)
@@ -510,11 +647,7 @@ class LocalLLMPreprocessor:
             max_tokens = 5  # Only need 1-2 digits
 
         # Call local LLM
-        response = await self.local_llm.complete(
-            prompt=prompt,
-            max_tokens=max_tokens,
-            timeout=30
-        )
+        response = await self.local_llm.complete(prompt=prompt, max_tokens=max_tokens, timeout=30)
 
         # Parse response (Harmony JSON format or legacy plain number)
         if self.use_harmony:

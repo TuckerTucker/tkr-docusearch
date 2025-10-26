@@ -185,6 +185,31 @@ DOCUMENT CHUNK:
 
 COMPRESSED FACTS:"""
 
+VISUAL_CHUNK_COMPRESSION_PROMPT = """You are a research assistant extracting key information from document chunks.
+
+TASK: Extract the key facts from this document chunk that are relevant to the user's query.
+
+RULES:
+1. Preserve specific numbers, dates, names, and technical details exactly
+2. Remove boilerplate, introductory text, and tangential information
+3. Maintain factual accuracy - do not infer or add information
+4. Keep the summary concise (aim for 50-60% of original length)
+5. Preserve context needed for citations (page numbers, section references)
+6. **CRITICAL: Preserve ALL references to visual elements**:
+   - Keep "Figure N", "Table N", "Chart", "Diagram", "Graph" references intact
+   - Maintain descriptions like "the chart shows", "as illustrated in", "see diagram"
+   - Preserve visual element context (e.g., "the bar chart demonstrates...")
+
+OUTPUT FORMAT:
+Provide ONLY the compressed facts. Do not include meta-commentary like "This document discusses..." or "The key points are...". Start directly with the factual content.
+
+QUERY: {query}
+
+DOCUMENT CHUNK:
+{chunk_content}
+
+COMPRESSED FACTS:"""
+
 RELEVANCE_SCORING_PROMPT = """You are evaluating the relevance of a document chunk to a specific query.
 
 TASK: Rate this chunk's relevance on a scale of 0-10.
@@ -298,18 +323,24 @@ class PreprocessingPrompts:
     """Prompt template management for preprocessing strategies."""
 
     @staticmethod
-    def get_compression_prompt(query: str, chunk_content: str) -> str:
+    def get_compression_prompt(
+        query: str, chunk_content: str, has_visual_dependency: bool = False
+    ) -> str:
         """
         Build compression prompt with query and chunk.
 
         Args:
             query: User's research question
             chunk_content: Document chunk text to compress
+            has_visual_dependency: If True, uses visual-preserving compression prompt
 
         Returns:
             Formatted prompt string ready for LLM
         """
-        return CHUNK_COMPRESSION_PROMPT.format(query=query, chunk_content=chunk_content)
+        template = (
+            VISUAL_CHUNK_COMPRESSION_PROMPT if has_visual_dependency else CHUNK_COMPRESSION_PROMPT
+        )
+        return template.format(query=query, chunk_content=chunk_content)
 
     @staticmethod
     def get_relevance_prompt(query: str, chunk_content: str) -> str:

@@ -6,7 +6,7 @@ and constructs formatted context strings with proper citations.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -70,6 +70,16 @@ class SourceDocument:
 
     # Search type tracking for vision support
     is_visual: bool = False  # True if from visual collection, False if from text collection
+
+    # Visual necessity detection (populated during preprocessing)
+    has_visual_dependency: bool = (
+        False  # True if chunk requires visual context (images/charts/tables)
+    )
+    related_pictures: List[str] = field(default_factory=list)  # Picture IDs from ChunkContext
+    related_tables: List[str] = field(default_factory=list)  # Table IDs from ChunkContext
+
+    # Raw ChromaDB metadata (for preprocessing analysis)
+    raw_metadata: Dict[str, Any] = field(default_factory=dict)  # Complete metadata from ChromaDB
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict for API response"""
@@ -466,6 +476,7 @@ class ContextBuilder:
             relevance_score=score,
             chunk_id=chunk_id,
             is_visual=is_visual,
+            raw_metadata=metadata,  # Pass through full ChromaDB metadata for preprocessing
         )
 
     def format_source_citation(self, source: SourceDocument, citation_num: int) -> str:
