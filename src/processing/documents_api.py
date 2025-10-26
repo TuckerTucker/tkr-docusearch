@@ -1026,7 +1026,6 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
                     filename=safe_filename,
                     headers={
                         "Content-Disposition": f'attachment; filename="{safe_filename}"',
-                        "Access-Control-Allow-Origin": "*",
                     },
                 )
             else:
@@ -1044,7 +1043,6 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
         filename=safe_filename,
         headers={
             "Content-Disposition": f'attachment; filename="{safe_filename}"',
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1121,7 +1119,6 @@ async def get_vtt(doc_id: str):
         filename=safe_filename,
         headers={
             "Content-Disposition": f'attachment; filename="{safe_filename}"',
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1225,7 +1222,6 @@ async def get_audio(doc_id: str):
             headers={
                 "Accept-Ranges": "bytes",  # Enable seeking
                 "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-                "Access-Control-Allow-Origin": "*",
             },
         )
 
@@ -1311,7 +1307,6 @@ async def get_cover(doc_id: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=31536000, immutable",  # 1 year
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -1456,7 +1451,6 @@ async def get_image(doc_id: str, filename: str):
         media_type=media_type,
         headers={
             "Cache-Control": "max-age=86400",  # 24 hours
-            "Access-Control-Allow-Origin": "*",
         },
     )
 

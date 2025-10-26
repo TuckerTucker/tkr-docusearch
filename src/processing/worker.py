@@ -103,10 +103,10 @@ class DocumentUploadHandler(FileSystemEventHandler):
         """
         doc_id = None
         try:
-            # Generate doc ID from file hash
+            # Generate doc ID from file hash (using SHA-256 for security)
             with open(file_path, "rb") as f:
                 content = f.read()
-                doc_id = hashlib.md5(content).hexdigest()[:12]
+                doc_id = hashlib.sha256(content).hexdigest()[:16]
 
             # Update status
             processing_status[doc_id] = {

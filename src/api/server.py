@@ -373,10 +373,10 @@ async def upload_document(file: UploadFile = File(..., description="Document fil
         content = await file.read()
         file_size = len(content)
 
-        # Generate doc ID
+        # Generate doc ID (using SHA-256 for security)
         import hashlib
 
-        doc_id = hashlib.md5(content).hexdigest()[:12]
+        doc_id = hashlib.sha256(content).hexdigest()[:16]
 
         # Save to uploads directory
         upload_dir = Path("data/uploads")
