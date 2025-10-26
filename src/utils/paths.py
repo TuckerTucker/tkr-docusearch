@@ -6,13 +6,14 @@ across the project, especially important for:
 - Docling ASR pipeline (Whisper/FFmpeg path requirements)
 - Cross-module file operations
 - CWD-independent path resolution
+- URL path conversion for image serving
 
 All paths returned by these utilities are absolute paths.
 """
 
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +223,46 @@ def get_file_info(path: Union[str, Path]) -> dict:
         info["size_bytes"] = abs_path.stat().st_size
 
     return info
+
+
+def convert_path_to_url(path: Optional[str]) -> Optional[str]:
+    """
+    Convert file path to URL format for serving via worker API.
+
+    Transforms filesystem paths like 'data/page_images/abc123/page001_thumb.jpg'
+    to URL paths like '/images/abc123/page001_thumb.jpg' that match the worker's
+    image serving endpoint format.
+
+    Args:
+        path: File path like 'data/page_images/abc123/page001_thumb.jpg'
+
+    Returns:
+        URL path like '/images/abc123/page001_thumb.jpg' or None if path is invalid
+
+    Note:
+        Worker serves images via /images/{doc_id}/{filename} endpoint.
+        This function extracts the last two path components (doc_id and filename)
+        to construct the correct URL path.
+
+    Examples:
+        >>> convert_path_to_url("data/page_images/abc123/page001_thumb.jpg")
+        '/images/abc123/page001_thumb.jpg'
+
+        >>> convert_path_to_url(None)
+        None
+
+        >>> convert_path_to_url("no_slashes")
+        'no_slashes'
+    """
+    if not path or "/" not in path:
+        return path
+
+    parts = path.split("/")
+    if len(parts) >= 2:
+        # Extract last two parts: doc_id and filename
+        return f"/images/{parts[-2]}/{parts[-1]}"
+
+    return path
 
 
 # Logging helpers

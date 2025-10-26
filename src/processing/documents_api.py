@@ -33,6 +33,7 @@ from src.processing.image_utils import cleanup_temp_directories, delete_document
 from src.processing.vtt_utils import delete_document_vtt
 from src.storage import ChromaClient
 from src.storage.markdown_utils import delete_document_markdown
+from src.utils.paths import convert_path_to_url
 
 logger = logging.getLogger(__name__)
 
@@ -696,25 +697,6 @@ async def list_documents(
         )
 
 
-def _convert_path_to_url(path: Optional[str]) -> Optional[str]:
-    """Convert file path to URL format.
-
-    Args:
-        path: File path with directory structure
-
-    Returns:
-        URL path or None
-    """
-    if not path or "/" not in path:
-        return path
-
-    parts = path.split("/")
-    if len(parts) >= 2:
-        return f"/images/{parts[-2]}/{parts[-1]}"
-
-    return path
-
-
 def _build_page_list(visual_data: Dict, visual_ids: List[str]) -> List[PageInfo]:
     """Build list of page information from visual data.
 
@@ -730,8 +712,8 @@ def _build_page_list(visual_data: Dict, visual_ids: List[str]) -> List[PageInfo]
 
     for idx, metadata in enumerate(visual_metadatas):
         page_num = metadata.get("page")
-        image_path = _convert_path_to_url(metadata.get("image_path"))
-        thumb_path = _convert_path_to_url(metadata.get("thumb_path"))
+        image_path = convert_path_to_url(metadata.get("image_path"))
+        thumb_path = convert_path_to_url(metadata.get("thumb_path"))
 
         pages.append(
             PageInfo(

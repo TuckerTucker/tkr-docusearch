@@ -11,34 +11,11 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from src.utils.paths import convert_path_to_url
+
 from .chunk_extractor import extract_chunk_id
 
 logger = structlog.get_logger(__name__)
-
-
-def _convert_path_to_url(path: Optional[str]) -> Optional[str]:
-    """
-    Convert file path to URL format for serving via worker API.
-
-    Args:
-        path: File path like 'data/page_images/abc123/page001_thumb.jpg'
-
-    Returns:
-        URL path like '/images/abc123/page001_thumb.jpg' or None
-
-    Note:
-        Matches format used by documents_api.py for consistency.
-        Worker serves images via /images/{doc_id}/{filename} endpoint.
-    """
-    if not path or "/" not in path:
-        return path
-
-    parts = path.split("/")
-    if len(parts) >= 2:
-        # Extract last two parts: doc_id and filename
-        return f"/images/{parts[-2]}/{parts[-1]}"
-
-    return path
 
 
 @dataclass
@@ -467,8 +444,8 @@ class ContextBuilder:
             filename=metadata.get("filename", "unknown"),
             page=page,
             extension=extension,
-            thumbnail_path=_convert_path_to_url(thumbnail),
-            image_path=_convert_path_to_url(metadata.get("image_path")),
+            thumbnail_path=convert_path_to_url(thumbnail),
+            image_path=convert_path_to_url(metadata.get("image_path")),
             timestamp=metadata.get("timestamp", ""),
             section_path=metadata.get("section_path"),
             parent_heading=metadata.get("parent_heading"),

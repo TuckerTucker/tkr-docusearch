@@ -68,6 +68,51 @@ DocuSearch MVP is a **production-ready** local semantic search system for docume
 - **Docker** (for ChromaDB)
 - **16GB+ RAM** (for ColPali FP16)
 - **M1/M2/M3 Mac** (for MPS acceleration, or use CPU)
+- **API Keys** (for LLM research features - see Environment Setup below)
+
+### 🔐 Environment Setup (Required for LLM Features)
+
+**IMPORTANT**: DocuSearch requires API keys for LLM-powered research features. Follow these steps to configure your environment securely:
+
+1. **Copy the environment template:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` and add your API keys:**
+   ```bash
+   # Open in your editor
+   nano .env  # or use vim, code, etc.
+   ```
+
+3. **Required API keys** (choose based on your LLM provider):
+   - **OpenAI** (default): Get key from https://platform.openai.com/api-keys
+   - **Anthropic** (Claude): Get key from https://console.anthropic.com/
+   - **Google** (Gemini): Get key from https://makersuite.google.com/app/apikey
+
+4. **Optional: Ngrok** (for external access/webhooks):
+   - Get auth token from https://dashboard.ngrok.com/get-started/your-authtoken
+
+5. **Validate your configuration:**
+   ```bash
+   python src/config/env_validator.py
+   ```
+
+   Expected output:
+   ```
+   ✓ LLM provider validated: openai
+   ✓ Security-critical variables validated
+   ✓ Environment validation complete
+   ✓ All environment variables are valid!
+   ```
+
+**Security Notes:**
+- ⚠️ **NEVER commit `.env` to git** (it's already in .gitignore)
+- 🔒 Keep your API keys secure - they provide access to paid services
+- 📝 Use `.env.example` as a template for team members
+- 🔄 Rotate keys immediately if exposed
+
+See [`.context-kit/_ref/SECURITY_REMEDIATION_GUIDE.md`](.context-kit/_ref/SECURITY_REMEDIATION_GUIDE.md) for comprehensive security best practices.
 
 ### Setup & Run (Manual - Legacy)
 

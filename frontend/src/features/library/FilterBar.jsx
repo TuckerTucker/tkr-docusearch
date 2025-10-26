@@ -197,11 +197,8 @@ export default function FilterBar({ totalCount = 0, onFilterChange }) {
       </button>
 
       {/* Upload button */}
-      <button
-        className="filter-bar__upload"
-        onClick={() => document.getElementById('filter-bar-upload-input')?.click()}
-        aria-label="Upload files"
-      >
+      {/* File upload - use label to trigger input for accessibility (WCAG 3.3.2) */}
+      <label htmlFor="filter-bar-upload-input" className="filter-bar__upload">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -219,17 +216,16 @@ export default function FilterBar({ totalCount = 0, onFilterChange }) {
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
         Upload
-      </button>
+      </label>
 
-      {/* Hidden file input */}
+      {/* Visually hidden file input - screen readers can access it */}
       <input
         id="filter-bar-upload-input"
         type="file"
         multiple
         accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.html,.xhtml,.md,.asciidoc,.csv,.mp3,.wav,.vtt,.png,.jpg,.jpeg,.tiff,.bmp,.webp"
-        style={{ display: 'none' }}
+        className="sr-only"
         onChange={handleUploadFileChange}
-        aria-hidden="true"
       />
 
       {/* Research button - aligned right */}
