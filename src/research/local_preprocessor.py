@@ -164,157 +164,110 @@ class LocalLLMPreprocessor:
         self, query: str, sources: List[SourceDocument]
     ) -> List[SourceDocument]:
         """
-        Compress each source chunk to extract key facts, reducing token count.
+        Synthesize all source chunks into a single comprehensive summary.
+
+        Instead of compressing each chunk individually, this creates ONE synthesized
+        summary from ALL sources (including visual match text) and returns it as a
+        single source. This dramatically reduces token count sent to foundation model.
 
         Args:
-            query: User's research question (for context-aware compression)
+            query: User's research question (for context-aware synthesis)
             sources: List of SourceDocument objects from search results
 
         Returns:
-            List[SourceDocument] with compressed markdown_content,
-            all other metadata preserved (doc_id, chunk_id, page, etc.)
+            List with ONE SourceDocument containing the synthesized summary,
+            preserving source tracking for citations
 
         Performance:
-            - Target: 30-50% token reduction per chunk
-            - Latency: <3 seconds total for 10 chunks
-            - Parallelizable: Process chunks concurrently
+            - Target: 50-70% token reduction overall
+            - Latency: Single LLM call for synthesis (~20-30s)
+            - Output: ONE summary instead of N chunks
 
         Raises:
             LLMError: If local LLM fails (handled gracefully with fallback)
         """
         logger.info(
-            "Starting chunk compression",
+            "Starting synthesis-based compression",
             query=query,
             num_sources=len(sources),
+            use_harmony=self.use_harmony,
         )
 
         try:
-            # Build index mapping: track which sources need compression
-            # This preserves original order while allowing parallel processing
-            source_index_map = (
-                []
-            )  # List of (index, source, needs_compression, original_token_count)
-            tasks = []
-            original_token_count = 0
+            # Calculate original token count for all sources
+            original_token_count = sum(len(source.markdown_content) // 4 for source in sources)
 
-            for idx, source in enumerate(sources):
-                source_tokens = len(source.markdown_content) // 4
+            # Format ALL sources (including visual match text) as numbered chunks
+            numbered_chunks = PreprocessingPrompts.format_numbered_chunks(sources)
 
-                # Skip visual sources (no text to compress)
-                if source.is_visual:
-                    source_index_map.append((idx, source, False, 0))
-                    logger.debug(
-                        "Skipping visual source",
-                        doc_id=source.doc_id,
-                        page=source.page,
-                    )
-                    continue
-
-                # Skip very short chunks (<400 chars ≈ 100 tokens)
-                if len(source.markdown_content) < 400:
-                    source_index_map.append((idx, source, False, 0))
-                    logger.info(
-                        "Skipping short chunk (below 400 char threshold)",
-                        doc_id=source.doc_id,
-                        page=source.page,
-                        length=len(source.markdown_content),
-                        is_visual=source.is_visual,
-                        chunk_id=source.chunk_id,
-                    )
-                    continue
-
-                # Detect visual necessity and populate related metadata
-                chunk_context = self._parse_chunk_context(source.raw_metadata)
-                has_visual_dep = self._has_visual_dependency(
-                    chunk_context, source.markdown_content, source.raw_metadata.get("element_type")
-                )
-
-                # Populate visual necessity fields
-                source.has_visual_dependency = has_visual_dep
-                if chunk_context:
-                    source.related_pictures = chunk_context.related_pictures
-                    source.related_tables = chunk_context.related_tables
-
-                # Queue compression task and track original tokens
-                source_index_map.append((idx, source, True, source_tokens))
-                original_token_count += source_tokens
-                tasks.append(self._compress_single_chunk(query, source))
-                logger.info(
-                    "Queuing chunk for compression",
-                    doc_id=source.doc_id,
-                    page=source.page,
-                    length=len(source.markdown_content),
-                    tokens=source_tokens,
-                    is_visual=source.is_visual,
-                    chunk_id=source.chunk_id,
-                    has_visual_dependency=has_visual_dep,
-                    related_pictures_count=len(source.related_pictures),
-                    related_tables_count=len(source.related_tables),
-                )
-
-            # Process all compression tasks in parallel
-            compressed_results = []
-            if tasks:
-                logger.debug("Processing compression tasks", num_tasks=len(tasks))
-                compressed_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Reconstruct result list in original order
-            compressed = [None] * len(sources)
-            task_idx = 0
-
-            for idx, source, needs_compression, _ in source_index_map:
-                if not needs_compression:
-                    # Use original source (visual or short)
-                    compressed[idx] = source
-                else:
-                    # Use compressed result or fallback to original on error
-                    result = compressed_results[task_idx]
-                    if isinstance(result, Exception):
-                        logger.warning(
-                            "Compression failed for chunk, using original",
-                            error=str(result),
-                            doc_id=source.doc_id,
-                            page=source.page,
-                        )
-                        compressed[idx] = source
-                    else:
-                        compressed[idx] = result
-                    task_idx += 1
-
-            # Calculate overall compression metrics
-            # Only count sources that were actually processed
-            compressed_token_count = sum(
-                len(compressed[idx].markdown_content) // 4
-                for idx, _, needs_compression, _ in source_index_map
-                if needs_compression
+            # Estimate tokens
+            estimated_tokens = len(numbered_chunks) // 4
+            logger.info(
+                "Synthesis request",
+                num_sources=len(sources),
+                estimated_tokens=estimated_tokens,
+                original_tokens=original_token_count,
+                context_limit=128000,
             )
+
+            # Check token limit
+            if estimated_tokens > 100000:  # Leave room for output
+                logger.warning(
+                    "Context approaching limit, may need chunking",
+                    estimated_tokens=estimated_tokens,
+                    limit=128000,
+                )
+
+            # Call local LLM to synthesize all sources into one summary
+            if self.use_harmony:
+                prompt = PreprocessingPrompts.get_harmony_synthesis_prompt(
+                    query=query, numbered_chunks=numbered_chunks
+                )
+            else:
+                prompt = PreprocessingPrompts.get_synthesis_prompt(query, numbered_chunks)
+
+            response = await self.local_llm.complete(
+                prompt=prompt,
+                max_tokens=2000,  # Synthesis should be comprehensive but concise
+                timeout=180,
+            )
+
+            synthesized_text = response.content.strip()
+
+            # Calculate token reduction
+            synthesized_tokens = len(synthesized_text) // 4
             reduction_pct = (
-                (1 - compressed_token_count / original_token_count) * 100
+                (1 - synthesized_tokens / original_token_count) * 100
                 if original_token_count > 0
                 else 0.0
             )
 
-            # Calculate visual necessity metrics
-            visual_count = sum(1 for s in compressed if s.has_visual_dependency)
-            text_only_count = len(compressed) - visual_count
-            visual_pct = (visual_count / len(compressed) * 100) if compressed else 0.0
-
             logger.info(
-                "Chunk compression complete",
-                num_sources=len(sources),
-                num_compressed=len(compressed),
+                "Synthesis complete",
+                original_sources=len(sources),
                 original_tokens=original_token_count,
-                compressed_tokens=compressed_token_count,
+                synthesized_tokens=synthesized_tokens,
                 reduction_pct=round(reduction_pct, 1),
-                visual_dependent=visual_count,
-                text_only=text_only_count,
-                visual_pct=round(visual_pct, 1),
+                latency_ms=response.latency_ms,
             )
 
-            return compressed
+            # Create a single SourceDocument with the synthesized summary
+            # This replaces ALL sources with ONE synthesized summary
+            from dataclasses import replace
+
+            # Use the first source as the template, update content to be the synthesis
+            synthesized_source = replace(
+                sources[0],
+                markdown_content=f"# Synthesized Summary\n\n{synthesized_text}",
+                chunk_id="synthesized-summary",
+                page=0,  # Special marker for synthesized content
+            )
+
+            # Return list with just the one synthesized source
+            return [synthesized_source]
 
         except Exception as e:
-            logger.error("Compression failed, returning uncompressed sources", error=str(e))
+            logger.error("Synthesis failed, returning original sources", error=str(e))
             # Graceful degradation: return original sources
             return sources
 
@@ -485,6 +438,71 @@ class LocalLLMPreprocessor:
     # ============================================================================
     # Private Helper Methods
     # ============================================================================
+
+    async def _compress_chunks_legacy(
+        self, query: str, sources: List[SourceDocument]
+    ) -> List[SourceDocument]:
+        """
+        Legacy individual chunk compression (fallback when Harmony prompts disabled).
+
+        This is the original implementation that processes chunks in parallel but makes
+        separate LLM calls for each chunk. Kept for backward compatibility.
+        """
+        logger.info("Using legacy individual chunk compression")
+
+        # Build index mapping
+        source_index_map = []
+        tasks = []
+        original_token_count = 0
+
+        for idx, source in enumerate(sources):
+            source_tokens = len(source.markdown_content) // 4
+
+            if source.is_visual or len(source.markdown_content) < 400:
+                source_index_map.append((idx, source, False, 0))
+                continue
+
+            chunk_context = self._parse_chunk_context(source.raw_metadata)
+            has_visual_dep = self._has_visual_dependency(
+                chunk_context, source.markdown_content, source.raw_metadata.get("element_type")
+            )
+
+            source.has_visual_dependency = has_visual_dep
+            if chunk_context:
+                source.related_pictures = chunk_context.related_pictures
+                source.related_tables = chunk_context.related_tables
+
+            source_index_map.append((idx, source, True, source_tokens))
+            original_token_count += source_tokens
+            tasks.append(self._compress_single_chunk(query, source))
+
+        # Process all compression tasks in parallel
+        compressed_results = []
+        if tasks:
+            compressed_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Reconstruct result list
+        compressed = [None] * len(sources)
+        task_idx = 0
+
+        for idx, source, needs_compression, _ in source_index_map:
+            if not needs_compression:
+                compressed[idx] = source
+            else:
+                result = compressed_results[task_idx]
+                if isinstance(result, Exception):
+                    logger.warning(
+                        "Compression failed for chunk, using original",
+                        error=str(result),
+                        doc_id=source.doc_id,
+                        page=source.page,
+                    )
+                    compressed[idx] = source
+                else:
+                    compressed[idx] = result
+                task_idx += 1
+
+        return compressed
 
     async def _compress_single_chunk(self, query: str, source: SourceDocument) -> SourceDocument:
         """

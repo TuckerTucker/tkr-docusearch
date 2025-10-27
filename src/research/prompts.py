@@ -84,12 +84,12 @@ FORBIDDEN:
 
 
 class PromptTemplates:
-    """Prompt template management"""
+    """Prompt template management."""
 
     @staticmethod
     def get_system_prompt(style: str = "standard") -> str:
         """
-        Get system prompt by style
+        Get system prompt by style.
 
         Args:
             style: "standard", "concise", or "detailed"
@@ -108,7 +108,7 @@ class PromptTemplates:
     @staticmethod
     def build_query_prompt(query: str, context: str, max_words: Optional[int] = None) -> str:
         """
-        Build complete prompt with query and context
+        Build complete prompt with query and context.
 
         Args:
             query: User's research question
@@ -130,7 +130,7 @@ class PromptTemplates:
     @staticmethod
     def get_fallback_prompt() -> str:
         """
-        Get fallback prompt when no sources found
+        Get fallback prompt when no sources found.
 
         Returns:
             Fallback system prompt
@@ -156,7 +156,7 @@ EXAMPLE_QUERIES = {
 
 
 def get_example_query(query_type: str = "factual") -> str:
-    """Get example query by type"""
+    """Get example query by type."""
     return EXAMPLE_QUERIES.get(query_type, EXAMPLE_QUERIES["factual"])
 
 
@@ -284,6 +284,27 @@ Text:
 {chunk_content}
 <|end|><|start|>assistant"""
 
+HARMONY_BATCH_COMPRESSION_PROMPT = """<|start|>developer<|message|># Task
+Compress document chunks to key facts. Output ONLY valid JSON array.
+Format: [{{"chunk_id": N, "facts": "text"}}, ...]
+NO reasoning. NO explanation. ONLY JSON output.
+
+# Example
+Input:
+[1] File.pdf, Page 1
+Revenue increased 15% to $2.5M. CEO noted positive market conditions.
+
+[2] Report.pdf, Page 2
+Profit margins improved from 8% to 12%. Strong quarterly performance.
+
+Output:
+[{{"chunk_id": 1, "facts": "Revenue +15% to $2.5M. CEO cited positive market."}}, {{"chunk_id": 2, "facts": "Margins 8%→12%. Strong quarter."}}]
+<|end|><|start|>user<|message|>Query: {query}
+
+{numbered_chunks}
+<|end|><|start|>assistant
+["""
+
 HARMONY_RELEVANCE_SCORING_PROMPT = """<|start|>developer<|message|># Instructions
 Score text relevance to query (0-10).
 Output JSON: {{"score": N}}
@@ -294,6 +315,40 @@ Query: {query}
 Text:
 {chunk_content}
 <|end|><|start|>assistant"""
+
+HARMONY_SYNTHESIS_PROMPT = """<|start|>developer<|message|># Task
+Synthesize ALL document chunks into ONE comprehensive summary.
+Include ALL key facts from ALL sources, including visual match text.
+Preserve source references using [N] format where N is the document number.
+NO reasoning. Output ONLY the synthesized summary.
+
+# Requirements
+- Combine information from all sources into a cohesive narrative
+- Remove redundancy and duplicates across sources
+- Preserve all specific details (names, dates, numbers, locations)
+- Maintain source citations [N] after each fact
+- Be comprehensive - include information from ALL sources
+- Target: 50-70% token reduction vs sending all chunks individually
+
+# Example
+Input:
+[1] Resume.pdf, Page 1
+John Smith, email: john@example.com. Lead Engineer at TechCorp (2020-2023).
+
+[2] Resume.pdf, Page 2
+TechCorp revenue $50M in 2022. John led team of 15 engineers. Prior: Senior Dev at StartupXYZ (2018-2020).
+
+[3] LinkedIn.pdf, Page 1
+John Smith graduated MIT 2018. Contact: john@example.com.
+
+Output:
+John Smith is a Lead Engineer with email john@example.com [1][3]. He graduated from MIT in 2018 [3]. His career includes Lead Engineer at TechCorp (2020-2023), where he led a team of 15 engineers [1][2]. TechCorp had $50M revenue in 2022 [2]. Previously, he was a Senior Developer at StartupXYZ (2018-2020) [2].
+<|end|><|start|>user<|message|>Query: {query}
+
+Document chunks:
+{numbered_chunks}
+<|end|><|start|>assistant
+"""
 
 HARMONY_CHAT_PROMPT = """<|start|>developer<|message|># Instructions
 You are a helpful AI assistant.
@@ -358,12 +413,12 @@ class PreprocessingPrompts:
 
     @staticmethod
     def get_synthesis_prompt(query: str, numbered_chunks: str) -> str:
-        """
+        r"""
         Build knowledge synthesis prompt.
 
         Args:
             query: User's research question
-            numbered_chunks: All chunks formatted as "[1] content\\n[2] content\\n..."
+            numbered_chunks: All chunks formatted as "[1] content\n[2] content\n..."
 
         Returns:
             Formatted prompt string ready for LLM
@@ -372,14 +427,14 @@ class PreprocessingPrompts:
 
     @staticmethod
     def format_numbered_chunks(sources: list) -> str:
-        """
+        r"""
         Format sources as numbered chunks for synthesis.
 
         Args:
             sources: List of SourceDocument objects
 
         Returns:
-            Formatted string: "[1] content\\n\\n[2] content\\n\\n..."
+            Formatted string: "[1] content\n\n[2] content\n\n..."
         """
         formatted_parts = []
         for i, source in enumerate(sources, start=1):
@@ -443,3 +498,49 @@ class PreprocessingPrompts:
             '<|start|>developer<|message|># Instructions...'
         """
         return HARMONY_CHAT_PROMPT.format(prompt=prompt)
+
+    @staticmethod
+    def get_harmony_batch_compression_prompt(query: str, numbered_chunks: str) -> str:
+        r"""
+        Build Harmony-format batch compression prompt for processing multiple chunks at once.
+
+        This prompt uses the Harmony chat format optimized for GPT-OSS-20B model.
+        Instructs model to compress all chunks in a single pass, reducing redundant
+        LLM calls and leveraging the model's 128K context window.
+
+        Args:
+            query: User's research question
+            numbered_chunks: All chunks formatted as "[1] content\n[2] content\n..."
+
+        Returns:
+            Formatted Harmony-format prompt string ready for GPT-OSS-20B
+
+        Example:
+            >>> chunks = "[1] Revenue was $2.5M\n[2] Revenue grew 15%"
+            >>> PreprocessingPrompts.get_harmony_batch_compression_prompt("Revenue?", chunks)
+            '<|start|>developer<|message|># Instructions...'
+        """
+        return HARMONY_BATCH_COMPRESSION_PROMPT.format(query=query, numbered_chunks=numbered_chunks)
+
+    @staticmethod
+    def get_harmony_synthesis_prompt(query: str, numbered_chunks: str) -> str:
+        r"""
+        Build Harmony-format synthesis prompt for creating one summary from all sources.
+
+        This prompt uses the Harmony chat format optimized for GPT-OSS-20B model.
+        Instructs model to synthesize ALL sources (including visual match text) into
+        a single comprehensive summary with source citations preserved.
+
+        Args:
+            query: User's research question
+            numbered_chunks: All chunks formatted as "[1] file, page\ncontent\n[2]..."
+
+        Returns:
+            Formatted Harmony-format prompt string ready for GPT-OSS-20B
+
+        Example:
+            >>> chunks = "[1] File.pdf, Page 1\nRevenue $2.5M\n[2] Report.pdf, Page 2\nGrowth 15%"
+            >>> PreprocessingPrompts.get_harmony_synthesis_prompt("Revenue?", chunks)
+            '<|start|>developer<|message|># Task...'
+        """
+        return HARMONY_SYNTHESIS_PROMPT.format(query=query, numbered_chunks=numbered_chunks)
