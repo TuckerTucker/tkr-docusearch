@@ -67,13 +67,13 @@ export default function LibraryView() {
       file_type: data.filename.split('.').pop(),
       upload_date: new Date().toISOString(),
       status: data.status,
-      processing_progress: data.progress / 100,
+      processing_progress: data.progress !== undefined ? data.progress / 100 : undefined,
       processing_stage: data.stage || (data.status === 'uploading' ? 'Uploading...' : 'Processing...'),
     }));
 
     // Merge temp docs at the beginning (newest first)
     return [...tempDocs, ...(documents || [])];
-  }, [documents, tempDocumentsVersion]); // Re-render when temp documents change
+  }, [documents, tempDocuments, tempDocumentsVersion]); // Re-render when temp documents change
 
   // WebSocket for real-time document status updates
   const { isConnected, registerUploadBatch } = useWebSocket(WS_URL, {

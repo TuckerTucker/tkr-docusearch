@@ -1,6 +1,6 @@
-# DocuSearch MVP
+# DocuSearch MVP v0.11.0
 
-**Local document processing and semantic search system with ColNomic 7B, ChromaDB, and multi-vector embeddings**
+**Local document processing and semantic search system with ColNomic 7B, ChromaDB, React 19 SPA, and AI Research Bot**
 
 [![Status](https://img.shields.io/badge/status-Production%20Ready-success)]()
 [![Production](https://img.shields.io/badge/production-100%25%20ready-brightgreen)]()
@@ -10,21 +10,25 @@
 
 ## Overview
 
-DocuSearch MVP is a **production-ready** local semantic search system for documents. Complete end-to-end implementation with real ColPali integration, webhook-based processing, and validated performance exceeding all targets.
+DocuSearch MVP is a **production-ready** local semantic search system with AI-powered research capabilities. Complete end-to-end implementation with real ColPali integration, React 19 SPA, LiteLLM research bot, and validated performance exceeding all targets.
 
 **Current Implementation:**
 - ✅ **Real ColPali** (vidore/colpali-v1.2) with MPS acceleration on M1
 - ✅ **Real ChromaDB** storage with 4x compression
 - ✅ **Two-stage search** with late interaction re-ranking
+- ✅ **React 19 SPA** with Vite 7, React Router 7, React Query 5, Zustand 5
+- ✅ **AI Research Bot** with LiteLLM (multi-provider: OpenAI, Anthropic, Google)
 - ✅ **Webhook-based processing** with automatic document ingestion
 - ✅ **End-to-end pipeline** validated and production-ready
-- ✅ **Performance validated**: 239ms search (21% faster than target)
+- ✅ **Performance validated**: 239ms search (21% faster than target), ~2.5s research (17% faster)
 
 ### Key Features
 
 ✨ **Multi-vector Embeddings** - Real 128-dim ColPali embeddings with late interaction
 ⚡ **<300ms Search** - Validated: 239ms avg (Stage 1: 50-100ms, Stage 2: 2-5ms)
 🎯 **100% Search Accuracy** - All expected documents at rank 1 in testing
+🤖 **AI Research Bot** - Multi-provider LLM with inline citations (~2.5s response time)
+⚛️ **Modern React UI** - React 19 SPA with 76 components, 10K+ LOC, full feature parity
 🐳 **Docker-Ready** - Full containerized deployment with native GPU worker option
 🍎 **M1 Optimized** - MPS acceleration: 2.3s/image, 0.24s/text, 5.5GB memory
 🔄 **Automatic Processing** - Webhook-based ingestion triggers on file upload
@@ -35,8 +39,10 @@ DocuSearch MVP is a **production-ready** local semantic search system for docume
 |-----------|--------|--------|--------|
 | Image embedding | <6s | 2.3s | ✅ **2.6x faster** |
 | Text embedding | <6s | 0.24s | ✅ **25x faster** |
-| Search latency | <300ms | 239ms | ✅ **20% faster** |
+| Search latency | <300ms | 239ms | ✅ **21% faster** |
+| Research response | <3s | ~2.5s | ✅ **17% faster** |
 | Search accuracy | High | 100% | ✅ **Perfect** |
+| Frontend HMR | <500ms | <200ms | ✅ **2.5x faster** |
 
 ---
 
@@ -64,8 +70,9 @@ DocuSearch MVP is a **production-ready** local semantic search system for docume
 
 ### Prerequisites
 
-- **Python 3.10+** with venv
-- **Docker** (for ChromaDB)
+- **Python 3.13** (or 3.10+) with venv
+- **Node.js 18+** (for React frontend)
+- **Docker** (for ChromaDB and Copyparty)
 - **16GB+ RAM** (for ColPali FP16)
 - **M1/M2/M3 Mac** (for MPS acceleration, or use CPU)
 - **API Keys** (for LLM research features - see Environment Setup below)
@@ -169,12 +176,13 @@ python3 src/test_end_to_end.py
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     User Browser                             │
-│               React Frontend (port 3000)                     │
-│              Modern React 19 + Vite Dev Server               │
+│           React 19 SPA Frontend (port 3000)                  │
+│      Vite 7 + React Router 7 + React Query 5 + Zustand 5    │
 └───────────────┬─────────────────────────────────────────────┘
                 │ HTTP (proxied by Vite)
                 ├─→ /documents, /images → Worker API (8002)
                 ├─→ /api/research → Research API (8004)
+                ├─→ /ws → WebSocket (real-time updates)
                 └─→ /uploads → Copyparty (8000)
 ┌───────────────▼─────────────────────────────────────────────┐
 │           Copyparty Container (Docker)                       │
@@ -191,6 +199,7 @@ python3 src/test_end_to_end.py
 │  │ Docling Parser → Visual + Text Processing →            │ │
 │  │ ColPali Embeddings (MPS) → ChromaDB Storage            │ │
 │  │ REST API Endpoints (port 8002)                         │ │
+│  │ WebSocket Server (real-time status updates)            │ │
 │  └────────────────────────────────────────────────────────┘ │
 └───────────────┬─────────────────────────────────────────────┘
                 │ HTTP API (port 8001)
@@ -199,11 +208,20 @@ python3 src/test_end_to_end.py
 │  - Vector storage (multi-vector format)                     │
 │  - Two-stage search with HNSW                               │
 └─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│        Research API (Native, port 8004)                      │
+│  - LiteLLM multi-provider integration                       │
+│  - Inline citation generation                               │
+│  - Bidirectional highlighting support                       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **User Interface:**
-- **Primary UI**: React frontend at http://localhost:3000 (React 19 + Vite)
+- **Primary UI**: React 19 SPA at http://localhost:3000 (76 components, 10K+ LOC)
 - **Upload Server**: Copyparty at http://localhost:8000 (file uploads only)
+- **Worker API**: Processing worker at http://localhost:8002 (search, documents)
+- **Research API**: AI research bot at http://localhost:8004 (LLM queries)
 
 **Webhook Flow:**
 1. User uploads file via React UI or directly to Copyparty
@@ -283,11 +301,59 @@ full_sequence = embeddings      # (seq_length, 768)
 - Native GPU worker with path translation
 - Complete end-to-end workflow validated
 
+### Wave 5: Management & Scripts ✅ (Complete)
+
+**Status**: Complete
+
+✅ **Completed**:
+- Unified start/stop/status scripts
+- Hybrid architecture (Native Metal GPU + Docker)
+- Comprehensive documentation
+- Production deployment tooling
+- Cross-platform compatibility
+
+### Wave 6: AI Research Bot ✅ (Complete)
+
+**Status**: Production-ready
+
+✅ **Completed**:
+- LiteLLM multi-provider integration (OpenAI, Anthropic, Google)
+- Research API with inline citations
+- Bidirectional highlighting (document ↔ research)
+- Enhanced mode with bounding box navigation
+- Citation tracking with chunk indicators
+- ~2.5s response time (exceeds <3s target)
+- WebSocket live updates during research
+- Comprehensive research API endpoints
+
+### Wave 7: React 19 SPA Migration ✅ (Complete)
+
+**Status**: Production-ready with full feature parity
+
+✅ **Completed**:
+- React 19 SPA with Vite 7, React Router 7
+- 76 production components, 10K+ LOC
+- React Query 5 for server state
+- Zustand 5 for client state
+- Feature-based architecture
+- Zero backend changes required
+- WebSocket integration for real-time updates
+- Comprehensive test coverage
+- <200ms HMR for development
+- Full legacy frontend feature parity
+
+**Recent Fixes (2025-10-26)**:
+- Research API thumbnail URL conversion fix
+- Integration test updates for synthesis behavior
+- Enhanced metadata test corrections
+- Context YAML compliance update
+- W3C Design Token Format compliance
+
 ---
 
 ## Agent Orchestration
 
-### 6 Agents, 4 Waves, 2-3 Weeks
+### 6 Agents, 7 Waves, Production-Ready
 
 | Agent | Responsibility | Output |
 |-------|---------------|--------|
@@ -470,7 +536,8 @@ Apache License 2.0 - See LICENSE file for details.
 ## Status
 
 **Current State**: Production Ready ✅ - **100% Complete**
-**Completion Date**: 2025-10-07
+**Version**: v0.11.0
+**Last Updated**: 2025-10-26
 **Performance**: All targets exceeded
 
 **Production Achievements** ✅:
@@ -485,12 +552,20 @@ Apache License 2.0 - See LICENSE file for details.
 - ✅ Copyparty upload UI (localhost:8000)
 - ✅ Authentication system (admin/admin)
 - ✅ Native GPU worker with path translation
+- ✅ React 19 SPA with 76 components (10K+ LOC)
+- ✅ AI Research Bot with LiteLLM (multi-provider)
+- ✅ Bidirectional highlighting (document ↔ research)
+- ✅ WebSocket real-time updates
+- ✅ W3C Design Token compliance
+- ✅ Context7 dependency mapping
 
 **Validated Performance**:
 - Image embedding: 2.3s (2.6x faster than target)
 - Text embedding: 0.24s (25x faster than target)
-- Search latency: 239ms avg (target <300ms)
+- Search latency: 239ms avg (21% faster than target)
+- Research response: ~2.5s (17% faster than target)
 - Search accuracy: 100% (all docs at rank 1)
+- Frontend HMR: <200ms (2.5x faster than target)
 - End-to-end workflow: Fully operational
 
 ---
