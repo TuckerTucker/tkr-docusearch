@@ -1,0 +1,23 @@
+Test Text File
+==============
+
+This is a sample plain text file for testing the document processing pipeline.
+
+Section 1: Overview
+-------------------
+Plain text files are processed as text-only documents. They do not generate
+page images or visual embeddings.
+
+Section 2: Content
+------------------
+The content should be chunked based on the configured chunk size and overlap
+settings. Each chunk will receive a text embedding for semantic search.
+
+Testing Notes:
+- Text files use simple chunking without structure extraction
+- No visual embeddings are generated
+- Metadata includes filename and chunk position
+- Expected chunks: 1-2 depending on chunk size settings
+
+Keywords for search testing:
+text processing, plain text, semantic search, chunking, embeddings
