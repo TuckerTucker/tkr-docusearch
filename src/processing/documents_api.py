@@ -122,6 +122,7 @@ class ChunkInfo(BaseModel):
     start_time: Optional[float] = Field(None, description="Start time in seconds (audio only)")
     end_time: Optional[float] = Field(None, description="End time in seconds (audio only)")
     has_timestamps: bool = Field(False, description="True if chunk has timestamps")
+    page_number: Optional[int] = Field(None, description="Page number (visual documents only)")
 
 
 class DocumentMetadata(BaseModel):
@@ -747,6 +748,7 @@ def _build_chunk_list(text_data: Dict, text_ids: List[str]) -> List[ChunkInfo]:
         start_time = metadata.get("start_time")
         end_time = metadata.get("end_time")
         has_timestamps = metadata.get("has_timestamps", False)
+        page_number = metadata.get("page")
 
         chunks.append(
             ChunkInfo(
@@ -756,6 +758,7 @@ def _build_chunk_list(text_data: Dict, text_ids: List[str]) -> List[ChunkInfo]:
                 start_time=start_time,
                 end_time=end_time,
                 has_timestamps=has_timestamps,
+                page_number=page_number,
             )
         )
 

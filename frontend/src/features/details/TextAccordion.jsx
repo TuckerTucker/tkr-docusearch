@@ -196,31 +196,54 @@ export default function TextAccordion({
       const hasPages = document?.pages && document.pages.length > 0;
       const pageCount = hasPages ? document.pages.length : 0;
 
+      console.log(`[TextAccordion] Building sections - Pages: ${pageCount}, Chunks: ${chunks.length}`);
+      console.log(`[TextAccordion] Sample chunk:`, chunks[0]);
+
       chunks.forEach((chunk, index) => {
         const hasTimestamp = chunk.has_timestamps &&
           chunk.start_time !== null &&
           chunk.end_time !== null;
 
-        // For visual documents (PDF/PPTX), infer page number from chunk index
-        // Assumption: chunks are ordered by page (chunk 0 = page 1, chunk 1 = page 2, etc.)
-        let inferredPageNumber = null;
-        if (hasPages && chunks.length === pageCount) {
-          // 1:1 mapping between chunks and pages
-          inferredPageNumber = index + 1;
+        // Extract page number from chunk metadata
+        // Check multiple possible locations for page number
+        let pageNumber = null;
+
+        // First try: Direct page_number field
+        if (chunk.page_number) {
+          pageNumber = chunk.page_number;
+        }
+        // Second try: Metadata object
+        else if (chunk.metadata?.page_number) {
+          pageNumber = chunk.metadata.page_number;
+        }
+        // Third try: For visual documents, infer from chunk index if chunks match pages 1:1
+        else if (hasPages && chunks.length === pageCount) {
+          pageNumber = index + 1;
+        }
+        // Fourth try: Extract from chunk_id if it contains page info (e.g., "page_1_chunk_0")
+        else if (hasPages && chunk.chunk_id) {
+          const match = chunk.chunk_id.match(/page[_-]?(\d+)/i);
+          if (match) {
+            pageNumber = parseInt(match[1], 10);
+          }
         }
 
         let title;
-        let pageNumber = chunk.page_number || inferredPageNumber;
+
+        // Determine if this is an audio document
+        const isAudio = document?.metadata?.format_type === 'audio';
 
         if (hasTimestamp) {
           title = `Segment ${index + 1}`;
-        } else if (pageNumber) {
+        } else if (pageNumber && !isAudio) {
+          // Only use page numbers for visual documents (PDF, PPTX, etc.)
+          // Audio transcripts shouldn't show "Page 1" - they should show "Chunk 1"
           title = `Page ${pageNumber}`;
         } else {
           title = `Chunk ${index + 1}`;
         }
 
-        newSections.push({
+        const section = {
           id: chunk.chunk_id,
           title,
           content: chunk.text_content || '',
@@ -229,15 +252,24 @@ export default function TextAccordion({
             end: chunk.end_time
           } : null,
           pageNumber: pageNumber
-        });
+        };
+
+        if (index === 0) {
+          console.log(`[TextAccordion] First section:`, section);
+        }
+
+        newSections.push(section);
       });
     }
 
+    console.log(`[TextAccordion] Total sections created: ${newSections.length}`);
+    console.log(`[TextAccordion] Sections with page numbers: ${newSections.filter(s => s.pageNumber).length}`);
     setSections(newSections);
   }, [document, markdown, chunks, vttContent]);
 
   // Handle timestamp click (for audio seeking)
   const handleTimestampClick = (timestamp) => {
+    console.log(`[TextAccordion] handleTimestampClick called with: ${timestamp}`);
     if (onTimestampClick) {
       onTimestampClick(timestamp);
     }
@@ -245,8 +277,11 @@ export default function TextAccordion({
 
   // Handle page click (for slideshow navigation)
   const handlePageClick = (pageNumber) => {
+    console.log(`[TextAccordion] handlePageClick called with page: ${pageNumber}`);
     if (onPageClick) {
       onPageClick(pageNumber);
+    } else {
+      console.warn('[TextAccordion] onPageClick prop is not defined');
     }
   };
 

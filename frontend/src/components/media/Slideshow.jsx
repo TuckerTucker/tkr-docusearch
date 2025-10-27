@@ -41,9 +41,10 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
     }
 
     if (onPageChange) {
+      console.log(`[Slideshow] Notifying parent of page change: ${currentPage}`);
       onPageChange(currentPage);
     }
-  }, [currentPage]);
+  }, [currentPage, onPageChange]);
 
   const goToPage = (pageNumber) => {
     // Type validation

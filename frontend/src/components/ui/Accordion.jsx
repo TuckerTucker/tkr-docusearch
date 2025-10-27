@@ -120,11 +120,13 @@ function AccordionSection({
 
     // Handle timestamp click (audio navigation)
     if (timestamp && onTimestampClick) {
+      console.log(`[Accordion] Timestamp click: ${timestamp.start}s`);
       onTimestampClick(timestamp.start);
     }
 
     // Handle page click (slideshow navigation)
     if (pageNumber && onPageClick) {
+      console.log(`[Accordion] Page click: page ${pageNumber}`);
       onPageClick(pageNumber);
     }
   };
@@ -323,6 +325,13 @@ export default function Accordion({
 }) {
   const [openSectionId, setOpenSectionId] = useState(null);
   const lastActiveSectionRef = useRef(null);
+
+  // Log sections on mount/update
+  useEffect(() => {
+    console.log(`[Accordion] Received ${sections.length} sections`);
+    console.log(`[Accordion] Sections with page numbers:`, sections.filter(s => s.pageNumber).map(s => ({ id: s.id, title: s.title, pageNumber: s.pageNumber })));
+    console.log(`[Accordion] onPageClick callback:`, onPageClick ? 'defined' : 'UNDEFINED');
+  }, [sections, onPageClick]);
 
   const handleToggle = (sectionId) => {
     // User manually toggled - allow full toggle behavior

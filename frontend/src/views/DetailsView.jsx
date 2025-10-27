@@ -16,7 +16,7 @@
  * Wave 2 - Details Agent
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentDetails } from '../hooks/useDocumentDetails.js';
 import { useTitle } from '../contexts/TitleContext.jsx';
@@ -66,31 +66,34 @@ export default function DetailsView() {
   };
 
   // Handle audio time update (for accordion sync)
-  const handleTimeUpdate = (chunk) => {
+  const handleTimeUpdate = useCallback((chunk) => {
     setActiveChunk(chunk);
-  };
+  }, []);
 
   // Handle timestamp click in accordion (for audio seeking)
-  const handleTimestampClick = (timestamp) => {
+  const handleTimestampClick = useCallback((timestamp) => {
     // Access audio player's seekTo method via ref
     if (audioPlayerRef.current) {
       audioPlayerRef.current.seekTo(timestamp);
       console.log(`[DetailsView] Seeking audio to ${timestamp}s`);
     }
-  };
+  }, []);
 
   // Handle page change in slideshow (for accordion sync)
-  const handlePageChange = (pageNumber) => {
+  const handlePageChange = useCallback((pageNumber) => {
+    console.log(`[DetailsView] Slideshow page changed to: ${pageNumber}`);
     setCurrentPage(pageNumber);
-  };
+  }, []);
 
   // Handle page click in accordion (for slideshow navigation)
-  const handlePageClick = (pageNumber) => {
+  const handlePageClick = useCallback((pageNumber) => {
+    console.log(`[DetailsView] Accordion clicked, navigating to page: ${pageNumber}`);
     if (slideshowRef.current && slideshowRef.current.navigateToPage) {
       slideshowRef.current.navigateToPage(pageNumber);
-      console.log(`[DetailsView] Navigating slideshow to page ${pageNumber}`);
+    } else {
+      console.error(`[DetailsView] slideshowRef.current is null or navigateToPage not available`);
     }
-  };
+  }, []);
 
   // Loading state
   if (isLoading) {

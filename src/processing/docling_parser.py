@@ -175,7 +175,25 @@ def docling_to_pages(
     if ext and ext in AUDIO_FORMATS:
         logger.info(f"Processing audio file as text-only transcript")
         try:
-            text = doc.export_to_text() if hasattr(doc, "export_to_text") else ""
+            # IMPORTANT: Use export_to_markdown() for audio to preserve [time: X-Y] markers
+            # export_to_text() strips these markers, breaking timestamp extraction
+            text = doc.export_to_markdown() if hasattr(doc, "export_to_markdown") else ""
+
+            logger.info(f"[AUDIO] Using export_to_markdown() to preserve timestamps")
+
+            # Check if timestamps are present in output
+            import re
+
+            timestamp_pattern = r"\[time:\s*([\d.]+)-([\d.]+)\]"
+            timestamp_matches = re.findall(timestamp_pattern, text)
+            if timestamp_matches:
+                logger.info(
+                    f"[AUDIO] ✓ Found {len(timestamp_matches)} timestamp markers in transcript"
+                )
+            else:
+                logger.warning(
+                    f"[AUDIO] ⚠ NO timestamp markers found in transcript - timestamps may not work"
+                )
 
             pages.append(
                 Page(page_num=1, image=None, width=0, height=0, text=text)  # No image for audio
@@ -721,33 +739,128 @@ class DoclingParser:
         Returns:
             Tuple of (start_time, end_time) in seconds, or (None, None) if no timestamps
         """
+        # DEBUG: Log document structure on first chunk
+        if not hasattr(self, "_logged_provenance_structure"):
+            self._logged_provenance_structure = True
+            logger.info(f"[TIMESTAMP DEBUG] Inspecting docling document structure")
+            logger.info(f"  has 'texts': {hasattr(doc, 'texts')}")
+            if hasattr(doc, "texts") and doc.texts:
+                logger.info(f"  texts count: {len(doc.texts)}")
+                logger.info(f"  first text type: {type(doc.texts[0])}")
+
+                # Inspect first text item
+                first_text = doc.texts[0]
+                logger.info(
+                    f"  first text attributes: {[a for a in dir(first_text) if not a.startswith('_')]}"
+                )
+
+                if hasattr(first_text, "prov") and first_text.prov:
+                    logger.info(f"  first text has prov: True")
+                    logger.info(f"  prov count: {len(first_text.prov)}")
+                    if len(first_text.prov) > 0:
+                        prov = first_text.prov[0]
+                        logger.info(f"  first prov type: {type(prov)}")
+                        prov_attrs = [a for a in dir(prov) if not a.startswith("_")]
+                        logger.info(f"  first prov attributes: {prov_attrs}")
+
+                        # Check for timestamp fields
+                        for attr in ["start_time", "end_time", "time", "timestamp", "start", "end"]:
+                            if hasattr(prov, attr):
+                                value = getattr(prov, attr)
+                                logger.info(f"  prov.{attr}: {value} (type: {type(value)})")
+                else:
+                    logger.info(f"  first text has prov: False")
+            else:
+                logger.warning(f"  Document has no 'texts' or texts is empty!")
+
         if not hasattr(doc, "texts") or not doc.texts:
+            logger.debug(f"[TIMESTAMP] No texts in document for chunk {chunk.chunk_id}")
             return (None, None)
 
-        # Collect all timestamps for words in this chunk
-        chunk_words = set(chunk.text.lower().split())
+        # Collect all timestamps for text items
         timestamps = []
+        matched_count = 0
+        total_text_items = 0
+        items_with_prov = 0
 
         for text_item in doc.texts:
+            total_text_items += 1
+
             if not hasattr(text_item, "prov") or not text_item.prov:
                 continue
 
+            items_with_prov += 1
+
             for prov in text_item.prov:
                 # Check if this provenance item has timestamps
-                if not (hasattr(prov, "start_time") and hasattr(prov, "end_time")):
+                # Try multiple possible attribute names
+                start_time = None
+                end_time = None
+
+                if hasattr(prov, "start_time") and hasattr(prov, "end_time"):
+                    start_time = prov.start_time
+                    end_time = prov.end_time
+                elif hasattr(prov, "start") and hasattr(prov, "end"):
+                    start_time = prov.start
+                    end_time = prov.end
+                elif hasattr(prov, "time"):
+                    # Some formats might have a time object
+                    time_obj = prov.time
+                    if hasattr(time_obj, "start") and hasattr(time_obj, "end"):
+                        start_time = time_obj.start
+                        end_time = time_obj.end
+
+                if start_time is None or end_time is None:
                     continue
 
-                # Check if this word is in our chunk (simple matching)
+                # For audio transcripts, we want ALL timestamps since chunks are sequential
+                # Store timestamp with the text for better matching
                 prov_text = text_item.text if hasattr(text_item, "text") else ""
-                if any(word in prov_text.lower() for word in chunk_words):
-                    timestamps.append((prov.start_time, prov.end_time))
+                timestamps.append((start_time, end_time, prov_text))
+                matched_count += 1
+
+        logger.debug(
+            f"[TIMESTAMP] Chunk {chunk.chunk_id}: "
+            f"found {matched_count} timestamps from {items_with_prov}/{total_text_items} text items"
+        )
 
         if not timestamps:
+            logger.debug(f"[TIMESTAMP] No timestamps found for chunk {chunk.chunk_id}")
             return (None, None)
 
-        # Aggregate: start = min, end = max
-        start_time = min(t[0] for t in timestamps)
-        end_time = max(t[1] for t in timestamps)
+        # For audio files, chunks are sequential segments of the full transcript
+        # We need to match this chunk's text to the corresponding section in the full transcript
+        # Simple approach: use first and last timestamp from all available timestamps
+        # (This assumes chunks are created in order from the transcript)
+
+        # Better approach: Find timestamps that overlap with chunk text
+        chunk_text_lower = chunk.text.lower()
+        matching_timestamps = []
+
+        for start, end, prov_text in timestamps:
+            # Check if any words from prov_text are in chunk
+            if prov_text and any(
+                word in chunk_text_lower for word in prov_text.lower().split()[:5]
+            ):
+                matching_timestamps.append((start, end))
+
+        if matching_timestamps:
+            # Use matched timestamps
+            start_time = min(t[0] for t in matching_timestamps)
+            end_time = max(t[1] for t in matching_timestamps)
+            logger.info(
+                f"[TIMESTAMP] ✓ Extracted from provenance: "
+                f"{start_time:.2f}s - {end_time:.2f}s for chunk {chunk.chunk_id} "
+                f"(matched {len(matching_timestamps)} segments)"
+            )
+        else:
+            # Fallback: Use all timestamps (assumes sequential chunks)
+            start_time = min(t[0] for t in timestamps)
+            end_time = max(t[1] for t in timestamps)
+            logger.warning(
+                f"[TIMESTAMP] Fallback: Using all available timestamps "
+                f"{start_time:.2f}s - {end_time:.2f}s for chunk {chunk.chunk_id}"
+            )
 
         # Round to 3 decimal places (millisecond precision)
         return (round(start_time, 3), round(end_time, 3))
@@ -775,7 +888,22 @@ class DoclingParser:
         # Create page lookup
         page_lookup = {p.page_num: p for p in pages}
 
+        # Track extraction methods
+        from_text_markers = 0
+        from_provenance = 0
+        failed = 0
+
         for chunk in chunks:
+            # Check if timestamps are already set (e.g., by smart_chunker)
+            if chunk.start_time is not None and chunk.end_time is not None:
+                # Timestamps already extracted - skip
+                from_text_markers += 1
+                logger.debug(
+                    f"[TIMESTAMP] Method 0 (pre-extracted): "
+                    f"{chunk.start_time:.2f}s - {chunk.end_time:.2f}s for {chunk.chunk_id}"
+                )
+                continue
+
             # Method 1: Try extracting from text markers first
             start_time, end_time, cleaned_text = extract_timestamps_from_text(chunk.text)
 
@@ -784,6 +912,11 @@ class DoclingParser:
                 chunk.start_time = start_time
                 chunk.end_time = end_time
                 chunk.text = cleaned_text  # Update text with marker removed
+                from_text_markers += 1
+                logger.debug(
+                    f"[TIMESTAMP] Method 1 (text marker): "
+                    f"{start_time:.2f}s - {end_time:.2f}s for {chunk.chunk_id}"
+                )
             else:
                 # Method 2: Fall back to provenance extraction
                 page = page_lookup.get(chunk.page_num)
@@ -792,12 +925,32 @@ class DoclingParser:
                     chunk.start_time = start_time
                     chunk.end_time = end_time
 
-        # Log results
+                    if start_time is not None:
+                        from_provenance += 1
+                    else:
+                        failed += 1
+                else:
+                    failed += 1
+                    logger.warning(
+                        f"[TIMESTAMP] No page found for chunk {chunk.chunk_id} (page {chunk.page_num})"
+                    )
+
+        # Log detailed results
         chunks_with_timestamps = [c for c in chunks if c.start_time is not None]
         if chunks_with_timestamps:
-            logger.info(f"Added timestamps to {len(chunks_with_timestamps)}/{len(chunks)} chunks")
+            logger.info(
+                f"[TIMESTAMP] ✓ Added timestamps to {len(chunks_with_timestamps)}/{len(chunks)} chunks "
+                f"(text markers: {from_text_markers}, provenance: {from_provenance}, failed: {failed})"
+            )
         else:
-            logger.debug("No timestamps found in provenance data or text markers")
+            logger.warning(
+                f"[TIMESTAMP] ✗ NO timestamps extracted for any chunks! "
+                f"(total chunks: {len(chunks)}, failed: {failed})"
+            )
+            logger.warning(
+                f"[TIMESTAMP] This means bidirectional audio navigation will NOT work. "
+                f"Check that docling is extracting provenance data correctly."
+            )
 
         return chunks
 
