@@ -334,11 +334,13 @@ class TestMetadataSanitization:
     """Test metadata sanitization for ChromaDB."""
 
     def test_sanitize_primitives(self):
-        """Test that primitives pass through unchanged."""
+        """Test that primitives pass through unchanged (None values filtered)."""
         metadata = {"string": "value", "int": 42, "float": 3.14, "bool": True, "none": None}
 
         sanitized = sanitize_metadata_for_chroma(metadata)
-        assert sanitized == metadata
+        # None values are filtered out by sanitize_metadata_for_chroma
+        expected = {"string": "value", "int": 42, "float": 3.14, "bool": True}
+        assert sanitized == expected
 
     def test_sanitize_lists(self):
         """Test that lists are converted to JSON strings."""
@@ -387,7 +389,8 @@ class TestMetadataSanitization:
         assert sanitized["count"] == 5
         assert sanitized["active"] is True
         assert sanitized["score"] == 0.95
-        assert sanitized["none_value"] is None
+        # None values are filtered out
+        assert "none_value" not in sanitized
 
         # Complex types converted to strings
         assert isinstance(sanitized["tags"], str)
@@ -501,11 +504,13 @@ class TestEdgeCases:
         assert len(decompressed) == size_bytes
 
     def test_sanitize_nested_empty_structures(self):
-        """Test sanitization with nested empty structures."""
+        """Test sanitization with nested empty structures - empty values are filtered."""
         metadata = {"empty_list": [], "empty_dict": {}, "nested_empty": {"list": [], "dict": {}}}
 
         sanitized = sanitize_metadata_for_chroma(metadata)
 
-        assert json.loads(sanitized["empty_list"]) == []
-        assert json.loads(sanitized["empty_dict"]) == {}
-        assert json.loads(sanitized["nested_empty"])["list"] == []
+        # Empty lists and dicts are filtered out by sanitize_metadata_for_chroma
+        assert "empty_list" not in sanitized
+        assert "empty_dict" not in sanitized
+        # Nested empty structures are also filtered
+        assert "nested_empty" not in sanitized

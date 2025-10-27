@@ -372,12 +372,11 @@ class TestVisualEmbeddingHandler:
         assert call_args[1]["thumb_path"] == "/images/page_1_thumb.png"
 
     def test_store_visual_embeddings_with_structure(self):
-        """Test storing visual embeddings with enhanced metadata."""
+        """Test storing visual embeddings with structure metadata."""
         from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_visual_embedding.return_value = "emb_123"
-        mock_storage._prepare_enhanced_visual_metadata = Mock(return_value={"enhanced": True})
 
         handler = VisualEmbeddingHandler(mock_storage)
 
@@ -397,12 +396,10 @@ class TestVisualEmbeddingHandler:
             structure=mock_structure,
         )
 
-        # Should call enhanced metadata preparation
-        mock_storage._prepare_enhanced_visual_metadata.assert_called_once()
-
-        # Should pass enhanced metadata to storage
+        # Should call add_visual_embedding with metadata
+        mock_storage.add_visual_embedding.assert_called_once()
         call_args = mock_storage.add_visual_embedding.call_args
-        assert call_args[1]["metadata"]["enhanced"] is True
+        assert "metadata" in call_args[1]
 
     def test_store_visual_embeddings_no_pages(self):
         """Test storing visual embeddings without page lookup."""
@@ -630,12 +627,11 @@ class TestTextEmbeddingHandler:
         assert metadata["has_timestamps"] is False
 
     def test_store_text_embeddings_with_context(self):
-        """Test storing text embeddings with enhanced context."""
+        """Test storing text embeddings with context metadata."""
         from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_text_embedding.return_value = "emb_123"
-        mock_storage._prepare_enhanced_text_metadata = Mock(return_value={"enhanced": True})
 
         handler = TextEmbeddingHandler(mock_storage)
 
@@ -662,12 +658,10 @@ class TestTextEmbeddingHandler:
             safe_doc_metadata={},
         )
 
-        # Should call enhanced metadata preparation
-        mock_storage._prepare_enhanced_text_metadata.assert_called_once()
-
-        # Should pass enhanced metadata to storage
+        # Should call add_text_embedding with metadata
+        mock_storage.add_text_embedding.assert_called_once()
         call_args = mock_storage.add_text_embedding.call_args
-        assert call_args[1]["metadata"]["enhanced"] is True
+        assert "metadata" in call_args[1]
 
     def test_build_base_metadata(self):
         """Test building base metadata for text embedding."""

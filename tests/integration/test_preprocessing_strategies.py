@@ -366,22 +366,21 @@ class TestCompressionStrategy:
         assert compressed_visual.markdown_content == original_visual.markdown_content
 
     @pytest.mark.asyncio
-    async def test_compression_skips_short_chunks(self, mock_mlx_client, sample_sources):
-        """Test that compression skips very short chunks (<400 chars)"""
+    async def test_compression_creates_synthesis(self, mock_mlx_client, sample_sources):
+        """Test that synthesis creates single summary from all sources"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         compressed = await preprocessor.compress_chunks(
             query="What caused the 2008 financial crisis?", sources=sample_sources
         )
 
-        # Find short chunk (doc4 has ~40 chars)
-        short_chunks = [s for s in compressed if len(s.markdown_content) < 400]
-        assert len(short_chunks) >= 1, "Should have at least one short chunk"
+        # Synthesis creates ONE result
+        assert len(compressed) == 1, f"Expected 1 synthesized result, got {len(compressed)}"
 
-        # Verify short chunk content unchanged
-        for chunk in short_chunks:
-            original = next(s for s in sample_sources if s.doc_id == chunk.doc_id)
-            assert chunk.markdown_content == original.markdown_content
+        # Verify synthesis format
+        assert compressed[0].chunk_id == "synthesized-summary"
+        assert "# Synthesized Summary" in compressed[0].markdown_content
+        assert compressed[0].page == 0
 
 
 # ============================================================================

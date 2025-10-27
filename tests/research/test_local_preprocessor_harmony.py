@@ -79,18 +79,16 @@ class TestHarmonyCompressionIntegration:
     """Test compression with Harmony prompts and JSON parsing"""
 
     @pytest.mark.asyncio
-    async def test_compress_with_harmony_prompts_success(
-        self, mock_mlx_client, sample_source
-    ):
-        """Test successful compression using Harmony prompts"""
-        # Mock LLM to return valid Harmony JSON response
+    async def test_compress_with_harmony_prompts_success(self, mock_mlx_client, sample_source):
+        """Test successful synthesis using Harmony prompts"""
+        # Mock LLM to return synthesized summary
         compressed_facts = (
             "Tucker: Senior UX Designer, 15+ years. "
             "Nutrien Lead UX Designer Feb-Sep 2023, led 5 designers. "
             "Contact: 403-630-7003, connect@tucker.sh"
         )
         mock_mlx_client.complete.return_value = LLMResponse(
-            content=f'{{"facts": "{compressed_facts}"}}',
+            content=compressed_facts,
             model="gpt-oss-20b-mlx",
             provider="mlx",
             usage={"prompt_tokens": 150, "completion_tokens": 50, "total_tokens": 200},
@@ -103,27 +101,28 @@ class TestHarmonyCompressionIntegration:
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
             assert preprocessor.use_harmony is True
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="What is Tucker's role?", sources=[sample_source]
             )
 
-            # Verify
+            # Verify synthesis behavior
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == compressed_facts
-            assert len(compressed[0].markdown_content) < len(
-                sample_source.markdown_content
-            )
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            assert compressed_facts in compressed[0].markdown_content
             assert compressed[0].doc_id == sample_source.doc_id
-            assert compressed[0].chunk_id == sample_source.chunk_id
+            assert compressed[0].chunk_id == "synthesized-summary"
+            assert compressed[0].page == 0
 
     @pytest.mark.asyncio
-    async def test_compress_rejects_expansion(self, mock_mlx_client, sample_source):
-        """Test compression rejected when output >= input (expansion detected)"""
-        # Mock LLM to return longer text than input (expansion)
-        expanded_text = sample_source.markdown_content + " Additional verbose text that makes it longer."
+    async def test_compress_creates_synthesis(self, mock_mlx_client, sample_source):
+        """Test synthesis creates summary regardless of length"""
+        # Mock LLM to return synthesized text
+        expanded_text = (
+            sample_source.markdown_content + " Additional verbose text that makes it longer."
+        )
         mock_mlx_client.complete.return_value = LLMResponse(
-            content=f'{{"facts": "{expanded_text}"}}',
+            content=expanded_text,
             model="gpt-oss-20b-mlx",
             provider="mlx",
             usage={"prompt_tokens": 150, "completion_tokens": 200, "total_tokens": 350},
@@ -135,23 +134,23 @@ class TestHarmonyCompressionIntegration:
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="test query", sources=[sample_source]
             )
 
-            # Verify: Original text used (expansion rejected)
+            # Verify: Synthesis wraps content
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == sample_source.markdown_content
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            assert expanded_text in compressed[0].markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_fallback_on_invalid_json(
-        self, mock_mlx_client, sample_source
-    ):
-        """Test fallback to original text when JSON parsing fails"""
-        # Mock LLM to return prose instead of JSON
+    async def test_compress_uses_llm_response(self, mock_mlx_client, sample_source):
+        """Test synthesis uses LLM response directly"""
+        # Mock LLM to return prose
+        llm_response = "The key facts are that Tucker is a designer with experience..."
         mock_mlx_client.complete.return_value = LLMResponse(
-            content="The key facts are that Tucker is a designer with experience...",
+            content=llm_response,
             model="gpt-oss-20b-mlx",
             provider="mlx",
             usage={"prompt_tokens": 150, "completion_tokens": 50, "total_tokens": 200},
@@ -163,23 +162,20 @@ class TestHarmonyCompressionIntegration:
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="test query", sources=[sample_source]
             )
 
-            # Verify: Parser returns original text as fallback
-            # (HarmonyResponseParser returns {"facts": original_text} on error)
+            # Verify: Synthesis wraps LLM response
             assert len(compressed) == 1
-            # The fallback will be the malformed response content
-            assert compressed[0].markdown_content == mock_mlx_client.complete.return_value.content
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            assert llm_response in compressed[0].markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_fallback_on_missing_facts_key(
-        self, mock_mlx_client, sample_source
-    ):
-        """Test fallback when JSON is valid but missing 'facts' key"""
-        # Mock LLM to return JSON without "facts" key
+    async def test_compress_uses_response_content(self, mock_mlx_client, sample_source):
+        """Test synthesis uses response content regardless of format"""
+        # Mock LLM to return JSON (synthesis uses it directly)
         mock_mlx_client.complete.return_value = LLMResponse(
             content='{"result": "Tucker is a designer"}',
             model="gpt-oss-20b-mlx",
@@ -193,48 +189,67 @@ class TestHarmonyCompressionIntegration:
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="test query", sources=[sample_source]
             )
 
-            # Verify: Parser returns original text as fallback
+            # Verify: Synthesis wraps the response
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == mock_mlx_client.complete.return_value.content
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            assert mock_mlx_client.complete.return_value.content in compressed[0].markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_skips_short_chunks(self, mock_mlx_client, short_source):
-        """Test that chunks <400 chars are skipped"""
+    async def test_compress_synthesizes_all_sources(self, mock_mlx_client, short_source):
+        """Test that all sources (including short ones) are synthesized"""
+        mock_mlx_client.complete.return_value = LLMResponse(
+            content="Synthesized content",
+            model="gpt-oss-20b-mlx",
+            provider="mlx",
+            usage={"prompt_tokens": 150, "completion_tokens": 50, "total_tokens": 200},
+            finish_reason="stop",
+            latency_ms=2000,
+        )
+
         # Enable Harmony prompts
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="test query", sources=[short_source]
             )
 
-            # Verify: Original returned, LLM not called
+            # Verify: All sources synthesized, LLM called
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == short_source.markdown_content
-            mock_mlx_client.complete.assert_not_called()
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            mock_mlx_client.complete.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_compress_skips_visual_sources(self, mock_mlx_client, visual_source):
-        """Test that visual sources are skipped"""
+    async def test_compress_includes_visual_sources(self, mock_mlx_client, visual_source):
+        """Test that visual sources are included in synthesis"""
+        mock_mlx_client.complete.return_value = LLMResponse(
+            content="Synthesized content",
+            model="gpt-oss-20b-mlx",
+            provider="mlx",
+            usage={"prompt_tokens": 150, "completion_tokens": 50, "total_tokens": 200},
+            finish_reason="stop",
+            latency_ms=2000,
+        )
+
         # Enable Harmony prompts
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="test query", sources=[visual_source]
             )
 
-            # Verify: Original returned, LLM not called
+            # Verify: Visual sources included in synthesis, LLM called
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == visual_source.markdown_content
-            mock_mlx_client.complete.assert_not_called()
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            mock_mlx_client.complete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_compress_timeout_handling(self, mock_mlx_client, sample_source):
@@ -250,18 +265,14 @@ class TestHarmonyCompressionIntegration:
 
             # Execute compression - should handle gracefully
             with pytest.raises(TimeoutError):
-                await preprocessor._compress_single_chunk(
-                    query="test query", source=sample_source
-                )
+                await preprocessor._compress_single_chunk(query="test query", source=sample_source)
 
 
 class TestHarmonyRelevanceScoringIntegration:
     """Test relevance scoring with Harmony prompts and JSON parsing"""
 
     @pytest.mark.asyncio
-    async def test_score_with_harmony_prompts_success(
-        self, mock_mlx_client, sample_source
-    ):
+    async def test_score_with_harmony_prompts_success(self, mock_mlx_client, sample_source):
         """Test successful relevance scoring using Harmony prompts"""
         # Mock LLM to return valid Harmony JSON response
         mock_mlx_client.complete.return_value = LLMResponse(
@@ -312,9 +323,7 @@ class TestHarmonyRelevanceScoringIntegration:
             assert score == 5.0
 
     @pytest.mark.asyncio
-    async def test_score_fallback_on_invalid_json(
-        self, mock_mlx_client, sample_source
-    ):
+    async def test_score_fallback_on_invalid_json(self, mock_mlx_client, sample_source):
         """Test fallback to neutral score (5.0) when JSON parsing fails"""
         # Mock LLM to return plain number instead of JSON
         mock_mlx_client.complete.return_value = LLMResponse(
@@ -339,9 +348,7 @@ class TestHarmonyRelevanceScoringIntegration:
             assert score == 5.0
 
     @pytest.mark.asyncio
-    async def test_score_fallback_on_missing_score_key(
-        self, mock_mlx_client, sample_source
-    ):
+    async def test_score_fallback_on_missing_score_key(self, mock_mlx_client, sample_source):
         """Test fallback when JSON is valid but missing 'score' key"""
         # Mock LLM to return JSON without "score" key
         mock_mlx_client.complete.return_value = LLMResponse(
@@ -366,9 +373,7 @@ class TestHarmonyRelevanceScoringIntegration:
             assert score == 5.0
 
     @pytest.mark.asyncio
-    async def test_score_visual_sources_auto_high(
-        self, mock_mlx_client, visual_source
-    ):
+    async def test_score_visual_sources_auto_high(self, mock_mlx_client, visual_source):
         """Test visual sources automatically score 9.0 without LLM call"""
         # Enable Harmony prompts
         with patch.dict(os.environ, {"USE_HARMONY_PROMPTS": "true"}):
@@ -388,10 +393,8 @@ class TestLegacyModeBackwardCompatibility:
     """Test legacy mode (USE_HARMONY_PROMPTS=false) still works"""
 
     @pytest.mark.asyncio
-    async def test_legacy_compression_still_works(
-        self, mock_mlx_client, sample_source
-    ):
-        """Test legacy compression prompts still work when Harmony disabled"""
+    async def test_legacy_compression_still_works(self, mock_mlx_client, sample_source):
+        """Test legacy synthesis prompts still work when Harmony disabled"""
         # Mock LLM to return plain text (legacy format)
         compressed_text = "Tucker: Senior UX Designer, 15+ years experience."
         mock_mlx_client.complete.return_value = LLMResponse(
@@ -408,14 +411,15 @@ class TestLegacyModeBackwardCompatibility:
             preprocessor = LocalLLMPreprocessor(mock_mlx_client)
             assert preprocessor.use_harmony is False
 
-            # Execute compression
+            # Execute synthesis
             compressed = await preprocessor.compress_chunks(
                 query="What is Tucker's role?", sources=[sample_source]
             )
 
-            # Verify: Legacy plain text used
+            # Verify: Synthesis wraps content
             assert len(compressed) == 1
-            assert compressed[0].markdown_content == compressed_text
+            assert "# Synthesized Summary" in compressed[0].markdown_content
+            assert compressed_text in compressed[0].markdown_content
 
     @pytest.mark.asyncio
     async def test_legacy_scoring_still_works(self, mock_mlx_client, sample_source):
@@ -444,9 +448,7 @@ class TestLegacyModeBackwardCompatibility:
             assert score == 8.0
 
     @pytest.mark.asyncio
-    async def test_legacy_fallback_to_neutral_score(
-        self, mock_mlx_client, sample_source
-    ):
+    async def test_legacy_fallback_to_neutral_score(self, mock_mlx_client, sample_source):
         """Test legacy scoring fallback changed from 0.0 to 5.0 (matches Harmony)"""
         # Mock LLM to return invalid number
         mock_mlx_client.complete.return_value = LLMResponse(
@@ -540,6 +542,4 @@ class TestCompressionMetricsLogging:
             assert len(compressed) == 1
             # Metrics would be in logs (original_tokens, compressed_tokens, reduction_pct)
             # We can't easily assert on logs here, but we verify the logic works
-            assert len(compressed[0].markdown_content) < len(
-                sample_source.markdown_content
-            )
+            assert len(compressed[0].markdown_content) < len(sample_source.markdown_content)

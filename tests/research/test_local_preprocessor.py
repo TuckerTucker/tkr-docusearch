@@ -154,7 +154,7 @@ class TestCompressChunksStrategy:
 
     @pytest.mark.asyncio
     async def test_compress_chunks_preserves_metadata(self, mock_mlx_client, sample_sources):
-        """Test all metadata fields preserved except markdown_content"""
+        """Test metadata preserved in synthesized summary (with synthesis-specific changes)"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         original = sample_sources[0]  # Long text source
@@ -166,10 +166,9 @@ class TestCompressChunksStrategy:
 
         result = compressed[0]
 
-        # Verify all metadata preserved
+        # Verify base metadata preserved from first source
         assert result.doc_id == original.doc_id
         assert result.filename == original.filename
-        assert result.page == original.page
         assert result.extension == original.extension
         assert result.thumbnail_path == original.thumbnail_path
         assert result.image_path == original.image_path
@@ -177,51 +176,55 @@ class TestCompressChunksStrategy:
         assert result.section_path == original.section_path
         assert result.parent_heading == original.parent_heading
         assert result.relevance_score == original.relevance_score
-        assert result.chunk_id == original.chunk_id
         assert result.is_visual == original.is_visual
 
-        # Content should be different (compressed)
+        # Synthesis-specific changes
+        assert result.chunk_id == "synthesized-summary"  # Special ID for synthesis
+        assert result.page == 0  # Special marker for synthesized content
+
+        # Content should be different (synthesized)
         assert result.markdown_content != original.markdown_content
-        assert len(result.markdown_content) < len(original.markdown_content)
+        assert "# Synthesized Summary" in result.markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_chunks_skips_visual_sources(self, mock_mlx_client, sample_sources):
-        """Test visual sources bypass compression unchanged"""
+    async def test_compress_chunks_includes_visual_sources(self, mock_mlx_client, sample_sources):
+        """Test visual sources are included in synthesis"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         # Get visual source
         visual_source = [s for s in sample_sources if s.is_visual][0]
-        original_content = visual_source.markdown_content
 
         compressed = await preprocessor.compress_chunks(
             query="Test query",
             sources=[visual_source],
         )
 
-        # Visual source content unchanged
-        assert compressed[0].markdown_content == original_content
-        assert compressed[0].is_visual is True
+        # Synthesis creates one result with synthesized content
+        assert len(compressed) == 1
+        assert "# Synthesized Summary" in compressed[0].markdown_content
+        # Base metadata comes from the visual source
+        assert compressed[0].doc_id == visual_source.doc_id
 
     @pytest.mark.asyncio
-    async def test_compress_chunks_skips_short_chunks(self, mock_mlx_client, sample_sources):
-        """Test short chunks (<400 chars) bypass compression"""
+    async def test_compress_chunks_synthesizes_all_sources(self, mock_mlx_client, sample_sources):
+        """Test all sources (including short ones) are synthesized"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         # Get short source
         short_source = [s for s in sample_sources if len(s.markdown_content) < 400][0]
-        original_content = short_source.markdown_content
 
         compressed = await preprocessor.compress_chunks(
             query="Test query",
             sources=[short_source],
         )
 
-        # Short source content unchanged
-        assert compressed[0].markdown_content == original_content
+        # All sources are synthesized into one summary
+        assert len(compressed) == 1
+        assert "# Synthesized Summary" in compressed[0].markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_chunks_maintains_order(self, mock_mlx_client, sample_sources):
-        """Test source order maintained (citation numbers depend on it)"""
+    async def test_compress_chunks_creates_single_synthesis(self, mock_mlx_client, sample_sources):
+        """Test synthesis creates one summary from all sources"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         compressed = await preprocessor.compress_chunks(
@@ -229,67 +232,54 @@ class TestCompressChunksStrategy:
             sources=sample_sources,
         )
 
-        # Verify same order
-        assert len(compressed) == len(sample_sources)
-        for i, (original, result) in enumerate(zip(sample_sources, compressed)):
-            assert result.doc_id == original.doc_id
-            assert result.page == original.page
+        # Synthesis produces ONE result regardless of input count
+        assert len(compressed) == 1
+        # Verify it's a synthesized summary
+        assert compressed[0].chunk_id == "synthesized-summary"
+        assert "# Synthesized Summary" in compressed[0].markdown_content
 
     @pytest.mark.asyncio
-    async def test_compress_chunks_parallel_processing(self, mock_mlx_client, many_sources):
-        """Test chunks processed concurrently (asyncio.gather)"""
-        import time
+    async def test_compress_chunks_single_llm_call(self, mock_mlx_client, many_sources):
+        """Test synthesis uses single LLM call for all sources"""
 
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
-        # Mock LLM to track concurrency
+        # Mock LLM to track call count
         call_count = 0
-        max_concurrent = 0
-        current_concurrent = 0
 
-        async def track_concurrent_response(prompt, **kwargs):
-            nonlocal call_count, max_concurrent, current_concurrent
+        async def track_call_response(prompt, **kwargs):
+            nonlocal call_count
             call_count += 1
-            current_concurrent += 1
-            max_concurrent = max(max_concurrent, current_concurrent)
 
             # Simulate processing time
             await asyncio.sleep(0.1)
 
-            current_concurrent -= 1
-
             return LLMResponse(
-                content="Compressed.",
+                content="Synthesized summary from all sources.",
                 model="gpt-oss-20b-mlx",
                 provider="mlx",
-                usage={"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110},
+                usage={"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+                finish_reason="stop",
+                latency_ms=100,
             )
 
-        mock_mlx_client.complete.side_effect = track_concurrent_response
+        mock_mlx_client.complete.side_effect = track_call_response
 
-        # Get only long text sources (skip visual and short)
         long_sources = [
             s for s in many_sources if not s.is_visual and len(s.markdown_content) >= 400
         ][:10]
 
-        start = time.time()
-        await preprocessor.compress_chunks(
+        result = await preprocessor.compress_chunks(
             query="Test query",
             sources=long_sources,
         )
-        elapsed = time.time() - start
 
-        # Verify parallel execution
-        # If sequential: 10 * 0.1s = 1.0s
-        # If parallel: ~0.1s
-        # The implementation uses asyncio.gather, so should be parallel
-        # Check that multiple tasks ran concurrently
-        assert (
-            max_concurrent > 1
-        ), f"Max concurrent was {max_concurrent}, expected >1 (parallel execution)"
+        # Verify single LLM call for all sources (synthesis approach)
+        assert call_count == 1, f"Expected 1 LLM call, got {call_count}"
 
-        # Also check time is reasonable (with overhead)
-        assert elapsed < 2.0, f"Processing took {elapsed}s, expected <2.0s"
+        # Verify single output
+        assert len(result) == 1
+        assert "# Synthesized Summary" in result[0].markdown_content
 
     @pytest.mark.asyncio
     async def test_compress_chunks_error_handling(self, mock_mlx_client, sample_sources):
