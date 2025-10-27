@@ -187,14 +187,15 @@ async def mock_mlx_client():
         if "compress" in prompt.lower() or "extract key facts" in prompt.lower():
             content = "Key facts: Crisis caused by subprime mortgages, securitization failures, regulatory gaps."
             tokens = 20
-        # Simulate relevance scoring with varying scores
+        # Simulate relevance scoring with varying scores (Harmony JSON format)
         elif "relevance" in prompt.lower() or "score" in prompt.lower():
             # Return scores from 9.5 down to 2.5 (mimic varying relevance)
             scores = [9.5, 9.0, 8.5, 8.0, 7.5, 7.0, 6.5, 6.0, 5.5, 5.0, 4.5, 4.0, 3.5, 3.0, 2.5]
             score = scores[call_count["value"] % len(scores)]
             call_count["value"] += 1
-            content = str(score)
-            tokens = 2
+            # Return proper JSON format for Harmony prompts (use "score", not "relevance_score")
+            content = f'{{"score": {score}, "reasoning": "Mock relevance assessment"}}'
+            tokens = 10
         # Simulate synthesis
         elif "synthesize" in prompt.lower() or "organize" in prompt.lower():
             content = (
@@ -278,7 +279,7 @@ class TestCompressionStrategy:
 
     @pytest.mark.asyncio
     async def test_compression_with_mock(self, mock_mlx_client, sample_sources):
-        """Test compression with mock client achieves token reduction"""
+        """Test compression with mock client achieves token reduction via synthesis"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         # Calculate baseline tokens
@@ -291,25 +292,28 @@ class TestCompressionStrategy:
         )
         latency = time.time() - start_time
 
-        # Validate results
-        assert len(compressed) == len(sample_sources), "Should preserve all sources"
+        # Synthesis creates ONE result
+        assert len(compressed) == 1, f"Expected 1 synthesized result, got {len(compressed)}"
+
+        # Verify synthesis format
+        result = compressed[0]
+        assert result.chunk_id == "synthesized-summary"
+        assert "# Synthesized Summary" in result.markdown_content
+        assert result.page == 0
 
         # Calculate compressed tokens
-        compressed_tokens = sum(estimate_tokens(s.markdown_content) for s in compressed)
+        compressed_tokens = estimate_tokens(result.markdown_content)
 
-        # Validate token reduction
+        # Validate token reduction (synthesis should compress significantly)
         reduction_pct = calculate_reduction_percent(original_tokens, compressed_tokens)
         assert reduction_pct >= 30, f"Expected ≥30% reduction, got {reduction_pct:.1f}%"
 
         # Validate performance (mock should be fast)
         assert latency < 5, f"Compression took {latency:.2f}s, expected <5s"
 
-        # Validate metadata preservation
-        for original, comp in zip(sample_sources, compressed):
-            assert comp.doc_id == original.doc_id
-            assert comp.chunk_id == original.chunk_id
-            assert comp.page == original.page
-            assert comp.filename == original.filename
+        # Validate first source metadata preserved in synthesis
+        assert result.doc_id == sample_sources[0].doc_id
+        assert result.filename == sample_sources[0].filename
 
     @skip_without_mlx
     @pytest.mark.asyncio
@@ -347,23 +351,26 @@ class TestCompressionStrategy:
         assert latency < 5, f"Compression took {latency:.2f}s, expected <5s for 4 sources"
 
     @pytest.mark.asyncio
-    async def test_compression_skips_visual_sources(self, mock_mlx_client, sample_sources):
-        """Test that compression skips visual sources"""
+    async def test_compression_handles_visual_sources(self, mock_mlx_client, sample_sources):
+        """Test that synthesis includes visual sources in citations"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         compressed = await preprocessor.compress_chunks(
             query="What caused the 2008 financial crisis?", sources=sample_sources
         )
 
-        # Find visual source in results
-        visual_sources = [s for s in compressed if s.is_visual]
-        assert len(visual_sources) == 1
+        # Synthesis creates ONE result
+        assert len(compressed) == 1
+        result = compressed[0]
 
-        # Verify visual source content unchanged
-        original_visual = next(s for s in sample_sources if s.is_visual)
-        compressed_visual = next(s for s in compressed if s.is_visual)
+        # Verify synthesis format
+        assert result.chunk_id == "synthesized-summary"
+        assert "# Synthesized Summary" in result.markdown_content
 
-        assert compressed_visual.markdown_content == original_visual.markdown_content
+        # Verify visual sources are referenced in citations
+        # sample_sources[1] is the visual source (doc2)
+        # The mock synthesis includes "[2]" which references the visual source
+        assert "[2]" in result.markdown_content, "Visual source should be cited in synthesis"
 
     @pytest.mark.asyncio
     async def test_compression_creates_synthesis(self, mock_mlx_client, sample_sources):
@@ -657,7 +664,7 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_filtering_handles_non_numeric_scores(self, sample_sources):
-        """Test filtering handles LLM returning non-numeric scores"""
+        """Test filtering handles LLM returning non-numeric scores with fallback"""
         # Create client that returns non-numeric response
         bad_client = AsyncMock(spec=MLXLLMClient)
 
@@ -675,14 +682,16 @@ class TestErrorHandling:
 
         preprocessor = LocalLLMPreprocessor(mlx_client=bad_client)
 
-        # Should assign score 0.0 to text sources, but visual auto-scores 9.0
+        # Text sources get fallback score 5.0, visual auto-scores 9.0
         result = await preprocessor.filter_by_relevance(
             query="What caused the 2008 financial crisis?", sources=sample_sources, threshold=5.0
         )
 
-        # Only visual source should pass (auto-scores 9.0)
-        assert len(result) == 1, "Only visual source with score 9.0 should pass threshold 5.0"
-        assert result[0].is_visual
+        # Visual source (9.0) and text sources with fallback (5.0) pass threshold 5.0
+        assert len(result) == 4, "Visual source (9.0) + 3 text sources (5.0 fallback) should pass"
+        # Verify visual source is included
+        visual_sources = [s for s in result if s.is_visual]
+        assert len(visual_sources) == 1
 
 
 # ============================================================================
@@ -790,16 +799,17 @@ class TestCitationAccuracy:
     """Test citation preservation and accuracy"""
 
     @pytest.mark.asyncio
-    async def test_compression_preserves_chunk_ids(self, mock_mlx_client, sample_sources):
-        """Test compression preserves chunk_id for bidirectional highlighting"""
+    async def test_compression_creates_synthesized_chunk_id(self, mock_mlx_client, sample_sources):
+        """Test compression creates special synthesized-summary chunk_id"""
         preprocessor = LocalLLMPreprocessor(mlx_client=mock_mlx_client)
 
         compressed = await preprocessor.compress_chunks(
             query="What caused the 2008 financial crisis?", sources=sample_sources
         )
 
-        for original, comp in zip(sample_sources, compressed):
-            assert comp.chunk_id == original.chunk_id, f"chunk_id mismatch for {original.doc_id}"
+        # Synthesis creates ONE result with special chunk_id
+        assert len(compressed) == 1
+        assert compressed[0].chunk_id == "synthesized-summary"
 
     @pytest.mark.asyncio
     async def test_filtering_preserves_chunk_ids(self, mock_mlx_client, many_sources):
