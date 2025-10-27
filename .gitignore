@@ -10,7 +10,10 @@
 # ============================================================================
 # Claude Code Local Settings
 # ============================================================================
-.claude/settings.local.json
+# Claude Code agent/command/hook configurations (local development only)
+.claude/
+.context-kit/
+CLAUDE.local.md
 
 # ============================================================================
 # Data Directories
