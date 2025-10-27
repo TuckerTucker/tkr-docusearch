@@ -196,43 +196,69 @@ def decompress_structure_metadata(compressed_str: str) -> Dict[str, Any]:
 def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
     """Sanitize metadata for ChromaDB storage.
 
-    ChromaDB only accepts str, int, float, bool, or None as metadata values.
-    This function converts lists and dicts to JSON strings.
+    ChromaDB only accepts str, int, float, bool as metadata values.
+    This function converts lists and dicts to JSON strings and filters out
+    empty/None values that ChromaDB rejects.
 
     Args:
         metadata: Dictionary with potentially complex values
 
     Returns:
-        Dictionary with only primitive types or JSON strings
+        Dictionary with only primitive types or JSON strings (no empty values)
 
     Example:
         >>> meta = {
         ...     "name": "test",
         ...     "count": 5,
         ...     "tags": ["a", "b"],
-        ...     "config": {"key": "value"}
+        ...     "config": {"key": "value"},
+        ...     "empty": "",
+        ...     "none": None,
+        ...     "empty_list": []
         ... }
         >>> sanitized = sanitize_metadata_for_chroma(meta)
         >>> isinstance(sanitized["tags"], str)
         True
         >>> isinstance(sanitized["config"], str)
         True
+        >>> "empty" in sanitized
+        False
+        >>> "none" in sanitized
+        False
     """
     sanitized = {}
 
     for key, value in metadata.items():
-        # Keep primitives as-is
-        if value is None or isinstance(value, (str, int, float, bool)):
+        # Skip None values (ChromaDB doesn't accept None)
+        if value is None:
+            continue
+
+        # Skip empty strings
+        if isinstance(value, str) and value == "":
+            continue
+
+        # Skip empty lists
+        if isinstance(value, list) and len(value) == 0:
+            continue
+
+        # Skip empty dicts
+        if isinstance(value, dict) and len(value) == 0:
+            continue
+
+        # Keep non-empty primitives
+        if isinstance(value, (str, int, float, bool)):
             sanitized[key] = value
-        # Convert lists to JSON string
+        # Convert non-empty lists to JSON string
         elif isinstance(value, list):
             sanitized[key] = json.dumps(value, separators=(",", ":"))
-        # Convert dicts to JSON string
+        # Convert non-empty dicts to JSON string
         elif isinstance(value, dict):
             sanitized[key] = json.dumps(value, separators=(",", ":"))
         # Convert other types to string representation
         else:
-            sanitized[key] = str(value)
+            str_value = str(value)
+            if str_value:  # Only add if non-empty
+                sanitized[key] = str_value
 
     return sanitized
 
@@ -243,7 +269,7 @@ def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def compress_markdown(markdown: str) -> str:
-    """Compress markdown text for efficient storage.
+    r"""Compress markdown text for efficient storage.
 
     Uses gzip compression with base64 encoding for storing full document
     markdown in ChromaDB metadata. Achieves 3-5x compression ratio for
@@ -260,7 +286,7 @@ def compress_markdown(markdown: str) -> str:
         CompressionError: If compression fails
 
     Example:
-        >>> markdown = "# Title\\n\\nContent here..."
+        >>> markdown = "# Title\n\nContent here..."
         >>> compressed = compress_markdown(markdown)
         >>> isinstance(compressed, str)
         True
@@ -288,7 +314,7 @@ def compress_markdown(markdown: str) -> str:
 
 
 def decompress_markdown(compressed: str) -> str:
-    """Decompress markdown text from storage format.
+    r"""Decompress markdown text from storage format.
 
     Args:
         compressed: Base64-encoded gzip-compressed string
@@ -301,7 +327,7 @@ def decompress_markdown(compressed: str) -> str:
         MarkdownTooLargeError: If decompressed size exceeds 10MB
 
     Example:
-        >>> original = "# Test\\nContent"
+        >>> original = "# Test\nContent"
         >>> compressed = compress_markdown(original)
         >>> decompressed = decompress_markdown(compressed)
         >>> decompressed == original
