@@ -131,7 +131,7 @@ function Thumbnail({ url, filename, variant, status, priority = false }) {
         alt={`Thumbnail for ${filename}`}
         className="document-card__thumbnail"
         loading={priority ? 'eager' : 'lazy'}
-        fetchpriority={priority ? 'high' : 'auto'}
+        fetchPriority={priority ? 'high' : 'auto'}
         onError={(e) => {
           e.target.style.backgroundColor = '#E9E9E9';
           e.target.alt = `No preview available for ${filename}`;
