@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
+import { useActiveProcessing } from '../hooks/useActiveProcessing.js';
 import { useDocumentStore } from '../stores/useDocumentStore.js';
 import { useTitle } from '../contexts/TitleContext.jsx';
 import { WS_URL } from '../constants/config.js';
@@ -49,6 +50,13 @@ export default function LibraryView() {
   const { documents, totalCount, isLoading, error, refetch, deleteDocument, isDeleting } =
     useDocuments(filters);
 
+  // Fetch active processing documents for cross-browser sync
+  // This enables Browser B to see uploads started in Browser A
+  const { activeCount } = useActiveProcessing({
+    enabled: true,
+    refetchInterval: 5000, // Poll every 5 seconds as backup to WebSocket
+  });
+
   // Merge real documents with temp documents for optimistic UI
   const mergedDocuments = useMemo(() => {
     // Convert temp documents Map to array
@@ -74,6 +82,23 @@ export default function LibraryView() {
         try {
           const data = JSON.parse(event.data);
           console.log('📨 WebSocket message received:', data);
+
+          // PHASE 2: Handle upload_registered broadcasts from other tabs
+          if (data.type === 'upload_registered') {
+            const { doc_id, filename, status } = data;
+            console.log('📢 Upload registered broadcast:', { doc_id: doc_id?.slice(0, 8), filename });
+
+            // Check if temp document already exists (avoid duplicates for initiating browser)
+            const tempDoc = getTempDocument(doc_id);
+            if (!tempDoc) {
+              // Create temp document for cross-browser sync
+              console.log('🆕 Creating temp doc from broadcast:', { doc_id: doc_id?.slice(0, 8), filename });
+              const addTempDocument = useDocumentStore.getState().addTempDocument;
+              addTempDocument(doc_id, filename);
+            } else {
+              console.log('⏭️ Temp doc already exists, skipping broadcast creation');
+            }
+          }
 
           // Handle both 'document_status' and 'status_update' message types
           if (data.type === 'document_status' || data.type === 'status_update') {

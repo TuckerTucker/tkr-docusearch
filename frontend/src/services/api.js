@@ -346,6 +346,33 @@ const status = {
     const response = await fetchWithTimeout(url);
     return handleResponse(response, url);
   },
+
+  /**
+   * Get active processing queue
+   *
+   * Returns all documents currently being processed or queued.
+   * Used for cross-browser synchronization - when a tab loads,
+   * it can fetch ongoing uploads/processing from other tabs.
+   *
+   * @param {Object} options - Query options
+   * @param {string} [options.status] - Filter by status (queued, processing, parsing, etc.)
+   * @param {number} [options.limit=100] - Maximum results to return (1-1000)
+   * @returns {Promise<Object>} Queue response with active documents
+   */
+  async getActiveQueue(options = {}) {
+    const { status: statusFilter, limit = 100 } = options;
+
+    const params = new URLSearchParams();
+    params.set('limit', Math.min(Math.max(limit, 1), 1000).toString());
+
+    if (statusFilter) {
+      params.set('status', statusFilter);
+    }
+
+    const url = `${API_BASE_URL}/status/queue?${params.toString()}`;
+    const response = await fetchWithTimeout(url);
+    return handleResponse(response, url);
+  },
 };
 
 // ============================================================================

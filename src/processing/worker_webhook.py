@@ -778,7 +778,7 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
         else:
             logger.info(f"  ✓ Registered: {filename} → {doc_id[:8]}...")
 
-    # Send response with all doc_ids and duplicate info
+    # Send response with all doc_ids and duplicate info (to requesting client)
     await get_broadcaster().send_to_client(
         websocket,
         {
@@ -787,6 +787,26 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
             "count": len(registrations),
         },
     )
+
+    # PHASE 2: Broadcast to ALL clients for cross-browser sync
+    # This enables Browser B to see uploads initiated in Browser A instantly
+    for registration in registrations:
+        # Skip broadcasting duplicates (they won't be processed)
+        if registration.get("is_duplicate"):
+            continue
+
+        await get_broadcaster().broadcast(
+            {
+                "type": "upload_registered",
+                "doc_id": registration["doc_id"],
+                "filename": registration["filename"],
+                "status": "pending",
+                "progress": 0.0,
+            }
+        )
+        logger.info(
+            f"📢 Broadcast upload_registered: {registration['filename']} → {registration['doc_id'][:8]}..."
+        )
 
     duplicate_count = sum(1 for r in registrations if r.get("is_duplicate"))
     logger.info(
