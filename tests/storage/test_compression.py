@@ -504,13 +504,15 @@ class TestEdgeCases:
         assert len(decompressed) == size_bytes
 
     def test_sanitize_nested_empty_structures(self):
-        """Test sanitization with nested empty structures - empty values are filtered."""
+        """Test sanitization with nested empty structures - top-level empty values are filtered."""
         metadata = {"empty_list": [], "empty_dict": {}, "nested_empty": {"list": [], "dict": {}}}
 
         sanitized = sanitize_metadata_for_chroma(metadata)
 
-        # Empty lists and dicts are filtered out by sanitize_metadata_for_chroma
+        # Top-level empty lists and dicts are filtered out
         assert "empty_list" not in sanitized
         assert "empty_dict" not in sanitized
-        # Nested empty structures are also filtered
-        assert "nested_empty" not in sanitized
+        # Nested structure is not empty itself (contains keys), so it's converted to JSON
+        assert "nested_empty" in sanitized
+        assert isinstance(sanitized["nested_empty"], str)
+        assert json.loads(sanitized["nested_empty"]) == {"list": [], "dict": {}}
