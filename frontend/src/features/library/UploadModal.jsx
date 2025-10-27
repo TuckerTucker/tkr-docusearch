@@ -42,13 +42,34 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 /**
  * Format file types for display
+ * Converts array of file extensions to uppercase comma-separated string
+ *
+ * @returns {string} Formatted file types (e.g., "PDF, DOCX, MP3")
+ * @example
+ * formatSupportedTypes()
+ * // Returns: "PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS, HTML, XHTML, MD, ASCIIDOC, CSV, MP3, WAV, VTT, PNG, JPG, JPEG, TIFF, BMP, WEBP"
  */
 function formatSupportedTypes() {
   return SUPPORTED_TYPES.map((ext) => ext.toUpperCase().replace('.', '')).join(', ');
 }
 
 /**
- * Validate file
+ * Validate file against supported types and size limits
+ * Checks file extension and size against MAX_FILE_SIZE (100MB)
+ *
+ * @param {File} file - File object to validate
+ * @returns {{valid: boolean, error?: string, code?: string}} Validation result
+ * @returns {boolean} returns.valid - Whether file is valid
+ * @returns {string} [returns.error] - Error message if invalid
+ * @returns {string} [returns.code] - Error code if invalid (UNSUPPORTED_TYPE | FILE_TOO_LARGE)
+ * @example
+ * const file = new File(['content'], 'document.pdf', { type: 'application/pdf' });
+ * const result = validateFile(file);
+ * if (result.valid) {
+ *   console.log('File is valid');
+ * } else {
+ *   console.error(result.error);
+ * }
  */
 function validateFile(file) {
   const ext = '.' + file.name.split('.').pop().toLowerCase();
@@ -75,6 +96,38 @@ function validateFile(file) {
 
 /**
  * Upload Progress Item Component
+ * Displays individual file upload progress with status indicators
+ * Shows special UI for duplicate files with cancel/continue options
+ *
+ * @param {Object} props - Component props
+ * @param {string} props.filename - Name of file being uploaded
+ * @param {number} props.progress - Upload progress percentage (0-100)
+ * @param {string} props.status - Upload status (pending | uploading | complete | error | duplicate | cancelled)
+ * @param {string} [props.error] - Error message if status is error
+ * @param {boolean} [props.isDuplicate] - Whether file is a duplicate
+ * @param {Object} [props.existingDoc] - Existing document metadata if duplicate
+ * @param {Function} [props.onCancelUpload] - Callback to cancel duplicate upload
+ * @param {Function} [props.onContinueUpload] - Callback to continue with duplicate upload
+ * @returns {JSX.Element} Upload progress item
+ * @example
+ * // Regular upload progress
+ * <UploadProgressItem
+ *   filename="document.pdf"
+ *   progress={45}
+ *   status="uploading"
+ * />
+ *
+ * @example
+ * // Duplicate file with user decision
+ * <UploadProgressItem
+ *   filename="document.pdf"
+ *   progress={0}
+ *   status="duplicate"
+ *   isDuplicate={true}
+ *   existingDoc={{ doc_id: "abc123", title: "document.pdf" }}
+ *   onCancelUpload={(filename) => console.log(`Cancelled: ${filename}`)}
+ *   onContinueUpload={(filename) => console.log(`Continuing: ${filename}`)}
+ * />
  */
 function UploadProgressItem({
   filename,
@@ -151,11 +204,72 @@ function UploadProgressItem({
 /**
  * UploadModal Component
  *
+ * Main upload modal with drag-and-drop support, multi-file upload, progress tracking,
+ * and duplicate detection. Automatically shows when files are dragged over the window
+ * or when triggered via manual upload button.
+ *
+ * Features:
+ * - Global drag-and-drop detection
+ * - Multi-file parallel uploads
+ * - Real-time progress tracking
+ * - Duplicate file detection with user choice
+ * - File validation (type and size)
+ * - WebSocket-based pre-registration for instant UI updates
+ * - Temporary document creation in store during upload
+ *
  * @param {Object} props - Component props
- * @param {Function} [props.onUploadComplete] - Upload completion callback
- * @param {Function} props.registerUploadBatch - WebSocket upload batch registration
+ * @param {Function} [props.onUploadComplete] - Callback when upload completes
+ * @param {Object} [props.onUploadComplete.result] - Upload result object
+ * @param {number} props.onUploadComplete.result.total - Total files attempted
+ * @param {number} props.onUploadComplete.result.successful - Successfully uploaded files
+ * @param {number} props.onUploadComplete.result.failed - Failed uploads
+ * @param {Function} props.registerUploadBatch - WebSocket function to pre-register uploads
+ * @param {File[]} props.registerUploadBatch.files - Files to register
+ * @param {boolean} [props.registerUploadBatch.forceUpload=false] - Force upload even if duplicate
+ * @param {Promise<Array<{doc_id: string, filename: string, is_duplicate: boolean, existing_doc?: Object}>>} props.registerUploadBatch.returns - Registration results
  * @param {boolean} props.isWebSocketConnected - WebSocket connection status
- * @returns {JSX.Element} Upload modal
+ * @returns {JSX.Element|null} Upload modal or null if not visible
+ * @example
+ * // Basic usage with WebSocket support
+ * import UploadModal from './features/library/UploadModal';
+ * import { useWebSocket } from './hooks/useWebSocket';
+ *
+ * function App() {
+ *   const { registerUploadBatch, isConnected } = useWebSocket();
+ *
+ *   const handleUploadComplete = ({ total, successful, failed }) => {
+ *     console.log(`Uploaded ${successful}/${total} files`);
+ *     if (failed > 0) {
+ *       alert(`${failed} files failed to upload`);
+ *     }
+ *     // Refresh document library
+ *     fetchDocuments();
+ *   };
+ *
+ *   return (
+ *     <UploadModal
+ *       onUploadComplete={handleUploadComplete}
+ *       registerUploadBatch={registerUploadBatch}
+ *       isWebSocketConnected={isConnected}
+ *     />
+ *   );
+ * }
+ *
+ * @example
+ * // Triggering manual upload from button
+ * function UploadButton() {
+ *   const handleFileSelect = (e) => {
+ *     const files = Array.from(e.target.files);
+ *     // Dispatch event that UploadModal listens for
+ *     window.dispatchEvent(new CustomEvent('manualUpload', {
+ *       detail: { files }
+ *     }));
+ *   };
+ *
+ *   return (
+ *     <input type="file" multiple onChange={handleFileSelect} />
+ *   );
+ * }
  */
 export default function UploadModal({ onUploadComplete, registerUploadBatch, isWebSocketConnected }) {
   const [isVisible, setIsVisible] = useState(false);

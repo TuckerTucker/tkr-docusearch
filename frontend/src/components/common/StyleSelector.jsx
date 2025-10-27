@@ -3,18 +3,17 @@ import { useThemeStore } from '../../stores/useThemeStore';
 import './StyleSelector.css';
 
 /**
- * StyleSelector Component
- *
- * Dropdown selector for visual style themes
- *
- * Styles:
- * - kraft-paper: Warm kraft paper aesthetic
- * - graphite: Professional grayscale
- * - notebook: Grayscale notebook style
- * - gold-on-blue: Elegant gold on blue
- * - blue-on-black: Modern blue and purple
+ * Theme configuration object defining available visual styles
+ * @typedef {Object} Theme
+ * @property {string} id - Unique identifier for the theme
+ * @property {string} name - Display name of the theme
+ * @property {string} description - Detailed description of the theme's visual characteristics
  */
 
+/**
+ * Available theme definitions
+ * @constant {Object.<string, Theme>}
+ */
 const THEMES = {
   'kraft-paper': {
     id: 'kraft-paper',
@@ -43,6 +42,60 @@ const THEMES = {
   }
 };
 
+/**
+ * StyleSelector Component
+ *
+ * A dropdown selector for visual style themes that provides an accessible
+ * interface for switching between different visual aesthetics. Integrates
+ * with the theme store to persist and apply user preferences.
+ *
+ * Features:
+ * - Dropdown menu with theme previews and descriptions
+ * - Keyboard navigation support (Escape to close)
+ * - Click-outside-to-close behavior
+ * - Visual indicators for active theme
+ * - Accessible ARIA attributes
+ * - Smooth open/close animations
+ *
+ * Available Themes:
+ * - kraft-paper: Warm kraft paper aesthetic with natural tones
+ * - notebook: Grayscale notebook style with handwritten font
+ * - blue-on-black: Modern blue and purple accents
+ * - gold-on-blue: Elegant gold on blue with serif typography
+ * - graphite: Professional grayscale with modern sans-serif
+ *
+ * @component
+ * @returns {React.ReactElement} The rendered StyleSelector component
+ *
+ * @example
+ * // Basic usage - no props required, connects to theme store automatically
+ * import StyleSelector from './components/common/StyleSelector';
+ *
+ * function AppHeader() {
+ *   return (
+ *     <header>
+ *       <h1>Document Search</h1>
+ *       <StyleSelector />
+ *     </header>
+ *   );
+ * }
+ *
+ * @example
+ * // The component integrates with useThemeStore
+ * // Theme changes are automatically persisted and applied globally
+ * import { useThemeStore } from './stores/useThemeStore';
+ *
+ * function CustomThemeControls() {
+ *   const currentStyle = useThemeStore((state) => state.style);
+ *
+ *   return (
+ *     <div>
+ *       <p>Current theme: {currentStyle}</p>
+ *       <StyleSelector />
+ *     </div>
+ *   );
+ * }
+ */
 export default function StyleSelector() {
   const style = useThemeStore((state) => state.style);
   const setStyle = useThemeStore((state) => state.setStyle);

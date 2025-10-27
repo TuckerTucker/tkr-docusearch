@@ -267,15 +267,279 @@ async def get_status():
     "/search",
     response_model=SearchResponse,
     summary="Search Documents",
-    description="Semantic search across indexed documents using ColPali embeddings",
+    description="""
+    Semantic search across indexed documents using ColPali multi-vector embeddings.
+
+    **Two-Stage Search Pipeline:**
+    1. **Fast Retrieval**: HNSW index search with representative vectors (~50ms)
+    2. **Late Interaction Re-ranking**: MaxSim scoring with full multi-vectors (~150ms)
+
+    **Search Modes:**
+    - `visual`: Search only visual page embeddings (best for charts, diagrams, layouts)
+    - `text`: Search only text chunk embeddings (best for pure text queries)
+    - `hybrid`: Search both visual and text (default, best for general use)
+
+    **Performance:**
+    - Average latency: 239ms (target: <300ms)
+    - Handles 100+ documents efficiently
+    - GPU-accelerated on Metal/CUDA
+    """,
+    responses={
+        200: {
+            "description": "Successful search with results",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "successful_hybrid_search": {
+                            "summary": "Hybrid search with multiple results",
+                            "value": {
+                                "query": "revenue growth Q3 2024",
+                                "results": [
+                                    {
+                                        "doc_id": "financial-report-2024",
+                                        "chunk_id": None,
+                                        "page_num": 5,
+                                        "score": 0.87,
+                                        "text_preview": "Revenue grew by 23% in Q3 2024, driven by strong performance in cloud services and enterprise solutions...",
+                                        "metadata": {
+                                            "filename": "Q3-2024-Financial-Report.pdf",
+                                            "upload_date": "2024-10-15T14:30:00Z",
+                                            "total_pages": 42,
+                                            "file_size": 2048576,
+                                        },
+                                    },
+                                    {
+                                        "doc_id": "financial-report-2024",
+                                        "chunk_id": "chunk_12",
+                                        "page_num": None,
+                                        "score": 0.82,
+                                        "text_preview": "The third quarter showed exceptional revenue growth, with year-over-year increases of 23% across all segments...",
+                                        "metadata": {
+                                            "filename": "Q3-2024-Financial-Report.pdf",
+                                            "upload_date": "2024-10-15T14:30:00Z",
+                                            "chunk_index": 12,
+                                        },
+                                    },
+                                    {
+                                        "doc_id": "investor-presentation",
+                                        "chunk_id": None,
+                                        "page_num": 12,
+                                        "score": 0.76,
+                                        "text_preview": None,
+                                        "metadata": {
+                                            "filename": "Investor-Presentation-Oct-2024.pptx",
+                                            "upload_date": "2024-10-20T09:15:00Z",
+                                            "total_pages": 28,
+                                        },
+                                    },
+                                ],
+                                "total_results": 3,
+                                "search_time_ms": 239.5,
+                                "search_mode": "hybrid",
+                            },
+                        },
+                        "visual_only_search": {
+                            "summary": "Visual-only search for charts/diagrams",
+                            "value": {
+                                "query": "bar chart showing quarterly sales",
+                                "results": [
+                                    {
+                                        "doc_id": "sales-dashboard",
+                                        "chunk_id": None,
+                                        "page_num": 3,
+                                        "score": 0.91,
+                                        "text_preview": None,
+                                        "metadata": {
+                                            "filename": "Sales-Dashboard-2024.pdf",
+                                            "upload_date": "2024-10-18T11:20:00Z",
+                                        },
+                                    }
+                                ],
+                                "total_results": 1,
+                                "search_time_ms": 187.3,
+                                "search_mode": "visual",
+                            },
+                        },
+                        "no_results": {
+                            "summary": "Valid query with no matching results",
+                            "value": {
+                                "query": "quantum computing applications",
+                                "results": [],
+                                "total_results": 0,
+                                "search_time_ms": 156.2,
+                                "search_mode": "hybrid",
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Invalid request parameters",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "empty_query": {
+                            "summary": "Empty or missing query",
+                            "value": {
+                                "detail": [
+                                    {
+                                        "type": "string_too_short",
+                                        "loc": ["body", "query"],
+                                        "msg": "String should have at least 1 character",
+                                        "input": "",
+                                        "ctx": {"min_length": 1},
+                                    }
+                                ]
+                            },
+                        },
+                        "invalid_n_results": {
+                            "summary": "Invalid n_results parameter",
+                            "value": {
+                                "detail": [
+                                    {
+                                        "type": "greater_than_equal",
+                                        "loc": ["body", "n_results"],
+                                        "msg": "Input should be greater than or equal to 1",
+                                        "input": 0,
+                                        "ctx": {"ge": 1},
+                                    }
+                                ]
+                            },
+                        },
+                        "invalid_search_mode": {
+                            "summary": "Invalid search mode",
+                            "value": {
+                                "detail": [
+                                    {
+                                        "type": "literal_error",
+                                        "loc": ["body", "search_mode"],
+                                        "msg": "Input should be 'visual', 'text' or 'hybrid'",
+                                        "input": "semantic",
+                                        "ctx": {"expected": "'visual', 'text' or 'hybrid'"},
+                                    }
+                                ]
+                            },
+                        },
+                        "invalid_min_score": {
+                            "summary": "Invalid min_score threshold",
+                            "value": {
+                                "detail": [
+                                    {
+                                        "type": "less_than_equal",
+                                        "loc": ["body", "min_score"],
+                                        "msg": "Input should be less than or equal to 1.0",
+                                        "input": 1.5,
+                                        "ctx": {"le": 1.0},
+                                    }
+                                ]
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service unavailable - search engine not initialized",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "engine_not_initialized": {
+                            "summary": "Search engine not ready",
+                            "value": {"detail": "Search engine not initialized"},
+                        }
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal server error during search execution",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "search_execution_error": {
+                            "summary": "Search execution failed",
+                            "value": {"detail": "Search failed: ChromaDB connection timeout"},
+                        }
+                    }
+                }
+            },
+        },
+    },
+    tags=["Search"],
 )
 async def search_documents(request: SearchRequest):
     """
-    Execute semantic search.
+    Execute semantic search across indexed documents.
 
-    Performs two-stage search:
-    1. Fast retrieval with representative vectors (HNSW)
-    2. Late interaction re-ranking with full multi-vectors (MaxSim)
+    **Two-Stage Search Process:**
+
+    1. **Fast Retrieval (HNSW)**: Uses representative vectors to quickly find
+       candidate documents from the vector index (~50ms)
+
+    2. **Late Interaction Re-ranking (MaxSim)**: Performs fine-grained similarity
+       scoring using full multi-vector embeddings for precise relevance (~150ms)
+
+    **Request Parameters:**
+
+    - `query` (required): Natural language search query (1-1000 chars)
+    - `n_results` (optional): Number of results to return (1-100, default: 10)
+    - `search_mode` (optional): Search strategy (visual/text/hybrid, default: hybrid)
+    - `min_score` (optional): Minimum similarity threshold (0.0-1.0, filters results)
+
+    **Response Fields:**
+
+    - `results`: Array of search results sorted by relevance score (descending)
+    - `total_results`: Count of results returned (after min_score filtering)
+    - `search_time_ms`: Total search latency in milliseconds
+    - `search_mode`: Search mode used for this query
+
+    **Search Result Fields:**
+
+    - `doc_id`: Unique document identifier
+    - `score`: Similarity score (0.0-1.0, higher is better)
+    - `page_num`: Page number for visual results (null for text chunks)
+    - `chunk_id`: Chunk identifier for text results (null for visual pages)
+    - `text_preview`: Text snippet preview (up to 200 chars, may be null for visual)
+    - `metadata`: Document metadata (filename, upload_date, etc.)
+
+    **Performance Notes:**
+
+    - Target latency: <300ms (average: 239ms)
+    - GPU acceleration: Metal (macOS), CUDA (Linux/Windows), or CPU fallback
+    - Handles 100+ documents efficiently with HNSW indexing
+
+    **Example using curl:**
+    ```bash
+    curl -X POST "http://localhost:8002/search" \\
+      -H "accept: application/json" \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "query": "revenue growth Q3 2024",
+        "n_results": 10,
+        "search_mode": "hybrid",
+        "min_score": 0.5
+      }'
+    ```
+
+    **Example using Python requests:**
+    ```python
+    import requests
+
+    response = requests.post(
+        'http://localhost:8002/search',
+        json={
+            'query': 'revenue growth Q3 2024',
+            'n_results': 10,
+            'search_mode': 'hybrid',
+            'min_score': 0.5
+        }
+    )
+
+    results = response.json()
+    for result in results['results']:
+        print(f"{result['score']:.2f} - {result['doc_id']} - Page {result.get('page_num', 'N/A')}")
+    ```
     """
     if not _app_state["search_engine"]:
         raise HTTPException(status_code=503, detail="Search engine not initialized")

@@ -80,12 +80,13 @@ export default function DocumentGrid({
   // Grid with documents
   return (
     <div className="document-grid" role="list">
-      {documents.map((doc) => (
+      {documents.map((doc, index) => (
         <DocumentCard
           key={doc.doc_id || doc.temp_id}
           document={doc}
           onDelete={onDeleteDocument ? (docId, filename) => onDeleteDocument(docId, filename) : undefined}
           onViewDetails={onViewDetails}
+          priority={index < 6} // Eagerly load first 6 images (typically above fold)
         />
       ))}
     </div>

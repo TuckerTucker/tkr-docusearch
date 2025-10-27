@@ -3,12 +3,96 @@ import QueryInput from '../../components/research/QueryInput.jsx'
 import AnswerDisplay from '../../components/research/AnswerDisplay.jsx'
 
 /**
- * ResearchPanel Component - Left panel with query input and answer display
+ * ResearchPanel Component
+ *
+ * The left panel of the research interface that handles user queries and displays AI-generated
+ * answers with citations. Manages multiple UI states including empty, loading, error, and success
+ * states. Integrates QueryInput for user questions and AnswerDisplay for showing results with
+ * inline citation links.
  *
  * Features:
- * - QueryInput + AnswerDisplay
- * - Empty, loading, error states
- * - Handles query submission
+ * - Query input with submission handling
+ * - AI-generated answer display with inline citations
+ * - Empty state with call-to-action
+ * - Loading state with animated spinner
+ * - Error state with user-friendly messaging
+ * - Bidirectional citation highlighting (click/hover)
+ * - Research metadata display (timing, model info)
+ *
+ * @component
+ * @param {Object} props - Component props
+ * @param {string} [props.query] - Current research query text
+ * @param {string} [props.answer] - AI-generated answer text with citation markers (e.g., "[1]", "[2]")
+ * @param {Array<Object>} [props.references] - Array of source document references cited in the answer
+ * @param {Object} [props.metadata] - Research metadata including timing and model information
+ * @param {number} [props.metadata.total_time] - Total research time in seconds
+ * @param {number} [props.metadata.search_time] - Document search time in seconds
+ * @param {number} [props.metadata.llm_time] - LLM inference time in seconds
+ * @param {string} [props.metadata.model] - LLM model used for generation
+ * @param {boolean} [props.isLoading=false] - Whether a research request is in progress
+ * @param {Object|string} [props.error] - Error object or message if research failed
+ * @param {string} [props.error.message] - Error message text
+ * @param {Function} props.onQuerySubmit - Callback when user submits a query
+ * @param {number} [props.activeReference] - Currently highlighted reference ID (1-indexed)
+ * @param {Function} [props.onCitationClick] - Callback when user clicks a citation link
+ * @param {Function} [props.onCitationHover] - Callback when user hovers over a citation link
+ *
+ * @returns {JSX.Element} The rendered research panel
+ *
+ * @example
+ * // Basic usage with empty state
+ * <ResearchPanel
+ *   onQuerySubmit={(query) => handleResearch(query)}
+ *   isLoading={false}
+ * />
+ *
+ * @example
+ * // With research results and citation handlers
+ * <ResearchPanel
+ *   query="What is ColPali?"
+ *   answer="ColPali is a document retrieval model [1] that uses vision transformers [2]."
+ *   references={[
+ *     {
+ *       id: 1,
+ *       filename: "colpali_paper.pdf",
+ *       page: 1,
+ *       thumbnail_path: "/thumbnails/doc1_page1.jpg"
+ *     },
+ *     {
+ *       id: 2,
+ *       filename: "vision_transformers.pdf",
+ *       page: 3,
+ *       thumbnail_path: "/thumbnails/doc2_page3.jpg"
+ *     }
+ *   ]}
+ *   metadata={{
+ *     total_time: 2.5,
+ *     search_time: 0.239,
+ *     llm_time: 2.1,
+ *     model: "anthropic/claude-3-5-sonnet-20241022"
+ *   }}
+ *   isLoading={false}
+ *   activeReference={1}
+ *   onQuerySubmit={(newQuery) => handleResearch(newQuery)}
+ *   onCitationClick={(refId) => scrollToReference(refId)}
+ *   onCitationHover={(refId) => setActiveReference(refId)}
+ * />
+ *
+ * @example
+ * // Loading state
+ * <ResearchPanel
+ *   query="What is ColPali?"
+ *   isLoading={true}
+ *   onQuerySubmit={handleResearch}
+ * />
+ *
+ * @example
+ * // Error state
+ * <ResearchPanel
+ *   error={{ message: "Failed to connect to research API" }}
+ *   onQuerySubmit={handleResearch}
+ *   isLoading={false}
+ * />
  */
 export default function ResearchPanel({
   query,

@@ -3,22 +3,98 @@ import { Component } from 'react'
 /**
  * ErrorBoundary - React error boundary component
  *
- * Catches JavaScript errors anywhere in the child component tree,
- * logs those errors, and displays a fallback UI.
+ * A React error boundary that catches JavaScript errors anywhere in the child component tree,
+ * logs error details to the console, and displays a user-friendly fallback UI with error details
+ * and recovery options. Implements React's error boundary lifecycle methods for robust error handling.
+ *
+ * Error boundaries catch errors during rendering, in lifecycle methods, and in constructors of the
+ * whole tree below them. They do NOT catch errors in event handlers, asynchronous code, or server-side
+ * rendering.
+ *
+ * @component
+ * @extends {Component}
+ *
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to wrap with error boundary protection
+ *
+ * @returns {JSX.Element} Either renders children normally or displays error fallback UI when an error is caught
+ *
+ * @example
+ * // Basic usage wrapping the entire app
+ * import ErrorBoundary from './components/ErrorBoundary';
+ *
+ * function App() {
+ *   return (
+ *     <ErrorBoundary>
+ *       <MainApp />
+ *     </ErrorBoundary>
+ *   );
+ * }
+ *
+ * @example
+ * // Wrapping specific feature sections
+ * function Dashboard() {
+ *   return (
+ *     <div>
+ *       <Header />
+ *       <ErrorBoundary>
+ *         <SearchFeature />
+ *       </ErrorBoundary>
+ *       <ErrorBoundary>
+ *         <ResearchFeature />
+ *       </ErrorBoundary>
+ *     </div>
+ *   );
+ * }
+ *
+ * @example
+ * // Nested error boundaries for granular error handling
+ * function Layout() {
+ *   return (
+ *     <ErrorBoundary>
+ *       <Sidebar />
+ *       <main>
+ *         <ErrorBoundary>
+ *           <ComplexFeature />
+ *         </ErrorBoundary>
+ *       </main>
+ *     </ErrorBoundary>
+ *   );
+ * }
  *
  * Wave 1 - Foundation Agent
  */
 class ErrorBoundary extends Component {
+  /**
+   * Initializes the ErrorBoundary component with error state
+   *
+   * @param {Object} props - Component props containing children to protect
+   */
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null, errorInfo: null }
   }
 
+  /**
+   * Static lifecycle method called when an error is thrown in a descendant component
+   *
+   * @static
+   * @param {Error} error - The error that was thrown
+   * @returns {Object} Updated state object to trigger fallback UI rendering
+   */
   static getDerivedStateFromError(error) {
     // Update state so the next render will show the fallback UI
     return { hasError: true }
   }
 
+  /**
+   * Lifecycle method called after an error has been thrown by a descendant component
+   * Logs error details and updates state with full error information for display
+   *
+   * @param {Error} error - The error that was thrown
+   * @param {Object} errorInfo - Object containing componentStack with information about component stack trace
+   * @param {string} errorInfo.componentStack - Stack trace showing which components threw the error
+   */
   componentDidCatch(error, errorInfo) {
     // Log error details to console
     console.error('ErrorBoundary caught an error:', error, errorInfo)
@@ -33,6 +109,12 @@ class ErrorBoundary extends Component {
     // e.g., Sentry.captureException(error)
   }
 
+  /**
+   * Resets the error boundary state to allow retry
+   * Called when user clicks "Try Again" button in the error UI
+   *
+   * @returns {void}
+   */
   handleReset = () => {
     // Reset error boundary state
     this.setState({ hasError: false, error: null, errorInfo: null })

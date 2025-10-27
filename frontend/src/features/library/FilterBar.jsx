@@ -14,10 +14,78 @@ import { useDocumentStore } from '../../stores/useDocumentStore.js';
 /**
  * FilterBar Component
  *
+ * Comprehensive filter bar with sorting, file type filtering, pagination, and upload controls.
+ * Integrates with Zustand document store for filter state management.
+ *
+ * Features:
+ * - Debounced search input (300ms delay, currently hidden)
+ * - Sort by: newest/oldest first, name A-Z/Z-A
+ * - File type filter: all, PDF, audio, office docs, text, images
+ * - Pagination with previous/next controls
+ * - Upload button (triggers manualUpload event)
+ * - Research page navigation
+ * - Clear filters button
+ *
  * @param {Object} props - Component props
- * @param {number} [props.totalCount=0] - Total number of documents
- * @param {Function} [props.onFilterChange] - Filter change callback
- * @returns {JSX.Element} Filter bar
+ * @param {number} [props.totalCount=0] - Total number of documents for pagination
+ * @param {Function} [props.onFilterChange] - Callback when filters change
+ * @param {Object} props.onFilterChange.filters - Updated filter object
+ * @param {string} props.onFilterChange.filters.search - Search query
+ * @param {string} props.onFilterChange.filters.sortBy - Sort option (newest_first | oldest_first | name_asc | name_desc)
+ * @param {string} props.onFilterChange.filters.fileTypeGroup - File type filter (all | pdf | audio | office | text | images)
+ * @param {number} props.onFilterChange.filters.limit - Items per page
+ * @param {number} props.onFilterChange.filters.offset - Pagination offset
+ * @returns {JSX.Element} Filter bar component
+ * @example
+ * // Basic usage with filter change callback
+ * import FilterBar from './features/library/FilterBar';
+ * import { useState } from 'react';
+ *
+ * function LibraryPage() {
+ *   const [documents, setDocuments] = useState([]);
+ *   const [totalCount, setTotalCount] = useState(0);
+ *
+ *   const handleFilterChange = async (filters) => {
+ *     // Fetch documents with new filters
+ *     const response = await fetchDocuments(filters);
+ *     setDocuments(response.documents);
+ *     setTotalCount(response.total);
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <FilterBar
+ *         totalCount={totalCount}
+ *         onFilterChange={handleFilterChange}
+ *       />
+ *       <DocumentGrid documents={documents} />
+ *     </div>
+ *   );
+ * }
+ *
+ * @example
+ * // Using with Zustand store (filters automatically synced)
+ * import FilterBar from './features/library/FilterBar';
+ * import { useDocumentStore } from './stores/useDocumentStore';
+ *
+ * function LibraryPage() {
+ *   const documents = useDocumentStore((state) => state.documents);
+ *   const totalCount = useDocumentStore((state) => state.totalCount);
+ *   const filters = useDocumentStore((state) => state.filters);
+ *
+ *   const handleFilterChange = async (newFilters) => {
+ *     // Filters are already updated in store via FilterBar
+ *     // Just fetch new data
+ *     await fetchDocuments(newFilters);
+ *   };
+ *
+ *   return (
+ *     <FilterBar
+ *       totalCount={totalCount}
+ *       onFilterChange={handleFilterChange}
+ *     />
+ *   );
+ * }
  */
 export default function FilterBar({ totalCount = 0, onFilterChange }) {
   const filters = useDocumentStore((state) => state.filters);

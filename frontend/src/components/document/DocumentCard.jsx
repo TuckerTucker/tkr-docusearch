@@ -74,8 +74,19 @@ function getDisplayName(filename) {
 
 /**
  * Thumbnail Component
+ *
+ * Renders document or audio file thumbnails with appropriate loading states and fallbacks.
+ * Supports lazy loading optimization and handles image load errors gracefully.
+ *
+ * @param {Object} props - Component props
+ * @param {string} [props.url] - Thumbnail image URL
+ * @param {string} props.filename - Filename for alt text
+ * @param {('document'|'audio')} props.variant - Card variant determining thumbnail dimensions
+ * @param {('uploading'|'processing'|'completed'|'failed')} props.status - Document processing status
+ * @param {boolean} [props.priority=false] - Whether to load image eagerly with high priority
+ * @returns {JSX.Element} Thumbnail image or placeholder
  */
-function Thumbnail({ url, filename, variant, status }) {
+function Thumbnail({ url, filename, variant, status, priority = false }) {
   const extension = getFileExtension(filename);
 
   // Loading or processing states
@@ -119,7 +130,8 @@ function Thumbnail({ url, filename, variant, status }) {
         src={url}
         alt={`Thumbnail for ${filename}`}
         className="document-card__thumbnail"
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        fetchpriority={priority ? 'high' : 'auto'}
         onError={(e) => {
           e.target.style.backgroundColor = '#E9E9E9';
           e.target.alt = `No preview available for ${filename}`;
@@ -162,6 +174,14 @@ function Thumbnail({ url, filename, variant, status }) {
 
 /**
  * Processing Info Component
+ *
+ * Displays processing status with optional progress bar for documents being uploaded or processed.
+ * Includes loading spinner and accessible ARIA attributes for screen readers.
+ *
+ * @param {Object} props - Component props
+ * @param {string} [props.stage] - Current processing stage label (e.g., "Uploading...", "Generating embeddings...")
+ * @param {number} [props.progress] - Progress value between 0 and 1 (e.g., 0.75 = 75%)
+ * @returns {JSX.Element} Processing status display with spinner and optional progress bar
  */
 function ProcessingInfo({ stage, progress }) {
   return (
@@ -193,6 +213,13 @@ function ProcessingInfo({ stage, progress }) {
 
 /**
  * Error Info Component
+ *
+ * Displays error message for failed document uploads or processing.
+ * Includes error icon with accessible ARIA label.
+ *
+ * @param {Object} props - Component props
+ * @param {string} [props.message] - Error message to display (defaults to "Upload failed")
+ * @returns {JSX.Element} Error status display with icon and message
  */
 function ErrorInfo({ message }) {
   return (
@@ -224,21 +251,84 @@ function ErrorInfo({ message }) {
 /**
  * DocumentCard Component
  *
+ * Displays a document information card with thumbnail, badge, and action button.
+ * Supports two variants (document: tall 385x285, audio: square 300x300) and four states
+ * (uploading, processing, completed, failed). Provides delete functionality and navigation
+ * to document details page.
+ *
  * @param {Object} props - Component props
- * @param {Object} props.document - Document data
- * @param {string} props.document.doc_id - Document ID
- * @param {string} props.document.filename - Filename
- * @param {string} props.document.file_type - File type/extension
- * @param {string} props.document.upload_date - Upload date
- * @param {string} [props.document.thumbnail_url] - Thumbnail image URL
- * @param {string} [props.document.cover_art_url] - Cover art URL (audio files)
- * @param {string} [props.document.status='completed'] - Document status
- * @param {string} [props.document.error_message] - Error message (if failed)
- * @param {Function} [props.onDelete] - Delete handler (called with doc_id, filename)
- * @param {Function} [props.onViewDetails] - View details handler
- * @returns {JSX.Element} Document card
+ * @param {Object} props.document - Document data object
+ * @param {string} props.document.doc_id - Unique document identifier
+ * @param {string} props.document.filename - Full filename with extension
+ * @param {string} props.document.file_type - File type/extension (e.g., 'pdf', 'mp3')
+ * @param {string} props.document.upload_date - ISO 8601 upload timestamp
+ * @param {string} [props.document.thumbnail_url] - Thumbnail image URL (document files)
+ * @param {string} [props.document.cover_art_url] - Cover art URL (audio files, takes precedence)
+ * @param {('uploading'|'processing'|'completed'|'failed')} [props.document.status='completed'] - Document processing status
+ * @param {string} [props.document.error_message] - Error message displayed when status is 'failed'
+ * @param {string} [props.document.processing_stage] - Current processing stage label (e.g., "Generating embeddings...")
+ * @param {number} [props.document.processing_progress] - Processing progress (0-1)
+ * @param {Function} [props.onDelete] - Delete handler called with (doc_id, filename)
+ * @param {Function} [props.onViewDetails] - View details handler (currently unused, navigation via Link)
+ * @param {boolean} [props.priority=false] - Whether to prioritize loading this card's image (for above-fold cards)
+ * @returns {JSX.Element} Document card article element
+ *
+ * @example
+ * // Completed document card with delete handler
+ * import DocumentCard from './components/document/DocumentCard';
+ *
+ * function Library() {
+ *   const handleDelete = async (docId, filename) => {
+ *     await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+ *     // Refresh document list
+ *   };
+ *
+ *   return (
+ *     <DocumentCard
+ *       document={{
+ *         doc_id: '123',
+ *         filename: 'report.pdf',
+ *         file_type: 'pdf',
+ *         upload_date: '2025-10-26T12:00:00Z',
+ *         thumbnail_url: '/thumbnails/report_page_0.png',
+ *         status: 'completed'
+ *       }}
+ *       onDelete={handleDelete}
+ *       priority={true}
+ *     />
+ *   );
+ * }
+ *
+ * @example
+ * // Processing audio file card
+ * <DocumentCard
+ *   document={{
+ *     doc_id: '456',
+ *     filename: 'podcast.mp3',
+ *     file_type: 'mp3',
+ *     upload_date: '2025-10-26T13:00:00Z',
+ *     cover_art_url: '/covers/podcast_cover.png',
+ *     status: 'processing',
+ *     processing_stage: 'Generating embeddings...',
+ *     processing_progress: 0.65
+ *   }}
+ * />
+ *
+ * @example
+ * // Failed upload card
+ * <DocumentCard
+ *   document={{
+ *     doc_id: '789',
+ *     filename: 'broken.pdf',
+ *     file_type: 'pdf',
+ *     upload_date: '2025-10-26T14:00:00Z',
+ *     status: 'failed',
+ *     error_message: 'File corrupted or unsupported format'
+ *   }}
+ *   onDelete={handleDelete}
+ * />
  */
-export default function DocumentCard({ document, onDelete, onViewDetails }) {
+export default function DocumentCard({ document, onDelete, onViewDetails, priority = false }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const {
     doc_id,
@@ -292,6 +382,7 @@ export default function DocumentCard({ document, onDelete, onViewDetails }) {
           filename={filename}
           variant={variant}
           status={status}
+          priority={priority}
         />
         <DocumentBadge filename={filename} uploadDate={upload_date} />
 
