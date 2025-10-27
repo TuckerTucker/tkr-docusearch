@@ -105,11 +105,40 @@ export default function ResearchPanel({
   activeReference,
   onCitationClick,
   onCitationHover,
+  onDownloadReport,
 }) {
   return (
     <div className="research-panel">
       <div className="research-panel__input">
         <QueryInput onSubmit={onQuerySubmit} isLoading={isLoading} />
+
+        {/* Download button - only show when answer exists */}
+        {answer && !isLoading && !error && (
+          <button
+            type="button"
+            className="research-panel__download-btn"
+            onClick={onDownloadReport}
+            title="Download Full Report"
+            aria-label="Download research report as markdown file"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Download Report</span>
+          </button>
+        )}
       </div>
 
       <div className="research-panel__content">
@@ -221,4 +250,5 @@ ResearchPanel.propTypes = {
   activeReference: PropTypes.number,
   onCitationClick: PropTypes.func,
   onCitationHover: PropTypes.func,
+  onDownloadReport: PropTypes.func,
 }

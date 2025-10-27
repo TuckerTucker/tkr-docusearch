@@ -3,6 +3,7 @@ import { useResearch } from '../hooks/useResearch.js'
 import ResearchPanel from '../features/research/ResearchPanel.jsx'
 import ReferencesPanel from '../features/research/ReferencesPanel.jsx'
 import InferenceDebugPanel from '../components/research/InferenceDebugPanel.jsx'
+import { downloadResearchMarkdown } from '../utils/download.js'
 
 /**
  * ResearchExploreView - Experimental duplicate of ResearchView for exploring functionality
@@ -100,6 +101,15 @@ export default function ResearchExploreView() {
     }
   }, [])
 
+  /**
+   * Handle download research report
+   */
+  const handleDownloadReport = useCallback(() => {
+    if (answer && query) {
+      downloadResearchMarkdown(query, answer, references, metadata)
+    }
+  }, [query, answer, references, metadata])
+
   // Clear active reference when answer changes
   useEffect(() => {
     setActiveReference(null)
@@ -121,6 +131,7 @@ export default function ResearchExploreView() {
             activeReference={activeReference}
             onCitationClick={handleCitationClick}
             onCitationHover={handleCitationHover}
+            onDownloadReport={handleDownloadReport}
           />
 
           {/* Inference Debug Panel - shows full LLM flow */}

@@ -30,7 +30,7 @@ export function useResearch() {
     ask: mutation.mutateAsync,
     answer: mutation.data?.answer || null,
     references: mutation.data?.sources || [], // API returns 'sources' not 'references'
-    query: mutation.data?.query || null,
+    query: mutation.variables || mutation.data?.query || null, // Use submitted query (mutation.variables) as fallback
     metadata: mutation.data?.metadata || null, // Full metadata object
     model: mutation.data?.metadata?.model_used || null, // Backward compatibility
     isLoading: mutation.isPending,
