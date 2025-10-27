@@ -32,7 +32,7 @@ export default function LibraryView() {
 
   // Get filters from store
   const filters = useDocumentStore((state) => state.filters);
-  const tempDocuments = useDocumentStore((state) => state.tempDocuments);
+  // Only subscribe to version number to trigger re-renders (avoid Map reference issues)
   const tempDocumentsVersion = useDocumentStore((state) => state.tempDocumentsVersion);
   const getTempDocument = useCallback((doc_id) => {
     return useDocumentStore.getState().tempDocuments.get(doc_id);
@@ -42,6 +42,7 @@ export default function LibraryView() {
   }, []);
   const removeTempDocument = useDocumentStore((state) => state.removeTempDocument);
   const setTempDocumentStatus = useDocumentStore((state) => state.setTempDocumentStatus);
+  const updateTempDocument = useDocumentStore((state) => state.updateTempDocument);
   const updateTempDocumentProgress = useDocumentStore(
     (state) => state.updateTempDocumentProgress
   );
@@ -59,8 +60,11 @@ export default function LibraryView() {
 
   // Merge real documents with temp documents for optimistic UI
   const mergedDocuments = useMemo(() => {
+    // Get fresh temp documents from store (avoid stale closure)
+    const currentTempDocs = useDocumentStore.getState().tempDocuments;
+
     // Convert temp documents Map to array
-    const tempDocs = Array.from(tempDocuments.entries()).map(([tempId, data]) => ({
+    const tempDocs = Array.from(currentTempDocs.entries()).map(([tempId, data]) => ({
       temp_id: tempId,
       doc_id: tempId,
       filename: data.filename,
@@ -73,7 +77,7 @@ export default function LibraryView() {
 
     // Merge temp docs at the beginning (newest first)
     return [...tempDocs, ...(documents || [])];
-  }, [documents, tempDocuments, tempDocumentsVersion]); // Re-render when temp documents change
+  }, [documents, tempDocumentsVersion]); // Only depend on version number, not the Map itself
 
   // WebSocket for real-time document status updates
   const { isConnected, registerUploadBatch } = useWebSocket(WS_URL, {
@@ -123,12 +127,14 @@ export default function LibraryView() {
                 removeTempDocument(doc_id);
                 refetch();
               } else if (status === 'processing' || status === 'parsing' || status === 'embedding_visual' || status === 'embedding_text' || status === 'storing') {
-                // Update status, stage, and progress (all processing states)
+                // Update status, stage, and progress (all processing states) in single atomic operation
                 console.log('🔄 Updating temp document:', { doc_id: doc_id?.slice(0, 8), status: 'processing', stage, progress });
-                setTempDocumentStatus(doc_id, 'processing', stage);
-                if (progress !== undefined) {
-                  updateTempDocumentProgress(doc_id, Math.round(progress * 100));
-                }
+                const updates = {
+                  status: 'processing',
+                  ...(stage && { stage }),
+                  ...(progress !== undefined && { progress: Math.round(progress * 100) }),
+                };
+                updateTempDocument(doc_id, updates);
               } else if (status === 'failed') {
                 // Mark as failed
                 console.log('❌ Document failed');
@@ -148,8 +154,7 @@ export default function LibraryView() {
         getTempDocument,
         getTempDocumentCount,
         removeTempDocument,
-        setTempDocumentStatus,
-        updateTempDocumentProgress,
+        updateTempDocument,
         refetch,
       ]
     ),

@@ -116,6 +116,22 @@ export const useDocumentStore = create(
           };
         }),
 
+      updateTempDocument: (doc_id, updates) =>
+        set((state) => {
+          const newMap = new Map(state.tempDocuments);
+          const doc = newMap.get(doc_id);
+          if (doc) {
+            newMap.set(doc_id, {
+              ...doc,
+              ...updates,
+            });
+          }
+          return {
+            tempDocuments: newMap,
+            tempDocumentsVersion: state.tempDocumentsVersion + 1
+          };
+        }),
+
       removeTempDocument: (tempId) =>
         set((state) => {
           const newMap = new Map(state.tempDocuments);

@@ -30,8 +30,7 @@ export function useActiveProcessing(options = {}) {
   const { enabled = true, refetchInterval = 5000 } = options;
 
   const addTempDocument = useDocumentStore((state) => state.addTempDocument);
-  const setTempDocumentStatus = useDocumentStore((state) => state.setTempDocumentStatus);
-  const updateTempDocumentProgress = useDocumentStore((state) => state.updateTempDocumentProgress);
+  const updateTempDocument = useDocumentStore((state) => state.updateTempDocument);
 
   // Fetch active processing queue
   const query = useQuery({
@@ -75,17 +74,23 @@ export function useActiveProcessing(options = {}) {
       const existingTempDoc = useDocumentStore.getState().tempDocuments.get(doc_id);
 
       if (!existingTempDoc) {
-        // Add new temp document
+        // Add new temp document with initial state
         console.log(`[useActiveProcessing] Adding temp doc: ${filename} (${doc_id.slice(0, 8)}...)`);
         addTempDocument(doc_id, filename);
-      }
 
-      // Update status and progress
-      const normalizedProgress = Math.round((progress || 0) * 100);
-      setTempDocumentStatus(doc_id, status, stage);
-      updateTempDocumentProgress(doc_id, normalizedProgress);
+        // Only set initial state for newly added documents
+        // Don't overwrite existing documents - WebSocket provides fresher updates
+        const normalizedProgress = Math.round((progress || 0) * 100);
+        const updates = {
+          status,
+          ...(stage && { stage }),
+          progress: normalizedProgress,
+        };
+        updateTempDocument(doc_id, updates);
+      }
+      // If document already exists, don't update it - WebSocket has fresher data
     });
-  }, [query.data, addTempDocument, setTempDocumentStatus, updateTempDocumentProgress]);
+  }, [query.data, addTempDocument, updateTempDocument]);
 
   return {
     activeDocuments: query.data?.queue || [],
