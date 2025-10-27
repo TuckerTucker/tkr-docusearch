@@ -265,3 +265,116 @@ def pytest_report_header(config):
         pass
 
     return header
+
+
+# ============================================================================
+# Wave 2 Audio Processing Fixtures (Embedding Engine & Storage)
+# ============================================================================
+
+
+@pytest.fixture
+def embedding_engine_instance():
+    """Create a mock embedding engine for testing.
+
+    Returns a mock that provides the interface expected by DocumentProcessor.
+    """
+    from unittest.mock import Mock
+
+    engine = Mock()
+
+    # Mock embed_images method
+    def mock_embed_images(images, **kwargs):
+        """Mock image embedding."""
+        return {
+            "embeddings": [np.random.randn(128).astype(np.float32) for _ in images],
+            "cls_token": np.random.randn(128).astype(np.float32),
+            "num_images": len(images),
+        }
+
+    # Mock embed_text method
+    def mock_embed_text(texts, **kwargs):
+        """Mock text embedding."""
+        return {
+            "embeddings": [np.random.randn(128).astype(np.float32) for _ in texts],
+            "num_chunks": len(texts),
+        }
+
+    # Mock embed_query method
+    def mock_embed_query(query, **kwargs):
+        """Mock query embedding."""
+        return {
+            "embeddings": np.random.randn(128).astype(np.float32),
+            "cls_token": np.random.randn(128).astype(np.float32),
+        }
+
+    engine.embed_images = mock_embed_images
+    engine.embed_text = mock_embed_text
+    engine.embed_query = mock_embed_query
+
+    return engine
+
+
+@pytest.fixture
+def storage_client_instance(tmp_path):
+    """Create a mock storage client for testing.
+
+    Returns a mock that provides the interface expected by DocumentProcessor.
+    """
+    from unittest.mock import Mock
+
+    client = Mock()
+
+    # Track stored data
+    client._stored_data = {
+        "visual": [],
+        "text": [],
+    }
+
+    # Mock get_collection method
+    def mock_get_collection(name):
+        """Mock getting a collection."""
+        collection = Mock()
+
+        if name == "text":
+
+            def get_where(where=None):
+                """Mock getting data with filter."""
+                if where is None:
+                    return {"metadatas": client._stored_data["text"]}
+
+                # Filter by metadata
+                filtered = [
+                    m
+                    for m in client._stored_data["text"]
+                    if all(m.get(k) == v for k, v in where.items())
+                ]
+                return {
+                    "ids": [m.get("id") for m in filtered],
+                    "metadatas": filtered,
+                    "documents": [m.get("text") for m in filtered],
+                }
+
+            collection.get = get_where
+
+        return collection
+
+    # Mock add method
+    def mock_add(ids, embeddings, metadatas, documents, collection_name, **kwargs):
+        """Mock adding data to storage."""
+        if collection_name == "text":
+            for id_, meta, doc in zip(ids, metadatas, documents):
+                data = dict(meta)
+                data["id"] = id_
+                data["text"] = doc
+                client._stored_data["text"].append(data)
+        elif collection_name == "visual":
+            for id_, meta in zip(ids, metadatas):
+                data = dict(meta)
+                data["id"] = id_
+                client._stored_data["visual"].append(data)
+
+    client.client = Mock()
+    client.client.get_collection = mock_get_collection
+    client.add = mock_add
+
+    return client

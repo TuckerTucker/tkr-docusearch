@@ -359,18 +359,21 @@ def create_pipeline_options(config: EnhancedModeConfig):
 
 @dataclass
 class AsrConfig:
-    """Configuration for Automatic Speech Recognition (Whisper).
+    """Configuration for Custom MLX-Whisper transcription.
 
-    Controls Whisper ASR settings for MP3/WAV audio file transcription.
+    Controls custom whisper ASR settings for MP3/WAV audio file transcription.
     All settings have sensible defaults and can be overridden via environment
     variables.
+
+    This configuration is used by the custom whisper implementation
+    (src/processing/whisper/transcriber.py) and replaces Docling's ASR system.
 
     Attributes:
         enabled: Whether ASR processing is enabled
         model: Whisper model to use (turbo, base, small, medium, large)
         language: Language code or "auto" for detection
         device: Compute device (mps, cpu, cuda)
-        word_timestamps: Enable word-level timestamps
+        word_timestamps: Enable word-level timestamps (MUST be True)
         temperature: Sampling temperature for generation (0.0 = deterministic)
         max_time_chunk: Maximum audio chunk duration (seconds)
         max_caption_duration: Maximum duration for a single caption (seconds)
@@ -395,6 +398,26 @@ class AsrConfig:
 
     def __post_init__(self):
         """Validate configuration values."""
+        # Call validate method for comprehensive checks
+        self.validate()
+
+    def validate(self) -> None:
+        """
+        Validate configuration values (IC-003 requirement).
+
+        Enforces all configuration constraints including the critical
+        word_timestamps=True requirement for custom whisper integration.
+
+        Raises:
+            ValueError: If configuration is invalid
+        """
+        # CRITICAL: Enforce word_timestamps=True (IC-003 requirement)
+        if not self.word_timestamps:
+            raise ValueError(
+                "word_timestamps must be True for custom whisper integration. "
+                "Word-level timestamps are required for timestamp extraction and VTT generation."
+            )
+
         # Validate model
         valid_models = ["turbo", "base", "small", "medium", "large"]
         if self.model not in valid_models:
@@ -438,87 +461,59 @@ class AsrConfig:
                 f"target_chars_per_second must be positive, got {self.target_chars_per_second}"
             )
 
-    def to_docling_model_spec(self):
-        """Convert to Docling ASR model specification.
+    def to_whisper_kwargs(self) -> dict:
+        """
+        Convert to kwargs for mlx_whisper.transcribe() (IC-003 requirement).
+
+        This method generates parameters suitable for direct MLX-Whisper integration,
+        replacing the Docling-specific to_docling_model_spec() method.
 
         Returns:
-            InlineAsrMlxWhisperOptions for MPS (Apple Silicon) or
-            InlineAsrNativeWhisperOptions for CPU/CUDA
+            Dict suitable for passing to mlx_whisper.transcribe():
+            {
+                "path_or_hf_repo": str,  # Model HuggingFace repo
+                "language": str | None,   # Language or None for auto
+                "word_timestamps": bool,  # MUST be True
+                "temperature": float,     # Sampling temp
+                "fp16": bool,             # Precision (False for MPS)
+            }
 
-        Raises:
-            ImportError: If Docling ASR modules not available
+        Examples:
+            >>> config = AsrConfig(model="turbo", language="en")
+            >>> kwargs = config.to_whisper_kwargs()
+            >>> result = mlx_whisper.transcribe("audio.mp3", **kwargs)
         """
-        try:
-            from docling.datamodel.accelerator_options import AcceleratorDevice
-            from docling.datamodel.pipeline_options_asr_model import (
-                InlineAsrMlxWhisperOptions,
-                InlineAsrNativeWhisperOptions,
+        # MLX Whisper HuggingFace repo mapping
+        model_mapping = {
+            "turbo": "mlx-community/whisper-large-v3-turbo",
+            "base": "mlx-community/whisper-base-mlx",
+            "small": "mlx-community/whisper-small-mlx",
+            "medium": "mlx-community/whisper-medium-mlx",
+            "large": "mlx-community/whisper-large-v3-mlx",
+        }
+
+        # Get model repo ID
+        repo_id = model_mapping.get(self.model)
+        if not repo_id:
+            raise ValueError(
+                f"Invalid model: {self.model}. Must be one of {list(model_mapping.keys())}"
             )
-        except ImportError as e:
-            raise ImportError(
-                "Docling ASR not installed. Install with: pip install docling[asr]"
-            ) from e
 
-        # Select accelerator device based on configuration
-        if self.device.lower() == "mps":
-            accelerator_device = AcceleratorDevice.MPS
-        elif self.device.lower() == "cuda":
-            accelerator_device = AcceleratorDevice.CUDA
+        # Build kwargs
+        kwargs = {
+            "path_or_hf_repo": repo_id,
+            "word_timestamps": self.word_timestamps,
+            "temperature": self.temperature,
+            "fp16": False,  # MPS optimization (no fp16 on Apple Silicon)
+        }
+
+        # Only include language if not "auto" (None triggers auto-detection)
+        if self.language and self.language.lower() != "auto":
+            kwargs["language"] = self.language
         else:
-            accelerator_device = AcceleratorDevice.CPU
+            kwargs["language"] = None
 
-        # MLX Whisper support added in Docling 2.58.0 (PR #2366)
-        # Use InlineAsrMlxWhisperOptions for MPS (Apple Silicon) - provides 19x performance
-        # Use InlineAsrNativeWhisperOptions for CPU/CUDA (PyTorch Whisper)
-        if accelerator_device == AcceleratorDevice.MPS:
-            # MLX Whisper for Apple Silicon - uses mlx-community HuggingFace repos
-            mlx_model_map = {
-                "turbo": "mlx-community/whisper-large-v3-turbo",
-                "base": "mlx-community/whisper-base-mlx",
-                "small": "mlx-community/whisper-small-mlx",
-                "medium": "mlx-community/whisper-medium-mlx",
-                "large": "mlx-community/whisper-large-v3-mlx",
-            }
-            repo_id = mlx_model_map[self.model]
-
-            kwargs = {
-                "repo_id": repo_id,
-                "word_timestamps": self.word_timestamps,
-                "temperature": self.temperature,
-                "max_time_chunk": self.max_time_chunk,
-                "supported_devices": [AcceleratorDevice.MPS],
-                "task": "transcribe",  # MLX-specific parameter
-            }
-
-            # Only include language if not "auto"
-            if self.language != "auto":
-                kwargs["language"] = self.language
-
-            return InlineAsrMlxWhisperOptions(**kwargs)
-        else:
-            # Native PyTorch Whisper for CPU/CUDA - uses standard model names
-            native_model_map = {
-                "turbo": "turbo",
-                "base": "base",
-                "small": "small",
-                "medium": "medium",
-                "large": "large",
-            }
-            repo_id = native_model_map[self.model]
-
-            kwargs = {
-                "repo_id": repo_id,
-                "word_timestamps": self.word_timestamps,
-                "temperature": self.temperature,
-                "max_time_chunk": self.max_time_chunk,
-                "supported_devices": [accelerator_device],
-            }
-
-            # Only include language if not "auto"
-            if self.language != "auto":
-                kwargs["language"] = self.language
-
-            return InlineAsrNativeWhisperOptions(**kwargs)
+        return kwargs
 
     @staticmethod
     def _parse_float_env(var_name: str, default: float) -> float:

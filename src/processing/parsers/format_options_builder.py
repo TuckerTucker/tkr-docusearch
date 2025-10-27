@@ -65,42 +65,45 @@ class FormatOptionsBuilder:
         """
         Build audio format options with ASR configuration.
 
+        Note: As of 2025-10-27, audio files (.mp3, .wav) are routed to custom MLX-Whisper
+        BEFORE reaching this method (see docling_parser.py:486). This method is kept for
+        backward compatibility with .vtt files but is no longer used for MP3/WAV.
+
         Args:
             file_path: Path to audio file
 
         Returns:
-            Dict with audio format options
+            Dict with audio format options (empty for MP3/WAV, handled by custom whisper)
         """
+        ext = Path(file_path).suffix.lower()
+
+        # MP3/WAV files are handled by custom whisper, not Docling ASR
+        if ext in [".mp3", ".wav"]:
+            logger.info(
+                f"Audio file {ext} routed to custom MLX-Whisper (see docling_parser.py:486)"
+            )
+            return {}
+
+        # VTT files can still use Docling processing if needed
         from docling.datamodel.base_models import InputFormat
         from docling.datamodel.pipeline_options import AsrPipelineOptions
         from docling.document_converter import AudioFormatOption
         from docling.pipeline.asr_pipeline import AsrPipeline
 
-        from src.config.processing_config import AsrConfig
-
         try:
-            # Load ASR configuration
-            asr_config = AsrConfig.from_env()
+            # For non-MP3/WAV audio formats (like .vtt), use Docling ASR as fallback
+            asr_pipeline_options = AsrPipelineOptions()
+            # Note: asr_options intentionally left at defaults since custom whisper handles main audio
 
-            if asr_config.enabled:
-                logger.info(f"Configuring ASR pipeline with model={asr_config.model}")
-
-                # Create Docling ASR options
-                asr_pipeline_options = AsrPipelineOptions()
-                asr_pipeline_options.asr_options = asr_config.to_docling_model_spec()
-
-                # Add to format options
-                return {
-                    InputFormat.AUDIO: AudioFormatOption(
-                        pipeline_cls=AsrPipeline, pipeline_options=asr_pipeline_options
-                    )
-                }
-            else:
-                logger.warning(f"ASR disabled, audio file {file_path} will have minimal processing")
-                return {}
+            # Add to format options
+            return {
+                InputFormat.AUDIO: AudioFormatOption(
+                    pipeline_cls=AsrPipeline, pipeline_options=asr_pipeline_options
+                )
+            }
 
         except Exception as e:
-            logger.error(f"Failed to configure ASR: {e}")
+            logger.error(f"Failed to configure ASR for {ext}: {e}")
             return {}
 
     @staticmethod
