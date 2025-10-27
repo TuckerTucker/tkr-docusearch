@@ -21,6 +21,7 @@ services:
       - WORKER_HOST=host.docker.internal
       - WORKER_PORT=8002
       - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     networks:
       - docusearch
     depends_on:

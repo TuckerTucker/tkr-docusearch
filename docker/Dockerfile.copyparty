@@ -63,20 +63,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # ============================================================================
 # Run Copyparty
 # ============================================================================
-CMD ["copyparty", \
-    "--http-only", \
-    "-p", "8000", \
-    "-i", "0.0.0.0", \
-    "--no-robots", \
-    "--no-readme", \
-    "-e2dsa", \
-    "-a", "admin:admin", \
-    "-a", "uploader:docusearch2024", \
-    "--xau", "/hooks/on_upload.py", \
-    "--xad", "/hooks/on_delete.py", \
-    "--acao", "*", \
-    "--acam", "GET,POST,PUT,DELETE,OPTIONS", \
-    "-v", "/uploads:uploads:r:rwmd,admin:rw,uploader"]
+# Use shell form to expand ALLOWED_ORIGINS environment variable
+# Copyparty expects comma-separated origins in a single argument
+CMD ["/bin/sh", "-c", "copyparty --http-only -p 8000 -i 0.0.0.0 --no-robots --no-readme -e2dsa -a admin:admin -a uploader:docusearch2024 --xau /hooks/on_upload.py --xad /hooks/on_delete.py --acao \"${ALLOWED_ORIGINS}\" --acam GET,POST,PUT,DELETE,OPTIONS -v /uploads:uploads:r:rwmd,admin:rw,uploader"]
 
 # ============================================================================
 # Usage
