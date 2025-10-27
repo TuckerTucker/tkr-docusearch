@@ -164,6 +164,9 @@ class QueueItem(BaseModel):
     progress: float = Field(..., ge=0.0, le=1.0, description="Progress value between 0.0 and 1.0")
     elapsed_time: float = Field(..., ge=0.0, description="Seconds elapsed since processing started")
     timestamp: datetime = Field(..., description="Last update time in ISO 8601 format (UTC)")
+    error: Optional[str] = Field(
+        None, description="Error message if status is 'failed', null otherwise"
+    )
 
     class Config:
         """Pydantic model configuration."""

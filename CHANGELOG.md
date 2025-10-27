@@ -34,7 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CORS wildcard headers removed, using environment-based whitelist
 - Cryptographic algorithms upgraded from MD5 to SHA-256
 
-## [0.11.0] - 2025-10-21
 
 ### Added
 - React 19 SPA migration complete with 76 components and feature parity with legacy frontend

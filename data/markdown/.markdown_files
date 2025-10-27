@@ -1,0 +1,9 @@
+# Markdown Storage Directory
+#
+# This directory stores full markdown exports of processed documents.
+# Files are named using the document's SHA-256 hash (doc_id).
+#
+# Format: {doc_id}.md (64-character hex)
+# Example: abc123def456...789.md
+#
+# See: .context-kit/orchestration/markdown-storage-export/integration-contracts/markdown-storage-contract.md

@@ -18,6 +18,10 @@ CLAUDE.local.md
 .archive
 
 # ============================================================================
+# Node.js
+# ============================================================================
+node_modules
+# ============================================================================
 # Data Directories
 # ============================================================================
 # Uploaded documents
@@ -41,8 +45,9 @@ data/copyparty/
 # Page images and thumbnails
 data/page_images/
 
-# Extracted markdown
-data/markdown/
+# Markdown exports (track directory structure, not content)
+data/markdown/*.md
+!data/markdown/.gitkeep
 
 # ============================================================================
 # Python

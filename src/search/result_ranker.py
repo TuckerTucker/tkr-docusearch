@@ -251,7 +251,6 @@ class ResultRanker:
             "filename": metadata.get("filename", ""),
             "page": metadata.get("page", 0),
             "source_path": metadata.get("source_path", ""),
-            "thumbnail_url": self._generate_thumbnail_url(candidate["id"], metadata),
             "text_preview": metadata.get("text_preview"),
             "highlights": self._extract_highlights(metadata) if include_highlights else [],
             "metadata": {

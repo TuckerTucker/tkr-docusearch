@@ -13,6 +13,7 @@ Wave 3 will integrate real implementations.
 
 from .docling_parser import DoclingParser, Page, ParsedDocument, ParsingError, TextChunk
 from .mocks import BatchEmbeddingOutput, MockEmbeddingEngine, MockStorageClient
+from .preview_generator import PreviewGenerator, PreviewResponse
 from .processor import (
     DocumentProcessor,
     EmbeddingError,
@@ -48,4 +49,7 @@ __all__ = [
     "MockEmbeddingEngine",
     "MockStorageClient",
     "BatchEmbeddingOutput",
+    # Preview generation (Wave 2, Agent 3)
+    "PreviewGenerator",
+    "PreviewResponse",
 ]

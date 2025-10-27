@@ -74,6 +74,7 @@ class ParsedDocument:
         pages: List of Page objects
         text_chunks: List of TextChunk objects
         metadata: Document-level metadata
+        docling_doc: Optional Docling document object (for markdown export)
     """
 
     filename: str
@@ -82,3 +83,4 @@ class ParsedDocument:
     pages: List[Page]
     text_chunks: List[TextChunk]
     metadata: Dict[str, Any]
+    docling_doc: Optional[Any] = None  # Docling document object

@@ -1,0 +1,310 @@
+/**
+ * DocuSearch UI Theme System
+ *
+ * shadcn/ui compatible theme with custom design tokens
+ * for document library components.
+ *
+ * Provider: shadcn/ui + custom design specs
+ * Format: OKLCH color space + HSL fallbacks
+ */
+
+/* ============================================================================
+   Base Theme (shadcn/ui compatible)
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* Base radius */
+    --radius: 0.65rem;
+
+    /* Core colors (OKLCH format) */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.141 0.005 285.823);
+
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.141 0.005 285.823);
+
+    --primary: oklch(0.623 0.214 259.815);
+    --primary-foreground: oklch(0.97 0.014 254.604);
+
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.21 0.006 285.885);
+
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.97 0.014 254.604);
+
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.623 0.214 259.815);
+
+    /* Chart colors */
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+
+    /* Sidebar colors */
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.623 0.214 259.815);
+    --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.623 0.214 259.815);
+  }
+
+  .dark {
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+
+    --card: oklch(0.21 0.006 285.885);
+    --card-foreground: oklch(0.985 0 0);
+
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
+
+    --primary: oklch(0.546 0.245 262.881);
+    --primary-foreground: oklch(0.379 0.146 265.522);
+
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.985 0 0);
+
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.488 0.243 264.376);
+
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+
+    --sidebar: oklch(0.21 0.006 285.885);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.546 0.245 262.881);
+    --sidebar-primary-foreground: oklch(0.379 0.146 265.522);
+    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.488 0.243 264.376);
+  }
+}
+
+/* ============================================================================
+   Extended Design Tokens (Document Library Components)
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* Document card specific colors (from design specs) */
+    --doc-canvas: #D9D9D9;              /* Light gray canvas background */
+    --doc-thumbnail-bg: #BDBDBD;        /* Thumbnail placeholder background */
+    --doc-metadata-bg: #EFEFEF;         /* Metadata card background */
+    --doc-black: #171717;               /* Pure black for buttons/progress */
+    --doc-text: #333333;                /* Dark gray text */
+
+    /* Progress bar colors */
+    --doc-progress-track: #D4D4D4;      /* Progress bar background */
+    --doc-progress-fill: #171717;       /* Progress bar fill */
+
+    /* Error state colors */
+    --doc-error-bg: #D5B2B0;            /* Error banner background (light pink) */
+    --doc-error-text: #DB4F48;          /* Error text/icon (red) */
+    --doc-error-border: #DB4F48;        /* Error border */
+
+    /* Success state (preserved from original) */
+    --success: oklch(0.557 0.151 155.5); /* Green - HSL(142, 71%, 45%) */
+    --success-foreground: oklch(0.97 0.014 254.604);
+    --success-light: oklch(0.925 0.058 158.1); /* Light green background */
+
+    /* Warning state (preserved from original) */
+    --warning: oklch(0.623 0.182 43.2);  /* Orange - HSL(21, 90%, 48%) */
+    --warning-foreground: oklch(0.97 0.014 254.604);
+    --warning-light: oklch(0.95 0.063 45.8); /* Light orange background */
+
+    /* Processing state */
+    --processing: var(--primary);
+    --processing-foreground: var(--primary-foreground);
+  }
+
+  .dark {
+    /* Document card colors in dark mode */
+    --doc-canvas: oklch(0.21 0.006 285.885);
+    --doc-thumbnail-bg: oklch(0.274 0.006 286.033);
+    --doc-metadata-bg: oklch(0.274 0.006 286.033);
+    --doc-black: oklch(0.985 0 0);      /* White in dark mode */
+    --doc-text: oklch(0.705 0.015 286.067);
+
+    --doc-progress-track: oklch(0.274 0.006 286.033);
+    --doc-progress-fill: oklch(0.985 0 0);
+
+    --doc-error-bg: oklch(0.35 0.08 20);
+    --doc-error-text: oklch(0.704 0.191 22.216);
+    --doc-error-border: oklch(0.704 0.191 22.216);
+
+    --success: oklch(0.696 0.17 162.48);
+    --success-light: oklch(0.274 0.006 286.033);
+
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-light: oklch(0.274 0.006 286.033);
+  }
+}
+
+/* ============================================================================
+   Legacy Variable Aliases (Backward Compatibility)
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* Map old variable names to new theme */
+    --color-primary: hsl(var(--primary));
+    --color-primary-hover: hsl(var(--primary) / 0.9);
+    --color-primary-light: hsl(var(--secondary));
+
+    --color-success: hsl(var(--success));
+    --color-success-light: hsl(var(--success-light));
+
+    --color-error: hsl(var(--destructive));
+    --color-error-light: hsl(var(--destructive) / 0.1);
+
+    --color-warning: hsl(var(--warning));
+    --color-warning-light: hsl(var(--warning-light));
+
+    /* Neutral colors mapped to new system */
+    --color-neutral-900: hsl(var(--foreground));
+    --color-neutral-800: hsl(var(--card-foreground));
+    --color-neutral-700: hsl(var(--muted-foreground));
+    --color-neutral-600: hsl(var(--muted-foreground));
+    --color-neutral-500: hsl(var(--muted-foreground) / 0.8);
+    --color-neutral-400: hsl(var(--muted-foreground) / 0.6);
+    --color-neutral-300: hsl(var(--border));
+    --color-neutral-200: hsl(var(--border));
+    --color-neutral-100: hsl(var(--muted));
+    --color-neutral-50: hsl(var(--secondary));
+
+    /* Text colors */
+    --color-text-primary: hsl(var(--foreground));
+    --color-text-secondary: hsl(var(--muted-foreground));
+    --color-text-muted: hsl(var(--muted-foreground) / 0.8);
+
+    /* Background colors */
+    --color-bg-primary: hsl(var(--background));
+    --color-bg-secondary: hsl(var(--secondary));
+    --color-bg-tertiary: hsl(var(--muted));
+
+    /* Border colors */
+    --color-border: hsl(var(--border));
+    --color-border-dark: hsl(var(--input));
+  }
+}
+
+/* ============================================================================
+   Typography & Spacing (Preserved from original)
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* Font families */
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                 "Liberation Mono", monospace;
+
+    /* Font sizes */
+    --text-xs: 0.75rem;      /* 12px */
+    --text-sm: 0.875rem;     /* 14px */
+    --text-base: 1rem;       /* 16px */
+    --text-lg: 1.125rem;     /* 18px */
+    --text-xl: 1.25rem;      /* 20px */
+    --text-2xl: 1.5rem;      /* 24px */
+    --text-3xl: 1.875rem;    /* 30px */
+    --text-4xl: 2.25rem;     /* 36px */
+
+    /* Font weights */
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+
+    /* Line heights */
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
+
+    /* Spacing scale (4px base) */
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+    --space-20: 5rem;     /* 80px */
+
+    /* Border radius */
+    --radius-sm: 0.25rem;   /* 4px */
+    --radius-md: 0.375rem;  /* 6px */
+    --radius-lg: 0.5rem;    /* 8px */
+    --radius-xl: 0.75rem;   /* 12px */
+    --radius-2xl: 1rem;     /* 16px */
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Z-index scale */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+  }
+}
+
+/* ============================================================================
+   Base Element Styles (shadcn/ui pattern)
+   ============================================================================ */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

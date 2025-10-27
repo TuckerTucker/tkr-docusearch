@@ -31,6 +31,10 @@ from .models import (
     UploadResponse,
 )
 
+# Import routers
+from .routes import markdown_router
+from .routes.markdown import set_storage_client
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -109,6 +113,9 @@ def create_app(
         allow_headers=["*"],
     )
 
+    # Include routers
+    app.include_router(markdown_router)
+
     # Initialize components on startup
     @app.on_event("startup")
     async def startup_event():
@@ -126,6 +133,9 @@ def create_app(
             logger.info(f"Connecting to ChromaDB ({chroma_host}:{chroma_port})...")
             _app_state["storage_client"] = ChromaClient(host=chroma_host, port=chroma_port)
             logger.info("✓ ChromaDB connected")
+
+            # Set storage client for markdown router
+            set_storage_client(_app_state["storage_client"])
 
             # Initialize search engine
             _app_state["search_engine"] = SearchEngine(

@@ -339,7 +339,6 @@ class TestResultRanker:
         assert result["type"] == "visual"
         assert result["score"] == 0.95
         assert result["filename"] == "test.pdf"
-        assert result["thumbnail_url"] == "/api/thumbnail/doc1-page001"
 
 
 # ============================================================================
