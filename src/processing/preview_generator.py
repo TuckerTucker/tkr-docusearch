@@ -7,11 +7,12 @@ Uses DoclingParser to re-render pages from original files.
 Wave 2, Agent 3 deliverable.
 """
 
-import logging
 import base64
+import logging
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from PIL import Image
 
 try:
@@ -19,6 +20,7 @@ try:
 except ImportError:
     # Handle import error during testing
     from src.storage import ChromaClient
+
 from .docling_parser import DoclingParser
 
 logger = logging.getLogger(__name__)
@@ -27,14 +29,7 @@ logger = logging.getLogger(__name__)
 class PreviewResponse:
     """Preview response with page image and text."""
 
-    def __init__(
-        self,
-        doc_id: str,
-        page_num: int,
-        image: str,
-        text: str,
-        metadata: Dict[str, Any]
-    ):
+    def __init__(self, doc_id: str, page_num: int, image: str, text: str, metadata: Dict[str, Any]):
         self.doc_id = doc_id
         self.page_num = page_num
         self.image = image
@@ -48,18 +43,14 @@ class PreviewResponse:
             "page_num": self.page_num,
             "image": self.image,
             "text": self.text,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
 class PreviewGenerator:
     """Generate page previews from original documents."""
 
-    def __init__(
-        self,
-        storage_client: ChromaClient,
-        parser: DoclingParser
-    ):
+    def __init__(self, storage_client: ChromaClient, parser: DoclingParser):
         """
         Initialize preview generator.
 
@@ -70,11 +61,7 @@ class PreviewGenerator:
         self.storage_client = storage_client
         self.parser = parser
 
-    def get_page_preview(
-        self,
-        doc_id: str,
-        page_num: int
-    ) -> Optional[PreviewResponse]:
+    def get_page_preview(self, doc_id: str, page_num: int) -> Optional[PreviewResponse]:
         """
         Get preview for a specific document page.
 
@@ -101,15 +88,13 @@ class PreviewGenerator:
             # Verify file exists
             path = Path(file_path)
             if not path.exists():
-                raise FileNotFoundError(
-                    f"Original file not found: {file_path} (doc_id={doc_id})"
-                )
+                raise FileNotFoundError(f"Original file not found: {file_path} (doc_id={doc_id})")
 
             # Parse document to get page
             parsed_doc = self.parser.parse_document(
-                file_path=path,
+                file_path=str(path),
                 chunk_size_words=100,  # Doesn't matter for preview
-                chunk_overlap_words=20
+                chunk_overlap_words=20,
             )
 
             # Validate page number
@@ -129,10 +114,11 @@ class PreviewGenerator:
 
             # Build metadata
             metadata = {
-                "filename": doc_metadata.get("original_filename") or doc_metadata.get("filename", "unknown"),
+                "filename": doc_metadata.get("original_filename")
+                or doc_metadata.get("filename", "unknown"),
                 "total_pages": parsed_doc.num_pages,
                 "file_size": path.stat().st_size if path.exists() else 0,
-                "format": path.suffix.lstrip('.').lower(),
+                "format": path.suffix.lstrip(".").lower(),
                 "upload_date": doc_metadata.get("upload_date", ""),
             }
 
@@ -140,7 +126,7 @@ class PreviewGenerator:
             if page.image:
                 metadata["page_dimensions"] = {
                     "width": page.image.width,
-                    "height": page.image.height
+                    "height": page.image.height,
                 }
 
             logger.info(
@@ -153,20 +139,18 @@ class PreviewGenerator:
                 page_num=page_num,
                 image=image_data_uri,
                 text=page_text,
-                metadata=metadata
+                metadata=metadata,
             )
 
         except Exception as e:
             logger.error(
                 f"Failed to generate preview for doc_id={doc_id}, page={page_num}: {e}",
-                exc_info=True
+                exc_info=True,
             )
             raise
 
     def _get_file_path_from_metadata(
-        self,
-        doc_id: str,
-        page_num: int
+        self, doc_id: str, page_num: int
     ) -> tuple[Optional[str], Dict[str, Any]]:
         """
         Get file_path from ChromaDB metadata.
@@ -181,43 +165,31 @@ class PreviewGenerator:
         try:
             # Try visual collection first (pages have file_path)
             results = self.storage_client._visual_collection.get(
-                where={
-                    "$and": [
-                        {"doc_id": doc_id},
-                        {"page": page_num}
-                    ]
-                },
+                where={"$and": [{"doc_id": doc_id}, {"page": page_num}]},
                 limit=1,
-                include=["metadatas"]
+                include=["metadatas"],
             )
 
-            if results['ids'] and results['metadatas']:
-                metadata = results['metadatas'][0]
-                file_path = metadata.get('file_path')
+            if results["ids"] and results["metadatas"]:
+                metadata = results["metadatas"][0]
+                file_path = metadata.get("file_path")
                 if file_path:
                     return file_path, metadata
 
             # Fallback to text collection
             results = self.storage_client._text_collection.get(
-                where={
-                    "$and": [
-                        {"doc_id": doc_id},
-                        {"page": page_num}
-                    ]
-                },
+                where={"$and": [{"doc_id": doc_id}, {"page": page_num}]},
                 limit=1,
-                include=["metadatas"]
+                include=["metadatas"],
             )
 
-            if results['ids'] and results['metadatas']:
-                metadata = results['metadatas'][0]
-                file_path = metadata.get('file_path')
+            if results["ids"] and results["metadatas"]:
+                metadata = results["metadatas"][0]
+                file_path = metadata.get("file_path")
                 if file_path:
                     return file_path, metadata
 
-            logger.warning(
-                f"No metadata found for doc_id={doc_id}, page={page_num}"
-            )
+            logger.warning(f"No metadata found for doc_id={doc_id}, page={page_num}")
             return None, {}
 
         except Exception as e:
@@ -245,7 +217,7 @@ class PreviewGenerator:
             png_bytes = buffer.getvalue()
 
             # Encode to base64
-            base64_str = base64.b64encode(png_bytes).decode('utf-8')
+            base64_str = base64.b64encode(png_bytes).decode("utf-8")
 
             # Return as data URI
             return f"data:image/png;base64,{base64_str}"

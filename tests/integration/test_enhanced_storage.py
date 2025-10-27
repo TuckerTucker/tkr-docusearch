@@ -221,7 +221,8 @@ class TestEnhancedTextMetadataStorage:
         # Validate
         assert enhanced["has_context"] is True
         assert enhanced["section_path"] == "Introduction"
-        assert enhanced["parent_heading"] is None  # Not provided
+        # parent_heading is None, so sanitize_metadata_for_chroma filters it out
+        assert "parent_heading" not in enhanced
         assert enhanced["element_type"] == "text"
 
         # Arrays should be JSON strings
