@@ -186,6 +186,23 @@ show_status_text() {
         fi
     done
 
+    # Preprocessing configuration
+    echo -e "\n${CYAN}Local LLM Preprocessing:${NC}"
+    if [ -f "$PROJECT_ROOT/.env" ]; then
+        local preprocess_enabled=$(grep -E "^LOCAL_PREPROCESS_ENABLED=" "$PROJECT_ROOT/.env" | cut -d'=' -f2)
+        local preprocess_strategy=$(grep -E "^LOCAL_PREPROCESS_STRATEGY=" "$PROJECT_ROOT/.env" | cut -d'=' -f2)
+
+        if [ "$preprocess_enabled" = "true" ]; then
+            echo -e "  ${GREEN}✓${NC} Enabled (strategy: ${preprocess_strategy:-compress})"
+            echo -e "    ${YELLOW}→ Reduces costs ~50% but adds 70-90s latency${NC}"
+        else
+            echo -e "  ${BLUE}○${NC} Disabled (default - fast responses)"
+            echo -e "    ${BLUE}→ Set LOCAL_PREPROCESS_ENABLED=true to enable${NC}"
+        fi
+    else
+        echo -e "  ${BLUE}○${NC} Disabled (no .env file)"
+    fi
+
     # Overall status
     echo -e "\n${CYAN}System Status:${NC}"
 

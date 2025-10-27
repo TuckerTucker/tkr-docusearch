@@ -51,6 +51,15 @@ class ResearchRequest(BaseModel):
     temperature: Optional[float] = Field(
         default=None, ge=0.0, le=1.0, description="LLM temperature (default 0.3 for factual)"
     )
+    preprocessing_enabled: Optional[bool] = Field(
+        default=None,
+        description="Enable local LLM preprocessing (default: from LOCAL_PREPROCESS_ENABLED env var). "
+        "Reduces foundation model costs by ~50% but adds 70-90s latency.",
+    )
+    preprocessing_strategy: Optional[Literal["compress", "filter", "synthesize"]] = Field(
+        default=None,
+        description="Preprocessing strategy when enabled (default: from LOCAL_PREPROCESS_STRATEGY env var)",
+    )
 
 
 class CitationInfo(BaseModel):
@@ -223,6 +232,12 @@ async def lifespan(app: FastAPI):
     # Initialize local LLM preprocessor if enabled
     preprocessing_enabled = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
     if preprocessing_enabled:
+        preprocessing_strategy = os.getenv("LOCAL_PREPROCESS_STRATEGY", "compress")
+        logger.info(
+            "Local LLM preprocessing: ENABLED",
+            strategy=preprocessing_strategy,
+            note="Reduces costs ~50% but adds 70-90s latency",
+        )
         model_path = os.getenv("MLX_MODEL_PATH")
         if not model_path or not os.path.exists(model_path):
             logger.warning("MLX preprocessing disabled: model path not found", path=model_path)
@@ -247,6 +262,10 @@ async def lifespan(app: FastAPI):
                 logger.error("Failed to initialize MLX preprocessor", error=str(e))
                 app.state.local_preprocessor = None
     else:
+        logger.info(
+            "Local LLM preprocessing: DISABLED (default)",
+            note="Set LOCAL_PREPROCESS_ENABLED=true to enable cost optimization",
+        )
         app.state.local_preprocessor = None
 
     # Initialize citation parser
@@ -340,7 +359,14 @@ async def ask_research_question(request: ResearchRequest):
             )
 
         # Step 1.5: Preprocessing with local LLM (if enabled)
-        preprocessing_enabled = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
+        # Request parameter overrides environment variable
+        preprocessing_enabled_env = os.getenv("LOCAL_PREPROCESS_ENABLED", "false").lower() == "true"
+        preprocessing_enabled = (
+            request.preprocessing_enabled
+            if request.preprocessing_enabled is not None
+            else preprocessing_enabled_env
+        )
+
         preprocessing_strategy = None
         preprocessing_latency_ms = 0
         original_sources_count = len(context.sources)
@@ -350,9 +376,24 @@ async def ask_research_question(request: ResearchRequest):
         preprocessing_model = None
         preprocessing_per_chunk_stats = []
 
+        # Log preprocessing status for this request
+        if request.preprocessing_enabled is not None:
+            logger.info(
+                "Using request-level preprocessing override",
+                enabled=preprocessing_enabled,
+                source="request_parameter",
+            )
+        elif preprocessing_enabled:
+            logger.debug("Using environment-level preprocessing", enabled=True, source="env_var")
+
         if preprocessing_enabled and app.state.local_preprocessor:
             preprocessing_start = time.time()
-            strategy = os.getenv("LOCAL_PREPROCESS_STRATEGY", "compress")
+            # Request parameter overrides environment variable
+            strategy = (
+                request.preprocessing_strategy
+                if request.preprocessing_strategy is not None
+                else os.getenv("LOCAL_PREPROCESS_STRATEGY", "compress")
+            )
             preprocessing_strategy = strategy
 
             # Track original token count for reduction calculation
