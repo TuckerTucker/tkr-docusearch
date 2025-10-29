@@ -3100,6 +3100,21 @@ body {
   color: white;
 }
 
+/* Chunk indicator - shows when precise location navigation is available */
+.reference-card__chunk-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-1);
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+  transition: opacity var(--transition-fast);
+}
+
+.reference-card__details-btn:hover .reference-card__chunk-indicator,
+.reference-card__details-btn-simple:hover .reference-card__chunk-indicator {
+  opacity: 1;
+}
+
 /* ============================================
    Responsive - Research Page
    ============================================ */

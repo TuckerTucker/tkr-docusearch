@@ -5,10 +5,12 @@
  * Ported from src/frontend/slideshow.js
  *
  * Wave 2 - Details Agent
+ * Wave 1 - BBox Overlay Integration (Agent 8)
  */
 
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useKeyboardNav } from '../../hooks/useKeyboardNav.js';
+import { BBoxController } from '../../features/details/components/BBoxController';
 
 /**
  * Slideshow for PDF/DOCX/PPTX page images
@@ -26,6 +28,10 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageInput, setPageInput] = useState(String(initialPage));
   const isInitialMount = useRef(true);
+
+  // Refs for BBoxController integration
+  const imageRef = useRef(null);
+  const markdownContainerRef = useRef(null);
 
   // Update internal state when document changes
   useEffect(() => {
@@ -167,13 +173,24 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
         </div>
       )}
 
-      <div className="slideshow-image-container">
+      <div className="slideshow-image-container" style={{ position: 'relative' }}>
         {imageSrc ? (
-          <img
-            src={imageSrc}
-            alt={`Page ${currentPage}`}
-            className="slideshow-image"
-          />
+          <>
+            <img
+              ref={imageRef}
+              src={imageSrc}
+              alt={`Page ${currentPage}`}
+              className="slideshow-image"
+            />
+            {document?.doc_id && (
+              <BBoxController
+                docId={document.doc_id}
+                currentPage={currentPage}
+                imageElement={imageRef.current}
+                markdownContainerRef={markdownContainerRef}
+              />
+            )}
+          </>
         ) : (
           <div className="slideshow-no-image">
             <p>No image available for page {currentPage}</p>

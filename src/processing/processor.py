@@ -414,6 +414,7 @@ class DocumentProcessor:
                 filename=filename,
                 file_path=file_path,
                 pages=parsed_doc.pages,  # Wave 1: Pass pages for image paths
+                structure=parsed_doc.structure,  # Pass structure object
             )
 
             # Stage 5: Completed
@@ -491,6 +492,7 @@ class DocumentProcessor:
         filename: str,
         file_path: str,
         pages: Optional[List] = None,  # Wave 1: Optional pages for image paths
+        structure: Optional[Any] = None,  # DocumentStructure object
     ) -> StorageConfirmation:
         """Store embeddings in ChromaDB with enhanced metadata.
 
@@ -518,10 +520,11 @@ class DocumentProcessor:
                 VisualEmbeddingHandler,
             )
 
-            # Extract structure from metadata if available (enhanced mode)
-            structure = None
-            if "structure" in doc_metadata and self.enhanced_mode_config:
-                logger.debug("Enhanced mode: Document structure available")
+            # Log structure availability if enhanced mode
+            if structure and self.enhanced_mode_config:
+                logger.debug(
+                    f"Enhanced mode: Document structure available ({len(structure.headings)} headings, {len(structure.tables)} tables)"
+                )
 
             # Save album art for audio files
             AlbumArtHandler.save_album_art_if_present(doc_id, doc_metadata)

@@ -99,6 +99,7 @@ ReferencesPanel.propTypes = {
       thumbnail_path: PropTypes.string,
       date_added: PropTypes.string,
       doc_id: PropTypes.string,
+      chunk_id: PropTypes.string, // Optional: enables precise navigation
     })
   ),
   activeReference: PropTypes.number,

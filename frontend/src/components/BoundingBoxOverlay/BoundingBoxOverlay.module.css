@@ -1,0 +1,333 @@
+/**
+ * BoundingBoxOverlay Component Styles
+ *
+ * Agent 5: BoundingBoxOverlay Component (Enhanced by Agent 13)
+ * Wave 1-3 - BBox Overlay React Implementation
+ *
+ * Styles for SVG bounding box overlays on document page images.
+ * Uses CSS custom properties from the design system for theming.
+ *
+ * Visual States:
+ * - Default: Semi-transparent border, low opacity
+ * - Hover: Increased opacity, cursor pointer, scale transform, glow
+ * - Active: Solid highlight, thicker border, activation animation
+ *
+ * Wave 3 Enhancements:
+ * - Smooth GPU-accelerated animations (60fps)
+ * - Box-shadow glow effects
+ * - Scale animations on hover
+ * - Activation pulse animation
+ * - Improved dark mode styling
+ * - Enhanced color differentiation
+ *
+ * Accessibility:
+ * - Focus visible styles for keyboard navigation
+ * - High contrast mode support
+ * - Reduced motion support (prefers-reduced-motion)
+ */
+
+/* ============================================
+   Overlay Container
+   ============================================ */
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: var(--z-overlay, 100);
+}
+
+/* Make individual bboxes interactive */
+.overlay rect {
+  pointer-events: auto;
+}
+
+/* ============================================
+   Bounding Box Base Styles
+   ============================================ */
+
+.bbox {
+  fill: var(--primary, oklch(0.6180 0.0778 65.5444));
+  fill-opacity: 0.1;
+  stroke: var(--primary, oklch(0.6180 0.0778 65.5444));
+  stroke-width: 2px;
+  stroke-opacity: 0.4;
+  cursor: pointer;
+
+  /* Wave 3: Enhanced transitions - GPU accelerated */
+  transition:
+    fill-opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke-opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke-width 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    filter 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Performance hint for GPU acceleration */
+  will-change: transform;
+
+  /* Smooth edges */
+  vector-effect: non-scaling-stroke;
+}
+
+/* ============================================
+   Interactive States
+   ============================================ */
+
+/* Hover state: Increase visibility with scale and glow */
+.bbox:hover,
+.bbox.hovered {
+  fill-opacity: 0.2;
+  stroke-opacity: 0.6;
+  stroke-width: 2.5px;
+
+  /* Wave 3: Scale animation for hover feedback */
+  transform: scale(1.02);
+  transform-origin: center;
+
+  /* Wave 3: Subtle glow effect */
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Active state: Maximum visibility with activation animation */
+.bbox.active {
+  fill: var(--accent, oklch(0.8348 0.0426 88.8064));
+  fill-opacity: 0.3;
+  stroke: var(--ring, oklch(0.6180 0.0778 65.5444));
+  stroke-opacity: 0.8;
+  stroke-width: 3px;
+
+  /* Wave 3: Activation animation */
+  animation: bbox-activate 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Wave 3: Enhanced glow for active state */
+  filter: drop-shadow(0 0 8px var(--ring, oklch(0.6180 0.0778 65.5444)));
+
+  /* Wave 3: Slight scale to emphasize */
+  transform: scale(1.02);
+  transform-origin: center;
+}
+
+/* Wave 3: Activation keyframe animation */
+@keyframes bbox-activate {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px transparent);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 12px var(--ring, oklch(0.6180 0.0778 65.5444)));
+  }
+  100% {
+    transform: scale(1.02);
+    filter: drop-shadow(0 0 8px var(--ring, oklch(0.6180 0.0778 65.5444)));
+  }
+}
+
+/* Active + hover: Combined state */
+.bbox.active:hover,
+.bbox.active.hovered {
+  fill-opacity: 0.4;
+  stroke-opacity: 1;
+
+  /* Wave 3: Enhanced scale for combined state */
+  transform: scale(1.03);
+
+  /* Wave 3: Stronger glow for combined state */
+  filter: drop-shadow(0 0 12px var(--ring, oklch(0.6180 0.0778 65.5444)));
+}
+
+/* ============================================
+   Focus Styles (Accessibility)
+   ============================================ */
+
+.bbox:focus {
+  outline: none;
+}
+
+.bbox:focus-visible {
+  stroke: var(--ring, oklch(0.6180 0.0778 65.5444));
+  stroke-width: 3px;
+  stroke-opacity: 1;
+  fill-opacity: 0.25;
+  outline: 2px solid var(--ring, oklch(0.6180 0.0778 65.5444));
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Element Type Variants
+   ============================================ */
+
+/* Headings: Blue tint */
+.bbox.type-heading,
+.bbox.type-Title,
+.bbox.type-Section-header {
+  stroke: var(--info, oklch(0.60 0.15 230));
+  fill: var(--info, oklch(0.60 0.15 230));
+}
+
+/* Tables: Green tint */
+.bbox.type-table,
+.bbox.type-Table {
+  stroke: var(--success, oklch(0.60 0.15 145));
+  fill: var(--success, oklch(0.60 0.15 145));
+}
+
+/* Pictures/Images: Orange tint */
+.bbox.type-picture,
+.bbox.type-image,
+.bbox.type-Picture,
+.bbox.type-Figure {
+  stroke: var(--warning, oklch(0.70 0.15 85));
+  fill: var(--warning, oklch(0.70 0.15 85));
+}
+
+/* Lists: Purple tint */
+.bbox.type-list,
+.bbox.type-List-item {
+  stroke: oklch(0.60 0.15 300);
+  fill: oklch(0.60 0.15 300);
+}
+
+/* Footnotes: Gray tint */
+.bbox.type-footnote,
+.bbox.type-Footnote {
+  stroke: var(--muted-foreground, oklch(0.4700 0.0350 71.1655));
+  fill: var(--muted-foreground, oklch(0.4700 0.0350 71.1655));
+}
+
+/* ============================================
+   High Contrast Mode
+   ============================================ */
+
+@media (prefers-contrast: high) {
+  .bbox {
+    stroke-width: 3px;
+    stroke-opacity: 0.8;
+  }
+
+  .bbox:hover,
+  .bbox.hovered {
+    stroke-opacity: 1;
+  }
+
+  .bbox.active {
+    stroke-width: 4px;
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .bbox {
+    transition: none;
+    animation: none;
+    will-change: auto;
+  }
+
+  /* Wave 3: Disable animations but keep final state */
+  .bbox.active {
+    animation: none;
+  }
+
+  /* Wave 3: Instant keyframes for reduced motion */
+  @keyframes bbox-activate {
+    0%, 100% {
+      transform: scale(1.02);
+      filter: drop-shadow(0 0 8px var(--ring, oklch(0.6180 0.0778 65.5444)));
+    }
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  .overlay {
+    display: none;
+  }
+}
+
+/* ============================================
+   Dark Mode Enhancements (Wave 3)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  .bbox {
+    /* Wave 3: Adjusted base opacity for dark mode */
+    fill-opacity: 0.15;
+    stroke-opacity: 0.5;
+  }
+
+  .bbox:hover,
+  .bbox.hovered {
+    fill-opacity: 0.25;
+    stroke-opacity: 0.7;
+    /* Wave 3: Stronger glow in dark mode */
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+
+  .bbox.active {
+    fill-opacity: 0.35;
+    stroke-opacity: 0.9;
+    /* Wave 3: Enhanced glow for dark mode */
+    filter: drop-shadow(0 0 12px var(--ring, oklch(0.7264 0.0581 66.6967)));
+  }
+
+  .bbox.active:hover,
+  .bbox.active.hovered {
+    fill-opacity: 0.45;
+    /* Wave 3: Maximum glow for dark mode combined state */
+    filter: drop-shadow(0 0 16px var(--ring, oklch(0.7264 0.0581 66.6967)));
+  }
+
+  /* Wave 3: Dark mode element type colors (brighter) */
+  .bbox.type-heading,
+  .bbox.type-Title,
+  .bbox.type-Section-header {
+    stroke: oklch(0.65 0.15 230);
+    fill: oklch(0.65 0.15 230);
+  }
+
+  .bbox.type-table,
+  .bbox.type-Table {
+    stroke: oklch(0.65 0.15 145);
+    fill: oklch(0.65 0.15 145);
+  }
+
+  .bbox.type-picture,
+  .bbox.type-image,
+  .bbox.type-Picture,
+  .bbox.type-Figure {
+    stroke: oklch(0.75 0.15 85);
+    fill: oklch(0.75 0.15 85);
+  }
+
+  .bbox.type-list,
+  .bbox.type-List-item {
+    stroke: oklch(0.65 0.15 300);
+    fill: oklch(0.65 0.15 300);
+  }
+
+  .bbox.type-footnote,
+  .bbox.type-Footnote {
+    stroke: oklch(0.60 0.05 71);
+    fill: oklch(0.60 0.05 71);
+  }
+}
+
+/* ============================================
+   Light Mode Refinements (Wave 3)
+   ============================================ */
+
+@media (prefers-color-scheme: light) {
+  .bbox.active {
+    /* Wave 3: Subtle gradient for depth in light mode */
+    fill: linear-gradient(135deg,
+      var(--accent, oklch(0.8348 0.0426 88.8064)) 0%,
+      oklch(0.85 0.05 88) 100%);
+  }
+}

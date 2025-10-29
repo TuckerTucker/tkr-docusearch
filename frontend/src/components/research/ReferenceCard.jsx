@@ -1,15 +1,18 @@
 import PropTypes from 'prop-types'
+import { buildDetailsUrl, hasChunkContext } from '../../utils/urlBuilder'
 
 /**
  * ReferenceCard Component - Display source document reference
  *
  * Ported from src/frontend/reference-card.js
+ * Enhanced by Agent 9 for BBox Overlay navigation
  *
  * Features:
  * - Detailed and simple variants
  * - Document metadata, page info, thumbnail
  * - Highlight state when citation hovered/clicked
- * - Link to details page
+ * - Link to details page with optional chunk_id for precise navigation
+ * - Visual indicator when chunk context available
  */
 export default function ReferenceCard({
   reference,
@@ -25,6 +28,7 @@ export default function ReferenceCard({
     thumbnail_path,
     date_added,
     doc_id,
+    chunk_id,
   } = reference
 
   const citationNumber = id || 1
@@ -41,8 +45,17 @@ export default function ReferenceCard({
     }
   }
 
-  // Build details URL
-  const detailsURL = doc_id ? `/details/${doc_id}?page=${page}` : '#'
+  // Build details URL with optional chunk_id for precise navigation
+  const detailsURL = doc_id
+    ? buildDetailsUrl({
+        docId: doc_id,
+        page,
+        chunkId: chunk_id,
+      })
+    : '#'
+
+  // Check if chunk context is available
+  const hasChunk = hasChunkContext(reference)
 
   // Format date
   const formattedDate = date_added ? formatDate(date_added) : null
@@ -66,9 +79,14 @@ export default function ReferenceCard({
         <a
           href={detailsURL}
           className="reference-card__details-btn-simple"
-          aria-label="View details"
+          aria-label={hasChunk ? "View details and jump to location" : "View details"}
         >
           Details
+          {hasChunk && (
+            <span className="reference-card__chunk-indicator" title="Jump to specific location">
+              📍
+            </span>
+          )}
         </a>
       </div>
     )
@@ -122,9 +140,14 @@ export default function ReferenceCard({
       <a
         href={detailsURL}
         className="reference-card__details-btn"
-        aria-label={`View details for ${filename}`}
+        aria-label={hasChunk ? `View details and jump to location for ${filename}` : `View details for ${filename}`}
       >
         Details
+        {hasChunk && (
+          <span className="reference-card__chunk-indicator" title="Jump to specific location">
+            📍
+          </span>
+        )}
       </a>
     </div>
   )
@@ -139,6 +162,7 @@ ReferenceCard.propTypes = {
     thumbnail_path: PropTypes.string,
     date_added: PropTypes.string,
     doc_id: PropTypes.string,
+    chunk_id: PropTypes.string, // Optional: enables precise navigation to text location
   }).isRequired,
   variant: PropTypes.oneOf(['detailed', 'simple']),
   isHighlighted: PropTypes.bool,

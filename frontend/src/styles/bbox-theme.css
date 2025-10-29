@@ -1,0 +1,263 @@
+/**
+ * BBox Theme-Specific Styles
+ *
+ * Agent 13: Visual Polish & Animation Designer
+ * Wave 3 - BBox Overlay React Implementation
+ *
+ * Theme-specific enhancements for bounding box components.
+ * Optimized color palettes, shadows, and effects for each theme.
+ *
+ * Themes Supported:
+ * - Kraft Paper (default)
+ * - Graphite
+ * - Blue on Black
+ * - Gold on Blue
+ * - Notebook
+ */
+
+/* ============================================
+   Kraft Paper Theme (Default)
+   ============================================ */
+
+:root,
+[data-theme="kraft-paper"] {
+  /* Bbox colors - warm earth tones */
+  --bbox-primary: oklch(0.6180 0.0778 65.5444);
+  --bbox-accent: oklch(0.8348 0.0426 88.8064);
+  --bbox-ring: oklch(0.6180 0.0778 65.5444);
+
+  /* Bbox glow colors */
+  --bbox-glow-light: oklch(0.6180 0.0778 65.5444 / 0.3);
+  --bbox-glow-strong: oklch(0.6180 0.0778 65.5444 / 0.5);
+
+  /* Element type colors - earthy palette */
+  --bbox-heading: oklch(0.60 0.15 230);    /* Blue */
+  --bbox-table: oklch(0.60 0.15 145);      /* Green */
+  --bbox-picture: oklch(0.70 0.15 85);     /* Orange */
+  --bbox-list: oklch(0.60 0.15 300);       /* Purple */
+  --bbox-footnote: oklch(0.47 0.035 71);   /* Gray */
+}
+
+.dark[data-theme="kraft-paper"],
+.dark:root {
+  --bbox-primary: oklch(0.7264 0.0581 66.6967);
+  --bbox-ring: oklch(0.7264 0.0581 66.6967);
+  --bbox-glow-light: oklch(0.7264 0.0581 66.6967 / 0.4);
+  --bbox-glow-strong: oklch(0.7264 0.0581 66.6967 / 0.6);
+
+  /* Brighter element colors for dark mode */
+  --bbox-heading: oklch(0.65 0.15 230);
+  --bbox-table: oklch(0.65 0.15 145);
+  --bbox-picture: oklch(0.75 0.15 85);
+  --bbox-list: oklch(0.65 0.15 300);
+  --bbox-footnote: oklch(0.60 0.05 71);
+}
+
+/* ============================================
+   Graphite Theme
+   ============================================ */
+
+[data-theme="graphite"] {
+  /* Bbox colors - grayscale with subtle warmth */
+  --bbox-primary: oklch(0.4891 0 0);
+  --bbox-accent: oklch(0.8078 0 0);
+  --bbox-ring: oklch(0.4891 0 0);
+  --bbox-glow-light: oklch(0.4891 0 0 / 0.3);
+  --bbox-glow-strong: oklch(0.4891 0 0 / 0.5);
+
+  /* Monochrome element types with subtle differentiation */
+  --bbox-heading: oklch(0.50 0 0);
+  --bbox-table: oklch(0.55 0 0);
+  --bbox-picture: oklch(0.60 0 0);
+  --bbox-list: oklch(0.45 0 0);
+  --bbox-footnote: oklch(0.40 0 0);
+}
+
+.dark[data-theme="graphite"] {
+  --bbox-primary: oklch(0.7058 0 0);
+  --bbox-ring: oklch(0.7058 0 0);
+  --bbox-glow-light: oklch(0.7058 0 0 / 0.4);
+  --bbox-glow-strong: oklch(0.7058 0 0 / 0.6);
+
+  --bbox-heading: oklch(0.75 0 0);
+  --bbox-table: oklch(0.70 0 0);
+  --bbox-picture: oklch(0.65 0 0);
+  --bbox-list: oklch(0.80 0 0);
+  --bbox-footnote: oklch(0.60 0 0);
+}
+
+/* ============================================
+   Blue on Black Theme
+   ============================================ */
+
+[data-theme="blue-on-black"] {
+  /* Bbox colors - vibrant blues */
+  --bbox-primary: oklch(0.6231 0.1880 259.8145);
+  --bbox-accent: oklch(0.9514 0.0250 236.8242);
+  --bbox-ring: oklch(0.6231 0.1880 259.8145);
+  --bbox-glow-light: oklch(0.6231 0.1880 259.8145 / 0.4);
+  --bbox-glow-strong: oklch(0.6231 0.1880 259.8145 / 0.7);
+
+  /* Blue-tinted element types */
+  --bbox-heading: oklch(0.65 0.18 250);
+  --bbox-table: oklch(0.60 0.15 200);
+  --bbox-picture: oklch(0.70 0.12 280);
+  --bbox-list: oklch(0.60 0.16 270);
+  --bbox-footnote: oklch(0.50 0.08 260);
+}
+
+.dark[data-theme="blue-on-black"] {
+  --bbox-primary: oklch(0.6231 0.1880 259.8145);
+  --bbox-glow-light: oklch(0.6231 0.1880 259.8145 / 0.5);
+  --bbox-glow-strong: oklch(0.6231 0.1880 259.8145 / 0.8);
+
+  /* Enhanced glow in dark blue theme */
+  --bbox-heading: oklch(0.70 0.18 250);
+  --bbox-table: oklch(0.65 0.15 200);
+  --bbox-picture: oklch(0.75 0.12 280);
+  --bbox-list: oklch(0.65 0.16 270);
+  --bbox-footnote: oklch(0.60 0.08 260);
+}
+
+/* ============================================
+   Gold on Blue Theme
+   ============================================ */
+
+[data-theme="gold-on-blue"] {
+  /* Bbox colors - gold accents */
+  --bbox-primary: oklch(0.9808 0.0199 84.5897);
+  --bbox-accent: oklch(0.8496 0.0432 234.0722);
+  --bbox-ring: oklch(0.9808 0.0199 84.5897);
+  --bbox-glow-light: oklch(0.9808 0.0199 84.5897 / 0.3);
+  --bbox-glow-strong: oklch(0.9808 0.0199 84.5897 / 0.6);
+
+  /* Warm gold/blue element types */
+  --bbox-heading: oklch(0.95 0.08 240);
+  --bbox-table: oklch(0.85 0.10 200);
+  --bbox-picture: oklch(0.90 0.12 70);
+  --bbox-list: oklch(0.88 0.08 260);
+  --bbox-footnote: oklch(0.75 0.05 220);
+}
+
+.dark[data-theme="gold-on-blue"] {
+  --bbox-primary: oklch(0.9829 0.0305 96.8551);
+  --bbox-ring: oklch(0.9829 0.0305 96.8551);
+  --bbox-glow-light: oklch(0.9829 0.0305 96.8551 / 0.4);
+  --bbox-glow-strong: oklch(0.9829 0.0305 96.8551 / 0.7);
+
+  /* Bright gold in dark mode */
+  --bbox-heading: oklch(0.98 0.10 240);
+  --bbox-table: oklch(0.90 0.12 200);
+  --bbox-picture: oklch(0.95 0.15 70);
+  --bbox-list: oklch(0.92 0.10 260);
+  --bbox-footnote: oklch(0.80 0.06 220);
+}
+
+/* ============================================
+   Notebook Theme
+   ============================================ */
+
+[data-theme="notebook"] {
+  /* Bbox colors - classic notebook */
+  --bbox-primary: oklch(0.7058 0 0);
+  --bbox-accent: oklch(0.9354 0.0456 94.8549);
+  --bbox-ring: oklch(0.7058 0 0);
+  --bbox-glow-light: oklch(0.7058 0 0 / 0.2);
+  --bbox-glow-strong: oklch(0.7058 0 0 / 0.4);
+
+  /* Subtle colors for notebook theme */
+  --bbox-heading: oklch(0.60 0.08 230);
+  --bbox-table: oklch(0.55 0.08 145);
+  --bbox-picture: oklch(0.65 0.10 85);
+  --bbox-list: oklch(0.58 0.08 300);
+  --bbox-footnote: oklch(0.50 0.02 0);
+}
+
+.dark[data-theme="notebook"] {
+  --bbox-primary: oklch(0.8078 0 0);
+  --bbox-ring: oklch(0.8078 0 0);
+  --bbox-glow-light: oklch(0.8078 0 0 / 0.3);
+  --bbox-glow-strong: oklch(0.8078 0 0 / 0.5);
+
+  --bbox-heading: oklch(0.70 0.10 230);
+  --bbox-table: oklch(0.65 0.10 145);
+  --bbox-picture: oklch(0.75 0.12 85);
+  --bbox-list: oklch(0.68 0.10 300);
+  --bbox-footnote: oklch(0.60 0.02 0);
+}
+
+/* ============================================
+   Theme-Specific Shadow Enhancements
+   ============================================ */
+
+/* Kraft Paper - soft, warm shadows */
+:root,
+[data-theme="kraft-paper"] {
+  --bbox-shadow-hover: 0 0 8px var(--bbox-glow-light);
+  --bbox-shadow-active: 0 0 16px var(--bbox-glow-strong);
+}
+
+/* Graphite - subtle, cool shadows */
+[data-theme="graphite"] {
+  --bbox-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --bbox-shadow-active: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Blue on Black - vibrant glows */
+[data-theme="blue-on-black"] {
+  --bbox-shadow-hover: 0 0 12px var(--bbox-glow-light);
+  --bbox-shadow-active: 0 0 24px var(--bbox-glow-strong);
+}
+
+/* Gold on Blue - metallic glows */
+[data-theme="gold-on-blue"] {
+  --bbox-shadow-hover: 0 0 10px var(--bbox-glow-light);
+  --bbox-shadow-active: 0 0 20px var(--bbox-glow-strong);
+}
+
+/* Notebook - minimal shadows */
+[data-theme="notebook"] {
+  --bbox-shadow-hover: 0 1px 4px rgba(0, 0, 0, 0.1);
+  --bbox-shadow-active: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   Theme-Specific Chunk Highlighting
+   ============================================ */
+
+/* All themes use consistent chunk highlighting with theme colors */
+[data-theme] :global(.chunk-active) {
+  border-left-color: var(--bbox-primary);
+}
+
+[data-theme] :global(.chunk-active.chunk-hovered) {
+  box-shadow: 0 0 8px var(--bbox-glow-light);
+}
+
+/* ============================================
+   Accessibility - High Contrast Overrides
+   ============================================ */
+
+@media (prefers-contrast: high) {
+  /* Override theme colors for maximum contrast */
+  :root,
+  [data-theme] {
+    --bbox-shadow-hover: 0 0 0 3px currentColor;
+    --bbox-shadow-active: 0 0 0 4px currentColor;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  /* Simplify bbox colors for print */
+  :root,
+  [data-theme] {
+    --bbox-glow-light: transparent;
+    --bbox-glow-strong: transparent;
+    --bbox-shadow-hover: none;
+    --bbox-shadow-active: none;
+  }
+}

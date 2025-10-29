@@ -412,18 +412,21 @@ class DoclingParser:
                         # Continue processing even if image save fails
 
             # Generate text chunks based on mode
+            doc_structure = None  # Will hold DocumentStructure object if enhanced mode
             if config:
                 # Enhanced mode with structure extraction
-                text_chunks, structure = self._chunk_document_enhanced(doc, pages, doc_id, config)
+                text_chunks, doc_structure = self._chunk_document_enhanced(
+                    doc, pages, doc_id, config
+                )
                 # Add structure metadata to document metadata
                 metadata["structure"] = {
-                    "headings": len(structure.headings),
-                    "tables": len(structure.tables),
-                    "pictures": len(structure.pictures),
-                    "code_blocks": len(structure.code_blocks),
-                    "formulas": len(structure.formulas),
-                    "max_heading_depth": structure.max_heading_depth,
-                    "has_toc": structure.has_table_of_contents,
+                    "headings": len(doc_structure.headings),
+                    "tables": len(doc_structure.tables),
+                    "pictures": len(doc_structure.pictures),
+                    "code_blocks": len(doc_structure.code_blocks),
+                    "formulas": len(doc_structure.formulas),
+                    "max_heading_depth": doc_structure.max_heading_depth,
+                    "has_toc": doc_structure.has_table_of_contents,
                 }
             else:
                 # Legacy mode with word-based chunking
@@ -441,6 +444,7 @@ class DoclingParser:
                 pages=pages,
                 text_chunks=text_chunks,
                 metadata=metadata,
+                structure=doc_structure,
             )
 
             logger.info(f"Parsed {filename}: {len(pages)} pages, " f"{len(text_chunks)} chunks")

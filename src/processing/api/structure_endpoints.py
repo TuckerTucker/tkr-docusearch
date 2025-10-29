@@ -23,8 +23,8 @@ from src.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
 
-# Create API router
-router = APIRouter(prefix="", tags=["structure"])
+# Create API router with /api prefix for frontend compatibility
+router = APIRouter(prefix="/api", tags=["structure"])
 
 # Validation patterns (security)
 DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{8,64}$")
@@ -330,10 +330,10 @@ async def get_page_structure(doc_id: str, page: int):
     try:
         client = get_chroma_client()
 
-        # Query visual collection for this doc_id and page
-        visual_data = client._visual_collection.get(
-            where={"doc_id": doc_id, "page": page}, include=["metadatas"]
-        )
+        # Query visual collection for this doc_id and page using embedding ID
+        # Format: {doc_id}-page{page:03d}
+        embedding_id = f"{doc_id}-page{page:03d}"
+        visual_data = client._visual_collection.get(ids=[embedding_id], include=["metadatas"])
 
         # Check if page exists
         if not visual_data["ids"]:

@@ -1,0 +1,283 @@
+/**
+ * ChunkHighlighter Styles
+ *
+ * Agent 7: Chunk Highlighter Component (Enhanced by Agent 13)
+ * Wave 1-3 - BBox Overlay React Implementation
+ *
+ * CSS module for chunk highlighting with smooth animations and visual feedback.
+ * Uses W3C Design Token Format 3.0 compliant color variables.
+ *
+ * Wave 3 Enhancements:
+ * - Improved animation timing and easing
+ * - Enhanced hover transitions with subtle transforms
+ * - Gradient backgrounds for depth
+ * - Better dark mode color palette
+ * - Micro-interactions for tooltips and focus states
+ */
+
+.chunkHighlighter {
+  position: relative;
+  width: 100%;
+}
+
+/* Active chunk styles - when clicked/selected */
+:global(.chunk-active) {
+  /* Wave 3: Gradient background for depth */
+  background: linear-gradient(
+    90deg,
+    var(--citation-highlight-bg) 0%,
+    transparent 100%
+  );
+  border-left: 3px solid var(--primary-color, #646cff);
+  padding-left: 12px;
+  margin-left: -15px;
+  outline: none; /* Remove default focus outline, we have custom border */
+
+  /* Wave 3: Enhanced animation with smoother timing */
+  animation: chunk-pulse 600ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Wave 3: Improved transitions */
+  transition:
+    background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Wave 3: Subtle elevation */
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Hovered chunk styles - subtle feedback */
+:global(.chunk-hovered) {
+  background-color: var(--citation-highlight-bg);
+  opacity: 0.7;
+  cursor: pointer;
+
+  /* Wave 3: Smooth transitions with transform */
+  transition:
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Wave 3: Subtle hover lift */
+  transform: translateX(2px);
+
+  /* Wave 3: Border radius for consistency */
+  border-radius: 4px;
+}
+
+/* Active chunk also hovered - combine effects */
+:global(.chunk-active.chunk-hovered) {
+  /* Wave 3: Enhanced gradient for combined state */
+  background: linear-gradient(
+    90deg,
+    var(--citation-highlight-bg) 0%,
+    transparent 100%
+  );
+  opacity: 1;
+
+  /* Wave 3: Slightly more transform for emphasis */
+  transform: translateX(3px);
+
+  /* Wave 3: Enhanced shadow */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Wave 3: Enhanced pulse animation for activation */
+@keyframes chunk-pulse {
+  0% {
+    background: transparent;
+    border-left-color: transparent;
+    transform: translateX(0);
+  }
+  50% {
+    background: linear-gradient(
+      90deg,
+      var(--citation-highlight-bg) 0%,
+      transparent 100%
+    );
+    border-left-color: var(--primary-color, #646cff);
+    transform: translateX(4px);
+  }
+  100% {
+    background: linear-gradient(
+      90deg,
+      var(--citation-highlight-bg) 0%,
+      transparent 100%
+    );
+    border-left-color: var(--primary-color, #646cff);
+    transform: translateX(0);
+  }
+}
+
+/* Wave 3: Keep old pulse for backwards compatibility */
+@keyframes pulse {
+  0% {
+    background-color: transparent;
+    border-left-color: transparent;
+  }
+  50% {
+    background-color: var(--citation-highlight-bg);
+    border-left-color: var(--primary-color, #646cff);
+    opacity: 1;
+  }
+  100% {
+    background-color: var(--citation-highlight-bg);
+    border-left-color: var(--primary-color, #646cff);
+  }
+}
+
+/* Focus visible styles for accessibility */
+:global([data-chunk-id]:focus-visible) {
+  outline: 2px solid var(--primary-color, #646cff);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Smooth scroll behavior for chunk elements */
+:global([data-chunk-id]) {
+  scroll-margin-top: 80px; /* Account for fixed headers */
+  transition: background-color 150ms ease-out;
+}
+
+/* Ensure chunks are positioned for proper scrolling */
+.chunkHighlighter :global([data-chunk-id]) {
+  position: relative;
+  border-radius: 4px;
+}
+
+/* Additional spacing for paragraph chunks */
+.chunkHighlighter :global(p[data-chunk-id]) {
+  margin: 12px 0;
+  padding: 8px 0;
+}
+
+/* Heading chunks - preserve hierarchy */
+.chunkHighlighter :global(h1[data-chunk-id]),
+.chunkHighlighter :global(h2[data-chunk-id]),
+.chunkHighlighter :global(h3[data-chunk-id]),
+.chunkHighlighter :global(h4[data-chunk-id]),
+.chunkHighlighter :global(h5[data-chunk-id]),
+.chunkHighlighter :global(h6[data-chunk-id]) {
+  margin: 16px 0 8px 0;
+  padding: 8px 0;
+}
+
+/* List item chunks */
+.chunkHighlighter :global(li[data-chunk-id]) {
+  margin: 4px 0;
+  padding: 4px 0;
+}
+
+/* Blockquote chunks */
+.chunkHighlighter :global(blockquote[data-chunk-id]) {
+  margin: 16px 0;
+  padding: 12px 16px;
+}
+
+/* Code block chunks */
+.chunkHighlighter :global(pre[data-chunk-id]) {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  :global(.chunk-active) {
+    animation: none;
+  }
+
+  :global(.chunk-hovered),
+  :global([data-chunk-id]) {
+    transition: none;
+  }
+
+  .chunkHighlighter :global([data-chunk-id]) {
+    scroll-behavior: auto;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :global(.chunk-active) {
+    border-left-width: 4px;
+    background-color: transparent;
+    outline: 2px solid currentColor;
+  }
+
+  :global(.chunk-hovered) {
+    outline: 1px solid currentColor;
+    background-color: transparent;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  :global(.chunk-active) {
+    /* Wave 3: Gradient for dark mode */
+    background: linear-gradient(
+      90deg,
+      var(--citation-highlight-bg) 0%,
+      transparent 100%
+    );
+    border-left-color: var(--primary-color, #535bf2);
+    /* Wave 3: Enhanced shadow for dark mode */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  :global(.chunk-hovered) {
+    background-color: var(--citation-highlight-bg);
+    opacity: 0.6;
+  }
+
+  :global(.chunk-active.chunk-hovered) {
+    /* Wave 3: Brighter gradient for combined state */
+    background: linear-gradient(
+      90deg,
+      var(--citation-highlight-bg) 0%,
+      transparent 100%
+    );
+    opacity: 0.8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Light mode adjustments */
+@media (prefers-color-scheme: light) {
+  :global(.chunk-active) {
+    background-color: var(--citation-highlight-bg);
+    border-left-color: var(--primary-color, #646cff);
+  }
+
+  :global(.chunk-hovered) {
+    background-color: var(--citation-highlight-bg);
+    opacity: 0.5;
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  :global(.chunk-active) {
+    margin-left: -10px;
+    padding-left: 8px;
+    border-left-width: 2px;
+  }
+
+  :global([data-chunk-id]) {
+    scroll-margin-top: 60px; /* Smaller header on mobile */
+  }
+}
+
+/* Print styles - remove highlighting */
+@media print {
+  :global(.chunk-active),
+  :global(.chunk-hovered) {
+    background-color: transparent !important;
+    border-left: none !important;
+  }
+
+  :global([data-chunk-id]) {
+    page-break-inside: avoid;
+  }
+}

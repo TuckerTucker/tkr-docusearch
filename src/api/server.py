@@ -34,6 +34,8 @@ from .models import (
 # Import routers
 from .routes import markdown_router
 from .routes.markdown import set_storage_client
+from .structure import router as structure_router
+from .structure import set_chroma_client
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,7 @@ def create_app(
 
     # Include routers
     app.include_router(markdown_router)
+    app.include_router(structure_router)
 
     # Initialize components on startup
     @app.on_event("startup")
@@ -136,6 +139,9 @@ def create_app(
 
             # Set storage client for markdown router
             set_storage_client(_app_state["storage_client"])
+
+            # Set chroma client for structure router
+            set_chroma_client(_app_state["storage_client"])
 
             # Initialize search engine
             _app_state["search_engine"] = SearchEngine(

@@ -1,0 +1,450 @@
+/**
+ * Reusable Transitions
+ *
+ * Agent 13: Visual Polish & Animation Designer
+ * Wave 3 - BBox Overlay React Implementation
+ *
+ * Smooth transitions using GPU-accelerated properties.
+ * Respects prefers-reduced-motion and design system tokens.
+ */
+
+/* ============================================
+   Transition Timing Functions
+   ============================================ */
+
+:root {
+  /* Easing functions for natural motion */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-bounce: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+
+  /* Duration tokens */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+}
+
+/* ============================================
+   Bbox Transitions
+   ============================================ */
+
+/**
+ * Smooth bbox hover transition
+ * Transitions fill, stroke, and transform
+ */
+.transition-bbox-hover {
+  transition-property: fill-opacity, stroke-opacity, stroke-width, transform, filter;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Bbox active transition
+ * Faster transition for immediate feedback
+ */
+.transition-bbox-active {
+  transition-property: fill, fill-opacity, stroke, stroke-opacity, stroke-width;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Bbox scale transition
+ * For transform-based hover effects
+ */
+.transition-bbox-scale {
+  transition-property: transform;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+  will-change: transform;
+}
+
+/* ============================================
+   Chunk Highlight Transitions
+   ============================================ */
+
+/**
+ * Chunk background transition
+ * Smooth background color change
+ */
+.transition-chunk-bg {
+  transition-property: background-color, border-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Chunk opacity transition
+ * For hover states
+ */
+.transition-chunk-opacity {
+  transition-property: opacity, background-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Chunk transform transition
+ * For subtle movement effects
+ */
+.transition-chunk-transform {
+  transition-property: transform, background-color, border-color;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+}
+
+/* ============================================
+   General UI Transitions
+   ============================================ */
+
+/**
+ * Fade transition
+ * Simple opacity change
+ */
+.transition-fade {
+  transition-property: opacity;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-in-out);
+}
+
+/**
+ * Color transition
+ * For text and background colors
+ */
+.transition-colors {
+  transition-property: color, background-color, border-color;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-in-out);
+}
+
+/**
+ * Transform transition
+ * For movement and scale
+ */
+.transition-transform {
+  transition-property: transform;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+  will-change: transform;
+}
+
+/**
+ * All transition
+ * Transitions all animatable properties
+ * Use sparingly - prefer specific properties
+ */
+.transition-all {
+  transition-property: all;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-in-out);
+}
+
+/**
+ * Fast transition
+ * For immediate feedback
+ */
+.transition-fast {
+  transition-duration: var(--duration-fast);
+}
+
+/**
+ * Slow transition
+ * For deliberate, noticeable changes
+ */
+.transition-slow {
+  transition-duration: var(--duration-slow);
+}
+
+/* ============================================
+   Interactive Element Transitions
+   ============================================ */
+
+/**
+ * Button transition
+ * Combines color, transform, and shadow
+ */
+.transition-button {
+  transition-property: color, background-color, border-color, transform, box-shadow;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Link transition
+ * For text links and navigation
+ */
+.transition-link {
+  transition-property: color, text-decoration-color, opacity;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Input transition
+ * For form inputs and textareas
+ */
+.transition-input {
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Focus ring transition
+ * For keyboard navigation feedback
+ */
+.transition-focus-ring {
+  transition-property: box-shadow, outline;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/* ============================================
+   Layout Transitions
+   ============================================ */
+
+/**
+ * Height transition
+ * For expanding/collapsing elements
+ * Note: Use max-height or transform: scaleY for better performance
+ */
+.transition-height {
+  transition-property: max-height;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-in-out);
+  overflow: hidden;
+}
+
+/**
+ * Width transition
+ * For expanding/collapsing elements
+ */
+.transition-width {
+  transition-property: max-width;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-in-out);
+  overflow: hidden;
+}
+
+/**
+ * Scale transition
+ * More performant than width/height
+ */
+.transition-scale {
+  transition-property: transform;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+}
+
+/* ============================================
+   Tooltip and Popover Transitions
+   ============================================ */
+
+/**
+ * Tooltip enter transition
+ */
+.transition-tooltip-enter {
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Tooltip exit transition
+ */
+.transition-tooltip-exit {
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-in);
+}
+
+/**
+ * Popover transition
+ */
+.transition-popover {
+  transition-property: opacity, transform, visibility;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+}
+
+/* ============================================
+   Modal and Overlay Transitions
+   ============================================ */
+
+/**
+ * Modal backdrop transition
+ */
+.transition-modal-backdrop {
+  transition-property: opacity, backdrop-filter;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-in-out);
+}
+
+/**
+ * Modal content transition
+ */
+.transition-modal-content {
+  transition-property: opacity, transform, scale;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-out);
+}
+
+/**
+ * Overlay transition
+ */
+.transition-overlay {
+  transition-property: opacity;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-in-out);
+}
+
+/* ============================================
+   Performance Optimizations
+   ============================================ */
+
+/**
+ * GPU-accelerated transform
+ * Use for elements that will transform
+ */
+.will-change-transform {
+  will-change: transform;
+}
+
+/**
+ * GPU-accelerated opacity
+ * Use for elements that will fade
+ */
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/**
+ * GPU-accelerated auto (for lists)
+ * Let browser decide what to optimize
+ */
+.will-change-auto {
+  will-change: auto;
+}
+
+/**
+ * Remove will-change after animation
+ * Apply this class after animations complete
+ */
+.will-change-none {
+  will-change: auto;
+}
+
+/* ============================================
+   Reduced Motion Support
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all transitions for accessibility */
+  .transition-bbox-hover,
+  .transition-bbox-active,
+  .transition-bbox-scale,
+  .transition-chunk-bg,
+  .transition-chunk-opacity,
+  .transition-chunk-transform,
+  .transition-fade,
+  .transition-colors,
+  .transition-transform,
+  .transition-all,
+  .transition-button,
+  .transition-link,
+  .transition-input,
+  .transition-focus-ring,
+  .transition-height,
+  .transition-width,
+  .transition-scale,
+  .transition-tooltip-enter,
+  .transition-tooltip-exit,
+  .transition-popover,
+  .transition-modal-backdrop,
+  .transition-modal-content,
+  .transition-overlay {
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Remove will-change in reduced motion mode */
+  .will-change-transform,
+  .will-change-opacity,
+  .will-change-auto {
+    will-change: auto;
+  }
+}
+
+/* ============================================
+   Hover State Enhancements
+   ============================================ */
+
+/**
+ * Lift effect on hover
+ * Combines transform and shadow
+ */
+@media (hover: hover) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/**
+ * Scale effect on hover
+ */
+@media (hover: hover) {
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+}
+
+/**
+ * Glow effect on hover
+ */
+@media (hover: hover) {
+  .hover-glow:hover {
+    box-shadow: 0 0 12px var(--primary);
+  }
+}
+
+/* ============================================
+   Active/Press State Effects
+   ============================================ */
+
+/**
+ * Scale down on press
+ */
+.active-scale-down:active {
+  transform: scale(0.98);
+}
+
+/**
+ * Lift on press
+ */
+.active-lift:active {
+  transform: translateY(1px);
+}
+
+/* ============================================
+   Stagger Transition Delays
+   ============================================ */
+
+/**
+ * Stagger utility for lists
+ * Apply with style="--stagger-index: 0", --stagger-index: 1, etc.
+ */
+.stagger-transition {
+  transition-delay: calc(var(--stagger-index, 0) * 50ms);
+}
+
+.stagger-fast {
+  transition-delay: calc(var(--stagger-index, 0) * 30ms);
+}
+
+.stagger-slow {
+  transition-delay: calc(var(--stagger-index, 0) * 100ms);
+}

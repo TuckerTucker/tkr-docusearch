@@ -1,32 +1,130 @@
 {
-  "headings": [],
-  "tables": [],
+  "headings": [
+    {
+      "text": "Q4 Financial Report",
+      "level": "TITLE",
+      "page": 1,
+      "bbox": [72.0, 700.5, 540.0, 750.3],
+      "section_path": "Q4 Financial Report"
+    },
+    {
+      "text": "Executive Summary",
+      "level": "SECTION_HEADER",
+      "page": 1,
+      "bbox": [72.0, 620.0, 280.5, 645.2],
+      "section_path": "Q4 Financial Report > Executive Summary"
+    },
+    {
+      "text": "Revenue Analysis",
+      "level": "SECTION_HEADER",
+      "page": 2,
+      "bbox": [72.0, 680.0, 250.0, 705.0],
+      "section_path": "Q4 Financial Report > Revenue Analysis"
+    },
+    {
+      "text": "Regional Performance",
+      "level": "SUB_SECTION_HEADER",
+      "page": 2,
+      "bbox": [72.0, 550.0, 280.0, 570.0],
+      "section_path": "Q4 Financial Report > Revenue Analysis > Regional Performance"
+    },
+    {
+      "text": "Product Categories",
+      "level": "SUB_SECTION_HEADER",
+      "page": 2,
+      "bbox": [72.0, 380.0, 260.0, 400.0],
+      "section_path": "Q4 Financial Report > Revenue Analysis > Product Categories"
+    }
+  ],
+  "tables": [
+    {
+      "table_id": "table-0",
+      "page": 1,
+      "caption": "Quarterly Revenue Summary",
+      "rows": 5,
+      "cols": 4,
+      "has_header": true,
+      "bbox": [90.0, 450.0, 520.0, 580.0]
+    },
+    {
+      "table_id": "table-1",
+      "page": 2,
+      "caption": "Regional Sales Breakdown",
+      "rows": 8,
+      "cols": 6,
+      "has_header": true,
+      "bbox": [80.0, 200.0, 530.0, 380.0]
+    },
+    {
+      "table_id": "table-2",
+      "page": 3,
+      "caption": null,
+      "rows": 12,
+      "cols": 3,
+      "has_header": false,
+      "bbox": [100.0, 300.0, 450.0, 600.0]
+    }
+  ],
   "pictures": [
     {
       "picture_id": "picture-0",
-      "page_num": 1,
-      "picture_type": "OTHER",
+      "page": 1,
+      "type": "CHART",
+      "caption": "Revenue Growth Trend",
+      "confidence": 0.92,
+      "bbox": [320.0, 150.0, 540.0, 350.0]
+    },
+    {
+      "picture_id": "picture-1",
+      "page": 2,
+      "type": "DIAGRAM",
+      "caption": "Market Distribution",
+      "confidence": 0.87,
+      "bbox": [100.0, 50.0, 500.0, 180.0]
+    },
+    {
+      "picture_id": "picture-2",
+      "page": 3,
+      "type": "LOGO",
       "caption": null,
-      "confidence": 0.0,
-      "bbox": [
-        49.34263610839844,
-        559.1575965881348,
-        742.2379760742188,
-        537.937858581543
-      ]
+      "confidence": 0.95,
+      "bbox": [450.0, 720.0, 550.0, 770.0]
     }
   ],
-  "code_blocks": [],
-  "formulas": [],
+  "code_blocks": [
+    {
+      "page": 4,
+      "language": "python",
+      "lines": 12,
+      "bbox": [90.0, 400.0, 520.0, 550.0]
+    }
+  ],
+  "formulas": [
+    {
+      "page": 2,
+      "latex": "\\text{ROI} = \\frac{\\text{Net Profit}}{\\text{Investment Cost}} \\times 100",
+      "bbox": [150.0, 480.0, 420.0, 510.0]
+    }
+  ],
   "summary": {
-    "total_sections": 0,
-    "max_heading_depth": 0,
+    "total_sections": 5,
+    "max_heading_depth": 2,
     "has_table_of_contents": false,
-    "size_estimate_kb": 0.3173828125
+    "size_estimate_kb": 1.8
   },
   "_metadata": {
-    "source_document": "Endless Inspiration Board 3.0 Driver - Master.pdf",
-    "num_pages": 1,
+    "description": "Sample structure data for BoundingBox overlay feature",
+    "purpose": "API integration testing and frontend development",
+    "source_type": "synthetic",
+    "num_pages": 4,
+    "num_elements": 16,
+    "element_types": {
+      "headings": 5,
+      "tables": 3,
+      "pictures": 3,
+      "code_blocks": 1,
+      "formulas": 1
+    },
     "extraction_config": {
       "enable_table_structure": true,
       "enable_picture_classification": true,
@@ -36,7 +134,129 @@
   },
   "_coordinate_system": {
     "format": "[x1, y1, x2, y2]",
-    "origin": "See integration-contracts/docling-structure-spec.md",
-    "units": "See integration-contracts/docling-structure-spec.md"
+    "origin": "bottom-left",
+    "units": "points (1/72 inch)",
+    "description": "Docling uses PDF coordinate system with bottom-left origin. Frontend must convert to top-left origin for browser rendering.",
+    "conversion_formula": {
+      "to_top_left": "y_top = image_height - y_bottom",
+      "example": {
+        "input_bbox": [100, 200, 500, 250],
+        "image_height": 1000,
+        "output_bbox": [100, 750, 500, 800],
+        "explanation": "y1_top = 1000 - 250 = 750, y2_top = 1000 - 200 = 800"
+      }
+    },
+    "validation": {
+      "x1_less_than_x2": true,
+      "all_non_negative": true,
+      "coordinates_in_points": true
+    }
+  },
+  "_api_contract": {
+    "endpoint": "GET /api/documents/{doc_id}/pages/{page_num}/structure",
+    "response_format": {
+      "doc_id": "string",
+      "page": "integer",
+      "image_dimensions": {
+        "width": "integer (pixels)",
+        "height": "integer (pixels)"
+      },
+      "elements": {
+        "headings": "array of HeadingInfo",
+        "tables": "array of TableInfo",
+        "pictures": "array of PictureInfo",
+        "code_blocks": "array of CodeBlockInfo",
+        "formulas": "array of FormulaInfo"
+      }
+    },
+    "notes": [
+      "All bbox coordinates must be converted from bottom-left to top-left origin",
+      "Elements are pre-filtered to only include items on the requested page",
+      "Empty arrays are returned for element types not found on the page",
+      "Image dimensions are required for coordinate conversion"
+    ]
+  },
+  "_usage_examples": {
+    "filter_by_page": {
+      "description": "Get all elements for page 2",
+      "javascript": "const page2Elements = {\n  headings: structure.headings.filter(h => h.page === 2),\n  tables: structure.tables.filter(t => t.page === 2),\n  pictures: structure.pictures.filter(p => p.page === 2)\n};"
+    },
+    "convert_coordinates": {
+      "description": "Convert bbox to top-left origin",
+      "javascript": "function convertBBox(bbox, imageHeight) {\n  const [x1, y1_bottom, x2, y2_bottom] = bbox;\n  const y1_top = imageHeight - y2_bottom;\n  const y2_top = imageHeight - y1_bottom;\n  return [x1, y1_top, x2, y2_top];\n}"
+    },
+    "render_overlay": {
+      "description": "Render bbox as SVG rectangle",
+      "javascript": "function renderBBox(bbox, imageWidth, imageHeight) {\n  const [x1, y1, x2, y2] = convertBBox(bbox, imageHeight);\n  const width = x2 - x1;\n  const height = y2 - y1;\n  return `<rect x=\"${x1}\" y=\"${y1}\" width=\"${width}\" height=\"${height}\" />`;\n}"
+    }
+  },
+  "_element_type_descriptions": {
+    "headings": {
+      "description": "Document headings and section titles",
+      "levels": {
+        "TITLE": "Document title (level 0)",
+        "SECTION_HEADER": "Top-level section (level 1)",
+        "SUB_SECTION_HEADER": "Sub-section (level 2)",
+        "PARAGRAPH_HEADER": "Paragraph header (level 3)"
+      },
+      "use_cases": [
+        "Table of contents navigation",
+        "Section highlighting on hover",
+        "Bookmark generation"
+      ]
+    },
+    "tables": {
+      "description": "Structured data tables",
+      "attributes": {
+        "has_header": "True if table has header row",
+        "rows": "Total number of rows",
+        "cols": "Total number of columns",
+        "caption": "Table caption if available"
+      },
+      "use_cases": [
+        "Data extraction",
+        "Table region highlighting",
+        "Export to CSV/Excel"
+      ]
+    },
+    "pictures": {
+      "description": "Images, charts, diagrams, and logos",
+      "types": {
+        "CHART": "Bar chart, line chart, pie chart",
+        "DIAGRAM": "Flow diagram, architecture diagram",
+        "PHOTO": "Photograph or image",
+        "LOGO": "Company or product logo",
+        "SIGNATURE": "Handwritten signature",
+        "OTHER": "Unknown or other type"
+      },
+      "use_cases": [
+        "Image region highlighting",
+        "Chart data extraction",
+        "Logo detection"
+      ]
+    },
+    "code_blocks": {
+      "description": "Source code blocks",
+      "attributes": {
+        "language": "Programming language (if detected)",
+        "lines": "Number of code lines"
+      },
+      "use_cases": [
+        "Syntax highlighting",
+        "Code extraction",
+        "Copy to clipboard"
+      ]
+    },
+    "formulas": {
+      "description": "Mathematical formulas",
+      "attributes": {
+        "latex": "LaTeX representation of formula"
+      },
+      "use_cases": [
+        "Formula rendering",
+        "MathJax integration",
+        "Copy LaTeX code"
+      ]
+    }
   }
 }

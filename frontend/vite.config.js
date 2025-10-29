@@ -31,6 +31,11 @@ export default defineConfig(({ mode }) => {
     port: 3000,
     allowedHosts, // Read from VITE_ALLOWED_HOSTS in .env
     proxy: {
+      // Python backend API - all /api/* endpoints (structure, etc.)
+      '/api': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+      },
       // Python backend API - document endpoints
       '/documents': {
         target: 'http://localhost:8002',

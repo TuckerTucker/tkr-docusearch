@@ -75,6 +75,7 @@ class ParsedDocument:
         text_chunks: List of TextChunk objects
         metadata: Document-level metadata
         docling_doc: Optional Docling document object (for markdown export)
+        structure: Optional DocumentStructure object (enhanced mode)
     """
 
     filename: str
@@ -84,3 +85,4 @@ class ParsedDocument:
     text_chunks: List[TextChunk]
     metadata: Dict[str, Any]
     docling_doc: Optional[Any] = None  # Docling document object
+    structure: Optional[Any] = None  # DocumentStructure object (enhanced mode)
