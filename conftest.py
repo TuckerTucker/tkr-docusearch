@@ -1,6 +1,4 @@
-"""
-Pytest configuration and shared fixtures for tkr-docusearch test suite.
-"""
+"""Pytest configuration and shared fixtures for tkr-docusearch test suite."""
 
 import os
 import sys
@@ -150,7 +148,7 @@ def chromadb_available() -> bool:
         from chromadb.config import Settings
 
         # Try to create an ephemeral client
-        client = chromadb.Client(Settings(is_persistent=False, anonymized_telemetry=False))
+        _ = chromadb.Client(Settings(is_persistent=False, anonymized_telemetry=False))
         return True
     except Exception:
         return False

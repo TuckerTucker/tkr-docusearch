@@ -1,4 +1,4 @@
-"""
+r"""
 Transcript formatting with timestamp markers.
 
 This module converts whisper segment data into formatted text with [time: X-Y]
@@ -6,13 +6,16 @@ timestamp markers, implementing Integration Contract IC-002 text format requirem
 """
 
 import logging
-from typing import List
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from src.processing.whisper.transcriber import WhisperOutput
 
 logger = logging.getLogger(__name__)
 
 
-def format_transcript_with_timestamps(whisper_result: dict) -> str:
-    """
+def format_transcript_with_timestamps(whisper_result: "WhisperOutput") -> str:
+    r"""
     Format whisper segments into text with [time: X-Y] markers.
 
     This function implements the IC-002 text format requirement, converting

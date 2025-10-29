@@ -175,7 +175,7 @@ class TestWhisperIntegration:
         assert result.doc_id
         assert result.text_ids
 
-        logger.info(f"✓ Audio file processed with Whisper")
+        logger.info("✓ Audio file processed with Whisper")
         logger.info(f"  Doc ID: {result.doc_id}")
         logger.info(f"  Text IDs: {len(result.text_ids)} chunks")
 
@@ -204,7 +204,7 @@ class TestTimestampPropagation:
         if not audio_path.exists():
             pytest.skip("Sample audio file not found")
 
-        result = processor.process_document(
+        _ = processor.process_document(
             file_path=str(audio_path),
             chunk_size_words=250,
             chunk_overlap_words=50,
@@ -220,7 +220,7 @@ class TestTimestampPropagation:
 
         # Note: Since sample.mp3 is silent, it may not have timestamps
         # This test validates the storage mechanism is in place
-        logger.info(f"✓ Audio processed and stored in ChromaDB")
+        logger.info("✓ Audio processed and stored in ChromaDB")
         logger.info(f"  Chunks stored: {len(text_data['metadatas'])}")
 
 
@@ -306,8 +306,8 @@ class TestContractIC002:
             assert "filename" in metadata
             assert metadata["filename"] == "sample.mp3"
 
-        logger.info(f"\n✓ IC-002 COMPLIANCE VALIDATED")
-        logger.info(f"  ✓ Audio file processed through Whisper")
-        logger.info(f"  ✓ Transcription completed and stored")
-        logger.info(f"  ✓ Metadata preserved in ChromaDB")
+        logger.info("\n✓ IC-002 COMPLIANCE VALIDATED")
+        logger.info("  ✓ Audio file processed through Whisper")
+        logger.info("  ✓ Transcription completed and stored")
+        logger.info("  ✓ Metadata preserved in ChromaDB")
         logger.info(f"  ✓ {len(text_data['metadatas'])} chunks stored")

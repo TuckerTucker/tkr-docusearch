@@ -63,7 +63,7 @@ class TimestampExtractionError(AudioProcessingError):
 def parse_audio_with_whisper(
     file_path: str, config: Optional[EnhancedModeConfig] = None
 ) -> Tuple[List[Page], Dict[str, Any], Any]:
-    """
+    r"""
     Parse audio file with custom whisper (IC-002).
 
     This is the main entry point for audio parsing, implementing Integration

@@ -8,13 +8,16 @@ requirements.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+if TYPE_CHECKING:
+    from src.processing.whisper.transcriber import WhisperOutput
 
 logger = logging.getLogger(__name__)
 
 
 def build_audio_metadata(
-    whisper_result: dict,
+    whisper_result: "WhisperOutput",
     file_path: str,
     asr_model: str,
     asr_language: str,

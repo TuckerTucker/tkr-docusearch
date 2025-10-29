@@ -13,7 +13,7 @@ def sample_audio_file():
 
 @pytest.fixture
 def sample_audio_file_path(sample_audio_file):
-    """Validated Path object to sample audio."""
+    """Return validated Path object to sample audio."""
     path = Path(sample_audio_file)
     if not path.exists():
         pytest.skip(f"Test audio file not found: {sample_audio_file}")
