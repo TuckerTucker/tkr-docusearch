@@ -82,11 +82,6 @@ export default function ReferenceCard({
           aria-label={hasChunk ? "View details and jump to location" : "View details"}
         >
           Details
-          {hasChunk && (
-            <span className="reference-card__chunk-indicator" title="Jump to specific location">
-              📍
-            </span>
-          )}
         </a>
       </div>
     )
@@ -143,11 +138,6 @@ export default function ReferenceCard({
         aria-label={hasChunk ? `View details and jump to location for ${filename}` : `View details for ${filename}`}
       >
         Details
-        {hasChunk && (
-          <span className="reference-card__chunk-indicator" title="Jump to specific location">
-            📍
-          </span>
-        )}
       </a>
     </div>
   )

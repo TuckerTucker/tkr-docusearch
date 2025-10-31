@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useResearch } from '../hooks/useResearch.js'
 import ResearchPanel from '../features/research/ResearchPanel.jsx'
 import ReferencesPanel from '../features/research/ReferencesPanel.jsx'
+import { downloadResearchMarkdown } from '../utils/download.js'
 
 /**
  * ResearchView - AI research interface with citation highlighting
@@ -98,6 +99,15 @@ export default function ResearchView() {
     }
   }, [])
 
+  /**
+   * Handle download report - generate and download markdown file
+   */
+  const handleDownloadReport = useCallback(() => {
+    if (query && answer && references) {
+      downloadResearchMarkdown(query, answer, references, metadata)
+    }
+  }, [query, answer, references, metadata])
+
   // Clear active reference when answer changes
   useEffect(() => {
     setActiveReference(null)
@@ -119,6 +129,7 @@ export default function ResearchView() {
             activeReference={activeReference}
             onCitationClick={handleCitationClick}
             onCitationHover={handleCitationHover}
+            onDownloadReport={handleDownloadReport}
           />
         </div>
 
