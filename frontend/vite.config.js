@@ -31,6 +31,12 @@ export default defineConfig(({ mode }) => {
     port: 3000,
     allowedHosts, // Read from VITE_ALLOWED_HOSTS in .env
     proxy: {
+      // Research API endpoints (separate service on port 8004)
+      // IMPORTANT: Must come BEFORE general /api rule to match first
+      '/api/research': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+      },
       // Python backend API - all /api/* endpoints (structure, etc.)
       '/api': {
         target: 'http://localhost:8002',
@@ -69,11 +75,6 @@ export default defineConfig(({ mode }) => {
       // Python backend API - process endpoint
       '/process': {
         target: 'http://localhost:8002',
-        changeOrigin: true,
-      },
-      // Research API endpoints (separate service on port 8004)
-      '/api/research': {
-        target: 'http://localhost:8004',
         changeOrigin: true,
       },
       // WebSocket for status updates
