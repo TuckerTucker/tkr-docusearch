@@ -691,6 +691,157 @@ async def ask_research_question(request: ResearchRequest):
         )
 
 
+@app.post("/api/research/context-only")
+async def get_research_context(request: ResearchRequest):
+    """
+    Build research context WITHOUT calling external LLM.
+
+    For use with MCP servers where the MCP client (Claude Desktop)
+    will generate the answer itself.
+
+    This endpoint:
+    1. Searches your document collection for relevant sources
+    2. Builds formatted context with numbered citations
+    3. Extracts image URLs for visual sources (via ngrok)
+    4. Returns context + system prompt + sources (NO LLM call)
+
+    Returns:
+    - formatted_context: Numbered sources ready for LLM
+    - system_prompt: The prompt to use for answer generation
+    - sources: Source metadata for citation mapping
+    - image_urls: HTTPS URLs for visual sources (via ngrok)
+    - metadata: Token counts, search latency, vision status
+
+    Example request:
+        POST /api/research/context-only
+        {
+            "query": "What caused the 2008 financial crisis?",
+            "num_sources": 10,
+            "search_mode": "hybrid"
+        }
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(
+            "Building research context (MCP mode)",
+            query=request.query,
+            num_sources=request.num_sources,
+            search_mode=request.search_mode,
+        )
+
+        # Step 1: Build context from search results
+        search_start = time.time()
+        context = await app.state.context_builder.build_context(
+            query=request.query,
+            num_results=request.num_sources,
+            include_text=(request.search_mode in ["text", "hybrid"]),
+            include_visual=(request.search_mode in ["visual", "hybrid"]),
+        )
+        search_latency = int((time.time() - search_start) * 1000)
+
+        logger.info(
+            "Context built",
+            num_sources=len(context.sources),
+            total_tokens=context.total_tokens,
+            truncated=context.truncated,
+            search_latency_ms=search_latency,
+        )
+
+        # Check if any sources found
+        if not context.sources:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No relevant documents found for your query. Try rephrasing or uploading more documents.",
+            )
+
+        # Step 2: Extract image URLs for vision (same as /ask lines 518-544)
+        vision_enabled = os.getenv("RESEARCH_VISION_ENABLED", "true").lower() == "true"
+        max_images = int(os.getenv("RESEARCH_MAX_IMAGES", "10"))
+        ngrok_url = os.getenv("NGROK_URL", "http://localhost:8002")
+
+        # Validate vision setup
+        if vision_enabled and not os.getenv("NGROK_URL"):
+            logger.warning("Vision enabled but NGROK_URL not set - falling back to text-only")
+            vision_enabled = False
+        elif vision_enabled and ngrok_url and not ngrok_url.startswith("https://"):
+            logger.warning("NGROK_URL should be HTTPS for Claude Desktop", ngrok_url=ngrok_url)
+
+        image_urls = []
+        if vision_enabled:
+            all_image_urls = context.get_visual_image_urls(base_url=ngrok_url)
+            image_urls = all_image_urls[:max_images]
+
+            logger.debug(
+                "Vision support (MCP mode)",
+                enabled=vision_enabled,
+                visual_sources=len(all_image_urls),
+                images_to_send=len(image_urls),
+                base_url=ngrok_url,
+            )
+
+        # Estimate image tokens
+        image_tokens = 0
+        if image_urls:
+            image_tokens = app.state.llm_client.estimate_image_tokens(len(image_urls))
+
+        total_time = int((time.time() - start_time) * 1000)
+
+        logger.info(
+            "Research context ready for MCP client",
+            total_time_ms=total_time,
+            num_sources=len(context.sources),
+            visual_sources=sum(1 for s in context.sources if s.is_visual),
+            text_sources=sum(1 for s in context.sources if not s.is_visual),
+            images_to_send=len(image_urls),
+        )
+
+        # Return context WITHOUT calling external LLM
+        return {
+            "formatted_context": context.formatted_text,
+            "system_prompt": RESEARCH_SYSTEM_PROMPT,
+            "sources": [
+                {
+                    "id": i + 1,
+                    "doc_id": source.doc_id,
+                    "filename": source.filename,
+                    "page": source.page,
+                    "extension": source.extension,
+                    "chunk_id": source.chunk_id,
+                    "is_visual": source.is_visual,
+                    "thumbnail_path": source.thumbnail_path,
+                    "relevance_score": source.relevance_score,
+                    "date_added": source.timestamp,
+                }
+                for i, source in enumerate(context.sources)
+            ],
+            "image_urls": image_urls,
+            "metadata": {
+                "total_sources": len(context.sources),
+                "visual_sources_count": sum(1 for s in context.sources if s.is_visual),
+                "text_sources_count": sum(1 for s in context.sources if not s.is_visual),
+                "context_tokens": context.total_tokens,
+                "image_tokens": image_tokens,
+                "total_tokens": context.total_tokens + image_tokens,
+                "context_truncated": context.truncated,
+                "search_mode": request.search_mode,
+                "vision_enabled": vision_enabled,
+                "images_sent": len(image_urls),
+                "search_latency_ms": search_latency,
+                "processing_time_ms": total_time,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Context building failed", error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to build context: {str(e)}",
+        )
+
+
 @app.post("/api/research/local-inference", response_model=LocalInferenceResponse)
 async def local_inference(request: LocalInferenceRequest):
     """
