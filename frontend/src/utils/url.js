@@ -3,7 +3,12 @@
  *
  * Helper functions for building API and resource URLs.
  *
- * Wave 1 - Foundation Agent
+ * NOTE: Most URL building functions have been removed as they were unused.
+ * The backend now provides ready-to-use URLs in API responses (e.g., details_url in SourceInfo).
+ * Only navigation-related utilities are kept here.
+ *
+ * For document detail URLs, use backend-provided details_url from SourceInfo.
+ * See: src/utils/url_builder.py (centralized backend URL builder)
  */
 
 /**
@@ -13,62 +18,6 @@
  */
 export function buildDocumentUrl(docId) {
     return `/details/${docId}`;
-}
-
-/**
- * Build thumbnail URL for a document
- * @param {string} docId - Document identifier
- * @param {number} page - Optional page number (defaults to first page)
- * @returns {string} Thumbnail URL
- */
-export function buildThumbnailUrl(docId, page = 1) {
-    return `/api/documents/${docId}/thumbnail?page=${page}`;
-}
-
-/**
- * Build page image URL for a specific page
- * @param {string} docId - Document identifier
- * @param {number} page - Page number
- * @returns {string} Page image URL
- */
-export function buildPageImageUrl(docId, page) {
-    return `/api/documents/${docId}/pages/${page}`;
-}
-
-/**
- * Build cover art URL for audio documents
- * @param {string} docId - Document identifier
- * @returns {string} Cover art URL
- */
-export function buildCoverArtUrl(docId) {
-    return `/api/documents/${docId}/cover-art`;
-}
-
-/**
- * Build markdown download URL
- * @param {string} docId - Document identifier
- * @returns {string} Markdown download URL
- */
-export function buildMarkdownUrl(docId) {
-    return `/documents/${docId}/markdown`;
-}
-
-/**
- * Build VTT captions URL
- * @param {string} docId - Document identifier
- * @returns {string} VTT captions URL
- */
-export function buildVTTUrl(docId) {
-    return `/documents/${docId}/vtt`;
-}
-
-/**
- * Build audio source URL
- * @param {string} docId - Document identifier
- * @returns {string} Audio source URL
- */
-export function buildAudioUrl(docId) {
-    return `/documents/${docId}/audio`;
 }
 
 /**

@@ -9,7 +9,7 @@ import os
 # API Endpoints
 DOCUSEARCH_API_URL = os.getenv("DOCUSEARCH_API_URL", "http://localhost:8004")
 WORKER_API_URL = os.getenv("WORKER_API_URL", "http://localhost:8002")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+# NOTE: FRONTEND_URL moved to src.utils.url_builder for centralized URL management
 
 # Research API Endpoint
 CONTEXT_ENDPOINT = f"{DOCUSEARCH_API_URL}/api/research/context-only"

@@ -32,6 +32,7 @@ from src.research.litellm_client import (
 from src.research.prompts import RESEARCH_SYSTEM_PROMPT
 from src.search.search_engine import SearchEngine
 from src.storage.chroma_client import ChromaClient
+from src.utils.url_builder import build_details_url
 
 logger = structlog.get_logger(__name__)
 
@@ -90,6 +91,7 @@ class SourceInfo(BaseModel):
     date_added: str  # ISO format
     relevance_score: float
     chunk_id: Optional[str] = None  # Format: "{doc_id}-chunk{NNNN}" for text, None for visual
+    details_url: Optional[str] = None  # Frontend URL to document detail view
 
 
 class ResearchMetadata(BaseModel):
@@ -610,6 +612,13 @@ async def ask_research_question(request: ResearchRequest):
                     date_added=source.timestamp,
                     relevance_score=source.relevance_score,
                     chunk_id=source.chunk_id,
+                    details_url=build_details_url(
+                        doc_id=source.doc_id,
+                        # Audio documents don't use page navigation (use time-based chunks instead)
+                        page=source.page if source.extension not in ["mp3", "wav"] else None,
+                        chunk_id=source.chunk_id,
+                        absolute=False,  # Relative URLs for web frontend
+                    ),
                 )
                 for i, source in enumerate(context.sources)
             ],

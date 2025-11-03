@@ -79,6 +79,16 @@ repos:
         stages: [commit-msg]
         args: []
 
+  # Prevent Claude Code context files from being committed
+  - repo: local
+    hooks:
+      - id: unstage-claude-context
+        name: Unstage Claude Code context files
+        entry: bash -c 'git restore --staged .context-kit/ .claude/ claude.local.md CLAUDE.local.md 2>/dev/null || true'
+        language: system
+        always_run: true
+        pass_filenames: false
+
 # Configuration for pre-commit CI
 ci:
   autofix_commit_msg: |
@@ -89,5 +99,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: 'chore(deps): update pre-commit hooks'
   autoupdate_schedule: weekly
-  skip: []
+  skip: [unstage-claude-context]
   submodules: false

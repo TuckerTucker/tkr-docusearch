@@ -17,21 +17,149 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDocumentDetails } from '../hooks/useDocumentDetails.js';
 import { useTitle } from '../contexts/TitleContext.jsx';
 import { formatFilename } from '../utils/formatting.js';
 import ContentViewer from '../features/details/ContentViewer.jsx';
 import TextAccordion from '../features/details/TextAccordion.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
+import { useChunkNavigation } from '../features/details/hooks/useChunkNavigation.ts';
 
 export default function DetailsView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setTitle, setIsLoading: setTitleLoading } = useTitle();
 
   // Fetch document and markdown
   const { document, markdown, isLoading, error } = useDocumentDetails(id);
+
+  // Helper function to extract chunk index from chunk_id
+  // Format: "doc-id-pageN" where N is 1-indexed (page1 = chunk index 0)
+  const getChunkIndexFromId = useCallback((chunkId) => {
+    if (!chunkId) return null;
+    const match = chunkId.match(/page(\d+)$/);
+    if (match) {
+      const pageNum = parseInt(match[1], 10);
+      return pageNum - 1; // Convert to 0-based index
+    }
+    return null;
+  }, []);
+
+  // Handle chunk navigation from URL parameter
+  const handleChunkNavigate = useCallback((chunkId) => {
+    console.log(`[DetailsView] Chunk navigation requested: ${chunkId}`);
+
+    if (!document) {
+      console.log('[DetailsView] Document not loaded yet, deferring chunk navigation');
+      return;
+    }
+
+    // Detect audio documents by file extension
+    const isAudio = document.filename && (
+      document.filename.toLowerCase().endsWith('.mp3') ||
+      document.filename.toLowerCase().endsWith('.wav')
+    );
+
+    // For audio documents, extract chunk index and seek to start time
+    if (isAudio && document.chunks) {
+      const chunkIndex = getChunkIndexFromId(chunkId);
+      console.log(`[DetailsView] Audio detected, chunk index: ${chunkIndex}, total chunks: ${document.chunks.length}`);
+
+      if (chunkIndex !== null && chunkIndex < document.chunks.length) {
+        const chunk = document.chunks[chunkIndex];
+        const startTime = chunk.start_time;
+        console.log(`[DetailsView] Audio: Seeking to chunk ${chunkIndex} at ${startTime}s`);
+
+        // Seek audio player when it's ready
+        if (audioPlayerRef.current) {
+          audioPlayerRef.current.seekTo(startTime);
+          console.log('[DetailsView] seekTo called successfully');
+        } else {
+          // Store the time to seek to once player is ready
+          console.log('[DetailsView] Audio player not ready, will seek once mounted');
+          setTimeout(() => {
+            if (audioPlayerRef.current) {
+              console.log('[DetailsView] Retrying seekTo after delay');
+              audioPlayerRef.current.seekTo(startTime);
+            } else {
+              console.log('[DetailsView] Audio player still not ready after delay');
+            }
+          }, 1000);
+        }
+      } else {
+        console.log(`[DetailsView] Invalid chunk index or out of bounds: ${chunkIndex}`);
+      }
+    } else if (document.pages && document.pages.length > 0) {
+      // For visual documents (PDF/DOCX/PPTX), extract page number from chunk_id
+      const pageNumber = getChunkIndexFromId(chunkId);
+      if (pageNumber !== null) {
+        // Convert from 0-based index back to 1-based page number
+        const targetPage = pageNumber + 1;
+        console.log(`[DetailsView] Visual document: Navigating to page ${targetPage} from chunk ${chunkId}`);
+
+        // Navigate slideshow to page
+        if (slideshowRef.current && slideshowRef.current.navigateToPage) {
+          slideshowRef.current.navigateToPage(targetPage);
+          setCurrentPage(targetPage);
+          console.log('[DetailsView] Slideshow navigation successful');
+        } else {
+          console.log('[DetailsView] Slideshow not ready, will navigate once mounted');
+          setTimeout(() => {
+            if (slideshowRef.current && slideshowRef.current.navigateToPage) {
+              console.log('[DetailsView] Retrying slideshow navigation after delay');
+              slideshowRef.current.navigateToPage(targetPage);
+              setCurrentPage(targetPage);
+            } else {
+              console.log('[DetailsView] Slideshow still not ready after delay');
+            }
+          }, 500);
+        }
+
+        // Set active chunk for text accordion highlighting
+        setActiveChunk({ chunk_id: chunkId });
+      } else {
+        console.log(`[DetailsView] Could not extract page number from chunk_id: ${chunkId}`);
+      }
+    }
+  }, [document, getChunkIndexFromId]);
+
+  // Use chunk navigation hook
+  const { initialChunkId } = useChunkNavigation({
+    onChunkNavigate: handleChunkNavigate,
+  });
+
+  // Navigate to initial chunk when document loads (for both audio and visual documents)
+  useEffect(() => {
+    if (initialChunkId && document) {
+      console.log(`[DetailsView] Document loaded with chunk parameter, navigating to: ${initialChunkId}`);
+      handleChunkNavigate(initialChunkId);
+    }
+  }, [document, initialChunkId, handleChunkNavigate]);
+
+  // Navigate to page from URL parameter (for visual documents without chunk)
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    if (pageParam && document && document.pages && !initialChunkId) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (!isNaN(pageNumber) && pageNumber > 0) {
+        console.log(`[DetailsView] Navigating to page ${pageNumber} from page parameter`);
+        if (slideshowRef.current && slideshowRef.current.navigateToPage) {
+          slideshowRef.current.navigateToPage(pageNumber);
+          setCurrentPage(pageNumber);
+        } else {
+          setTimeout(() => {
+            if (slideshowRef.current && slideshowRef.current.navigateToPage) {
+              console.log('[DetailsView] Retrying page navigation after delay');
+              slideshowRef.current.navigateToPage(pageNumber);
+              setCurrentPage(pageNumber);
+            }
+          }, 500);
+        }
+      }
+    }
+  }, [document, searchParams, initialChunkId]);
 
   // Update page title when document loads
   useEffect(() => {

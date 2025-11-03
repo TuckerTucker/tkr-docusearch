@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 import httpx
 
-from .config import FRONTEND_URL
+from src.utils.url_builder import build_details_url
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,9 @@ def build_document_link(doc_id: str, chunk_id: Optional[str] = None) -> str:
     """
     Build frontend URL for document detail view.
 
+    DEPRECATED: This function now delegates to centralized URL builder.
+    Use src.utils.url_builder.build_details_url() directly for new code.
+
     Args:
         doc_id: Document ID (SHA-256 hash)
         chunk_id: Optional chunk ID for text sources (format: "{doc_id}-chunk{NNNN}")
@@ -100,12 +103,12 @@ def build_document_link(doc_id: str, chunk_id: Optional[str] = None) -> str:
         >>> build_document_link("abc123", "abc123-chunk0012")
         'http://localhost:3000/details/abc123?chunk=abc123-chunk0012'
     """
-    link = f"{FRONTEND_URL}/details/{doc_id}"
-
-    if chunk_id:
-        link += f"?chunk={chunk_id}"
-
-    return link
+    # Delegate to centralized URL builder
+    return build_details_url(
+        doc_id=doc_id,
+        chunk_id=chunk_id,
+        absolute=True,  # MCP server needs absolute URLs for external tools
+    )
 
 
 def format_source_links(sources: List[Dict]) -> str:

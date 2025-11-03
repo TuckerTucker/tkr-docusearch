@@ -29,6 +29,7 @@ export default function ReferenceCard({
     date_added,
     doc_id,
     chunk_id,
+    details_url,
   } = reference
 
   const citationNumber = id || 1
@@ -45,14 +46,15 @@ export default function ReferenceCard({
     }
   }
 
-  // Build details URL with optional chunk_id for precise navigation
-  const detailsURL = doc_id
+  // Use backend-provided URL if available, otherwise build client-side
+  // Backend provides details_url starting with SourceInfo model update
+  const detailsURL = details_url || (doc_id
     ? buildDetailsUrl({
         docId: doc_id,
         page,
         chunkId: chunk_id,
       })
-    : '#'
+    : '#')
 
   // Check if chunk context is available
   const hasChunk = hasChunkContext(reference)
@@ -153,6 +155,7 @@ ReferenceCard.propTypes = {
     date_added: PropTypes.string,
     doc_id: PropTypes.string,
     chunk_id: PropTypes.string, // Optional: enables precise navigation to text location
+    details_url: PropTypes.string, // Optional: backend-provided URL (preferred over client-side building)
   }).isRequired,
   variant: PropTypes.oneOf(['detailed', 'simple']),
   isHighlighted: PropTypes.bool,

@@ -1,19 +1,14 @@
 /**
  * URL Utilities Tests
  *
- * Coverage-Gap-Agent - Wave 4, Task 23
- * Testing URL building functions for API and resources
+ * NOTE: Most URL building functions removed as they were unused.
+ * Backend now provides ready-to-use URLs in API responses.
+ * Only navigation-related utilities remain.
  */
 
 import { describe, test, expect } from 'vitest'
 import {
   buildDocumentUrl,
-  buildThumbnailUrl,
-  buildPageImageUrl,
-  buildCoverArtUrl,
-  buildMarkdownUrl,
-  buildVTTUrl,
-  buildAudioUrl,
   buildSearchUrl,
 } from '../url'
 
@@ -28,78 +23,6 @@ describe('buildDocumentUrl', () => {
 
   test('handles empty document ID', () => {
     expect(buildDocumentUrl('')).toBe('/details/')
-  })
-})
-
-describe('buildThumbnailUrl', () => {
-  test('builds thumbnail URL with default page', () => {
-    expect(buildThumbnailUrl('doc123')).toBe('/api/documents/doc123/thumbnail?page=1')
-  })
-
-  test('builds thumbnail URL with specific page', () => {
-    expect(buildThumbnailUrl('doc123', 5)).toBe('/api/documents/doc123/thumbnail?page=5')
-  })
-
-  test('builds thumbnail URL with page 0', () => {
-    expect(buildThumbnailUrl('doc123', 0)).toBe('/api/documents/doc123/thumbnail?page=0')
-  })
-
-  test('handles large page numbers', () => {
-    expect(buildThumbnailUrl('doc123', 999)).toBe('/api/documents/doc123/thumbnail?page=999')
-  })
-})
-
-describe('buildPageImageUrl', () => {
-  test('builds page image URL correctly', () => {
-    expect(buildPageImageUrl('doc123', 1)).toBe('/api/documents/doc123/pages/1')
-  })
-
-  test('builds page image URL for different pages', () => {
-    expect(buildPageImageUrl('doc456', 10)).toBe('/api/documents/doc456/pages/10')
-  })
-
-  test('handles page 0', () => {
-    expect(buildPageImageUrl('doc789', 0)).toBe('/api/documents/doc789/pages/0')
-  })
-})
-
-describe('buildCoverArtUrl', () => {
-  test('builds cover art URL correctly', () => {
-    expect(buildCoverArtUrl('audio123')).toBe('/api/documents/audio123/cover-art')
-  })
-
-  test('handles different document IDs', () => {
-    expect(buildCoverArtUrl('podcast-ep-01')).toBe('/api/documents/podcast-ep-01/cover-art')
-  })
-})
-
-describe('buildMarkdownUrl', () => {
-  test('builds markdown download URL correctly', () => {
-    expect(buildMarkdownUrl('doc123')).toBe('/documents/doc123/markdown')
-  })
-
-  test('handles different document IDs', () => {
-    expect(buildMarkdownUrl('report-2025')).toBe('/documents/report-2025/markdown')
-  })
-})
-
-describe('buildVTTUrl', () => {
-  test('builds VTT captions URL correctly', () => {
-    expect(buildVTTUrl('audio123')).toBe('/documents/audio123/vtt')
-  })
-
-  test('handles different document IDs', () => {
-    expect(buildVTTUrl('lecture-recording')).toBe('/documents/lecture-recording/vtt')
-  })
-})
-
-describe('buildAudioUrl', () => {
-  test('builds audio source URL correctly', () => {
-    expect(buildAudioUrl('audio123')).toBe('/documents/audio123/audio')
-  })
-
-  test('handles different document IDs', () => {
-    expect(buildAudioUrl('podcast-001')).toBe('/documents/podcast-001/audio')
   })
 })
 
