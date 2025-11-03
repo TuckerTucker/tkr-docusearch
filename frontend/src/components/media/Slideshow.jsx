@@ -12,6 +12,9 @@ import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 're
 import { useKeyboardNav } from '../../hooks/useKeyboardNav.js';
 import { BBoxController } from '../../features/details/components/BBoxController';
 
+// Feature flag for bounding box overlay
+const ENABLE_BBOX = import.meta.env.VITE_ENABLE_BBOX === 'true';
+
 /**
  * Slideshow for PDF/DOCX/PPTX page images
  *
@@ -182,7 +185,7 @@ const Slideshow = forwardRef(function Slideshow({ document, initialPage = 1, onP
               alt={`Page ${currentPage}`}
               className="slideshow-image"
             />
-            {document?.doc_id && (
+            {document?.doc_id && ENABLE_BBOX && (
               <BBoxController
                 docId={document.doc_id}
                 currentPage={currentPage}
