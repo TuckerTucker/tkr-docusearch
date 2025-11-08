@@ -13,7 +13,49 @@ import { api } from '../services/api.js';
 /**
  * Hook for research queries
  *
+ * Submits research questions and receives AI-generated answers with inline citations.
+ * Caches results using React Query for efficient re-renders.
+ *
  * @returns {Object} Mutation interface for research
+ * @returns {Function} returns.ask - Async function to submit research query
+ * @returns {string|null} returns.answer - AI-generated answer text
+ * @returns {Array} returns.references - Array of source documents with metadata
+ * @returns {string|null} returns.query - The submitted query text
+ * @returns {Object|null} returns.metadata - Full metadata object from API
+ * @returns {string|null} returns.model - Model used for generation (e.g., 'gpt-4o-mini')
+ * @returns {boolean} returns.isLoading - Loading state during query processing
+ * @returns {Error|null} returns.error - Error object if query failed
+ * @returns {Function} returns.reset - Function to reset mutation state
+ *
+ * @example
+ * // Basic research query
+ * const { ask, answer, references, isLoading } = useResearch();
+ *
+ * const handleAsk = async () => {
+ *   try {
+ *     await ask('What are the main findings of this document?');
+ *   } catch (error) {
+ *     console.error('Research failed:', error);
+ *   }
+ * };
+ *
+ * @example
+ * // Display results with references
+ * const { answer, references, isLoading, model } = useResearch();
+ *
+ * if (isLoading) return <Spinner />;
+ *
+ * return (
+ *   <div>
+ *     <p>{answer}</p>
+ *     <ul>
+ *       {references.map(ref => (
+ *         <li key={ref.chunk_id}>{ref.text}</li>
+ *       ))}
+ *     </ul>
+ *     <small>Model: {model}</small>
+ *   </div>
+ * );
  */
 export function useResearch() {
   const queryClient = useQueryClient();

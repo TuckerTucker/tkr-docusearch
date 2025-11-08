@@ -12,7 +12,38 @@ import { useState } from 'react';
 /**
  * Hook for clipboard operations
  *
+ * Provides clipboard functionality with automatic feedback reset after 2 seconds.
+ * Includes fallback for older browsers without Clipboard API support.
+ *
  * @returns {Object} Clipboard interface
+ * @returns {Function} returns.copy - Async function to copy text to clipboard
+ * @returns {boolean} returns.isCopied - Success state (true for 2 seconds after copy)
+ * @returns {Error|null} returns.error - Error object if copy failed
+ *
+ * @example
+ * // Basic copy with feedback
+ * const { copy, isCopied } = useClipboard();
+ *
+ * const handleCopy = async () => {
+ *   await copy('Text to copy to clipboard');
+ * };
+ *
+ * return (
+ *   <button onClick={handleCopy}>
+ *     {isCopied ? 'Copied!' : 'Copy'}
+ *   </button>
+ * );
+ *
+ * @example
+ * // Copy with error handling
+ * const { copy, isCopied, error } = useClipboard();
+ *
+ * const handleCopy = async (text) => {
+ *   await copy(text);
+ *   if (error) {
+ *     console.error('Failed to copy:', error);
+ *   }
+ * };
  */
 export function useClipboard() {
   const [isCopied, setIsCopied] = useState(false);

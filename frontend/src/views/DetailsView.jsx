@@ -260,7 +260,7 @@ export default function DetailsView() {
     return (
       <div className="details-view">
         <header className="details-header">
-          <button onClick={handleBack} className="back-button">
+          <button onClick={handleBack} className="back-button" aria-label="Go back to Library">
             ← Back to Library
           </button>
         </header>
@@ -280,8 +280,10 @@ export default function DetailsView() {
 
   return (
     <div className="details-view">
+      {/* Semantic heading for page structure */}
+      <h2 id="content-viewer-title" className="sr-only">Document Content</h2>
       <div className="details-content">
-        <div className="details-viewer">
+        <section className="details-viewer" aria-labelledby="content-viewer-title">
           <ContentViewer
             document={document}
             chunks={chunks}
@@ -290,9 +292,10 @@ export default function DetailsView() {
             audioPlayerRef={audioPlayerRef}
             slideshowRef={slideshowRef}
           />
-        </div>
+        </section>
 
-        <div className="details-text">
+        <section className="details-text" aria-labelledby="text-content-title">
+          <h3 id="text-content-title" className="sr-only">Text Content and Transcript</h3>
           <TextAccordion
             document={document}
             markdown={markdown?.content || markdown}
@@ -302,7 +305,7 @@ export default function DetailsView() {
             activeChunk={activeChunk}
             currentPage={currentPage}
           />
-        </div>
+        </section>
       </div>
     </div>
   );

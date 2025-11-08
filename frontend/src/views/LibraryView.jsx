@@ -227,7 +227,7 @@ export default function LibraryView() {
     return (
       <div className="library-view">
         <div className="library-error" role="alert">
-          <h2>Error loading documents</h2>
+          <h2>Error Loading Documents</h2>
           <p>{error.message}</p>
           <button onClick={() => refetch()}>Retry</button>
         </div>
@@ -237,15 +237,16 @@ export default function LibraryView() {
 
   return (
     <div className="library-view">
-      {/* Document grid */}
-      <div className="library-content">
+      {/* Document grid - with semantic h2 for page structure */}
+      <section className="library-content" aria-labelledby="library-title">
+        <h2 id="library-title" className="sr-only">Document Library</h2>
         <DocumentGrid
           documents={mergedDocuments}
           isLoading={isLoading}
           onDeleteDocument={handleDeleteDocument}
           onViewDetails={handleViewDetails}
         />
-      </div>
+      </section>
 
       {/* Upload modal (global drag-drop) */}
       <UploadModal

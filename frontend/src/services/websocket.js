@@ -12,6 +12,19 @@
  * WebSocket connection manager class
  */
 export class WebSocketManager {
+  /**
+   * Create a new WebSocket manager
+   *
+   * @param {string} url - WebSocket URL
+   * @param {Object} options - Configuration options
+   * @param {Function} [options.onMessage] - Called when message received
+   * @param {Function} [options.onOpen] - Called when connection opens
+   * @param {Function} [options.onClose] - Called when connection closes
+   * @param {Function} [options.onError] - Called on connection error
+   * @param {Function} [options.onReconnectAttempt] - Called when reconnection is attempted (event-driven)
+   * @param {number} [options.reconnectInterval=3000] - Initial reconnect interval in ms
+   * @param {number} [options.maxReconnectAttempts=10] - Maximum reconnection attempts
+   */
   constructor(url, options = {}) {
     this.url = url;
     this.options = {
@@ -21,6 +34,7 @@ export class WebSocketManager {
       onOpen: options.onOpen || null,
       onClose: options.onClose || null,
       onError: options.onError || null,
+      onReconnectAttempt: options.onReconnectAttempt || null, // Event-driven callback
     };
 
     this.ws = null;
@@ -141,6 +155,7 @@ export class WebSocketManager {
 
   /**
    * Schedule reconnection with exponential backoff
+   * Triggers event-driven callback instead of relying on polling
    */
   scheduleReconnect() {
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
@@ -155,6 +170,11 @@ export class WebSocketManager {
     console.log(
       `[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts})`
     );
+
+    // Event-driven callback: notify listeners of reconnect attempt
+    if (this.options.onReconnectAttempt) {
+      this.options.onReconnectAttempt(this.reconnectAttempts);
+    }
 
     this.reconnectTimeout = setTimeout(() => {
       this.connect();

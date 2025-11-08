@@ -13,8 +13,38 @@ import { api } from '../services/api.js';
 /**
  * Hook for fetching document details (metadata + markdown)
  *
+ * Fetches document metadata and markdown content in parallel using React Query.
+ * Both queries are cached with 5-minute staleTime for optimal performance.
+ *
  * @param {string} docId - Document ID
  * @returns {Object} Combined query result
+ * @returns {Object|null} returns.document - Document metadata object
+ * @returns {string|null} returns.markdown - Markdown content of document
+ * @returns {boolean} returns.isLoading - Loading state (true if either query loading)
+ * @returns {Error|null} returns.error - Error object if either query failed
+ * @returns {Function} returns.refetch - Function to refetch both queries
+ *
+ * @example
+ * // Basic usage
+ * const { document, markdown, isLoading, error } = useDocumentDetails(docId);
+ *
+ * if (isLoading) return <Spinner />;
+ * if (error) return <Error message={error.message} />;
+ *
+ * return (
+ *   <div>
+ *     <h1>{document.filename}</h1>
+ *     <Markdown content={markdown} />
+ *   </div>
+ * );
+ *
+ * @example
+ * // Manual refetch
+ * const { document, markdown, refetch } = useDocumentDetails(docId);
+ *
+ * const handleRefresh = () => {
+ *   refetch(); // Refetches both metadata and markdown
+ * };
  */
 export function useDocumentDetails(docId) {
   const queries = useQueries({

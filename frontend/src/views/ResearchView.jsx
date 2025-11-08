@@ -115,9 +115,11 @@ export default function ResearchView() {
 
   return (
     <div className="research-view">
+      {/* Semantic heading for page structure (H2 after H1 from Header) */}
+      <h2 id="research-view-title" className="sr-only">Research Questions and Answers</h2>
       <div className="research-view__layout">
         {/* Left panel: Query input + Answer display */}
-        <div className="research-view__main-panel">
+        <section className="research-view__main-panel" aria-labelledby="research-view-title">
           <ResearchPanel
             query={query}
             answer={answer}
@@ -131,16 +133,17 @@ export default function ResearchView() {
             onCitationHover={handleCitationHover}
             onDownloadReport={handleDownloadReport}
           />
-        </div>
+        </section>
 
         {/* Right panel: References list */}
-        <div className="research-view__side-panel" ref={referencePanelRef}>
+        <section className="research-view__side-panel" ref={referencePanelRef} aria-labelledby="references-panel-title">
+          <h3 id="references-panel-title" className="sr-only">Source References</h3>
           <ReferencesPanel
             references={references}
             activeReference={activeReference}
             onReferenceHover={handleReferenceHover}
           />
-        </div>
+        </section>
       </div>
     </div>
   )

@@ -131,13 +131,35 @@ export const useThemeStore = create(
         applyTheme(effectiveTheme);
         loadStyle(get().style);
 
-        // Listen for system theme changes
+        // Listen for system theme changes with proper cleanup
         if (typeof window !== 'undefined') {
-          window
-            .matchMedia('(prefers-color-scheme: dark)')
-            .addEventListener('change', () => {
-              get().detectSystemTheme();
-            });
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          const handleChange = () => {
+            get().detectSystemTheme();
+          };
+
+          // Use addEventListener instead of addListener for broader compatibility
+          mediaQuery.addEventListener('change', handleChange);
+
+          // Return cleanup function via _cleanup action
+          get()._setCleanup(() => {
+            mediaQuery.removeEventListener('change', handleChange);
+          });
+        }
+      },
+
+      // Store cleanup function for manual cleanup if needed
+      _cleanupCallback: null,
+      _setCleanup: (callback) => {
+        set({ _cleanupCallback: callback });
+      },
+
+      // Cleanup function to remove event listeners
+      cleanup: () => {
+        const { _cleanupCallback } = get();
+        if (_cleanupCallback) {
+          _cleanupCallback();
+          set({ _cleanupCallback: null });
         }
       },
     }),
@@ -147,6 +169,8 @@ export const useThemeStore = create(
         theme: state.theme,
         style: state.style,
       }),
+      // Don't persist internal cleanup callback
+      skipHydration: ['_cleanupCallback'],
     }
   )
 );

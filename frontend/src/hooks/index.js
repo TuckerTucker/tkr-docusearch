@@ -9,3 +9,4 @@ export { useResearch } from './useResearch.js';
 export { useClipboard } from './useClipboard.js';
 export { useKeyboardNav } from './useKeyboardNav.js';
 export { useActiveProcessing } from './useActiveProcessing.js';
+export { useFileUpload } from './useFileUpload.js';

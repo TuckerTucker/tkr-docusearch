@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types'
 import QueryInput from '../../components/research/QueryInput.jsx'
 import AnswerDisplay from '../../components/research/AnswerDisplay.jsx'
+import LiveRegion from '../../components/common/LiveRegion.jsx'
 
 /**
  * ResearchPanel Component
@@ -107,8 +108,30 @@ export default function ResearchPanel({
   onCitationHover,
   onDownloadReport,
 }) {
+  // Generate live region messages based on state
+  const getLiveRegionMessage = () => {
+    if (isLoading) {
+      return 'Searching documents and generating answer...'
+    }
+    if (error) {
+      return `Research failed: ${error.message || error}`
+    }
+    if (answer) {
+      const refCount = references?.length || 0
+      return `Answer ready with ${refCount} ${refCount === 1 ? 'reference' : 'references'}`
+    }
+    return null
+  }
+
   return (
     <div className="research-panel">
+      {/* Live region announcements for screen readers */}
+      <LiveRegion
+        message={getLiveRegionMessage()}
+        politeness={error ? 'assertive' : 'polite'}
+        role={error ? 'alert' : 'status'}
+      />
+
       <div className="research-panel__input">
         <QueryInput onSubmit={onQuerySubmit} isLoading={isLoading} />
 

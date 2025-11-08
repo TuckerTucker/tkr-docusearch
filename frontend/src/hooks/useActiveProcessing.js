@@ -21,10 +21,41 @@ import { useDocumentStore } from '../stores/useDocumentStore.js';
 /**
  * Fetch active processing queue and hydrate temp documents
  *
- * @param {Object} options - Hook options
+ * Enables cross-browser/tab synchronization by fetching documents currently being
+ * processed from the server and hydrating them into the temp documents store.
+ *
+ * @param {Object} [options={}] - Hook options
  * @param {boolean} [options.enabled=true] - Enable/disable the query
  * @param {number} [options.refetchInterval=5000] - Polling interval in ms (0 to disable)
  * @returns {Object} Query result with active processing documents
+ * @returns {Array} returns.activeDocuments - Array of documents currently processing
+ * @returns {number} returns.activeCount - Number of active processing documents
+ * @returns {number} returns.totalCount - Total number of documents in queue
+ * @returns {boolean} returns.isLoading - Loading state for initial fetch
+ * @returns {boolean} returns.isError - Error state flag
+ * @returns {Error|null} returns.error - Error object if query failed
+ * @returns {Function} returns.refetch - Function to manually refetch queue
+ *
+ * @example
+ * // Basic usage - hydrate processing documents on mount
+ * const { activeDocuments, activeCount, isLoading } = useActiveProcessing();
+ *
+ * useEffect(() => {
+ *   console.log(`${activeCount} documents currently processing`);
+ * }, [activeCount]);
+ *
+ * @example
+ * // Conditional fetching with custom polling
+ * const { activeDocuments, refetch } = useActiveProcessing({
+ *   enabled: isViewerOpen,
+ *   refetchInterval: 10000, // Poll every 10 seconds
+ * });
+ *
+ * @example
+ * // Disable polling (WebSocket-only updates)
+ * const { activeDocuments } = useActiveProcessing({
+ *   refetchInterval: 0, // No polling
+ * });
  */
 export function useActiveProcessing(options = {}) {
   const { enabled = true, refetchInterval = 5000 } = options;

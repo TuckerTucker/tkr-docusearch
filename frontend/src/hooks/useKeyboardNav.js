@@ -12,7 +12,10 @@ import { useEffect } from 'react';
 /**
  * Hook for keyboard navigation
  *
- * @param {Object} config - Navigation configuration
+ * Handles keyboard events for navigation (arrow keys, Escape, Enter).
+ * Automatically ignores events when focus is in input/textarea/select elements.
+ *
+ * @param {Object} [config={}] - Navigation configuration
  * @param {Function} [config.onArrowLeft] - Left arrow handler
  * @param {Function} [config.onArrowRight] - Right arrow handler
  * @param {Function} [config.onArrowUp] - Up arrow handler
@@ -20,6 +23,36 @@ import { useEffect } from 'react';
  * @param {Function} [config.onEscape] - Escape key handler
  * @param {Function} [config.onEnter] - Enter key handler
  * @param {boolean} [config.enabled=true] - Enable/disable keyboard navigation
+ *
+ * @example
+ * // Image gallery navigation
+ * const [currentImage, setCurrentImage] = useState(0);
+ * const images = ['img1.jpg', 'img2.jpg', 'img3.jpg'];
+ *
+ * useKeyboardNav({
+ *   onArrowLeft: () => setCurrentImage(prev => Math.max(0, prev - 1)),
+ *   onArrowRight: () => setCurrentImage(prev => Math.min(images.length - 1, prev + 1)),
+ *   onEscape: () => setCurrentImage(0),
+ * });
+ *
+ * @example
+ * // Modal with Enter/Escape handling
+ * const [isModalOpen, setIsModalOpen] = useState(false);
+ *
+ * useKeyboardNav({
+ *   onEscape: () => setIsModalOpen(false),
+ *   onEnter: () => handleSubmit(),
+ *   enabled: isModalOpen,
+ * });
+ *
+ * @example
+ * // Document viewer with arrow navigation
+ * useKeyboardNav({
+ *   onArrowUp: () => scrollUp(),
+ *   onArrowDown: () => scrollDown(),
+ *   onArrowLeft: () => previousPage(),
+ *   onArrowRight: () => nextPage(),
+ * });
  */
 export function useKeyboardNav(config = {}) {
   const {

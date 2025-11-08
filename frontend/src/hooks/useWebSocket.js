@@ -15,6 +15,9 @@ import { useConnectionStore } from '../stores/useConnectionStore.js';
 /**
  * Custom hook for WebSocket connection
  *
+ * Manages WebSocket connection with event-driven reconnect tracking and automatic
+ * integration with connection store.
+ *
  * @param {string} url - WebSocket URL
  * @param {Object} options - Connection options
  * @param {Function} [options.onMessage] - Message handler
@@ -23,7 +26,7 @@ import { useConnectionStore } from '../stores/useConnectionStore.js';
  * @param {Function} [options.onError] - Error handler
  * @param {number} [options.reconnectInterval] - Reconnect interval in ms
  * @param {number} [options.maxReconnectAttempts] - Max reconnect attempts
- * @returns {Object} WebSocket interface
+ * @returns {Object} WebSocket interface with {send, registerUploadBatch, isConnected, reconnectAttempts}
  */
 export function useWebSocket(url, options = {}) {
   const wsRef = useRef(null);
@@ -36,7 +39,7 @@ export function useWebSocket(url, options = {}) {
   const setReconnecting = useConnectionStore((state) => state.setReconnecting);
 
   useEffect(() => {
-    // Create WebSocket manager
+    // Create custom WebSocket manager with event-driven reconnect tracking
     wsRef.current = new WebSocketManager(url, {
       reconnectInterval: options.reconnectInterval || 3000,
       maxReconnectAttempts: options.maxReconnectAttempts || 10,
@@ -57,25 +60,18 @@ export function useWebSocket(url, options = {}) {
         }
       },
       onError: options.onError,
+      // Event-driven reconnect attempt callback (replaces polling)
+      onReconnectAttempt: (attempts) => {
+        setReconnectAttempts(attempts);
+        setReconnecting(attempts);
+      },
     });
 
     // Connect on mount
     wsRef.current.connect();
 
-    // Track reconnect attempts
-    const checkReconnectInterval = setInterval(() => {
-      if (wsRef.current) {
-        const attempts = wsRef.current.getReconnectAttempts();
-        if (attempts > 0) {
-          setReconnectAttempts(attempts);
-          setReconnecting(attempts);
-        }
-      }
-    }, 1000);
-
     // Cleanup on unmount
     return () => {
-      clearInterval(checkReconnectInterval);
       if (wsRef.current) {
         wsRef.current.disconnect();
       }

@@ -7,9 +7,11 @@
  * Wave 2 - Library Agent
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { api } from '../../services/api.js';
 import { useDocumentStore } from '../../stores/useDocumentStore.js';
+import { useFileUpload } from '../../hooks/useFileUpload.js';
+import LiveRegion from '../../components/common/LiveRegion.jsx';
 
 /**
  * Supported file types (matches backend file_validator.py)
@@ -272,19 +274,52 @@ function UploadProgressItem({
  * }
  */
 export default function UploadModal({ onUploadComplete, registerUploadBatch, isWebSocketConnected }) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploads, setUploads] = useState([]);
-  const [fileMap, setFileMap] = useState(new Map()); // Store File objects by filename
+  // Consolidated state management using useReducer via custom hook
+  const {
+    isVisible,
+    isUploading,
+    uploads,
+    fileMap,
+    showModal,
+    hideModal,
+    setUploading,
+    setUploads,
+    updateUploadProgress,
+    updateUploadStatus,
+    setFileMap,
+    reset,
+  } = useFileUpload();
+
   const dragCounterRef = useRef(0);
   const pendingFilesRef = useRef(null); // Store files waiting for WebSocket connection
 
   const addTempDocument = useDocumentStore((state) => state.addTempDocument);
-  const updateTempDocumentProgress = useDocumentStore(
-    (state) => state.updateTempDocumentProgress
-  );
-  const setTempDocumentStatus = useDocumentStore((state) => state.setTempDocumentStatus);
   const clearAllTempDocuments = useDocumentStore((state) => state.clearAllTempDocuments);
+
+  // Generate live region message for upload progress (for screen readers)
+  const getUploadProgressMessage = () => {
+    if (!isUploading && uploads.length === 0) return null;
+
+    const totalUploads = uploads.length;
+    const completeCount = uploads.filter((u) => u.status === 'complete').length;
+    const failedCount = uploads.filter((u) => u.status === 'error').length;
+    const inProgressCount = uploads.filter((u) => u.status === 'uploading').length;
+
+    if (inProgressCount > 0) {
+      const firstInProgress = uploads.find((u) => u.status === 'uploading');
+      return `Uploading ${firstInProgress?.filename}: ${firstInProgress?.progress || 0}%`;
+    }
+
+    if (completeCount > 0 && completeCount === totalUploads) {
+      return `Upload complete: ${completeCount} file${completeCount !== 1 ? 's' : ''} uploaded successfully`;
+    }
+
+    if (failedCount > 0) {
+      return `Upload progress: ${completeCount} successful, ${failedCount} failed out of ${totalUploads}`;
+    }
+
+    return `Preparing to upload ${totalUploads} file${totalUploads !== 1 ? 's' : ''}`;
+  };
 
   // Global drag-over detection
   useEffect(() => {
@@ -292,7 +327,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
       e.preventDefault();
       dragCounterRef.current++;
       if (dragCounterRef.current === 1) {
-        setIsVisible(true);
+        showModal();
       }
     };
 
@@ -302,7 +337,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
       if (dragCounterRef.current === 0) {
         setTimeout(() => {
           if (dragCounterRef.current === 0) {
-            setIsVisible(false);
+            hideModal();
           }
         }, 100);
       }
@@ -351,14 +386,14 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
           // Store files to process once connected
           pendingFilesRef.current = files;
           // Show modal with a "connecting" state
-          setIsVisible(true);
+          showModal();
           setUploads([{
             filename: 'Connecting to server...',
             status: 'pending',
             progress: 0
           }]);
         } else {
-          setIsVisible(true);
+          showModal();
           uploadFiles(files);
         }
       }
@@ -369,14 +404,12 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
     return () => {
       window.removeEventListener('manualUpload', handleManualUpload);
     };
-  }, [isWebSocketConnected]);
+  }, [isWebSocketConnected, showModal, setUploads]);
 
   // Hide modal
   const handleClose = () => {
     if (!isUploading) {
-      setIsVisible(false);
-      setUploads([]);
-      setFileMap(new Map()); // Clear file map
+      hideModal();
     }
   };
 
@@ -405,7 +438,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
 
   // Upload files with pre-registration and duplicate detection
   const uploadFiles = async (files) => {
-    setIsUploading(true);
+    setUploading(true);
 
     // Store files in map for later access
     const newFileMap = new Map();
@@ -439,7 +472,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
         error: error.message || 'Failed to register upload',
       }));
       setUploads(initialUploads);
-      setIsUploading(false);
+      setUploading(false);
       return;
     }
 
@@ -479,7 +512,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
     const hasDuplicates = initialUploads.some(u => u.status === 'duplicate');
     if (hasDuplicates) {
       console.log(`⚠️  Found ${initialUploads.filter(u => u.status === 'duplicate').length} duplicate files`);
-      setIsUploading(false);
+      setUploading(false);
       // Don't proceed - wait for user to click Cancel or Continue on each file
       return;
     }
@@ -490,7 +523,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
 
   // Proceed with actual upload after duplicate check
   const proceedWithUpload = async (validFiles, registrations, allFiles, successCount = 0, failCount = 0) => {
-    setIsUploading(true);
+    setUploading(true);
 
     // Get skipped files from uploads state (files marked as duplicate that user chose to skip)
     const skippedFiles = new Set(
@@ -517,28 +550,16 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
       try {
         // Upload file with progress tracking
         await api.upload.uploadFile(file, (progress) => {
-          setUploads((prev) =>
-            prev.map((item, idx) => (idx === fileIndex ? { ...item, progress } : item))
-          );
+          updateUploadProgress(fileIndex, progress);
         });
 
         // Mark as complete
-        setUploads((prev) =>
-          prev.map((item, idx) =>
-            idx === fileIndex ? { ...item, status: 'complete', progress: 100 } : item
-          )
-        );
+        updateUploadStatus(file.name, 'complete', null, 100);
 
         return { success: true, file: file.name };
       } catch (error) {
         // Mark as failed
-        setUploads((prev) =>
-          prev.map((item, idx) =>
-            idx === fileIndex
-              ? { ...item, status: 'error', error: error.message, progress: 100 }
-              : item
-          )
-        );
+        updateUploadStatus(file.name, 'error', error.message, 100);
 
         return { success: false, file: file.name, error: error.message };
       }
@@ -546,14 +567,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
 
     // Mark skipped files
     skippedFiles.forEach((filename) => {
-      const fileIndex = allFiles.findIndex((f) => f.name === filename);
-      if (fileIndex !== -1) {
-        setUploads((prev) =>
-          prev.map((item, idx) =>
-            idx === fileIndex ? { ...item, status: 'complete', progress: 100, error: 'Skipped (duplicate)' } : item
-          )
-        );
-      }
+      updateUploadStatus(filename, 'complete', 'Skipped (duplicate)', 100);
     });
 
     // Wait for all uploads to complete
@@ -561,7 +575,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
     successCount = results.filter((r) => r.success).length;
     failCount += results.filter((r) => !r.success).length;
 
-    setIsUploading(false);
+    setUploading(false);
 
     // Call completion callback
     if (onUploadComplete) {
@@ -571,9 +585,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
     // Auto-hide after 0.5 seconds if all successful
     if (failCount === 0) {
       setTimeout(() => {
-        setIsVisible(false);
-        setUploads([]);
-        setFileMap(new Map()); // Clear file map to allow re-upload
+        hideModal();
       }, 500);
     }
   };
@@ -581,13 +593,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
   // Handle cancel upload for duplicate file
   const handleCancelUpload = (filename) => {
     console.log(`❌ User cancelled duplicate: ${filename}`);
-    setUploads((prev) =>
-      prev.map((item) =>
-        item.filename === filename
-          ? { ...item, status: 'cancelled', progress: 100 }
-          : item
-      )
-    );
+    updateUploadStatus(filename, 'cancelled', null, 100);
   };
 
   // Handle continue upload for duplicate file
@@ -602,16 +608,10 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
       return;
     }
 
-    setIsUploading(true);
+    setUploading(true);
 
     // Update status to uploading
-    setUploads((prev) =>
-      prev.map((item) =>
-        item.filename === filename
-          ? { ...item, status: 'uploading', progress: 0 }
-          : item
-      )
-    );
+    updateUploadStatus(filename, 'uploading', null, 0);
 
     try {
       // Clear any stale temp documents first
@@ -627,21 +627,11 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
 
       // Upload file with progress tracking
       await api.upload.uploadFile(file, (progress) => {
-        setUploads((prev) =>
-          prev.map((item) =>
-            item.filename === filename ? { ...item, progress } : item
-          )
-        );
+        updateUploadStatus(filename, 'uploading', null, progress);
       });
 
       // Mark as complete
-      setUploads((prev) =>
-        prev.map((item) =>
-          item.filename === filename
-            ? { ...item, status: 'complete', progress: 100 }
-            : item
-        )
-      );
+      updateUploadStatus(filename, 'complete', null, 100);
 
       console.log(`✅ Upload complete: ${filename}`);
 
@@ -651,15 +641,9 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
       }
     } catch (error) {
       console.error(`❌ Upload failed: ${filename}`, error);
-      setUploads((prev) =>
-        prev.map((item) =>
-          item.filename === filename
-            ? { ...item, status: 'error', error: error.message, progress: 100 }
-            : item
-        )
-      );
+      updateUploadStatus(filename, 'error', error.message, 100);
     } finally {
-      setIsUploading(false);
+      setUploading(false);
 
       // Check if all files are done
       const allDone = uploads.every(u =>
@@ -669,9 +653,7 @@ export default function UploadModal({ onUploadComplete, registerUploadBatch, isW
 
       if (allDone) {
         setTimeout(() => {
-          setIsVisible(false);
-          setUploads([]);
-          setFileMap(new Map());
+          hideModal();
         }, 500);
       }
     }

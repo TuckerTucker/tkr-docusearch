@@ -48,6 +48,14 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
 }
 
+// Mock scrollTo for HTMLElement (used for smooth scrolling)
+if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = vi.fn()
+}
+if (typeof Window !== 'undefined' && !window.scrollTo) {
+  window.scrollTo = vi.fn()
+}
+
 // Mock fetch if not available in test environment
 if (typeof global.fetch === 'undefined') {
   global.fetch = vi.fn()

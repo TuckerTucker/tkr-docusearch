@@ -1,46 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useThemeStore } from '../../stores/useThemeStore';
+import useStyleSelector from '../../hooks/useStyleSelector.js';
 import './StyleSelector.css';
-
-/**
- * Theme configuration object defining available visual styles
- * @typedef {Object} Theme
- * @property {string} id - Unique identifier for the theme
- * @property {string} name - Display name of the theme
- * @property {string} description - Detailed description of the theme's visual characteristics
- */
-
-/**
- * Available theme definitions
- * @constant {Object.<string, Theme>}
- */
-const THEMES = {
-  'kraft-paper': {
-    id: 'kraft-paper',
-    name: 'Kraft Paper',
-    description: 'Warm kraft paper aesthetic with natural tones'
-  },
-  'notebook': {
-    id: 'notebook',
-    name: 'Notebook',
-    description: 'Grayscale notebook style with handwritten font'
-  },
-  'blue-on-black': {
-    id: 'blue-on-black',
-    name: 'Blue on Black',
-    description: 'Modern blue and purple accents'
-  },
-  'gold-on-blue': {
-    id: 'gold-on-blue',
-    name: 'Gold on Blue',
-    description: 'Elegant gold on blue with serif typography'
-  },
-  'graphite': {
-    id: 'graphite',
-    name: 'Graphite',
-    description: 'Professional grayscale with modern sans-serif'
-  }
-};
 
 /**
  * StyleSelector Component
@@ -97,59 +56,17 @@ const THEMES = {
  * }
  */
 export default function StyleSelector() {
-  const style = useThemeStore((state) => state.style);
-  const setStyle = useThemeStore((state) => state.setStyle);
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  const buttonRef = useRef(null);
-  const isOpeningRef = useRef(false);
-
-  const currentTheme = THEMES[style] || THEMES['kraft-paper'];
-  const themeList = Object.values(THEMES);
-
-  // Close dropdown when clicking outside - register once on mount
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (
-        !isOpen ||
-        (dropdownRef.current && dropdownRef.current.contains(event.target)) ||
-        (buttonRef.current && buttonRef.current.contains(event.target))
-      ) {
-        return;
-      }
-
-      console.log('Clicking outside, closing dropdown');
-      setIsOpen(false);
-    }
-
-    // Register listener once on mount
-    document.addEventListener('click', handleClickOutside);
-
-    // Cleanup on unmount
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [isOpen]); // Include isOpen in deps so handler has current value
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-      buttonRef.current?.focus();
-    }
-  };
-
-  const handleSelectStyle = (styleId) => {
-    setStyle(styleId);
-    setIsOpen(false);
-  };
-
-  const handleButtonClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Button clicked, target:', e.target, 'currentTarget:', e.currentTarget, 'isOpen:', isOpen, '-> toggling to:', !isOpen);
-    setIsOpen(!isOpen);
-  };
+  const {
+    style,
+    isOpen,
+    currentTheme,
+    themeList,
+    dropdownRef,
+    buttonRef,
+    handleButtonClick,
+    handleKeyDown,
+    handleSelectStyle,
+  } = useStyleSelector();
 
   return (
     <div className="style-selector">

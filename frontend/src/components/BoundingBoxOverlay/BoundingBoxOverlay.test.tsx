@@ -450,8 +450,9 @@ describe('BoundingBoxOverlay', () => {
 
       const rect = container.querySelector('rect');
       expect(rect).toHaveAttribute('role', 'button');
-      // aria-label format: "{element_type} bounding box"
-      expect(rect!.getAttribute('aria-label')).toContain('bounding box');
+      // aria-label format: "{ElementType} {index+1}" e.g. "Heading 1"
+      const label = rect!.getAttribute('aria-label');
+      expect(label).toBe('Heading 1');
       expect(rect).toHaveAttribute('tabindex', '0');
     });
   });

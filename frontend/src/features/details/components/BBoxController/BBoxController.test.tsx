@@ -216,6 +216,7 @@ describe('BBoxController', () => {
       { wrapper: createWrapper() }
     );
 
+    // When structure has no bboxes, component returns null (no rendering)
     expect(container.firstChild).toBeNull();
   });
 

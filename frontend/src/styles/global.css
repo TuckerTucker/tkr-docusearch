@@ -30,7 +30,7 @@
   --secondary: oklch(0.8846 0.0302 85.5655);
   --secondary-foreground: oklch(0.4313 0.0300 64.9288);
   --muted: oklch(0.9239 0.0190 83.0636);
-  --muted-foreground: oklch(0.4700 0.0350 71.1655);
+  --muted-foreground: oklch(0.2500 0.0450 71.1655); /* WCAG AA 5.47:1 contrast on muted bg */
   --accent: oklch(0.8348 0.0426 88.8064);
   --accent-foreground: oklch(0.3760 0.0225 64.3434);
   --destructive: oklch(0.5471 0.1438 32.9149);
