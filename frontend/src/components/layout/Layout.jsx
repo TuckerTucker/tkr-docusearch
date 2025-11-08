@@ -82,9 +82,14 @@ export default function Layout() {
 
   return (
     <div className="layout">
+      {/* Skip link for keyboard navigation (WCAG 2.4.1) */}
+      <nav className="skip-links">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
+      </nav>
+
       <Header {...headerProps} />
 
-      <main className="layout__main" role="main">
+      <main id="main-content" className="layout__main" role="main">
         <Outlet />
       </main>
 

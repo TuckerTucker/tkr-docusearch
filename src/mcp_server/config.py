@@ -4,12 +4,15 @@ Configuration for DocuSearch MCP Server.
 Centralizes all configuration values for API endpoints, defaults, and URLs.
 """
 
-import os
+from src.config.urls import get_service_urls
+
+# Get service URLs from centralized configuration
+_urls = get_service_urls()
 
 # API Endpoints
-DOCUSEARCH_API_URL = os.getenv("DOCUSEARCH_API_URL", "http://localhost:8004")
-WORKER_API_URL = os.getenv("WORKER_API_URL", "http://localhost:8002")
-# NOTE: FRONTEND_URL moved to src.utils.url_builder for centralized URL management
+DOCUSEARCH_API_URL = _urls.research_api
+WORKER_API_URL = _urls.worker
+# NOTE: FRONTEND_URL in src.config.urls for centralized URL management
 
 # Research API Endpoint
 CONTEXT_ENDPOINT = f"{DOCUSEARCH_API_URL}/api/research/context-only"

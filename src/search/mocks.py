@@ -1,22 +1,34 @@
 """
-Mock implementations for embedding and storage interfaces.
+DEPRECATED: Mock implementations for embedding and storage interfaces.
 
-These mocks are used during Wave 2 development to simulate dependencies
-that will be implemented in Wave 3.
+This module is deprecated. Please use src.core.testing.mocks instead.
 
-Usage:
-    >>> from src.search.mocks import MockEmbeddingEngine, MockStorageClient
-    >>> engine = MockEmbeddingEngine()
-    >>> storage = MockStorageClient()
+All mock implementations have been consolidated into src/core/testing/mocks.py
+for better maintainability and consistency.
+
+Migration guide:
+    Old: from src.search.mocks import MockEmbeddingEngine, MockStorageClient
+    New: from src.core.testing.mocks import MockEmbeddingEngine, MockStorageClient
+
+This file will be removed in a future version.
 """
 
 import logging
 import time
+import warnings
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Issue deprecation warning when this module is imported
+warnings.warn(
+    "src.search.mocks is deprecated. Use src.core.testing.mocks instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class MockEmbeddingEngine:

@@ -28,9 +28,11 @@ export interface UploadResult {
 }
 
 /**
- * Copyparty upload URL
+ * Copyparty upload URL - from centralized configuration
  */
-const COPYPARTY_URL = 'http://localhost:8000';
+const getCopypartyUrl = () => {
+  return import.meta.env.VITE_COPYPARTY_URL || 'http://localhost:8000';
+};
 
 /**
  * Active XHR instances tracked by temporary upload ID
@@ -116,7 +118,7 @@ export function uploadFile(
 
     // Send to Copyparty with password parameter
     // Copyparty accepts auth via URL param: ?pw=password
-    xhr.open('POST', `${COPYPARTY_URL}/?pw=admin`);
+    xhr.open('POST', `${getCopypartyUrl()}/?pw=admin`);
 
     xhr.send(formData);
   });

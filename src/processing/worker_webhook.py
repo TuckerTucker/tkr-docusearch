@@ -42,6 +42,7 @@ from processing.status_manager import StatusManager, get_status_manager
 
 # Import WebSocket broadcaster
 from processing.websocket_broadcaster import get_broadcaster
+from src.config.urls import get_service_urls
 from storage import ChromaClient
 from storage.markdown_utils import delete_document_markdown
 
@@ -99,14 +100,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Add CORS middleware with environment-based whitelist
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:8000,http://localhost:8001,http://localhost:8002",
-).split(",")
+# Add CORS middleware with centralized service URLs
+_urls = get_service_urls()
+allowed_origins = [
+    _urls.frontend,
+    _urls.copyparty,
+    _urls.chromadb,
+    _urls.worker,
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,  # Explicit whitelist from environment
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -153,7 +153,11 @@ describe('BBoxController', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(container.firstChild).toBeNull();
+    // Renders a hidden status div for screen readers
+    const statusDiv = container.querySelector('[role="status"]');
+    expect(statusDiv).toBeInTheDocument();
+    // BboxOverlay should not be rendered
+    expect(screen.queryByTestId('bbox-overlay')).not.toBeInTheDocument();
   });
 
   it('renders nothing on error', () => {
@@ -176,7 +180,11 @@ describe('BBoxController', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(container.firstChild).toBeNull();
+    // Renders a hidden alert div for screen readers
+    const alertDiv = container.querySelector('[role="alert"]');
+    expect(alertDiv).toBeInTheDocument();
+    // BboxOverlay should not be rendered
+    expect(screen.queryByTestId('bbox-overlay')).not.toBeInTheDocument();
   });
 
   it('renders nothing when structure has no bboxes', () => {

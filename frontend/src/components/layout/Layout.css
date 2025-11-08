@@ -10,6 +10,35 @@
   color: var(--foreground);
 }
 
+/* Skip links - visible on focus for keyboard navigation (WCAG 2.4.1) */
+.skip-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  padding: 0.5rem;
+  text-decoration: none;
+  border-radius: 0.25rem;
+}
+
+.skip-link:focus {
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+}
+
 .layout__main {
   flex: 1;
   display: flex;

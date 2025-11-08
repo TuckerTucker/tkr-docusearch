@@ -24,7 +24,10 @@ export const WS_URL = import.meta.env.VITE_WS_URL ||
 
 /**
  * Copyparty file server URL
+ * Uses centralized configuration from @/config/urls
  * Override with VITE_COPYPARTY_URL environment variable
+ *
+ * @deprecated - Use serviceURLs from '@/config/urls' instead
  */
 export const COPYPARTY_URL = import.meta.env.VITE_COPYPARTY_URL || 'http://localhost:8000';
 

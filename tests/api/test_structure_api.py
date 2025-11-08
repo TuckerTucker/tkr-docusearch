@@ -119,7 +119,7 @@ def test_get_page_structure_success(mock_chroma_client, sample_structure):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 200
@@ -173,7 +173,7 @@ def test_get_page_structure_empty(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 200
@@ -197,7 +197,7 @@ def test_get_page_structure_page_not_found(mock_chroma_client):
     mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 404
@@ -214,7 +214,7 @@ def test_get_page_structure_invalid_doc_id(mock_chroma_client):
     page = 1
 
     # Make request
-    response = client.get(f"/documents/{invalid_doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{invalid_doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 400
@@ -228,7 +228,7 @@ def test_get_page_structure_invalid_page_number(mock_chroma_client):
     page = 0  # Invalid (must be >= 1)
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 400
@@ -259,7 +259,7 @@ def test_get_page_structure_multiple_pages(mock_chroma_client, sample_structure)
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 200
@@ -311,7 +311,7 @@ def test_get_page_structure_bbox_validation(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 200
@@ -333,7 +333,7 @@ def test_get_page_structure_database_error(mock_chroma_client):
     mock_chroma_client._visual_collection.get.side_effect = Exception("Database connection failed")
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 500
@@ -361,7 +361,7 @@ def test_get_page_structure_missing_structure_data(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/pages/{page}/structure")
+    response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
     # Assertions
     assert response.status_code == 200

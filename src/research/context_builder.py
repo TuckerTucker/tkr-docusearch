@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from src.config.urls import get_service_urls
 from src.utils.paths import convert_path_to_url
 
 from .chunk_extractor import extract_chunk_id
@@ -99,12 +100,12 @@ class ResearchContext:
         """
         return {i + 1: source for i, source in enumerate(self.sources)}
 
-    def get_visual_image_urls(self, base_url: str = "http://localhost:8002") -> List[str]:
+    def get_visual_image_urls(self, base_url: Optional[str] = None) -> List[str]:
         """
         Extract absolute image URLs from visual sources
 
         Args:
-            base_url: Base URL for worker API (default: http://localhost:8002)
+            base_url: Base URL for worker API (default: from centralized config)
 
         Returns:
             List of absolute URLs to page thumbnails for visual sources
@@ -116,6 +117,8 @@ class ResearchContext:
             Filters out unsupported formats (SVG) - OpenAI vision API only supports:
             png, jpeg, gif, webp
         """
+        if base_url is None:
+            base_url = get_service_urls().worker
         # OpenAI vision API supported formats
         SUPPORTED_IMAGE_FORMATS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 

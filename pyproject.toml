@@ -70,9 +70,9 @@ ignore-init-module-imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=src --cov-report=term-missing"
+addopts = "-ra -q --strict-markers --cov=src --cov-report=html --cov-report=json --cov-report=term-missing --cov-fail-under=70"
 testpaths = [
-    "src",
+    "tests",
 ]
 pythonpath = [
     "."
@@ -84,9 +84,18 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/test_*.py",
+    "*/mocks.py",
+    "*/.venv/*",
+    "*/.venv-native/*",
+    "*/data/*",
 ]
+branch = true
+parallel = true
 
 [tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -97,3 +106,10 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.json]
+output = "coverage.json"
+pretty_print = true

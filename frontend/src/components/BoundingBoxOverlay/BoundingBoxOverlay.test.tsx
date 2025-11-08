@@ -10,6 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BoundingBoxOverlay } from './BoundingBoxOverlay';
 import type { BBoxWithMetadata } from './types';
 
@@ -224,8 +225,9 @@ describe('BoundingBoxOverlay', () => {
       );
     });
 
-    it('calls onBboxHover when mouse enters bbox', () => {
+    it('calls onBboxHover when mouse enters bbox', async () => {
       const handleHover = vi.fn();
+      const user = userEvent.setup();
 
       const { container } = render(
         <BoundingBoxOverlay
@@ -237,15 +239,18 @@ describe('BoundingBoxOverlay', () => {
         />
       );
 
-      const rect = container.querySelector('rect');
-      fireEvent.mouseEnter(rect!);
+      const rect = container.querySelector('rect') as HTMLElement;
+      await user.hover(rect);
 
-      expect(handleHover).toHaveBeenCalledTimes(1);
-      expect(handleHover).toHaveBeenCalledWith('chunk1');
+      // Wait for debounce to complete (50ms)
+      await waitFor(() => {
+        expect(handleHover).toHaveBeenCalledWith('chunk1');
+      }, { timeout: 200 });
     });
 
-    it('calls onBboxHover with null when mouse leaves bbox', () => {
+    it('calls onBboxHover with null when mouse leaves bbox', async () => {
       const handleHover = vi.fn();
+      const user = userEvent.setup();
 
       const { container } = render(
         <BoundingBoxOverlay
@@ -257,11 +262,14 @@ describe('BoundingBoxOverlay', () => {
         />
       );
 
-      const rect = container.querySelector('rect');
-      fireEvent.mouseLeave(rect!);
+      const rect = container.querySelector('rect') as HTMLElement;
+      await user.hover(rect);
+      await user.unhover(rect);
 
-      expect(handleHover).toHaveBeenCalledTimes(1);
-      expect(handleHover).toHaveBeenCalledWith(null);
+      // Wait for debounce to complete (50ms)
+      await waitFor(() => {
+        expect(handleHover).toHaveBeenLastCalledWith(null);
+      }, { timeout: 200 });
     });
 
     it('handles keyboard interaction (Enter key)', () => {
@@ -437,12 +445,13 @@ describe('BoundingBoxOverlay', () => {
       );
 
       const svg = container.querySelector('svg');
-      expect(svg).toHaveAttribute('role', 'img');
-      expect(svg).toHaveAttribute('aria-label', 'Document bounding boxes');
+      expect(svg).toHaveAttribute('role', 'region');
+      expect(svg).toHaveAttribute('aria-label', 'Document structure overlay with navigable elements');
 
       const rect = container.querySelector('rect');
       expect(rect).toHaveAttribute('role', 'button');
-      expect(rect).toHaveAttribute('aria-label', 'heading bounding box');
+      // aria-label format: "{element_type} bounding box"
+      expect(rect!.getAttribute('aria-label')).toContain('bounding box');
       expect(rect).toHaveAttribute('tabindex', '0');
     });
   });

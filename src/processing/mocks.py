@@ -1,12 +1,20 @@
 """
-Mock implementations for embedding and storage agents.
+DEPRECATED: Mock implementations for embedding and storage agents.
 
-This module provides mock implementations matching the integration contracts
-for independent Wave 2 development. These will be replaced with real
-implementations in Wave 3.
+This module is deprecated. Please use src.core.testing.mocks instead.
+
+All mock implementations have been consolidated into src/core/testing/mocks.py
+for better maintainability and consistency.
+
+Migration guide:
+    Old: from src.processing.mocks import MockEmbeddingEngine, MockStorageClient
+    New: from src.core.testing.mocks import MockEmbeddingEngine, MockStorageClient
+
+This file will be removed in a future version.
 """
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
@@ -14,6 +22,14 @@ import numpy as np
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# Issue deprecation warning when this module is imported
+warnings.warn(
+    "src.processing.mocks is deprecated. Use src.core.testing.mocks instead. "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 # ============================================================================

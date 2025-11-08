@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => {
     ? env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim())
     : ['localhost', '127.0.0.1']
 
+  // Centralized service URLs from environment variables
+  // See frontend/src/config/urls.js for centralized configuration
+  const workerUrl = env.VITE_WORKER_URL || 'http://localhost:8002'
+  const researchUrl = env.VITE_RESEARCH_API_URL || 'http://localhost:8004'
+  const copypartyUrl = env.VITE_COPYPARTY_URL || 'http://localhost:8000'
+  const workerWsUrl = workerUrl.replace(/^http/, 'ws')
+
   return {
   plugins: [react()],
   build: {
@@ -34,58 +41,58 @@ export default defineConfig(({ mode }) => {
       // Research API endpoints (separate service on port 8004)
       // IMPORTANT: Must come BEFORE general /api rule to match first
       '/api/research': {
-        target: 'http://localhost:8004',
+        target: researchUrl,
         changeOrigin: true,
       },
       // Python backend API - all /api/* endpoints (structure, etc.)
       '/api': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - document endpoints
       '/documents': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - image endpoints
       '/images': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - status endpoints
       '/status': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - health endpoints
       '/health': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - config endpoints
       '/config': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - delete endpoint
       '/delete': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // Python backend API - process endpoint
       '/process': {
-        target: 'http://localhost:8002',
+        target: workerUrl,
         changeOrigin: true,
       },
       // WebSocket for status updates
       '/ws': {
-        target: 'ws://localhost:8002',
+        target: workerWsUrl,
         ws: true,
         changeOrigin: true,
       },
       // Copyparty uploads
       '/uploads': {
-        target: 'http://localhost:8000',
+        target: copypartyUrl,
         changeOrigin: true,
       },
     },

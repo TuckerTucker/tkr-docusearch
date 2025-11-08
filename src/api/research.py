@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from src.config.urls import get_service_urls
 from src.embeddings.colpali_wrapper import ColPaliEngine
 from src.research.citation_parser import CitationParser
 from src.research.context_builder import ContextBuilder
@@ -289,17 +290,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware - build allow_origins from service URLs configuration
+_urls = get_service_urls()
+_allowed_origins = [
+    _urls.frontend,
+    "http://127.0.0.1:3000",  # React Frontend localhost
+    _urls.copyparty,
+    "http://127.0.0.1:8000",  # Copyparty localhost
+    _urls.worker,
+    "http://127.0.0.1:8002",  # Worker API localhost
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",  # React Frontend
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",  # Copyparty UI
-        "http://localhost:8002",
-        "http://127.0.0.1:8002",  # Worker API UI
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],

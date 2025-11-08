@@ -59,7 +59,7 @@ def test_get_chunk_context_success(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -98,7 +98,7 @@ def test_get_chunk_context_full_chunk_id(mock_chroma_client):
     }
 
     # Make request with full chunk_id
-    response = client.get(f"/documents/{doc_id}/chunks/{full_chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{full_chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -126,7 +126,7 @@ def test_get_chunk_context_minimal_metadata(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -162,7 +162,7 @@ def test_get_chunk_context_text_preview_fallback(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -192,7 +192,7 @@ def test_get_chunk_context_json_parsing(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -226,7 +226,7 @@ def test_get_chunk_context_bbox_parsing(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -249,7 +249,7 @@ def test_get_chunk_context_not_found(mock_chroma_client):
     mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 404
@@ -265,7 +265,7 @@ def test_get_chunk_context_invalid_doc_id(mock_chroma_client):
     chunk_id = "0001"
 
     # Make request
-    response = client.get(f"/documents/{invalid_doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{invalid_doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 400
@@ -279,7 +279,7 @@ def test_get_chunk_context_invalid_chunk_id(mock_chroma_client):
     invalid_chunk_id = "invalid-format"
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{invalid_chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{invalid_chunk_id}")
 
     # Assertions
     assert response.status_code == 400
@@ -294,7 +294,7 @@ def test_get_chunk_context_mismatched_doc_id(mock_chroma_client):
     chunk_id = f"{wrong_doc_id}-chunk0001"
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 400
@@ -311,7 +311,7 @@ def test_get_chunk_context_database_error(mock_chroma_client):
     mock_chroma_client._text_collection.get.side_effect = Exception("Database connection failed")
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 500
@@ -340,7 +340,7 @@ def test_get_chunk_context_invalid_json_fallback(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
@@ -375,7 +375,7 @@ def test_get_chunk_context_element_types(mock_chroma_client):
         }
 
         # Make request
-        response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+        response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
         # Assertions
         assert response.status_code == 200
@@ -404,7 +404,7 @@ def test_get_chunk_context_page_boundary(mock_chroma_client):
     }
 
     # Make request
-    response = client.get(f"/documents/{doc_id}/chunks/{chunk_id}")
+    response = client.get(f"/api/documents/{doc_id}/chunks/{chunk_id}")
 
     # Assertions
     assert response.status_code == 200
