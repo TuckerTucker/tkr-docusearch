@@ -110,7 +110,8 @@ class CitationParser:
     """Parses citation markers from LLM-generated text"""
 
     # Regex patterns
-    CITATION_PATTERN = r"\[(\d+)\]"  # Matches [1], [2], etc.
+    # Matches both [1] and [[1]](url) formats
+    CITATION_PATTERN = r"\[\[?(\d+)\](?:\]\([^\)]+\))?\]?"  # Matches [1], [2], [[1]](url), [[2]](url)
     SENTENCE_PATTERN = r"[^.!?]+[.!?]+"  # Simple sentence boundary
 
     # Common abbreviations that shouldn't split sentences

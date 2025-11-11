@@ -572,12 +572,41 @@ class ContextBuilder:
         return len(text) // 4
 
     def _format_context(self, sources: List[SourceDocument]) -> str:
-        """Format sources as numbered citation blocks"""
+        """
+        Format sources as numbered citation blocks with SOURCE LINKS section.
+
+        The format includes:
+        1. Numbered citation blocks with document content
+        2. SOURCE LINKS section with URLs for each source
+
+        This allows the LLM to create markdown link citations like [[1]](url).
+        """
+        from src.utils.url_builder import build_details_url
+
         parts = []
 
+        # Add numbered citation blocks
         for i, source in enumerate(sources, start=1):
             citation = self.format_source_citation(source, i)
             parts.append(citation)
+
+        # Add SOURCE LINKS section
+        parts.append("\n---\n")
+        parts.append("SOURCE LINKS:\n")
+
+        for i, source in enumerate(sources, start=1):
+            # Build URL for this source
+            url = build_details_url(
+                doc_id=source.doc_id,
+                # Audio documents don't use page navigation (use time-based chunks)
+                page=source.page if source.extension not in ["mp3", "wav"] else None,
+                chunk_id=source.chunk_id,
+                absolute=True,  # Use absolute URLs for LLM citations
+            )
+
+            # Format: [N] filename url
+            visual_tag = "[Visual Match] " if source.is_visual else ""
+            parts.append(f"[{i}] {visual_tag}{source.filename} {url}")
 
         return "\n\n".join(parts)
 

@@ -62,6 +62,28 @@ export default function AnswerDisplay({
                 )}
               </li>
             ),
+            // Override link renderer to convert citation links [N] to CitationLink components
+            a: ({ children, href }) => {
+              // Check if this is a citation link (text is just a number in brackets)
+              const citationMatch = children &&
+                                   typeof children === 'string' &&
+                                   children.match(/^\[(\d+)\]$/)
+
+              if (citationMatch) {
+                const citationNumber = parseInt(citationMatch[1], 10)
+                return (
+                  <CitationLink
+                    citationNumber={citationNumber}
+                    onCitationClick={onCitationClick}
+                    onCitationHover={onCitationHover}
+                    isActive={activeReference === citationNumber}
+                  />
+                )
+              }
+
+              // Regular link - render normally
+              return <a href={href}>{children}</a>
+            },
           }}
         >
           {parsedAnswer}
@@ -160,8 +182,9 @@ function processCitationsInString(
   onCitationClick,
   onCitationHover
 ) {
-  // Regex to match citation markers: [N] where N is a number
-  const citationRegex = /\[(\d+)\]/g
+  // Regex to match both [N] and [[N]](url) citation formats
+  // Captures: [N] or [[N]](any-url)
+  const citationRegex = /\[\[?(\d+)\](?:\]\([^\)]+\))?\]?/g
   const parts = []
   let lastIndex = 0
   let match
@@ -175,7 +198,7 @@ function processCitationsInString(
       parts.push(text.substring(lastIndex, matchStart))
     }
 
-    // Add CitationLink component
+    // Add CitationLink component (URL is handled by ReferenceCard details_url)
     parts.push(
       <CitationLink
         key={`citation-${matchStart}-${citationNumber}`}
