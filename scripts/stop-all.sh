@@ -35,6 +35,7 @@ FORCE_MODE="${1:-}"
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
+NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
 COMPOSE_DIR="${PROJECT_ROOT}/docker"
 
 # ============================================================================
@@ -182,6 +183,67 @@ stop_research_api() {
             print_status "Orphaned research APIs" "ok" "Killed"
         else
             echo -e "\n  ${YELLOW}Run with --force to kill orphaned research APIs${NC}"
+        fi
+    fi
+}
+
+stop_ngrok() {
+    echo -e "\n${CYAN}Stopping ngrok tunnel...${NC}\n"
+
+    # Check PID file
+    if [ -f "$NGROK_PID_FILE" ]; then
+        local ngrok_pid=$(cat "$NGROK_PID_FILE")
+
+        if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+            print_status "Ngrok PID" "info" "Found: $ngrok_pid"
+
+            if [ "$FORCE_MODE" = "--force" ]; then
+                print_status "Ngrok" "warn" "Force killing (SIGKILL)"
+                kill -9 "$ngrok_pid" 2>/dev/null || true
+            else
+                print_status "Ngrok" "info" "Gracefully stopping (SIGTERM)"
+                kill "$ngrok_pid" 2>/dev/null || true
+
+                # Wait up to 5 seconds for graceful shutdown
+                local count=0
+                while ps -p "$ngrok_pid" > /dev/null 2>&1 && [ $count -lt 5 ]; do
+                    sleep 1
+                    count=$((count + 1))
+                done
+
+                # Force kill if still running
+                if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+                    print_status "Ngrok" "warn" "Graceful shutdown timed out, force killing"
+                    kill -9 "$ngrok_pid" 2>/dev/null || true
+                fi
+            fi
+
+            # Verify stopped
+            if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+                print_status "Ngrok" "error" "Failed to stop (PID: $ngrok_pid)"
+            else
+                print_status "Ngrok" "ok" "Stopped"
+            fi
+        else
+            print_status "Ngrok" "info" "Not running (stale PID file)"
+        fi
+
+        rm -f "$NGROK_PID_FILE"
+        print_status "Ngrok PID file" "ok" "Cleaned up"
+    else
+        print_status "Ngrok" "info" "No PID file found (may not be running)"
+    fi
+
+    # Check for orphaned ngrok processes
+    local orphaned_pids=$(pgrep -f "ngrok http" || true)
+    if [ -n "$orphaned_pids" ]; then
+        print_status "Orphaned ngrok processes" "warn" "Found: $orphaned_pids"
+
+        if [ "$FORCE_MODE" = "--force" ]; then
+            pkill -9 -f "ngrok http" || true
+            print_status "Orphaned ngrok processes" "ok" "Killed"
+        else
+            echo -e "\n  ${YELLOW}Run with --force to kill orphaned ngrok processes${NC}"
         fi
     fi
 }
@@ -366,6 +428,11 @@ cleanup_logs() {
         print_status "Frontend log" "info" "Saved (${log_size}): logs/frontend.log"
     fi
 
+    if [ -f "logs/ngrok.log" ]; then
+        local log_size=$(du -h logs/ngrok.log | cut -f1)
+        print_status "Ngrok log" "info" "Saved (${log_size}): logs/ngrok.log"
+    fi
+
     # Show recent Docker logs
     cd "$COMPOSE_DIR"
     local compose_logs=$(docker-compose logs --tail=0 2>/dev/null || echo "")
@@ -477,6 +544,7 @@ fi
 stop_native_worker
 stop_research_api
 stop_frontend
+stop_ngrok
 stop_docker_services
 cleanup_python_cache
 check_ports

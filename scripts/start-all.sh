@@ -36,7 +36,9 @@ NC='\033[0m'
 MODE="${1:-gpu}"  # Default to GPU mode
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
+NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
 COMPOSE_DIR="${PROJECT_ROOT}/docker"
+VISION_ENABLED=true  # Vision mode enabled by default
 
 # ============================================================================
 # Functions
@@ -194,6 +196,144 @@ start_native_worker() {
     fi
 }
 
+start_ngrok() {
+    echo -e "\n${CYAN}Starting ngrok tunnel (for vision mode)...${NC}\n"
+
+    # Check if vision mode is disabled
+    if [ "$VISION_ENABLED" = false ]; then
+        print_status "Ngrok" "info" "Skipped (vision mode disabled)"
+        return
+    fi
+
+    # Check if ngrok is installed
+    if ! command -v ngrok &> /dev/null; then
+        print_status "Ngrok" "warn" "Not installed (vision mode will be disabled)"
+        echo -e "  ${YELLOW}ℹ${NC} Install: ${YELLOW}brew install ngrok${NC}"
+        echo -e "  ${YELLOW}ℹ${NC} Docs: ${YELLOW}docs/RESEARCH_BOT_VISION_SETUP.md${NC}"
+        return
+    fi
+
+    # Check if ngrok is already running
+    if [ -f "$NGROK_PID_FILE" ]; then
+        local old_pid=$(cat "$NGROK_PID_FILE")
+        if ps -p "$old_pid" > /dev/null 2>&1; then
+            # Verify it's actually tunneling the right port
+            if pgrep -f "ngrok http 8002" > /dev/null 2>&1; then
+                print_status "Ngrok" "warn" "Already running (PID: $old_pid)"
+
+                # Get current URL
+                local ngrok_url=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null || echo "")
+                if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+                    print_status "Ngrok URL" "ok" "$ngrok_url"
+
+                    # Update .env with current URL
+                    update_ngrok_url "$ngrok_url"
+                fi
+                return
+            else
+                # Stale PID file
+                rm -f "$NGROK_PID_FILE"
+            fi
+        else
+            rm -f "$NGROK_PID_FILE"
+        fi
+    fi
+
+    # Check if Worker API is running (ngrok needs it for images)
+    if ! curl -s http://localhost:8002/health > /dev/null 2>&1; then
+        print_status "Ngrok" "error" "Worker API not running (required for ngrok)"
+        return
+    fi
+
+    # Load NGROK_AUTHTOKEN from .env if present
+    if [ -f .env ]; then
+        local ngrok_token=$(grep "^NGROK_AUTHTOKEN=" .env 2>/dev/null | cut -d'=' -f2-)
+        if [ -n "$ngrok_token" ] && [ "$ngrok_token" != "your-ngrok-authtoken-here" ]; then
+            export NGROK_AUTHTOKEN="$ngrok_token"
+        fi
+    fi
+
+    # Verify ngrok is configured (has authtoken)
+    if ! ngrok config check &> /dev/null; then
+        print_status "Ngrok" "warn" "Not configured (no authtoken)"
+        echo -e "  ${YELLOW}ℹ${NC} Get token: ${BLUE}https://dashboard.ngrok.com/get-started/your-authtoken${NC}"
+        echo -e "  ${YELLOW}ℹ${NC} Configure: ${YELLOW}ngrok config add-authtoken YOUR_TOKEN${NC}"
+        echo -e "  ${YELLOW}ℹ${NC} Or add to .env: ${YELLOW}NGROK_AUTHTOKEN=your_token${NC}"
+        return
+    fi
+
+    # Start ngrok tunnel to Worker API (port 8002) for image access
+    print_status "Ngrok" "info" "Starting tunnel to port 8002..."
+    nohup ngrok http 8002 > logs/ngrok.log 2>&1 &
+    local ngrok_pid=$!
+    echo $ngrok_pid > "$NGROK_PID_FILE"
+
+    # Wait for ngrok to start (up to 10 seconds)
+    local count=0
+    local max_wait=10
+    local ngrok_url=""
+
+    while [ $count -lt $max_wait ]; do
+        ngrok_url=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null || echo "")
+
+        if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+            print_status "Ngrok" "ok" "Running (PID: $ngrok_pid)"
+            print_status "Ngrok URL" "ok" "$ngrok_url"
+
+            # Update .env with new URL
+            update_ngrok_url "$ngrok_url"
+
+            print_status "Vision Mode" "ok" "Enabled (images accessible via ngrok)"
+            return
+        fi
+
+        sleep 1
+        count=$((count + 1))
+    done
+
+    # Failed to get URL
+    if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+        print_status "Ngrok" "warn" "Started but URL not available yet (check logs/ngrok.log)"
+    else
+        print_status "Ngrok" "error" "Failed to start (check logs/ngrok.log)"
+        rm -f "$NGROK_PID_FILE"
+    fi
+}
+
+update_ngrok_url() {
+    local ngrok_url="$1"
+
+    if [ -z "$ngrok_url" ]; then
+        return
+    fi
+
+    # Update or add NGROK_URL in .env
+    if grep -q "^NGROK_URL=" .env 2>/dev/null; then
+        # Update existing line (macOS compatible)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^NGROK_URL=.*|NGROK_URL=$ngrok_url|" .env
+        else
+            sed -i "s|^NGROK_URL=.*|NGROK_URL=$ngrok_url|" .env
+        fi
+    else
+        # Add new line
+        echo "" >> .env
+        echo "# Ngrok tunnel URL (auto-updated by start-all.sh)" >> .env
+        echo "NGROK_URL=$ngrok_url" >> .env
+    fi
+
+    # Ensure RESEARCH_VISION_ENABLED is set to true
+    if grep -q "^RESEARCH_VISION_ENABLED=" .env 2>/dev/null; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^RESEARCH_VISION_ENABLED=.*|RESEARCH_VISION_ENABLED=true|" .env
+        else
+            sed -i "s|^RESEARCH_VISION_ENABLED=.*|RESEARCH_VISION_ENABLED=true|" .env
+        fi
+    else
+        echo "RESEARCH_VISION_ENABLED=true" >> .env
+    fi
+}
+
 start_research_api() {
     echo -e "\n${CYAN}Starting Research API...${NC}\n"
 
@@ -317,38 +457,56 @@ show_help() {
 ${BLUE}DocuSearch - Start All Services${NC}
 
 ${YELLOW}Usage:${NC}
-  ./scripts/start-all.sh [option]
+  ./scripts/start-all.sh [options]
 
 ${YELLOW}Options:${NC}
   --gpu          Run worker natively with Metal GPU (default, 10-20x faster)
   --cpu          Run worker in Docker with CPU (simpler, slower)
   --docker-only  Start only Docker services (no worker)
+  --no-vision    Disable vision mode (skip ngrok tunnel)
   --help         Show this help message
 
 ${YELLOW}Examples:${NC}
-  # Start with Metal GPU (recommended for M1/M2/M3 Mac)
+  # Start with Metal GPU and vision mode (default)
   ./scripts/start-all.sh
   ./scripts/start-all.sh --gpu
 
   # Start with CPU (no GPU setup required)
   ./scripts/start-all.sh --cpu
 
+  # Start without vision mode (no ngrok)
+  ./scripts/start-all.sh --no-vision
+
+  # Combine options
+  ./scripts/start-all.sh --gpu --no-vision
+
   # Start only ChromaDB and Copyparty
   ./scripts/start-all.sh --docker-only
 
 ${YELLOW}Services:${NC}
-  - ChromaDB:  Vector database (http://localhost:8001)
-  - Copyparty:  File upload server (http://localhost:8000)
-  - Worker:     Document processing (http://localhost:8002)
+  - ChromaDB:    Vector database (http://localhost:8001)
+  - Copyparty:   File upload server (http://localhost:8000)
+  - Worker:      Document processing (http://localhost:8002)
+  - Ngrok:       Tunnel for vision mode (auto-managed)
+  - Research:    AI research API (http://localhost:8004)
+  - Frontend:    React UI (http://localhost:3000)
+
+${YELLOW}Vision Mode:${NC}
+  - Enabled by default (multimodal LLM with images)
+  - Requires ngrok (auto-started, free account needed)
+  - Use --no-vision to disable and skip ngrok
 
 ${YELLOW}Requirements:${NC}
   - Docker Desktop running
   - For --gpu mode: Run './scripts/run-worker-native.sh setup' first
+  - For vision mode: ngrok installed and configured (optional)
 
 ${YELLOW}See Also:${NC}
-  - Setup GPU worker: ./scripts/run-worker-native.sh setup
-  - Stop services:    ./scripts/stop-all.sh
-  - Documentation:    docs/NATIVE_WORKER_SETUP.md
+  - Setup GPU worker:     ./scripts/run-worker-native.sh setup
+  - Stop services:        ./scripts/stop-all.sh
+  - Check status:         ./scripts/status.sh
+  - Vision mode docs:     docs/RESEARCH_BOT_VISION_SETUP.md
+  - Worker documentation: docs/NATIVE_WORKER_SETUP.md
 EOF
 }
 
@@ -357,29 +515,38 @@ EOF
 # ============================================================================
 
 # Parse arguments
-case "$MODE" in
-    --help|-h|help)
-        show_help
-        exit 0
-        ;;
-    --gpu|gpu)
-        MODE="gpu"
-        ;;
-    --cpu|cpu)
-        MODE="cpu"
-        ;;
-    --docker-only)
-        MODE="docker-only"
-        ;;
-    *)
-        if [ -n "$MODE" ]; then
-            echo -e "${RED}Error: Unknown option '$MODE'${NC}\n"
+for arg in "$@"; do
+    case "$arg" in
+        --help|-h|help)
             show_help
-            exit 1
-        fi
-        MODE="gpu"  # Default
-        ;;
-esac
+            exit 0
+            ;;
+        --gpu|gpu)
+            MODE="gpu"
+            ;;
+        --cpu|cpu)
+            MODE="cpu"
+            ;;
+        --docker-only)
+            MODE="docker-only"
+            ;;
+        --no-vision)
+            VISION_ENABLED=false
+            ;;
+        *)
+            if [ -n "$arg" ] && [[ ! "$arg" =~ ^-- ]]; then
+                echo -e "${RED}Error: Unknown option '$arg'${NC}\n"
+                show_help
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+# Set default mode if not specified
+if [ -z "$MODE" ] || [ "$MODE" = "true" ]; then
+    MODE="gpu"
+fi
 
 # Create logs directory
 mkdir -p logs
@@ -413,13 +580,47 @@ start_docker_services
 
 if [ "$MODE" = "gpu" ]; then
     start_native_worker
+
+    # Wait for worker to be fully ready before starting ngrok
+    if [ "$VISION_ENABLED" = true ]; then
+        max_wait=20
+        wait_count=0
+        echo -e "\n${CYAN}Waiting for worker to be ready before starting ngrok...${NC}\n"
+
+        while [ $wait_count -lt $max_wait ]; do
+            if curl -s http://localhost:8002/health > /dev/null 2>&1; then
+                break
+            fi
+            sleep 1
+            wait_count=$((wait_count + 1))
+        done
+    fi
+
+    start_ngrok  # Start ngrok after worker is ready
     start_research_api
     start_frontend
 elif [ "$MODE" = "docker-only" ]; then
     print_status "Worker" "info" "Skipped (--docker-only mode)"
+    print_status "Ngrok" "info" "Skipped (--docker-only mode)"
     print_status "Research API" "info" "Skipped (--docker-only mode)"
     print_status "Frontend" "info" "Skipped (--docker-only mode)"
 elif [ "$MODE" = "cpu" ]; then
+    # Wait for worker to be ready before starting ngrok
+    if [ "$VISION_ENABLED" = true ]; then
+        max_wait=20
+        wait_count=0
+        echo -e "\n${CYAN}Waiting for worker to be ready before starting ngrok...${NC}\n"
+
+        while [ $wait_count -lt $max_wait ]; do
+            if curl -s http://localhost:8002/health > /dev/null 2>&1; then
+                break
+            fi
+            sleep 1
+            wait_count=$((wait_count + 1))
+        done
+    fi
+
+    start_ngrok  # Start ngrok in CPU mode too
     start_frontend
 fi
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-  # DocuSearch - Main entry point for managing the
-  document search system
+# DocuSearch - Main entry point for managing the document search system
 
   case "$1" in
     --start|start)

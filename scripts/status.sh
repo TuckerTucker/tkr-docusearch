@@ -29,6 +29,7 @@ NC='\033[0m'
 OUTPUT_FORMAT="${1:-text}"
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
+NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
 
 # ============================================================================
 # Functions
@@ -143,6 +144,20 @@ show_status_text() {
         fi
     fi
 
+    # Research API
+    echo -e "\n${CYAN}Research API:${NC}"
+
+    local research_api_status=$(check_service "http://localhost:8004/api/research/health")
+    if [ "$research_api_status" = "running" ]; then
+        echo -e "  ${GREEN}✓${NC} Research:  Running on http://localhost:8004"
+        if [ -f ".research-api.pid" ]; then
+            echo -e "    ${BLUE}→${NC} PID:     $(cat .research-api.pid)"
+        fi
+        echo -e "    ${BLUE}→${NC} Logs:    logs/research-api.log"
+    else
+        echo -e "  ${RED}✗${NC} Research:  Stopped"
+    fi
+
     # Frontend
     echo -e "\n${CYAN}React Frontend:${NC}"
 
@@ -172,6 +187,45 @@ show_status_text() {
         else
             echo -e "  ${RED}✗${NC} Frontend:  Stopped"
         fi
+    fi
+
+    # Ngrok (Vision Mode)
+    echo -e "\n${CYAN}Vision Mode (Ngrok):${NC}"
+
+    # Check ngrok PID
+    local ngrok_running=false
+    if [ -f "$NGROK_PID_FILE" ]; then
+        local ngrok_pid=$(cat "$NGROK_PID_FILE")
+        if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+            ngrok_running=true
+        fi
+    fi
+
+    # Check ngrok API
+    local ngrok_url=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null || echo "")
+
+    if [ $ngrok_running = true ] && [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+        echo -e "  ${GREEN}✓${NC} Ngrok:     Running (Vision enabled)"
+        echo -e "    ${BLUE}→${NC} PID:     $(cat $NGROK_PID_FILE)"
+        echo -e "    ${BLUE}→${NC} URL:     $ngrok_url"
+        echo -e "    ${BLUE}→${NC} Tunnel:  Port 8002 (Worker API) → Internet"
+        echo -e "    ${BLUE}→${NC} Logs:    logs/ngrok.log"
+
+        # Check if .env is up to date
+        if [ -f ".env" ]; then
+            local env_ngrok_url=$(grep "^NGROK_URL=" .env 2>/dev/null | cut -d'=' -f2-)
+            if [ "$env_ngrok_url" != "$ngrok_url" ]; then
+                echo -e "    ${YELLOW}⚠${NC} Warning: .env has outdated URL"
+                echo -e "    ${YELLOW}→${NC} Run: ${YELLOW}./scripts/start-all.sh${NC} to update"
+            fi
+        fi
+    elif [ $ngrok_running = true ]; then
+        echo -e "  ${YELLOW}⚠${NC} Ngrok:     Process running but tunnel not ready"
+        echo -e "    ${BLUE}→${NC} PID:     $(cat $NGROK_PID_FILE)"
+        echo -e "    ${BLUE}→${NC} Check:   logs/ngrok.log"
+    else
+        echo -e "  ${BLUE}○${NC} Ngrok:     Stopped (vision mode disabled)"
+        echo -e "    ${BLUE}→${NC} To enable: ${YELLOW}./scripts/start-all.sh${NC} (auto-starts ngrok)"
     fi
 
     # Port usage
@@ -207,15 +261,26 @@ show_status_text() {
     echo -e "\n${CYAN}System Status:${NC}"
 
     local all_running=true
-    [ "$chromadb_status" != "running" ] && all_running=false
-    [ "$copyparty_status" != "running" ] && all_running=false
-    [ "$worker_status" != "running" ] && all_running=false
+    local core_running=true
+    [ "$chromadb_status" != "running" ] && all_running=false && core_running=false
+    [ "$copyparty_status" != "running" ] && all_running=false && core_running=false
+    [ "$worker_status" != "running" ] && all_running=false && core_running=false
     [ "$frontend_status" != "running" ] && all_running=false
+    [ "$research_api_status" != "running" ] && all_running=false
+
+    # Ngrok is optional, don't fail overall status
+    if [ $ngrok_running != true ]; then
+        echo -e "  ${BLUE}ℹ${NC} Vision mode disabled (ngrok not running)"
+    fi
 
     if $all_running; then
         echo -e "  ${GREEN}✓ All services running${NC}"
+    elif $core_running; then
+        echo -e "  ${YELLOW}⚠ Core services running, some optional services stopped${NC}"
+        echo -e "\n  ${CYAN}To start all services:${NC}"
+        echo -e "    ${YELLOW}./scripts/start-all.sh${NC}"
     else
-        echo -e "  ${YELLOW}⚠ Some services are not running${NC}"
+        echo -e "  ${RED}✗ Core services not running${NC}"
         echo -e "\n  ${CYAN}To start all services:${NC}"
         echo -e "    ${YELLOW}./scripts/start-all.sh${NC}"
     fi
@@ -228,11 +293,16 @@ show_status_json() {
     local chromadb_status=$(check_service "http://localhost:8001/api/v2/heartbeat")
     local copyparty_status=$(check_service "http://localhost:8000/")
     local worker_status=$(check_service "http://localhost:8002/health")
+    local research_api_status=$(check_service "http://localhost:8004/api/research/health")
     local frontend_status=$(check_service "http://localhost:3000")
 
     local native_worker=false
     local worker_pid=""
+    local research_pid=""
     local frontend_pid=""
+    local ngrok_pid=""
+    local ngrok_url=""
+    local ngrok_status="stopped"
 
     if [ -f "$WORKER_PID_FILE" ]; then
         worker_pid=$(cat "$WORKER_PID_FILE")
@@ -241,8 +311,22 @@ show_status_json() {
         fi
     fi
 
+    if [ -f ".research-api.pid" ]; then
+        research_pid=$(cat ".research-api.pid")
+    fi
+
     if [ -f "$FRONTEND_PID_FILE" ]; then
         frontend_pid=$(cat "$FRONTEND_PID_FILE")
+    fi
+
+    if [ -f "$NGROK_PID_FILE" ]; then
+        ngrok_pid=$(cat "$NGROK_PID_FILE")
+        if ps -p "$ngrok_pid" > /dev/null 2>&1; then
+            ngrok_url=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null || echo "")
+            if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+                ngrok_status="running"
+            fi
+        fi
     fi
 
     cat << EOF
@@ -266,9 +350,20 @@ show_status_json() {
       "url": "http://localhost:8002",
       "mode": "$([ $native_worker = true ] && echo 'native' || echo 'docker')",
       "pid": "$worker_pid"
+    },
+    "research_api": {
+      "status": "$research_api_status",
+      "url": "http://localhost:8004",
+      "pid": "$research_pid"
+    },
+    "ngrok": {
+      "status": "$ngrok_status",
+      "url": "$ngrok_url",
+      "pid": "$ngrok_pid",
+      "vision_enabled": $([ "$ngrok_status" = "running" ] && echo 'true' || echo 'false')
     }
   },
-  "all_running": $([ "$chromadb_status" = "running" ] && [ "$copyparty_status" = "running" ] && [ "$worker_status" = "running" ] && [ "$frontend_status" = "running" ] && echo 'true' || echo 'false')
+  "all_running": $([ "$chromadb_status" = "running" ] && [ "$copyparty_status" = "running" ] && [ "$worker_status" = "running" ] && [ "$frontend_status" = "running" ] && [ "$research_api_status" = "running" ] && echo 'true' || echo 'false')
 }
 EOF
 }
