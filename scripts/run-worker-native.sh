@@ -154,6 +154,9 @@ run_worker() {
         source "$VENV_DIR/bin/activate"
     fi
 
+    # Ensure Homebrew binaries (including ffmpeg) are in PATH
+    export PATH="/opt/homebrew/bin:$PATH"
+
     # Verify ChromaDB is running
     echo "Checking ChromaDB connection..."
     if ! curl -s "http://${CHROMA_HOST}:${CHROMA_PORT}/api/v2/heartbeat" > /dev/null 2>&1; then
@@ -189,7 +192,12 @@ run_worker() {
     echo ""
 
     cd "$PROJECT_ROOT"
-    exec $PYTHON -m src.processing.worker_webhook
+    # Use venv Python if available, otherwise fall back to $PYTHON
+    if [ -f "$VENV_DIR/bin/python" ]; then
+        exec "$VENV_DIR/bin/python" -m src.processing.worker_webhook
+    else
+        exec $PYTHON -m src.processing.worker_webhook
+    fi
 }
 
 show_help() {
