@@ -176,7 +176,7 @@ export default function DetailsView() {
     return () => {
       setTitle('Document Library');
       setTitleLoading(false);
-      window.document.title = 'frontend'; // Reset on unmount
+      window.document.title = 'DocuSearch - Multimodal Document RAG Library'; // Reset on unmount
     };
   }, [document, setTitle, setTitleLoading]);
 

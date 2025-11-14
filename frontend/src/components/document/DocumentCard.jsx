@@ -2,7 +2,7 @@
  * DocumentCard Component
  *
  * Display document information card with thumbnail, badge, and action button.
- * Supports two variants: document (tall 385x285) and audio (square 300x300).
+ * Supports two variants: document (tall 385x270) and audio (square 300x270).
  * Three states: completed, processing, failed.
  *
  * Wave 2 - Library Agent
@@ -19,7 +19,7 @@ import useDocumentCard from '../../hooks/useDocumentCard.js';
  * DocumentCard Component
  *
  * Displays a document information card with thumbnail, badge, and action button.
- * Supports two variants (document: tall 385x285, audio: square 300x300) and four states
+ * Supports two variants (document: tall 385x270, audio: square 300x270) and four states
  * (uploading, processing, completed, failed). Provides delete functionality and navigation
  * to document details page.
  *

@@ -803,7 +803,7 @@ body {
   display: grid;
   grid-template-columns: 200px 1fr;
   width: 385px;
-  height: 285px;
+  height: 270px;
   background-color: var(--card);
   overflow: hidden;
   border-radius: var(--radius);
@@ -825,7 +825,7 @@ body {
 .document-card__left {
   position: relative;
   width: 200px;
-  height: 285px;
+  height: 270px;
   background-color: var(--muted);
   border-radius: var(--radius-md) 0 0 var(--radius-md); /* Round left corners */
   overflow: hidden;
