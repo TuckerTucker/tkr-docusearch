@@ -75,10 +75,67 @@ check_docker() {
         exit 1
     fi
 
-    if ! docker info &> /dev/null; then
-        echo -e "${RED}Error: Docker daemon not running${NC}"
-        echo "Please start Docker Desktop"
-        exit 1
+    if ! docker info &> /dev/null 2>&1; then
+        # Check if auto-start is enabled (default: true)
+        local auto_start="${AUTO_START_DOCKER:-true}"
+
+        if [ "$auto_start" = "true" ]; then
+            echo -e "${YELLOW}Docker not running. Starting Docker Desktop...${NC}"
+
+            # Start Docker Desktop (OS-specific)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS
+                open -a Docker
+            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                # Linux
+                echo -e "${YELLOW}Attempting to start Docker service...${NC}"
+                if command -v systemctl &> /dev/null; then
+                    sudo systemctl start docker
+                else
+                    echo -e "${RED}Error: Cannot auto-start Docker on this system${NC}"
+                    echo "Please start Docker manually"
+                    exit 1
+                fi
+            else
+                echo -e "${RED}Error: Unsupported OS for auto-start${NC}"
+                echo "Please start Docker Desktop manually"
+                exit 1
+            fi
+
+            # Wait for Docker daemon to be ready
+            echo -n "  Waiting for Docker daemon"
+            local max_wait=60
+            local waited=0
+
+            while ! docker info &> /dev/null 2>&1; do
+                if [ $waited -ge $max_wait ]; then
+                    echo ""
+                    echo -e "${RED}Error: Docker failed to start after ${max_wait}s${NC}"
+                    echo "Please check Docker Desktop and try again"
+                    echo ""
+                    echo "Troubleshooting:"
+                    echo "  1. Check if Docker Desktop is installed"
+                    echo "  2. Try starting Docker Desktop manually"
+                    echo "  3. Check system resources (CPU, memory)"
+                    echo "  4. Set AUTO_START_DOCKER=false to disable auto-start"
+                    exit 1
+                fi
+
+                echo -n "."
+                sleep 2
+                waited=$((waited + 2))
+            done
+
+            echo ""
+            echo -e "${GREEN}✓ Docker started successfully (${waited}s)${NC}"
+
+            # Give Docker a moment to stabilize
+            sleep 3
+        else
+            echo -e "${RED}Error: Docker daemon not running${NC}"
+            echo "Please start Docker Desktop or set AUTO_START_DOCKER=true in .env"
+            exit 1
+        fi
     fi
 }
 

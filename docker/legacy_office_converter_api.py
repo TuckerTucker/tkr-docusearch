@@ -1,9 +1,11 @@
 """
-Slide Renderer API - HTTP service for converting PPTX slides to images.
+Legacy Office Converter API - HTTP service for converting legacy Office documents.
 
-This service provides an endpoint for rendering PowerPoint presentations
-to PNG images using LibreOffice. It runs in a Docker container and is
-called by the native processing worker.
+This service provides endpoints for:
+1. Rendering PowerPoint presentations to PNG images using LibreOffice
+2. Converting legacy .doc files to .docx format using LibreOffice
+
+It runs in a Docker container and is called by the native processing worker.
 """
 
 import logging
@@ -11,6 +13,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -29,7 +32,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # Allowed base directories for file access (configurable via environment)
 ALLOWED_UPLOAD_DIRS = os.getenv("ALLOWED_UPLOAD_DIRS", "/uploads,/data/uploads").split(",")
-ALLOWED_EXTENSIONS = {".pptx", ".ppt"}
+ALLOWED_EXTENSIONS = {".pptx", ".ppt", ".doc"}
 
 
 def validate_and_sanitize_path(file_path: str) -> Path:
@@ -84,7 +87,7 @@ def validate_and_sanitize_path(file_path: str) -> Path:
         raise HTTPException(status_code=400, detail="Invalid file path")
 
 
-app = FastAPI(title="Slide Renderer API", version="1.0.0")
+app = FastAPI(title="Legacy Office Converter API", version="2.0.0")
 
 
 class RenderRequest(BaseModel):
@@ -114,6 +117,36 @@ class RenderResponse(BaseModel):
     success: bool
     slide_count: int
     slide_paths: List[str]
+    error: Optional[str] = None
+
+
+class ConvertDocRequest(BaseModel):
+    """Request to convert .doc file to .docx format.
+
+    Attributes:
+        file_path: Path to the .doc file (must be accessible in shared volume)
+        output_dir: Directory to save converted .docx file
+    """
+
+    file_path: str
+    output_dir: str
+
+
+class ConvertDocResponse(BaseModel):
+    """Response from doc to docx conversion.
+
+    Attributes:
+        success: Whether conversion succeeded
+        docx_path: Path to converted .docx file (null on error)
+        file_size_bytes: Size of converted file in bytes (null on error)
+        conversion_time_ms: Time taken for conversion in milliseconds
+        error: Error message if conversion failed
+    """
+
+    success: bool
+    docx_path: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    conversion_time_ms: Optional[int] = None
     error: Optional[str] = None
 
 
@@ -238,10 +271,148 @@ def render_slides_with_libreoffice(
             return {"success": False, "slide_count": 0, "slide_paths": [], "error": error_msg}
 
 
+def convert_doc_to_docx(doc_path: str, output_dir: str) -> Dict[str, Any]:
+    """Convert .doc to .docx using LibreOffice.
+
+    Args:
+        doc_path: Path to .doc file
+        output_dir: Directory for output
+
+    Returns:
+        Dictionary with success status, docx path, file size, and conversion time
+        {
+            "success": bool,
+            "docx_path": str or None,
+            "file_size_bytes": int or None,
+            "conversion_time_ms": int or None,
+            "error": str or None
+        }
+
+    Raises:
+        HTTPException: If path validation fails
+    """
+    start_time = time.time()
+
+    try:
+        # Validate and sanitize path
+        doc_path = validate_and_sanitize_path(doc_path)
+        output_dir = Path(output_dir)
+
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Determine expected output path
+        docx_filename = doc_path.stem + ".docx"
+        expected_docx_path = output_dir / docx_filename
+
+        logger.info(f"Converting {doc_path} to {expected_docx_path}...")
+
+        # Run LibreOffice conversion
+        # Command: libreoffice --headless --convert-to docx --outdir {output_dir} {doc_path}
+        result = subprocess.run(
+            [
+                "libreoffice",
+                "--headless",
+                "--convert-to",
+                "docx",
+                "--outdir",
+                str(output_dir),
+                str(doc_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,  # 30s timeout as per contract
+        )
+
+        conversion_time_ms = int((time.time() - start_time) * 1000)
+
+        # Check if conversion succeeded
+        if result.returncode != 0:
+            error_msg = f"LibreOffice conversion failed: {result.stderr or result.stdout}"
+            logger.error(error_msg)
+            logger.error(f"Exit code: {result.returncode}")
+            return {
+                "success": False,
+                "docx_path": None,
+                "file_size_bytes": None,
+                "conversion_time_ms": conversion_time_ms,
+                "error": error_msg,
+            }
+
+        # Verify output file exists
+        if not expected_docx_path.exists():
+            error_msg = f"Conversion appeared to succeed but output file not found: {expected_docx_path}"
+            logger.error(error_msg)
+            return {
+                "success": False,
+                "docx_path": None,
+                "file_size_bytes": None,
+                "conversion_time_ms": conversion_time_ms,
+                "error": error_msg,
+            }
+
+        # Get file size
+        file_size = expected_docx_path.stat().st_size
+
+        # Verify file is not empty
+        if file_size == 0:
+            error_msg = "Conversion produced empty file"
+            logger.error(error_msg)
+            return {
+                "success": False,
+                "docx_path": None,
+                "file_size_bytes": None,
+                "conversion_time_ms": conversion_time_ms,
+                "error": error_msg,
+            }
+
+        logger.info(
+            f"Successfully converted {doc_path.name} to {docx_filename} ({file_size} bytes) in {conversion_time_ms}ms"
+        )
+
+        return {
+            "success": True,
+            "docx_path": str(expected_docx_path),
+            "file_size_bytes": file_size,
+            "conversion_time_ms": conversion_time_ms,
+            "error": None,
+        }
+
+    except subprocess.TimeoutExpired:
+        conversion_time_ms = int((time.time() - start_time) * 1000)
+        error_msg = "Conversion timeout exceeded (30s)"
+        logger.error(error_msg)
+        return {
+            "success": False,
+            "docx_path": None,
+            "file_size_bytes": None,
+            "conversion_time_ms": conversion_time_ms,
+            "error": error_msg,
+        }
+    except HTTPException:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        conversion_time_ms = int((time.time() - start_time) * 1000)
+        error_msg = f"Conversion error: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return {
+            "success": False,
+            "docx_path": None,
+            "file_size_bytes": None,
+            "conversion_time_ms": conversion_time_ms,
+            "error": error_msg,
+        }
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "slide-renderer"}
+    return {
+        "status": "healthy",
+        "service": "legacy-office-converter",
+        "capabilities": ["pptx-rendering", "doc-conversion"],
+    }
 
 
 @app.post("/render", response_model=RenderResponse)
@@ -277,11 +448,59 @@ async def render_slides(request: RenderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/convert-doc", response_model=ConvertDocResponse)
+async def convert_doc(request: ConvertDocRequest):
+    """Convert .doc file to .docx format.
+
+    Args:
+        request: ConvertDocRequest with file_path and output_dir
+
+    Returns:
+        ConvertDocResponse with success status, docx path, file size, and conversion time
+
+    Raises:
+        HTTPException: If conversion fails or validation errors occur
+    """
+    logger.info(f"Converting .doc file: {request.file_path}")
+
+    try:
+        result = convert_doc_to_docx(doc_path=request.file_path, output_dir=request.output_dir)
+
+        # If conversion failed, return appropriate HTTP error
+        if not result["success"]:
+            # Determine appropriate status code based on error
+            error = result.get("error", "Unknown error")
+            if "not found" in error.lower():
+                status_code = 404
+            elif "timeout" in error.lower():
+                status_code = 500
+            elif "corrupted" in error.lower() or "invalid" in error.lower():
+                status_code = 400
+            else:
+                status_code = 500
+
+            raise HTTPException(status_code=status_code, detail=error)
+
+        return ConvertDocResponse(**result)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (from validation or our own error handling)
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in convert_doc endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/")
 async def root():
     """Root endpoint with service info."""
     return {
-        "service": "Slide Renderer API",
-        "version": "1.0.0",
-        "endpoints": {"health": "/health", "render": "POST /render"},
+        "service": "Legacy Office Converter API",
+        "version": "2.0.0",
+        "capabilities": ["pptx-rendering", "doc-conversion"],
+        "endpoints": {
+            "health": "GET /health",
+            "render_pptx": "POST /render",
+            "convert_doc": "POST /convert-doc",
+        },
     }

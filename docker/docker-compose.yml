@@ -63,19 +63,19 @@ services:
     #   start_period: 30s
 
   # ============================================================================
-  # Slide Renderer - PPTX to Image Conversion
+  # Legacy Office Converter - PPTX to Image Conversion + DOC to DOCX Conversion
   # ============================================================================
-  slide-renderer:
+  legacy-office-converter:
     build:
       context: .
-      dockerfile: Dockerfile.slide-renderer
-    image: docusearch-slide-renderer:latest
-    container_name: docusearch-slide-renderer
+      dockerfile: Dockerfile.legacy-office-converter
+    image: docusearch-legacy-office-converter:latest
+    container_name: docusearch-legacy-office-converter
     ports:
-      - "${SLIDE_RENDERER_PORT:-8003}:8003"
+      - "${LEGACY_OFFICE_PORT:-${SLIDE_RENDERER_PORT:-8003}}:8003"
     volumes:
-      # Read-only access to uploads for PPTX files
-      - ../data/uploads:/uploads:ro
+      # Read-write access to uploads for PPTX/DOC files and DOCX output
+      - ../data/uploads:/uploads
       # Read-write access to page_images for slide output
       - ../data/page_images:/page_images
     environment:

@@ -486,6 +486,20 @@ class DoclingParser:
 
             ext = Path(file_path).suffix.lower()
 
+            # Convert .doc to .docx if needed
+            original_filename = None
+            conversion_time_ms = None
+            if ext == ".doc":
+                try:
+                    original_filename = Path(file_path).name
+                    docx_path, conversion_time_ms = self._convert_legacy_doc(file_path)
+                    logger.info(f"Converted {original_filename} to .docx in {conversion_time_ms}ms")
+                    file_path = docx_path
+                    ext = ".docx"  # Update extension for downstream processing
+                except Exception as e:
+                    logger.error(f"Failed to convert {Path(file_path).name}: {e}")
+                    raise ParsingError(f"Doc conversion failed: {e}") from e
+
             # Build pipeline options
             pipeline_options = self._build_pipeline_options(config)
 
@@ -522,6 +536,12 @@ class DoclingParser:
             # Build metadata
             metadata = self._build_metadata(result.document, file_path, pages, audio_id3_metadata)
 
+            # Add conversion metadata if .doc was converted
+            if original_filename and conversion_time_ms is not None:
+                metadata["original_filename"] = original_filename
+                metadata["converted_from"] = ".doc"
+                metadata["conversion_time_ms"] = conversion_time_ms
+
             return pages, metadata, result.document
 
         except ImportError as e:
@@ -533,6 +553,57 @@ class DoclingParser:
         except Exception as e:
             logger.error(f"Docling parsing failed: {e}")
             raise ParsingError(f"Docling parsing failed: {e}") from e
+
+    def _convert_legacy_doc(self, file_path: str) -> tuple:
+        """Convert .doc to .docx via legacy-office service.
+
+        Args:
+            file_path: Path to .doc file
+
+        Returns:
+            Tuple of (path to converted .docx file, conversion_time_ms)
+
+        Raises:
+            ParsingError: If conversion fails
+        """
+        import time
+
+        from src.processing.legacy_office_client import get_legacy_office_client
+
+        logger.info(f"Starting .doc to .docx conversion: {file_path}")
+        conversion_start = time.time()
+
+        try:
+            # Get client
+            client = get_legacy_office_client()
+
+            # Translate path to Docker format (/uploads/filename.doc)
+            filename = Path(file_path).name
+            docker_path = f"/uploads/{filename}"
+
+            logger.debug(f"Path translation for conversion: {file_path} -> {docker_path}")
+
+            # Call conversion
+            docx_docker_path = client.convert_doc_to_docx(docker_path)
+
+            # Translate returned path back to native format
+            docx_filename = Path(docx_docker_path).name
+            native_docx_path = str(Path(file_path).parent / docx_filename)
+
+            # Calculate conversion time
+            conversion_duration = time.time() - conversion_start
+            conversion_time_ms = int(conversion_duration * 1000)
+
+            logger.info(
+                f"Conversion complete: {filename} -> {docx_filename} "
+                f"({conversion_time_ms}ms, {conversion_duration:.2f}s)"
+            )
+
+            return native_docx_path, conversion_time_ms
+
+        except Exception as e:
+            logger.error(f"Doc conversion failed for {Path(file_path).name}: {e}")
+            raise ParsingError(f"Doc conversion failed: {e}") from e
 
     def _build_pipeline_options(self, config: Optional[EnhancedModeConfig]):
         """Build pipeline options based on configuration."""

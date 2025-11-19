@@ -1,6 +1,6 @@
 # Multi-Format Document Support
 
-DocuSearch supports **21 document formats** with intelligent processing strategies optimized for each format type.
+DocuSearch supports **23 document formats** with intelligent processing strategies optimized for each format type, including automatic conversion of legacy Office formats.
 
 ## Supported Formats
 
@@ -25,6 +25,10 @@ DocuSearch supports **21 document formats** with intelligent processing strategi
 |--------|-----------|-------------|
 | **Office Documents** |
 | Microsoft Word | `.docx` | Word documents |
+| **Legacy Office** (Auto-Converted) |
+| Word 97-2003 | `.doc` | Legacy Word documents (auto-converted to .docx) |
+| Word Template | `.dot` | Legacy Word templates (auto-converted to .docx) |
+| **Modern Office** |
 | Microsoft Excel | `.xlsx` | Excel spreadsheets |
 | Microsoft PowerPoint | `.pptx` | PowerPoint presentations |
 | **Web & Markup** |
@@ -77,6 +81,19 @@ Document → Docling Parser → Pages with NO Images → Text Embeddings Only �
 - **50% storage savings** (no visual embeddings)
 - Text search still highly effective
 
+### Legacy Office Processing (.doc, .dot)
+```
+.doc File → Auto-Detection → Conversion Service → .docx File → Text-Only Processing
+                             (LibreOffice)
+```
+
+**Characteristics:**
+- Automatic conversion to modern .docx format (1-5s typical)
+- Original filename preserved in metadata
+- Processed as text-only format after conversion
+- User sees original `.doc` filename in UI
+- See [Legacy Office Conversion Guide](LEGACY_OFFICE_CONVERSION.md) for details
+
 ### Audio Processing (VTT, WAV, MP3)
 ```
 Audio File → Docling Parser (ASR/VTT) → Transcript → Text Embeddings → ChromaDB
@@ -95,8 +112,10 @@ Audio File → Docling Parser (ASR/VTT) → Transcript → Text Embeddings → C
 All formats configured in `docker/.env`:
 
 ```bash
-SUPPORTED_FORMATS=pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json
+SUPPORTED_FORMATS=pdf,doc,dot,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json
 ```
+
+**Note:** `.doc` and `.dot` files are automatically converted to `.docx` before processing.
 
 To add/remove formats, edit this line and restart services:
 
@@ -171,6 +190,9 @@ All processed documents include format metadata:
 | Images | OCR quality depends on image clarity | Use high-resolution source images |
 | Excel (XLSX) | Complex formulas may not render | Text extraction only |
 | HTML | External CSS/images not loaded | Content-only extraction |
+| Legacy .doc | Password-protected files not supported | Decrypt file before upload |
+| Legacy .doc | VBA macros stripped during conversion | Macros not needed for search |
+| Legacy .doc | Digital signatures removed | Signatures not needed for search |
 
 ## Examples
 
@@ -188,6 +210,15 @@ curl -F "file=@readme.md" http://localhost:8000/upload
 # → Text-only processing
 # → ~0.24s per chunk
 # → Only text embeddings stored
+```
+
+### Upload Legacy .doc (Auto-Converted)
+```bash
+curl -F "file=@quarterly_report.doc" http://localhost:8000/upload
+# → Auto-detected as legacy format
+# → Converted to .docx (~2s typical)
+# → Text-only processing
+# → Original filename preserved ("quarterly_report.doc")
 ```
 
 ### Upload Image (Visual Processing)

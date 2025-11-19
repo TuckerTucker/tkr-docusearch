@@ -13,7 +13,7 @@ FILTER_GROUPS: Dict[str, Optional[List[str]]] = {
     "all": None,  # None indicates no filtering (show all types)
     "pdf": [".pdf"],
     "audio": [".mp3", ".wav"],
-    "office": [".docx", ".pptx", ".xlsx"],
+    "office": [".doc", ".docx", ".pptx", ".xlsx"],
     "text": [".md", ".asciidoc", ".csv", ".vtt", ".html", ".xhtml"],
     "images": [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"],
 }

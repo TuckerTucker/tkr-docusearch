@@ -23,8 +23,8 @@ RUN pip install --no-cache-dir \
 # Create app directory
 WORKDIR /app
 
-# Copy the slide renderer API
-COPY slide_renderer_api.py /app/
+# Copy the legacy office converter API
+COPY legacy_office_converter_api.py /app/
 
 # Create output directory
 RUN mkdir -p /tmp/slides
@@ -33,4 +33,4 @@ RUN mkdir -p /tmp/slides
 EXPOSE 8003
 
 # Run the API server
-CMD ["uvicorn", "slide_renderer_api:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "legacy_office_converter_api:app", "--host", "0.0.0.0", "--port", "8003"]

@@ -258,7 +258,7 @@ class TestSlideRenderer:
         # This is a complex integration test that requires mocking many internal imports
         # For now, we'll test basic initialization and error handling more thoroughly
         # The actual rendering logic is tested in integration tests
-        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
             mock_slide_client = Mock()
             mock_slide_client.render_slides.return_value = ["/page_images/slide_1.png"]
             mock_get_client.return_value = mock_slide_client
@@ -282,7 +282,7 @@ class TestSlideRenderer:
 
         renderer = SlideRenderer()
 
-        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
             # Simulate error
             mock_get_client.side_effect = Exception("Renderer error")
 
@@ -298,7 +298,7 @@ class TestSlideRenderer:
         renderer = SlideRenderer()
 
         # Test error handling with simplified mocking
-        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
             mock_slide_client = Mock()
             mock_slide_client.render_slides.side_effect = Exception("Render error")
             mock_get_client.return_value = mock_slide_client

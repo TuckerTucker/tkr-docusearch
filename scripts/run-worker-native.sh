@@ -69,9 +69,12 @@ export ASR_WORD_TIMESTAMPS="${ASR_WORD_TIMESTAMPS:-true}"
 export ASR_TEMPERATURE="${ASR_TEMPERATURE:-0.0}"
 export ASR_MAX_TIME_CHUNK="${ASR_MAX_TIME_CHUNK:-30.0}"
 
-# Slide renderer configuration for PPTX visual processing
-export SLIDE_RENDERER_HOST="${SLIDE_RENDERER_HOST:-localhost}"
-export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-8003}"
+# Legacy Office Converter configuration (PPTX rendering + DOC conversion)
+export LEGACY_OFFICE_HOST="${LEGACY_OFFICE_HOST:-localhost}"
+export LEGACY_OFFICE_PORT="${LEGACY_OFFICE_PORT:-8003}"
+# Backward compatibility: Allow old SLIDE_RENDERER_* variables
+export SLIDE_RENDERER_HOST="${SLIDE_RENDERER_HOST:-${LEGACY_OFFICE_HOST}}"
+export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-${LEGACY_OFFICE_PORT}}"
 
 # Logging
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"

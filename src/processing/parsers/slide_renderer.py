@@ -39,7 +39,7 @@ class SlideRenderer:
 
             from PIL import Image as PILImage
 
-            from src.processing.slide_renderer_client import get_slide_renderer
+            from src.processing.legacy_office_client import get_legacy_office_client
 
             logger.info(f"Rendering PPTX slides to images via slide-renderer service")
 
@@ -60,7 +60,7 @@ class SlideRenderer:
             native_temp_dir.mkdir(parents=True, exist_ok=True)
 
             try:
-                slide_client = get_slide_renderer()
+                slide_client = get_legacy_office_client()
 
                 # Render slides to shared volume
                 slide_paths = slide_client.render_slides(

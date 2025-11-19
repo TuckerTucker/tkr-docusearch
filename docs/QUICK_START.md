@@ -21,8 +21,10 @@
 ## Prerequisites
 
 - **macOS 12.3+** (for Metal GPU support)
-- **Docker Desktop** (running)
+- **Docker Desktop** (will auto-start if not running)
 - **Python 3.10+**
+
+> **💡 Auto-Start Feature**: Docker Desktop will automatically start if not running. See [Docker Auto-Start](DOCKER_AUTO_START.md) for details.
 
 ## First-Time Setup
 
@@ -159,8 +161,10 @@
 **Via Web UI:**
 1. Open http://localhost:8000
 2. Log in with username: `admin`, password: `admin`
-3. Drag & drop PDF/DOCX/PPTX files
+3. Drag & drop PDF/DOCX/PPTX/DOC files
 4. Files automatically trigger processing via webhook
+   - Legacy `.doc` files are automatically converted to `.docx`
+   - Original filename is preserved in metadata
 
 **Via CLI:**
 ```bash
@@ -360,8 +364,9 @@ export LOG_LEVEL=DEBUG
 
 - 📖 [GPU Acceleration Guide](docs/GPU_ACCELERATION.md)
 - 📖 [Native Worker Setup](docs/NATIVE_WORKER_SETUP.md)
+- 📖 [Multi-Format Support](docs/MULTI_FORMAT_SUPPORT.md)
+- 📖 [Legacy Office Conversion](docs/LEGACY_OFFICE_CONVERSION.md)
 - 📖 [API Documentation](docs/API.md)
-- 📖 [Architecture Overview](docs/ARCHITECTURE.md)
 
 ## Getting Help
 

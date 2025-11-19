@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Set, Tuple
 
 DEFAULT_FORMATS = (
-    "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp"
+    "pdf,doc,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp"
 )
 
 
