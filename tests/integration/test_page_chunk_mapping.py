@@ -11,8 +11,8 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
-from src.storage.metadata_schema import ChunkContext
+from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+from tkr_docusearch.storage.metadata_schema import ChunkContext
 
 
 class TestPageChunkMapping:

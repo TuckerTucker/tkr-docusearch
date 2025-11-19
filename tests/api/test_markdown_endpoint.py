@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Import the actual router
-from src.api.routes.markdown import router, set_storage_client, sanitize_filename
+from tkr_docusearch.api.routes.markdown import router, set_storage_client, sanitize_filename
 
 
 @pytest.fixture

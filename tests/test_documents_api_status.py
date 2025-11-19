@@ -25,7 +25,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.processing.documents_api import router
+from tkr_docusearch.processing.documents_api import router
 
 # ============================================================================
 # Test Fixtures
@@ -49,7 +49,7 @@ def client(app):
 @pytest.fixture
 def mock_chroma_client():
     """Create mock ChromaDB client with sample data."""
-    with patch("src.processing.documents_api.get_chroma_client") as mock_get:
+    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get:
         mock_client = Mock()
         mock_get.return_value = mock_client
         yield mock_client

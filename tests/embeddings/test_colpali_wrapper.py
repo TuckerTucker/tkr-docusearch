@@ -23,9 +23,9 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.config.model_config import ModelConfig
-from src.embeddings.colpali_wrapper import ColPaliEngine
-from src.embeddings.exceptions import EmbeddingGenerationError, ModelLoadError, ScoringError
+from tkr_docusearch.config.model_config import ModelConfig
+from tkr_docusearch.embeddings.colpali_wrapper import ColPaliEngine
+from tkr_docusearch.embeddings.exceptions import EmbeddingGenerationError, ModelLoadError, ScoringError
 
 # ============================================================================
 # Fixtures
@@ -35,7 +35,7 @@ from src.embeddings.exceptions import EmbeddingGenerationError, ModelLoadError, 
 @pytest.fixture
 def mock_torch():
     """Mock PyTorch for testing without actual GPU dependencies."""
-    with patch("src.embeddings.model_loader.torch") as mock_torch_module:
+    with patch("tkr_docusearch.embeddings.model_loader.torch") as mock_torch_module:
         # Configure MPS availability
         mock_torch_module.backends.mps.is_available.return_value = True
         mock_torch_module.cuda.is_available.return_value = False
@@ -45,7 +45,7 @@ def mock_torch():
 @pytest.fixture
 def mock_model_loader():
     """Mock model loader to return mock model and processor."""
-    with patch("src.embeddings.colpali_wrapper.load_model") as mock_loader:
+    with patch("tkr_docusearch.embeddings.colpali_wrapper.load_model") as mock_loader:
         # Create mock model
         mock_model = MagicMock()
         mock_model.embed_batch = Mock(
@@ -64,7 +64,7 @@ def mock_model_loader():
 @pytest.fixture
 def mock_memory_estimate():
     """Mock memory estimation function."""
-    with patch("src.embeddings.colpali_wrapper.estimate_memory_usage") as mock_estimate:
+    with patch("tkr_docusearch.embeddings.colpali_wrapper.estimate_memory_usage") as mock_estimate:
         mock_estimate.return_value = 8000.0  # 8GB
         yield mock_estimate
 
@@ -201,7 +201,7 @@ class TestColPaliEngineInit:
 
     def test_init_with_model_load_error(self, mock_memory_estimate):
         """Test initialization handles model load errors."""
-        with patch("src.embeddings.colpali_wrapper.load_model") as mock_loader:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.load_model") as mock_loader:
             mock_loader.side_effect = ModelLoadError("Failed to load model")
 
             with pytest.raises(ModelLoadError):
@@ -457,7 +457,7 @@ class TestScoreMultiVector:
             np.random.randn(55, 768).astype(np.float32),
         ]
 
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.return_value = [0.85, 0.72, 0.91]
 
             result = engine.score_multi_vector(query_emb, doc_embs)
@@ -494,7 +494,7 @@ class TestScoreMultiVector:
         query_emb = np.random.randn(10, 768).astype(np.float32)
         doc_embs = [np.random.randn(50, 768).astype(np.float32)]
 
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.return_value = [0.85]
 
             engine.score_multi_vector(query_emb, doc_embs, use_gpu=False)
@@ -507,7 +507,7 @@ class TestScoreMultiVector:
         query_emb = np.random.randn(10, 768).astype(np.float32)
         doc_embs = [np.random.randn(50, 768).astype(np.float32)]
 
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.return_value = [0.85]
 
             result = engine.score_multi_vector(query_emb, doc_embs)
@@ -521,7 +521,7 @@ class TestScoreMultiVector:
         query_emb = np.random.randn(10, 768).astype(np.float32)
         doc_embs = [np.random.randn(50, 768).astype(np.float32)]
 
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.side_effect = RuntimeError("Scoring failed")
 
             with pytest.raises(ScoringError, match="Failed to score documents"):
@@ -686,7 +686,7 @@ class TestIntegration:
         query_result = engine.embed_query("Find the blue image")
 
         # Score
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.return_value = [0.6, 0.7, 0.9]
 
             score_result = engine.score_multi_vector(
@@ -727,10 +727,10 @@ class TestIntegration:
         mock_torch.cuda.is_available.return_value = False
 
         with patch.dict("sys.modules", {"torch": mock_torch}):
-            with patch("src.embeddings.colpali_wrapper.load_model") as mock_loader:
+            with patch("tkr_docusearch.embeddings.colpali_wrapper.load_model") as mock_loader:
                 mock_loader.return_value = (MagicMock(), MagicMock())
 
-                with patch("src.embeddings.colpali_wrapper.estimate_memory_usage") as mock_mem:
+                with patch("tkr_docusearch.embeddings.colpali_wrapper.estimate_memory_usage") as mock_mem:
                     mock_mem.return_value = 8000.0
 
                     engine = ColPaliEngine(device="mps")
@@ -790,7 +790,7 @@ class TestEdgeCases:
         query_emb = np.random.randn(10, 768).astype(np.float32) * 10
         doc_embs = [np.random.randn(50, 768).astype(np.float32) * 10]
 
-        with patch("src.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
+        with patch("tkr_docusearch.embeddings.colpali_wrapper.batch_maxsim_scores") as mock_scores:
             mock_scores.return_value = [0.85]
 
             result = engine.score_multi_vector(query_emb, doc_embs)

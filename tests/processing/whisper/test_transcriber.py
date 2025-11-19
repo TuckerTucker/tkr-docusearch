@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.whisper.output_validator import validate_whisper_output
-from src.processing.whisper.transcriber import (
+from tkr_docusearch.processing.whisper.output_validator import validate_whisper_output
+from tkr_docusearch.processing.whisper.transcriber import (
     MODEL_MAPPING,
     AudioFormatError,
     AudioProcessingError,

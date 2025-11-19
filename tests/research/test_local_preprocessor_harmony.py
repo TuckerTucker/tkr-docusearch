@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.research.context_builder import SourceDocument
-from src.research.local_preprocessor import LocalLLMPreprocessor
-from src.research.mlx_llm_client import LLMResponse
+from tkr_docusearch.research.context_builder import SourceDocument
+from tkr_docusearch.research.local_preprocessor import LocalLLMPreprocessor
+from tkr_docusearch.research.mlx_llm_client import LLMResponse
 
 
 @pytest.fixture
@@ -255,7 +255,7 @@ class TestHarmonyCompressionIntegration:
     async def test_compress_timeout_handling(self, mock_mlx_client, sample_source):
         """Test timeout handling with increased timeout value"""
         # Mock timeout
-        from src.research.mlx_llm_client import TimeoutError
+        from tkr_docusearch.research.mlx_llm_client import TimeoutError
 
         mock_mlx_client.complete.side_effect = TimeoutError("Timeout after 120s")
 

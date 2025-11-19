@@ -19,10 +19,10 @@ import json
 
 import pytest
 
-from src.research.chunk_extractor import parse_chunk_id
-from src.storage.chroma_client import ChromaClient
-from src.storage.compression import compress_structure_metadata, decompress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.research.chunk_extractor import parse_chunk_id
+from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.compression import compress_structure_metadata, decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     DocumentStructure,
     HeadingInfo,
     HeadingLevel,
@@ -583,7 +583,7 @@ class TestEdgeCases:
         )
 
         # Should still serialize/deserialize correctly
-        from src.storage.compression import compress_structure_metadata
+        from tkr_docusearch.storage.compression import compress_structure_metadata
 
         compressed = compress_structure_metadata(structure.to_dict())
         decompressed = decompress_structure_metadata(compressed)

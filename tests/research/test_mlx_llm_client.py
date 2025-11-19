@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.research.mlx_llm_client import (
+from tkr_docusearch.research.mlx_llm_client import (
     ContextLengthError,
     LLMError,
     LLMResponse,

@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 
-from src.embeddings import ColPaliEngine
-from src.search import SearchEngine
-from src.storage import ChromaClient
+from tkr_docusearch.embeddings import ColPaliEngine
+from tkr_docusearch.search import SearchEngine
+from tkr_docusearch.storage import ChromaClient
 
 
 def show_stats(client: ChromaClient):

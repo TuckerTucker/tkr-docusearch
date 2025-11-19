@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.research.context_builder import SourceDocument
-from src.research.local_preprocessor import LocalLLMPreprocessor
-from src.research.mlx_llm_client import LLMError, LLMResponse
+from tkr_docusearch.research.context_builder import SourceDocument
+from tkr_docusearch.research.local_preprocessor import LocalLLMPreprocessor
+from tkr_docusearch.research.mlx_llm_client import LLMError, LLMResponse
 
 
 @pytest.fixture

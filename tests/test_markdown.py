@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from src.embeddings.colpali_wrapper import ColPaliEngine
-from src.processing.processor import DocumentProcessor
-from src.storage.chroma_client import ChromaClient
+from tkr_docusearch.embeddings.colpali_wrapper import ColPaliEngine
+from tkr_docusearch.processing.processor import DocumentProcessor
+from tkr_docusearch.storage.chroma_client import ChromaClient
 
 
 def test_markdown_integration():

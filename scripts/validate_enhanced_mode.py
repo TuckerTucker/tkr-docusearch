@@ -24,11 +24,11 @@ sys.path.insert(0, str(project_root))
 # noqa: E402 - imports after path modification
 from docling.document_converter import DocumentConverter  # noqa: E402
 
-from src.config.processing_config import EnhancedModeConfig  # noqa: E402
-from src.processing.docling_parser import DoclingParser  # noqa: E402
-from src.processing.structure_extractor import extract_document_structure  # noqa: E402
-from src.storage.chroma_client import ChromaClient  # noqa: E402
-from src.storage.compression import decompress_structure_metadata  # noqa: E402
+from tkr_docusearch.config.processing_config import EnhancedModeConfig  # noqa: E402
+from tkr_docusearch.processing.docling_parser import DoclingParser  # noqa: E402
+from tkr_docusearch.processing.structure_extractor import extract_document_structure  # noqa: E402
+from tkr_docusearch.storage.chroma_client import ChromaClient  # noqa: E402
+from tkr_docusearch.storage.compression import decompress_structure_metadata  # noqa: E402
 
 # Configure logging
 logging.basicConfig(
@@ -99,7 +99,7 @@ class EnhancedModeValidator:
         # Step 2: Extract structure directly
         logger.info("\n[2/4] Extracting document structure...")
         try:
-            from src.config.processing_config import create_pipeline_options
+            from tkr_docusearch.config.processing_config import create_pipeline_options
 
             create_pipeline_options(self.config)
             converter = DocumentConverter()

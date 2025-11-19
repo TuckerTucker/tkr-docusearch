@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from mcp.types import TextContent
 
-from src.mcp_server.config import (
+from tkr_docusearch.mcp_server.config import (
     DEFAULT_NUM_SOURCES,
     DEFAULT_SEARCH_MODE,
     SERVER_NAME,
     SERVER_VERSION,
 )
-from src.mcp_server.server import app, call_tool, list_tools
-from src.mcp_server.utils import (
+from tkr_docusearch.mcp_server.server import app, call_tool, list_tools
+from tkr_docusearch.mcp_server.utils import (
     fetch_image_as_base64,
     format_error_message,
     format_source_links,
@@ -86,7 +86,7 @@ class TestCallToolErrors:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection failed"))
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -139,7 +139,7 @@ class TestUtilityFunctionsImageFetch:
         mock_response.raise_for_status = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -161,7 +161,7 @@ class TestUtilityFunctionsImageFetch:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("Timeout"))
 
-        with patch("src.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -182,7 +182,7 @@ class TestUtilityFunctionsImageFetch:
         )
         mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -196,7 +196,7 @@ class TestUtilityFunctionsImageFetch:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(side_effect=Exception("Unexpected error"))
 
-        with patch("src.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -324,7 +324,7 @@ class TestCallToolSuccess:
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -357,7 +357,7 @@ class TestCallToolSuccess:
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -410,7 +410,7 @@ class TestAdditionalErrorScenarios:
         )
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -443,8 +443,8 @@ class TestAdditionalErrorScenarios:
         mock_client.post = AsyncMock(return_value=mock_response)
 
         with (
-            patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client,
-            patch("src.mcp_server.server.fetch_image_as_base64") as mock_fetch,
+            patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client,
+            patch("tkr_docusearch.mcp_server.server.fetch_image_as_base64") as mock_fetch,
         ):
 
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -480,7 +480,7 @@ class TestAdditionalErrorScenarios:
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -517,7 +517,7 @@ class TestServerLogging:
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.server.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.server.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -541,7 +541,7 @@ class TestImageFetchingEdgeCases:
         mock_response.raise_for_status = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch("src.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
+        with patch("tkr_docusearch.mcp_server.utils.httpx.AsyncClient") as mock_async_client:
             mock_async_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
 

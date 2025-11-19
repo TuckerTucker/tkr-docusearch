@@ -13,6 +13,112 @@ authors = [
     {name = "TuckerTucker", email = "34353433+TuckerTucker@users.noreply.github.com"}
 ]
 
+# Runtime dependencies
+dependencies = [
+    # Core ML/AI dependencies
+    "torch>=2.8.0",
+    "torchvision>=0.15.0",
+    "transformers>=4.30.0",
+    "sentence-transformers>=2.2.0",
+
+    # ColPali - Multimodal embedding model
+    "colpali-engine>=0.2.0",
+
+    # Image processing
+    "Pillow>=10.0.0",
+
+    # Document parsing - unified with Docling
+    "docling[asr]>=2.55.0",
+
+    # Vector database
+    "chromadb>=0.4.0",
+
+    # Data and utilities
+    "numpy>=1.24.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.65.0",
+    "structlog>=23.1.0",
+    "urllib3>=2.5.0",
+
+    # Audio metadata extraction
+    "mutagen>=1.47.0",
+
+    # API Framework
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+
+    # File watching
+    "watchdog>=3.0.0",
+
+    # LLM Integration
+    "litellm>=1.0.0",
+    "tiktoken>=0.5.0",
+    "mlx-lm>=0.26.3",
+]
+
+# Optional dependencies
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+# Package configuration
+[tool.setuptools]
+# Explicitly list all packages under src/
+# Each directory in src/ becomes a subpackage of tkr_docusearch
+packages = [
+    "tkr_docusearch",
+    "tkr_docusearch.api",
+    "tkr_docusearch.api.routes",
+    "tkr_docusearch.config",
+    "tkr_docusearch.core",
+    "tkr_docusearch.core.exceptions",
+    "tkr_docusearch.core.testing",
+    "tkr_docusearch.core.types",
+    "tkr_docusearch.core.utils",
+    "tkr_docusearch.embeddings",
+    "tkr_docusearch.mcp_server",
+    "tkr_docusearch.processing",
+    "tkr_docusearch.processing.api",
+    "tkr_docusearch.processing.handlers",
+    "tkr_docusearch.processing.parsers",
+    "tkr_docusearch.processing.whisper",
+    "tkr_docusearch.research",
+    "tkr_docusearch.search",
+    "tkr_docusearch.storage",
+    "tkr_docusearch.utils",
+]
+
+[tool.setuptools.package-dir]
+# Map tkr_docusearch to src (flat layout)
+"tkr_docusearch" = "src"
+"tkr_docusearch.api" = "src/api"
+"tkr_docusearch.api.routes" = "src/api/routes"
+"tkr_docusearch.config" = "src/config"
+"tkr_docusearch.core" = "src/core"
+"tkr_docusearch.core.exceptions" = "src/core/exceptions"
+"tkr_docusearch.core.testing" = "src/core/testing"
+"tkr_docusearch.core.types" = "src/core/types"
+"tkr_docusearch.core.utils" = "src/core/utils"
+"tkr_docusearch.embeddings" = "src/embeddings"
+"tkr_docusearch.mcp_server" = "src/mcp_server"
+"tkr_docusearch.processing" = "src/processing"
+"tkr_docusearch.processing.api" = "src/processing/api"
+"tkr_docusearch.processing.handlers" = "src/processing/handlers"
+"tkr_docusearch.processing.parsers" = "src/processing/parsers"
+"tkr_docusearch.processing.whisper" = "src/processing/whisper"
+"tkr_docusearch.research" = "src/research"
+"tkr_docusearch.search" = "src/search"
+"tkr_docusearch.storage" = "src/storage"
+"tkr_docusearch.utils" = "src/utils"
+
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312', 'py313']

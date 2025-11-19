@@ -14,10 +14,10 @@ from typing import Any, Dict
 
 import pytest
 
-from src.config.processing_config import EnhancedModeConfig
-from src.processing.docling_parser import DoclingParser
-from src.storage.chroma_client import ChromaClient
-from src.storage.metadata_schema import DocumentStructure
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.processing.docling_parser import DoclingParser
+from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +132,8 @@ class TestStructureAPIValidation:
         # Extract structure directly to access bboxes
         from docling.document_converter import DocumentConverter
 
-        from src.config.processing_config import create_pipeline_options
-        from src.processing.structure_extractor import extract_document_structure
+        from tkr_docusearch.config.processing_config import create_pipeline_options
+        from tkr_docusearch.processing.structure_extractor import extract_document_structure
 
         create_pipeline_options(enhanced_config)
         converter = DocumentConverter()
@@ -242,7 +242,7 @@ class TestStructureAPIValidation:
             assert "structure" in metadata, "Should have compressed structure"
 
             # Validate structure can be decompressed
-            from src.storage.compression import decompress_structure_metadata
+            from tkr_docusearch.storage.compression import decompress_structure_metadata
 
             try:
                 structure_dict = decompress_structure_metadata(metadata["structure"])
@@ -293,8 +293,8 @@ class TestStructureAPIValidation:
         # Extract structure
         from docling.document_converter import DocumentConverter
 
-        from src.config.processing_config import create_pipeline_options
-        from src.processing.structure_extractor import extract_document_structure
+        from tkr_docusearch.config.processing_config import create_pipeline_options
+        from tkr_docusearch.processing.structure_extractor import extract_document_structure
 
         create_pipeline_options(enhanced_config)
         converter = DocumentConverter()

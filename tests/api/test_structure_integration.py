@@ -18,12 +18,12 @@ pytestmark = pytest.mark.skip(
 
 from fastapi.testclient import TestClient
 
-from src.api.server import create_app
-from src.config.processing_config import EnhancedModeConfig
-from src.embeddings import ColPaliEngine
-from src.processing import DocumentProcessor
-from src.storage import ChromaClient
-from src.storage.compression import decompress_structure_metadata
+from tkr_docusearch.api.server import create_app
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.embeddings import ColPaliEngine
+from tkr_docusearch.processing import DocumentProcessor
+from tkr_docusearch.storage import ChromaClient
+from tkr_docusearch.storage.compression import decompress_structure_metadata
 
 logger = logging.getLogger(__name__)
 

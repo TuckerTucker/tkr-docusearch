@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.whisper.audio_parser import parse_audio_with_whisper
-from src.processing.whisper.transcriber import AudioFormatError
+from tkr_docusearch.processing.whisper.audio_parser import parse_audio_with_whisper
+from tkr_docusearch.processing.whisper.transcriber import AudioFormatError
 
 # Get path to test fixtures
 FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures"
@@ -191,7 +191,7 @@ class TestParseAudioWithWhisper:
     @pytest.mark.skipif(not SAMPLE_MP3.exists(), reason="sample.mp3 fixture not found")
     def test_parse_with_config(self):
         """Test parsing with EnhancedModeConfig (for future use)."""
-        from src.config.processing_config import EnhancedModeConfig
+        from tkr_docusearch.config.processing_config import EnhancedModeConfig
 
         config = EnhancedModeConfig()
 

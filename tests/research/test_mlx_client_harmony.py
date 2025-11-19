@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.research.mlx_llm_client import (
+from tkr_docusearch.research.mlx_llm_client import (
     LLMResponse,
     MLXLLMClient,
 )
@@ -261,7 +261,7 @@ class TestMLXClientLogging:
     @pytest.mark.asyncio
     async def test_reasoning_effort_logged_in_debug(self, mlx_client, mock_mlx_lm):
         """Test reasoning_effort is logged in debug messages"""
-        with patch("src.research.mlx_llm_client.logger") as mock_logger:
+        with patch("tkr_docusearch.research.mlx_llm_client.logger") as mock_logger:
             await mlx_client.complete(prompt="Test prompt")
 
             # Check debug call
@@ -275,7 +275,7 @@ class TestMLXClientLogging:
     @pytest.mark.asyncio
     async def test_reasoning_effort_logged_in_info(self, mlx_client, mock_mlx_lm):
         """Test reasoning_effort is logged in info messages"""
-        with patch("src.research.mlx_llm_client.logger") as mock_logger:
+        with patch("tkr_docusearch.research.mlx_llm_client.logger") as mock_logger:
             await mlx_client.complete(prompt="Test prompt")
 
             # Check info call
@@ -289,7 +289,7 @@ class TestMLXClientLogging:
     @pytest.mark.asyncio
     async def test_overridden_reasoning_effort_logged(self, mlx_client, mock_mlx_lm):
         """Test overridden reasoning_effort value is logged"""
-        with patch("src.research.mlx_llm_client.logger") as mock_logger:
+        with patch("tkr_docusearch.research.mlx_llm_client.logger") as mock_logger:
             await mlx_client.complete(
                 prompt="Test prompt",
                 reasoning_effort="high"

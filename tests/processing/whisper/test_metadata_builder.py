@@ -7,8 +7,8 @@ compliance and proper integration with ID3 extraction.
 
 import pytest
 
-from src.processing.audio_metadata import AudioMetadata
-from src.processing.whisper.metadata_builder import (
+from tkr_docusearch.processing.audio_metadata import AudioMetadata
+from tkr_docusearch.processing.whisper.metadata_builder import (
     _get_mimetype,
     _merge_id3_metadata,
     _validate_required_fields,

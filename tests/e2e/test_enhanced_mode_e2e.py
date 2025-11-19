@@ -22,9 +22,9 @@ from typing import Optional
 import httpx
 import pytest
 
-from src.storage.chroma_client import ChromaClient
-from src.storage.compression import decompress_structure_metadata
-from src.storage.metadata_schema import DocumentStructure
+from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.compression import decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import DocumentStructure
 
 
 class TestEnhancedModeE2E:
@@ -76,7 +76,7 @@ class TestEnhancedModeE2E:
         4. Bboxes are valid
         """
         # Create sample structure for testing
-        from src.storage.metadata_schema import (
+        from tkr_docusearch.storage.metadata_schema import (
             HeadingInfo,
             HeadingLevel,
             PictureInfo,
@@ -127,7 +127,7 @@ class TestEnhancedModeE2E:
         structure.max_heading_depth = 1
 
         # Compress structure
-        from src.storage.compression import compress_structure_metadata
+        from tkr_docusearch.storage.compression import compress_structure_metadata
 
         compressed = compress_structure_metadata(structure.to_dict())
 
@@ -320,8 +320,8 @@ class TestEnhancedModeE2E:
         - image_width, image_height
         - structure compression
         """
-        from src.processing.handlers.enhanced_metadata import prepare_enhanced_visual_metadata
-        from src.storage.metadata_schema import HeadingInfo, HeadingLevel, PictureInfo, PictureType
+        from tkr_docusearch.processing.handlers.enhanced_metadata import prepare_enhanced_visual_metadata
+        from tkr_docusearch.storage.metadata_schema import HeadingInfo, HeadingLevel, PictureInfo, PictureType
 
         # Create structure
         structure = DocumentStructure(
@@ -426,8 +426,8 @@ class TestEnhancedModeE2E:
         - page_nums (JSON array)
         - is_page_boundary flag
         """
-        from src.processing.handlers.enhanced_metadata import prepare_enhanced_text_metadata
-        from src.storage.metadata_schema import ChunkContext
+        from tkr_docusearch.processing.handlers.enhanced_metadata import prepare_enhanced_text_metadata
+        from tkr_docusearch.storage.metadata_schema import ChunkContext
 
         # Create chunk context
         context = ChunkContext(

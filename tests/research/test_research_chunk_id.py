@@ -8,7 +8,7 @@ included for bidirectional highlighting.
 
 import pytest
 
-from src.research.context_builder import SourceDocument
+from tkr_docusearch.research.context_builder import SourceDocument
 
 
 class TestSourceDocumentChunkId:
@@ -90,7 +90,7 @@ class TestResearchAPIResponse:
 
     def test_source_info_model_has_chunk_id(self):
         """SourceInfo Pydantic model accepts chunk_id"""
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         source_info = SourceInfo(
             id=1,
@@ -107,7 +107,7 @@ class TestResearchAPIResponse:
 
     def test_source_info_model_chunk_id_optional(self):
         """SourceInfo allows None for chunk_id (visual results)"""
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         source_info = SourceInfo(
             id=1,
@@ -124,7 +124,7 @@ class TestResearchAPIResponse:
 
     def test_source_info_model_chunk_id_in_dict(self):
         """SourceInfo serializes chunk_id to dict"""
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         source_info = SourceInfo(
             id=1,
@@ -155,7 +155,7 @@ class TestChunkIdFormat:
 
     def test_format_matches_storage_embedding_id(self):
         """Chunk ID format matches ChromaDB embedding ID format"""
-        from src.research.chunk_extractor import extract_chunk_id
+        from tkr_docusearch.research.chunk_extractor import extract_chunk_id
 
         # Storage layer creates IDs like: "{doc_id}-chunk{chunk_id:04d}"
         # See: src/storage/chroma_client.py line 370
@@ -175,7 +175,7 @@ class TestChunkIdFormat:
         storage_format = f"{'test-doc'}-chunk{42:04d}"
 
         # Research layer format (from chunk_extractor.py)
-        from src.research.chunk_extractor import extract_chunk_id
+        from tkr_docusearch.research.chunk_extractor import extract_chunk_id
 
         metadata = {"chunk_id": 42}
         research_format = extract_chunk_id(metadata, "test-doc")
@@ -188,7 +188,7 @@ class TestEdgeCases:
 
     def test_chunk_id_with_hyphens_in_doc_id(self):
         """Handle doc_id containing hyphens"""
-        from src.research.chunk_extractor import extract_chunk_id, parse_chunk_id
+        from tkr_docusearch.research.chunk_extractor import extract_chunk_id, parse_chunk_id
 
         metadata = {"chunk_id": 10}
         doc_id = "multi-part-doc-id"
@@ -202,7 +202,7 @@ class TestEdgeCases:
 
     def test_chunk_id_boundary_values(self):
         """Test boundary values for chunk_id"""
-        from src.research.chunk_extractor import extract_chunk_id
+        from tkr_docusearch.research.chunk_extractor import extract_chunk_id
 
         test_cases = [
             (0, "doc-chunk0000"),

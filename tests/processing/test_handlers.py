@@ -24,7 +24,7 @@ class TestAlbumArtHandler:
 
     def test_save_album_art_not_audio_file(self):
         """Test that non-audio files are skipped."""
-        from src.processing.handlers.album_art_handler import AlbumArtHandler
+        from tkr_docusearch.processing.handlers.album_art_handler import AlbumArtHandler
 
         doc_metadata = {"filename": "document.pdf"}
 
@@ -35,7 +35,7 @@ class TestAlbumArtHandler:
 
     def test_save_album_art_with_album_art(self):
         """Test saving album art when present."""
-        from src.processing.handlers.album_art_handler import AlbumArtHandler
+        from tkr_docusearch.processing.handlers.album_art_handler import AlbumArtHandler
 
         doc_metadata = {
             "audio_duration_seconds": 180.5,
@@ -44,8 +44,8 @@ class TestAlbumArtHandler:
             "album_art_description": "Cover art",
         }
 
-        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("src.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
+        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
                 mock_save.return_value = "/path/to/album_art.jpg"
                 mock_metadata_instance = Mock()
                 mock_audio_metadata.return_value = mock_metadata_instance
@@ -73,15 +73,15 @@ class TestAlbumArtHandler:
 
     def test_save_album_art_without_album_art(self):
         """Test saving placeholder when no album art."""
-        from src.processing.handlers.album_art_handler import AlbumArtHandler
+        from tkr_docusearch.processing.handlers.album_art_handler import AlbumArtHandler
 
         doc_metadata = {
             "audio_duration_seconds": 180.5
             # No album art data
         }
 
-        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("src.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
+        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
                 mock_save.return_value = "/path/to/placeholder.jpg"
 
                 result = AlbumArtHandler.save_album_art_if_present("doc123", doc_metadata)
@@ -100,7 +100,7 @@ class TestAlbumArtHandler:
 
     def test_save_album_art_error_handling(self):
         """Test error handling during album art save."""
-        from src.processing.handlers.album_art_handler import AlbumArtHandler
+        from tkr_docusearch.processing.handlers.album_art_handler import AlbumArtHandler
 
         doc_metadata = {
             "audio_duration_seconds": 180.5,
@@ -108,8 +108,8 @@ class TestAlbumArtHandler:
             "_album_art_mime": "image/jpeg",
         }
 
-        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("src.processing.audio_metadata.AudioMetadata"):
+        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata"):
                 # Simulate error
                 mock_save.side_effect = Exception("Save error")
 
@@ -122,12 +122,12 @@ class TestAlbumArtHandler:
 
     def test_save_album_art_no_path_returned(self):
         """Test when save_album_art returns None."""
-        from src.processing.handlers.album_art_handler import AlbumArtHandler
+        from tkr_docusearch.processing.handlers.album_art_handler import AlbumArtHandler
 
         doc_metadata = {"audio_duration_seconds": 180.5}
 
-        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("src.processing.audio_metadata.AudioMetadata"):
+        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata"):
                 # save_album_art returns None
                 mock_save.return_value = None
 
@@ -147,7 +147,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_primitives(self):
         """Test that primitives pass through unchanged."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {
             "filename": "test.pdf",
@@ -163,7 +163,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_excluded_fields(self):
         """Test that excluded fields are removed."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {
             "filename": "test.pdf",
@@ -192,7 +192,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_large_values(self):
         """Test that large values are filtered out."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {
             "filename": "test.pdf",
@@ -217,7 +217,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_mixed_types(self):
         """Test filtering with mixed types."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {
             "filename": "test.pdf",
@@ -242,7 +242,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_empty_dict(self):
         """Test filtering empty dictionary."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {}
         filtered = MetadataFilter.filter_metadata(metadata)
@@ -251,7 +251,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_all_excluded(self):
         """Test when all fields are excluded."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {"full_markdown": "x" * 1000000, "structure": {}, "_album_art_data": b"data"}
 
@@ -261,7 +261,7 @@ class TestMetadataFilter:
 
     def test_filter_metadata_boundary_size(self):
         """Test filtering at boundary of MAX_VALUE_SIZE."""
-        from src.processing.handlers.metadata_filter import MetadataFilter
+        from tkr_docusearch.processing.handlers.metadata_filter import MetadataFilter
 
         metadata = {
             "at_limit": "x" * 1000,  # Exactly at MAX_VALUE_SIZE
@@ -289,7 +289,7 @@ class TestVisualEmbeddingHandler:
 
     def test_init(self):
         """Test handler initialization."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_config = Mock()
@@ -301,7 +301,7 @@ class TestVisualEmbeddingHandler:
 
     def test_store_visual_embeddings_basic(self):
         """Test storing basic visual embeddings."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_visual_embedding.return_value = "emb_123"
@@ -339,7 +339,7 @@ class TestVisualEmbeddingHandler:
 
     def test_store_visual_embeddings_with_pages(self):
         """Test storing visual embeddings with page image paths."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_visual_embedding.return_value = "emb_123"
@@ -373,7 +373,7 @@ class TestVisualEmbeddingHandler:
 
     def test_store_visual_embeddings_with_structure(self):
         """Test storing visual embeddings with structure metadata."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_visual_embedding.return_value = "emb_123"
@@ -403,7 +403,7 @@ class TestVisualEmbeddingHandler:
 
     def test_store_visual_embeddings_no_pages(self):
         """Test storing visual embeddings without page lookup."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_visual_embedding.return_value = "emb_123"
@@ -429,7 +429,7 @@ class TestVisualEmbeddingHandler:
 
     def test_get_image_paths_page_exists(self):
         """Test getting image paths when page exists in lookup."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         handler = VisualEmbeddingHandler(Mock())
 
@@ -446,7 +446,7 @@ class TestVisualEmbeddingHandler:
 
     def test_get_image_paths_page_not_exists(self):
         """Test getting image paths when page doesn't exist."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         handler = VisualEmbeddingHandler(Mock())
 
@@ -459,7 +459,7 @@ class TestVisualEmbeddingHandler:
 
     def test_prepare_metadata_no_enhanced(self):
         """Test metadata preparation without enhanced mode."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         mock_storage = Mock(spec=[])  # No _prepare_enhanced_visual_metadata
 
@@ -481,7 +481,7 @@ class TestTextEmbeddingHandler:
 
     def test_init(self):
         """Test handler initialization."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_config = Mock()
@@ -493,7 +493,7 @@ class TestTextEmbeddingHandler:
 
     def test_store_text_embeddings_basic(self):
         """Test storing basic text embeddings."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_text_embedding.return_value = "emb_123"
@@ -551,7 +551,7 @@ class TestTextEmbeddingHandler:
 
     def test_store_text_embeddings_with_timestamps(self):
         """Test storing text embeddings with timestamps."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_text_embedding.return_value = "emb_123"
@@ -590,7 +590,7 @@ class TestTextEmbeddingHandler:
 
     def test_store_text_embeddings_without_timestamps(self):
         """Test storing text embeddings without timestamps."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_text_embedding.return_value = "emb_123"
@@ -628,7 +628,7 @@ class TestTextEmbeddingHandler:
 
     def test_store_text_embeddings_with_context(self):
         """Test storing text embeddings with context metadata."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage.add_text_embedding.return_value = "emb_123"
@@ -665,7 +665,7 @@ class TestTextEmbeddingHandler:
 
     def test_build_base_metadata(self):
         """Test building base metadata for text embedding."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         handler = TextEmbeddingHandler(Mock())
 
@@ -699,7 +699,7 @@ class TestTextEmbeddingHandler:
 
     def test_build_base_metadata_no_chunk(self):
         """Test building base metadata without chunk."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         handler = TextEmbeddingHandler(Mock())
 
@@ -723,7 +723,7 @@ class TestTextEmbeddingHandler:
 
     def test_get_chunk_context_with_context(self):
         """Test getting chunk context when present."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         handler = TextEmbeddingHandler(Mock())
 
@@ -737,7 +737,7 @@ class TestTextEmbeddingHandler:
 
     def test_get_chunk_context_no_context(self):
         """Test getting chunk context when not present."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         handler = TextEmbeddingHandler(Mock())
 
@@ -750,7 +750,7 @@ class TestTextEmbeddingHandler:
 
     def test_get_chunk_context_no_chunk(self):
         """Test getting chunk context with None chunk."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         handler = TextEmbeddingHandler(Mock())
 
@@ -760,7 +760,7 @@ class TestTextEmbeddingHandler:
 
     def test_prepare_metadata_no_enhanced(self):
         """Test metadata preparation without enhanced mode."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock(spec=[])  # No _prepare_enhanced_text_metadata
 
@@ -773,7 +773,7 @@ class TestTextEmbeddingHandler:
 
     def test_prepare_metadata_no_context(self):
         """Test metadata preparation without context."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         mock_storage = Mock()
         mock_storage._prepare_enhanced_text_metadata = Mock(return_value={"enhanced": True})

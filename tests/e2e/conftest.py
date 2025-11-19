@@ -84,7 +84,7 @@ def skip_if_services_unavailable(services_available: bool):
 @pytest.fixture
 def chromadb_client(chromadb_host: str, chromadb_port: int, skip_if_services_unavailable):
     """Real ChromaDB client for E2E tests."""
-    from src.storage.chroma_client import ChromaClient
+    from tkr_docusearch.storage.chroma_client import ChromaClient
 
     return ChromaClient(host=chromadb_host, port=chromadb_port)
 
@@ -98,7 +98,7 @@ def worker_api_client(worker_api_url: str, skip_if_services_unavailable):
 @pytest.fixture
 def research_api_client(skip_if_services_unavailable):
     """FastAPI test client for Research API."""
-    from src.api.research import app
+    from tkr_docusearch.api.research import app
 
     return TestClient(app)
 

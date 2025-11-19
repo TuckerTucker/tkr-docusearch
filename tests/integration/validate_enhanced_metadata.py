@@ -13,12 +13,12 @@ import json
 import sys
 from datetime import datetime
 
-from src.processing.handlers.enhanced_metadata import (
+from tkr_docusearch.processing.handlers.enhanced_metadata import (
     prepare_enhanced_text_metadata,
     prepare_enhanced_visual_metadata,
 )
-from src.storage.compression import decompress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.storage.compression import decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,
     HeadingInfo,

@@ -7,7 +7,7 @@ for bidirectional highlighting between search results and document content.
 
 import pytest
 
-from src.storage.markdown_chunking import (
+from tkr_docusearch.storage.markdown_chunking import (
     ChunkMetadata,
     insert_chunk_markers,
     strip_chunk_markers,

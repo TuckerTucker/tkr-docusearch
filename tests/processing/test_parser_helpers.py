@@ -25,7 +25,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_pdf_options(self):
         """Test PDF format options building."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         # Mock pipeline options
         mock_pipeline_options = Mock()
@@ -43,7 +43,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_image_options(self):
         """Test image format options building."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -59,7 +59,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_docx_options(self):
         """Test DOCX format options building."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         with patch("docling.document_converter.WordFormatOption") as mock_word_opt:
             with patch("docling.datamodel.base_models.InputFormat") as mock_input_format:
@@ -73,9 +73,9 @@ class TestFormatOptionsBuilder:
 
     def test_build_audio_options_enabled(self):
         """Test audio format options building with ASR enabled."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
-        with patch("src.config.processing_config.AsrConfig") as mock_asr_config_class:
+        with patch("tkr_docusearch.config.processing_config.AsrConfig") as mock_asr_config_class:
             with patch("docling.document_converter.AudioFormatOption") as mock_audio_opt:
                 with patch(
                     "docling.datamodel.pipeline_options.AsrPipelineOptions"
@@ -113,9 +113,9 @@ class TestFormatOptionsBuilder:
 
     def test_build_audio_options_disabled(self):
         """Test audio format options building with ASR disabled."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
-        with patch("src.config.processing_config.AsrConfig") as mock_asr_config_class:
+        with patch("tkr_docusearch.config.processing_config.AsrConfig") as mock_asr_config_class:
             # Configure mocks
             mock_config = Mock()
             mock_config.enabled = False
@@ -128,9 +128,9 @@ class TestFormatOptionsBuilder:
 
     def test_build_audio_options_error(self):
         """Test audio format options building with configuration error."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
-        with patch("src.config.processing_config.AsrConfig") as mock_asr_config_class:
+        with patch("tkr_docusearch.config.processing_config.AsrConfig") as mock_asr_config_class:
             # Simulate error loading config
             mock_asr_config_class.from_env.side_effect = Exception("Config error")
 
@@ -141,7 +141,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_pdf(self):
         """Test format options building for PDF file."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -157,7 +157,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_image(self):
         """Test format options building for image file."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -171,7 +171,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_docx(self):
         """Test format options building for DOCX file."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -187,7 +187,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_audio(self):
         """Test format options building for audio file."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -201,7 +201,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_pptx(self):
         """Test format options building for PPTX (no special handling)."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -214,7 +214,7 @@ class TestFormatOptionsBuilder:
 
     def test_build_format_options_empty_result(self):
         """Test format options building when builder returns empty dict."""
-        from src.processing.parsers.format_options_builder import FormatOptionsBuilder
+        from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
         mock_pipeline_options = Mock()
 
@@ -237,28 +237,28 @@ class TestSlideRenderer:
 
     def test_init_default_dpi(self):
         """Test initialization with default DPI."""
-        from src.processing.parsers.slide_renderer import SlideRenderer
+        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
 
         renderer = SlideRenderer()
         assert renderer.render_dpi == 150
 
     def test_init_custom_dpi(self):
         """Test initialization with custom DPI."""
-        from src.processing.parsers.slide_renderer import SlideRenderer
+        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
 
         renderer = SlideRenderer(render_dpi=300)
         assert renderer.render_dpi == 300
 
     def test_render_pptx_slides_success(self):
         """Test successful PPTX slide rendering (mocked)."""
-        from src.processing.parsers.slide_renderer import SlideRenderer
+        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
 
         renderer = SlideRenderer(render_dpi=150)
 
         # This is a complex integration test that requires mocking many internal imports
         # For now, we'll test basic initialization and error handling more thoroughly
         # The actual rendering logic is tested in integration tests
-        with patch("src.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
             mock_slide_client = Mock()
             mock_slide_client.render_slides.return_value = ["/page_images/slide_1.png"]
             mock_get_client.return_value = mock_slide_client
@@ -278,11 +278,11 @@ class TestSlideRenderer:
 
     def test_render_pptx_slides_error(self):
         """Test PPTX slide rendering with error."""
-        from src.processing.parsers.slide_renderer import SlideRenderer
+        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
 
         renderer = SlideRenderer()
 
-        with patch("src.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
             # Simulate error
             mock_get_client.side_effect = Exception("Renderer error")
 
@@ -293,12 +293,12 @@ class TestSlideRenderer:
 
     def test_render_pptx_slides_cleanup_on_error(self):
         """Test that temp directory is cleaned up even on error."""
-        from src.processing.parsers.slide_renderer import SlideRenderer
+        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
 
         renderer = SlideRenderer()
 
         # Test error handling with simplified mocking
-        with patch("src.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
+        with patch("tkr_docusearch.processing.slide_renderer_client.get_slide_renderer") as mock_get_client:
             mock_slide_client = Mock()
             mock_slide_client.render_slides.side_effect = Exception("Render error")
             mock_get_client.return_value = mock_slide_client
@@ -321,7 +321,7 @@ class TestAudioMetadataExtractor:
 
     def test_extract_id3_metadata_success(self):
         """Test successful ID3 metadata extraction."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         mock_metadata = Mock()
         mock_metadata.to_chromadb_metadata.return_value = {
@@ -329,7 +329,7 @@ class TestAudioMetadataExtractor:
             "artist": "Test Artist",
         }
 
-        with patch("src.processing.audio_metadata.extract_audio_metadata") as mock_extract:
+        with patch("tkr_docusearch.processing.audio_metadata.extract_audio_metadata") as mock_extract:
             mock_extract.return_value = mock_metadata
 
             result = AudioMetadataExtractor.extract_id3_metadata("test.mp3")
@@ -339,9 +339,9 @@ class TestAudioMetadataExtractor:
 
     def test_extract_id3_metadata_error(self):
         """Test ID3 metadata extraction with error."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
-        with patch("src.processing.audio_metadata.extract_audio_metadata") as mock_extract:
+        with patch("tkr_docusearch.processing.audio_metadata.extract_audio_metadata") as mock_extract:
             mock_extract.side_effect = Exception("Extract error")
 
             result = AudioMetadataExtractor.extract_id3_metadata("test.mp3")
@@ -351,7 +351,7 @@ class TestAudioMetadataExtractor:
 
     def test_merge_audio_metadata_basic(self):
         """Test merging basic audio metadata."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         metadata = {}
         mock_doc = Mock()
@@ -376,7 +376,7 @@ class TestAudioMetadataExtractor:
 
     def test_merge_audio_metadata_with_id3(self):
         """Test merging audio metadata with ID3 tags."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         metadata = {}
         mock_doc = Mock()
@@ -408,7 +408,7 @@ class TestAudioMetadataExtractor:
 
     def test_merge_audio_metadata_with_timestamps(self):
         """Test merging audio metadata with timestamps."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         metadata = {}
 
@@ -433,7 +433,7 @@ class TestAudioMetadataExtractor:
 
     def test_merge_audio_metadata_no_timestamps(self):
         """Test merging audio metadata without timestamps."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         metadata = {}
 
@@ -454,7 +454,7 @@ class TestAudioMetadataExtractor:
 
     def test_merge_audio_metadata_duration_from_origin(self):
         """Test extracting duration from doc.origin."""
-        from src.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
+        from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         metadata = {}
 
@@ -480,7 +480,7 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_mp3(self):
         """Test symlink creation for MP3 file."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create subdirectory to avoid file conflicts
@@ -489,7 +489,7 @@ class TestSymlinkHelper:
             audio_file = subdir / "test.mp3"
             audio_file.write_text("test audio")
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 # Test basic functionality - symlink is created and cleaned up
                 with SymlinkHelper.audio_file_symlink(str(audio_file)):
                     # Context manager should complete without error
@@ -497,7 +497,7 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_wav(self):
         """Test symlink creation for WAV file."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create subdirectory to avoid file conflicts
@@ -506,7 +506,7 @@ class TestSymlinkHelper:
             audio_file = subdir / "test.wav"
             audio_file.write_text("test audio")
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 # Test basic functionality
                 with SymlinkHelper.audio_file_symlink(str(audio_file)):
                     # Context manager should complete without error
@@ -514,20 +514,20 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_non_audio(self):
         """Test no symlink created for non-audio files."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             pdf_file = Path(tmpdir) / "test.pdf"
             pdf_file.write_text("test pdf")
 
-            with patch("src.processing.parsers.symlink_helper.os.symlink") as mock_symlink:
+            with patch("tkr_docusearch.processing.parsers.symlink_helper.os.symlink") as mock_symlink:
                 with SymlinkHelper.audio_file_symlink(str(pdf_file)):
                     # Should not create symlink for non-audio files
                     mock_symlink.assert_not_called()
 
     def test_audio_file_symlink_cleanup(self):
         """Test symlink cleanup after context manager."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             audio_file = Path(tmpdir) / "test.mp3"
@@ -538,7 +538,7 @@ class TestSymlinkHelper:
             if not symlink_path.exists():
                 os.symlink(audio_file, symlink_path)
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 with SymlinkHelper.audio_file_symlink(str(audio_file)):
                     # Symlink should exist during context
                     pass
@@ -548,7 +548,7 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_already_exists(self):
         """Test symlink when file already exists."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             audio_file = Path(tmpdir) / "test.mp3"
@@ -558,7 +558,7 @@ class TestSymlinkHelper:
             existing_file = Path(tmpdir) / "test.mp3"
             existing_file.write_text("existing")
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 with patch("os.symlink") as mock_symlink:
                     with SymlinkHelper.audio_file_symlink(str(audio_file)):
                         # Should not create symlink if file exists
@@ -566,13 +566,13 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_error_handling(self):
         """Test error handling during symlink creation."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             audio_file = Path(tmpdir) / "test.mp3"
             audio_file.write_text("test audio")
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 with patch("os.symlink") as mock_symlink:
                     # Simulate error during symlink creation
                     mock_symlink.side_effect = Exception("Symlink error")
@@ -583,7 +583,7 @@ class TestSymlinkHelper:
 
     def test_audio_file_symlink_cleanup_error(self):
         """Test error handling during symlink cleanup."""
-        from src.processing.parsers.symlink_helper import SymlinkHelper
+        from tkr_docusearch.processing.parsers.symlink_helper import SymlinkHelper
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create subdirectory to avoid conflicts
@@ -592,7 +592,7 @@ class TestSymlinkHelper:
             audio_file = subdir / "test.mp3"
             audio_file.write_text("test audio")
 
-            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 # This test is harder to mock properly, so just test basic flow
                 with SymlinkHelper.audio_file_symlink(str(audio_file)):
                     # Should complete without error

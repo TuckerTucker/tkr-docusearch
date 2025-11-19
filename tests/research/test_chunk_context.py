@@ -7,7 +7,7 @@ chunk_id from search results for bidirectional highlighting.
 
 import pytest
 
-from src.research.chunk_extractor import extract_chunk_id, parse_chunk_id
+from tkr_docusearch.research.chunk_extractor import extract_chunk_id, parse_chunk_id
 
 
 class TestExtractChunkId:

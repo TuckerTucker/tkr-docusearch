@@ -22,7 +22,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.processing.documents_api import router
+from tkr_docusearch.processing.documents_api import router
 
 # ============================================================================
 # Fixtures
@@ -118,13 +118,13 @@ def temp_data_dirs():
 # ============================================================================
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_success_all_stages(
     mock_copyparty,
     mock_cleanup_temp,
@@ -206,13 +206,13 @@ def test_delete_document_success_all_stages(
     mock_copyparty.assert_called_once_with("test.pdf")
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_minimal_cleanup(
     mock_copyparty,
     mock_cleanup_temp,
@@ -262,7 +262,7 @@ def test_delete_document_minimal_cleanup(
 
 def test_delete_document_not_found(client, mock_chroma_client):
     """Test deletion of non-existent document returns 404."""
-    with patch("src.processing.documents_api.get_chroma_client") as mock_get_client:
+    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
         # Configure mock to return empty results (document doesn't exist)
         mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
         mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
@@ -300,7 +300,7 @@ def test_delete_document_invalid_doc_id_format(client):
 
 def test_delete_document_chromadb_delete_failure(client):
     """Test that ChromaDB deletion failure returns 500 (critical error)."""
-    with patch("src.processing.documents_api.get_chroma_client") as mock_get_client:
+    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
         # Create a mock client that exists but fails on delete
         mock_client = MagicMock()
         mock_client._visual_collection.get.return_value = {
@@ -323,13 +323,13 @@ def test_delete_document_chromadb_delete_failure(client):
         assert "ChromaDB connection lost" in data["detail"]["details"]["message"]
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_non_critical_errors(
     mock_copyparty,
     mock_cleanup_temp,
@@ -387,7 +387,7 @@ def test_delete_document_database_connection_error(client):
     """Test deletion when ChromaDB connection fails."""
     from fastapi import HTTPException
 
-    with patch("src.processing.documents_api.get_chroma_client") as mock_get_client:
+    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
         # Simulate HTTPException from get_chroma_client
         mock_get_client.side_effect = HTTPException(
             status_code=500,
@@ -409,13 +409,13 @@ def test_delete_document_database_connection_error(client):
 # ============================================================================
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_no_filename_in_metadata(
     mock_copyparty,
     mock_cleanup_temp,
@@ -458,13 +458,13 @@ def test_delete_document_no_filename_in_metadata(
     mock_copyparty.assert_not_called()
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_visual_only(
     mock_copyparty,
     mock_cleanup_temp,
@@ -508,13 +508,13 @@ def test_delete_document_visual_only(
     assert data["deleted"]["chromadb"]["text_embeddings"] == 0
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_text_only(
     mock_copyparty,
     mock_cleanup_temp,
@@ -561,13 +561,13 @@ def test_delete_document_text_only(
     assert data["deleted"]["vtt_captions"]["deleted"] is True
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_copyparty_failure_non_critical(
     mock_copyparty,
     mock_cleanup_temp,
@@ -642,13 +642,13 @@ def test_delete_document_validates_doc_id_characters(client):
 # ============================================================================
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_response_format(
     mock_copyparty,
     mock_cleanup_temp,
@@ -708,13 +708,13 @@ def test_delete_document_response_format(
 # ============================================================================
 
 
-@patch("src.processing.documents_api.get_chroma_client")
-@patch("src.processing.documents_api.delete_document_images")
-@patch("src.processing.documents_api.delete_document_cover_art")
-@patch("src.processing.documents_api.delete_document_vtt")
-@patch("src.processing.documents_api.delete_document_markdown")
-@patch("src.processing.documents_api.cleanup_temp_directories")
-@patch("src.processing.documents_api.delete_from_copyparty")
+@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.delete_document_images")
+@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
+@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
+@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
+@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
+@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_cascade_order(
     mock_copyparty,
     mock_cleanup_temp,
@@ -785,8 +785,8 @@ def test_delete_document_cascade_order(
 
 def test_delete_document_stops_on_chromadb_failure(client):
     """Test that deletion stops if ChromaDB deletion fails (critical stage)."""
-    with patch("src.processing.documents_api.get_chroma_client") as mock_get_client:
-        with patch("src.processing.documents_api.delete_document_images") as mock_images:
+    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
+        with patch("tkr_docusearch.processing.documents_api.delete_document_images") as mock_images:
             # Create a mock client that exists but fails on delete
             mock_client = MagicMock()
             mock_client._visual_collection.get.return_value = {

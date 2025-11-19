@@ -13,9 +13,9 @@ from typing import Any, Dict
 
 import pytest
 
-from src.config.processing_config import EnhancedModeConfig
-from src.processing.docling_parser import DoclingParser
-from src.storage.metadata_schema import DocumentStructure
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.processing.docling_parser import DoclingParser
+from tkr_docusearch.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +104,8 @@ class TestDoclingStructureExtraction:
         # This requires re-running the parsing to get the DoclingDocument
         from docling.document_converter import DocumentConverter
 
-        from src.config.processing_config import create_pipeline_options
-        from src.processing.structure_extractor import extract_document_structure
+        from tkr_docusearch.config.processing_config import create_pipeline_options
+        from tkr_docusearch.processing.structure_extractor import extract_document_structure
 
         create_pipeline_options(enhanced_config)
         converter = DocumentConverter()
@@ -168,8 +168,8 @@ class TestDoclingStructureExtraction:
         # Extract structure
         from docling.document_converter import DocumentConverter
 
-        from src.config.processing_config import create_pipeline_options
-        from src.processing.structure_extractor import extract_document_structure
+        from tkr_docusearch.config.processing_config import create_pipeline_options
+        from tkr_docusearch.processing.structure_extractor import extract_document_structure
 
         create_pipeline_options(enhanced_config)
         converter = DocumentConverter()

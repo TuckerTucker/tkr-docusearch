@@ -14,9 +14,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.processing.api.structure_endpoints import router
-from src.storage.compression import compress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.processing.api.structure_endpoints import router
+from tkr_docusearch.storage.compression import compress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     DocumentStructure,
     HeadingInfo,
     HeadingLevel,
@@ -34,7 +34,7 @@ client = TestClient(app)
 @pytest.fixture
 def mock_chroma_client():
     """Create mock ChromaDB client."""
-    with patch("src.processing.api.structure_endpoints.get_chroma_client") as mock_get:
+    with patch("tkr_docusearch.processing.api.structure_endpoints.get_chroma_client") as mock_get:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         yield mock_client

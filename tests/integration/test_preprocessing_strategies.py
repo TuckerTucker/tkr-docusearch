@@ -23,9 +23,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.research.context_builder import SourceDocument
-from src.research.local_preprocessor import LocalLLMPreprocessor
-from src.research.mlx_llm_client import ContextLengthError, LLMError, LLMResponse, MLXLLMClient
+from tkr_docusearch.research.context_builder import SourceDocument
+from tkr_docusearch.research.local_preprocessor import LocalLLMPreprocessor
+from tkr_docusearch.research.mlx_llm_client import ContextLengthError, LLMError, LLMResponse, MLXLLMClient
 
 # ============================================================================
 # Configuration & Utilities
@@ -927,7 +927,7 @@ class TestStrategyComparison:
         preprocessor = LocalLLMPreprocessor(mlx_client=real_mlx_client)
 
         # Baseline: concatenated chunks
-        from src.research.prompts import PreprocessingPrompts
+        from tkr_docusearch.research.prompts import PreprocessingPrompts
 
         baseline_context = PreprocessingPrompts.format_numbered_chunks(sample_sources)
         baseline_tokens = estimate_tokens(baseline_context)

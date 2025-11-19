@@ -8,7 +8,7 @@ for GPT-OSS-20B preprocessing responses.
 import json
 import pytest
 
-from src.research.response_parsers import HarmonyResponseParser
+from tkr_docusearch.research.response_parsers import HarmonyResponseParser
 
 
 class TestParseJsonResponse:

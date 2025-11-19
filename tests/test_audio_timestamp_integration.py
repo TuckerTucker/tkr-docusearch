@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.processor import DocumentProcessor
+from tkr_docusearch.processing.processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
 

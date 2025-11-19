@@ -11,12 +11,12 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from src.processing.handlers.enhanced_metadata import (
+from tkr_docusearch.processing.handlers.enhanced_metadata import (
     prepare_enhanced_text_metadata,
     prepare_enhanced_visual_metadata,
 )
-from src.storage.compression import decompress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.storage.compression import decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,
     HeadingInfo,
@@ -243,7 +243,7 @@ class TestEnhancedStorageIntegration:
 
     def test_visual_handler_enhanced_mode(self, mock_storage_client):
         """Test visual embedding handler with enhanced mode enabled."""
-        from src.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
+        from tkr_docusearch.processing.handlers.visual_embedding_handler import VisualEmbeddingHandler
 
         # Create handler with enhanced mode enabled
         handler = VisualEmbeddingHandler(
@@ -294,7 +294,7 @@ class TestEnhancedStorageIntegration:
 
     def test_text_handler_enhanced_mode(self, mock_storage_client):
         """Test text embedding handler with enhanced mode enabled."""
-        from src.processing.handlers.text_embedding_handler import TextEmbeddingHandler
+        from tkr_docusearch.processing.handlers.text_embedding_handler import TextEmbeddingHandler
 
         # Create handler with enhanced mode enabled
         handler = TextEmbeddingHandler(

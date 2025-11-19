@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from src.processing.image_utils import (
+from tkr_docusearch.processing.image_utils import (
     delete_document_images,
     generate_thumbnail,
     get_image_path,
@@ -34,12 +34,12 @@ def temp_image_dir(monkeypatch):
     temp_dir = Path(tempfile.mkdtemp())
 
     # Monkey patch PAGE_IMAGE_DIR to use temp directory
-    import src.config.image_config as config
+    import tkr_docusearch.config.image_config as config
 
     monkeypatch.setattr(config, "PAGE_IMAGE_DIR", temp_dir)
 
     # Also update image_utils module's reference
-    import src.processing.image_utils as image_utils
+    import tkr_docusearch.processing.image_utils as image_utils
 
     monkeypatch.setattr(image_utils, "PAGE_IMAGE_DIR", temp_dir)
 

@@ -17,9 +17,9 @@ import json
 
 import pytest
 
-from src.research.chunk_extractor import extract_chunk_id, parse_chunk_id
-from src.research.context_builder import SourceDocument
-from src.storage.chroma_client import ChromaClient
+from tkr_docusearch.research.chunk_extractor import extract_chunk_id, parse_chunk_id
+from tkr_docusearch.research.context_builder import SourceDocument
+from tkr_docusearch.storage.chroma_client import ChromaClient
 
 
 class TestResearchQueryWithChunkContext:
@@ -111,7 +111,7 @@ class TestResearchAPIResponseFormat:
     @pytest.mark.integration
     def test_source_info_model_accepts_chunk_id(self):
         """SourceInfo Pydantic model in API accepts chunk_id."""
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         # Text result with chunk_id
         source_info = SourceInfo(
@@ -144,7 +144,7 @@ class TestResearchAPIResponseFormat:
     @pytest.mark.integration
     def test_source_info_serialization(self):
         """SourceInfo serializes chunk_id correctly."""
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         source_info = SourceInfo(
             id=1,
@@ -272,7 +272,7 @@ class TestDeepLinkNavigation:
         5. Details page loads structure and highlights chunk
         """
         # Step 1: Simulate research response
-        from src.api.research import SourceInfo
+        from tkr_docusearch.api.research import SourceInfo
 
         source = SourceInfo(
             id=1,
@@ -309,7 +309,7 @@ class TestMarkdownChunkMarkers:
     @pytest.mark.integration
     def test_markdown_chunk_marker_format(self):
         """Test chunk markers are in correct format."""
-        from src.storage.markdown_utils import (
+        from tkr_docusearch.storage.markdown_utils import (
             extract_chunk_markers,
             format_markdown_with_chunk_markers,
         )
@@ -390,7 +390,7 @@ Some background information here.
     @pytest.mark.integration
     def test_chunk_marker_extraction_and_navigation(self):
         """Test extracting chunk markers enables navigation."""
-        from src.storage.markdown_utils import extract_chunk_markers
+        from tkr_docusearch.storage.markdown_utils import extract_chunk_markers
 
         # Markdown with chunk markers
         markdown_content = """<!-- CHUNK: doc-chunk0001 -->

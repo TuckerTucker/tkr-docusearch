@@ -6,7 +6,7 @@ Tests Integration Contract IC-003 (ASR Config Interface).
 
 import pytest
 
-from src.config.processing_config import AsrConfig
+from tkr_docusearch.config.processing_config import AsrConfig
 
 
 class TestAsrConfigBasics:

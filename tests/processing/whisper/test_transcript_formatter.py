@@ -5,7 +5,7 @@ Tests the format_transcript_with_timestamps() function to ensure IC-002
 text format compliance.
 """
 
-from src.processing.whisper.transcript_formatter import (
+from tkr_docusearch.processing.whisper.transcript_formatter import (
     _format_timestamp,
     format_transcript_with_timestamps,
 )

@@ -32,7 +32,7 @@ from fastapi.testclient import TestClient
 def test_app():
     """Create test FastAPI app without initializing real components."""
     # Import the already-created app instance
-    from src.api import server
+    from tkr_docusearch.api import server
 
     # The app is already created, we just need to return it
     return server.app
@@ -116,7 +116,7 @@ def uploads_dir(tmp_path):
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     # Patch the upload directory path
-    with patch("src.api.server.Path") as mock_path:
+    with patch("tkr_docusearch.api.server.Path") as mock_path:
         mock_path.return_value = upload_dir
 
         # Also need to handle Path("data/uploads")

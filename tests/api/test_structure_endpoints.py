@@ -20,9 +20,9 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.processing.api.structure_endpoints import router
-from src.storage.compression import compress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.processing.api.structure_endpoints import router
+from tkr_docusearch.storage.compression import compress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     DocumentStructure,
     HeadingInfo,
     HeadingLevel,

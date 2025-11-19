@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.processor import DocumentProcessor
-from src.processing.whisper.transcriber import transcribe_audio
+from tkr_docusearch.processing.processor import DocumentProcessor
+from tkr_docusearch.processing.whisper.transcriber import transcribe_audio
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,7 @@ class TestAudioErrorHandling:
 
     def test_unsupported_audio_format_error(self):
         """Test AudioFormatError for unsupported format."""
-        from src.processing.whisper.transcriber import AudioFormatError
+        from tkr_docusearch.processing.whisper.transcriber import AudioFormatError
 
         # Try to transcribe a PDF as audio
         pdf_path = Path("tests/fixtures/sample.pdf")
