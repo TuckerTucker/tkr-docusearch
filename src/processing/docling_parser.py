@@ -11,18 +11,18 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from src.config.processing_config import EnhancedModeConfig, create_pipeline_options
+from tkr_docusearch.config.processing_config import EnhancedModeConfig, create_pipeline_options
 
 # Import image utilities for page image persistence (Wave 1 integration)
-from src.processing.image_utils import ImageStorageError, save_page_image
-from src.processing.smart_chunker import SmartChunker, create_chunker
-from src.processing.structure_extractor import extract_document_structure
+from tkr_docusearch.processing.image_utils import ImageStorageError, save_page_image
+from tkr_docusearch.processing.smart_chunker import SmartChunker, create_chunker
+from tkr_docusearch.processing.structure_extractor import extract_document_structure
 
 # Import shared types (re-exported for backward compatibility)
-from src.processing.types import Page, ParsedDocument, TextChunk
+from tkr_docusearch.processing.types import Page, ParsedDocument, TextChunk
 
 # Import path utilities for consistent path handling (fixes Whisper/FFmpeg path issues)
-from src.utils.paths import ensure_absolute, log_path_info
+from tkr_docusearch.utils.paths import ensure_absolute, log_path_info
 
 # Import audio metadata extraction (ID3 tags, album art)
 

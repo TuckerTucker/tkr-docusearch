@@ -12,16 +12,16 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.config.processing_config import ChunkingStrategy, EnhancedModeConfig
-from src.processing.docling_parser import DoclingParser, Page, TextChunk
-from src.processing.smart_chunker import (
+from tkr_docusearch.config.processing_config import ChunkingStrategy, EnhancedModeConfig
+from tkr_docusearch.processing.docling_parser import DoclingParser, Page, TextChunk
+from tkr_docusearch.processing.smart_chunker import (
     LegacyChunker,
     SmartChunker,
     contextualize_chunk,
     create_chunker,
 )
-from src.processing.structure_extractor import extract_document_structure
-from src.storage.metadata_schema import (
+from tkr_docusearch.processing.structure_extractor import extract_document_structure
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,
     HeadingInfo,

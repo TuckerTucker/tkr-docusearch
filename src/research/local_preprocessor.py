@@ -17,11 +17,11 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from src.research.context_builder import SourceDocument
-from src.research.mlx_llm_client import ContextLengthError, MLXLLMClient
-from src.research.prompts import PreprocessingPrompts
-from src.research.response_parsers import HarmonyResponseParser
-from src.storage.metadata_schema import ChunkContext
+from tkr_docusearch.research.context_builder import SourceDocument
+from tkr_docusearch.research.mlx_llm_client import ContextLengthError, MLXLLMClient
+from tkr_docusearch.research.prompts import PreprocessingPrompts
+from tkr_docusearch.research.response_parsers import HarmonyResponseParser
+from tkr_docusearch.storage.metadata_schema import ChunkContext
 
 logger = structlog.get_logger(__name__)
 

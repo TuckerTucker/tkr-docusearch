@@ -42,7 +42,7 @@ from processing.status_manager import StatusManager, get_status_manager
 
 # Import WebSocket broadcaster
 from processing.websocket_broadcaster import get_broadcaster
-from src.config.urls import get_service_urls
+from tkr_docusearch.config.urls import get_service_urls
 from storage import ChromaClient
 from storage.markdown_utils import delete_document_markdown
 

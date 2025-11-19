@@ -14,7 +14,7 @@ import uvicorn
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.processing.api import structure_router
+from tkr_docusearch.processing.api import structure_router
 
 # Import core components
 from ..embeddings import ColPaliEngine

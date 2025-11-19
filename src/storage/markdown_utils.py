@@ -11,7 +11,7 @@ Consumers: worker-webhook
 import logging
 import re
 
-from src.utils.paths import PROJECT_ROOT
+from tkr_docusearch.utils.paths import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 

@@ -8,10 +8,10 @@ This module provides:
 - Response parser for Harmony-format LLM responses
 """
 
-from src.research.citation_parser import Citation, CitationParser, ParsedAnswer
-from src.research.context_builder import ContextBuilder, ResearchContext, SourceDocument
-from src.research.litellm_client import LiteLLMClient, LLMResponse, ModelConfig
-from src.research.response_parsers import HarmonyResponseParser
+from tkr_docusearch.research.citation_parser import Citation, CitationParser, ParsedAnswer
+from tkr_docusearch.research.context_builder import ContextBuilder, ResearchContext, SourceDocument
+from tkr_docusearch.research.litellm_client import LiteLLMClient, LLMResponse, ModelConfig
+from tkr_docusearch.research.response_parsers import HarmonyResponseParser
 
 __all__ = [
     "LiteLLMClient",

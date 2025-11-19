@@ -6,7 +6,7 @@ Validates URL construction for all parameter combinations and edge cases.
 
 import pytest
 
-from src.utils.url_builder import add_details_url_to_source, build_details_url
+from tkr_docusearch.utils.url_builder import add_details_url_to_source, build_details_url
 
 
 class TestBuildDetailsUrl:

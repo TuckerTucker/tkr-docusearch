@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from src.storage import ChromaClient
-from src.storage.compression import decompress_structure_metadata
-from src.storage.metadata_schema import DocumentStructure
+from tkr_docusearch.storage import ChromaClient
+from tkr_docusearch.storage.compression import decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
 

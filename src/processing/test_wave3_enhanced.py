@@ -12,11 +12,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.config.processing_config import EnhancedModeConfig
-from src.processing.processor import DocumentProcessor
-from src.storage.chroma_client import ChromaClient
-from src.storage.compression import compress_structure_metadata, decompress_structure_metadata
-from src.storage.metadata_schema import (
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.processing.processor import DocumentProcessor
+from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.compression import compress_structure_metadata, decompress_structure_metadata
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,
     HeadingInfo,

@@ -24,16 +24,16 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from src.config.filter_groups import resolve_filter_group
-from src.config.image_config import PAGE_IMAGE_DIR
-from src.processing.api import structure_router
-from src.processing.cover_art_utils import delete_document_cover_art
-from src.processing.file_validator import get_supported_extensions
-from src.processing.image_utils import cleanup_temp_directories, delete_document_images
-from src.processing.vtt_utils import delete_document_vtt
-from src.storage import ChromaClient
-from src.storage.markdown_utils import delete_document_markdown
-from src.utils.paths import convert_path_to_url
+from tkr_docusearch.config.filter_groups import resolve_filter_group
+from tkr_docusearch.config.image_config import PAGE_IMAGE_DIR
+from tkr_docusearch.processing.api import structure_router
+from tkr_docusearch.processing.cover_art_utils import delete_document_cover_art
+from tkr_docusearch.processing.file_validator import get_supported_extensions
+from tkr_docusearch.processing.image_utils import cleanup_temp_directories, delete_document_images
+from tkr_docusearch.processing.vtt_utils import delete_document_vtt
+from tkr_docusearch.storage import ChromaClient
+from tkr_docusearch.storage.markdown_utils import delete_document_markdown
+from tkr_docusearch.utils.paths import convert_path_to_url
 
 logger = logging.getLogger(__name__)
 

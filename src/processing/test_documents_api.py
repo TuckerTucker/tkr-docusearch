@@ -22,7 +22,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from src.processing.documents_api import router, validate_doc_id, validate_filename
+from tkr_docusearch.processing.documents_api import router, validate_doc_id, validate_filename
 
 # ============================================================================
 # Fixtures

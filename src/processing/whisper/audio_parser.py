@@ -23,21 +23,21 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.config.processing_config import AsrConfig, EnhancedModeConfig
+from tkr_docusearch.config.processing_config import AsrConfig, EnhancedModeConfig
 
 # Import audio processing utilities
-from src.processing.audio_metadata import AudioMetadata, extract_audio_metadata
-from src.processing.types import Page
+from tkr_docusearch.processing.audio_metadata import AudioMetadata, extract_audio_metadata
+from tkr_docusearch.processing.types import Page
 
 # Import custom whisper components (Wave 2)
-from src.processing.whisper.metadata_builder import build_audio_metadata
-from src.processing.whisper.transcriber import (
+from tkr_docusearch.processing.whisper.metadata_builder import build_audio_metadata
+from tkr_docusearch.processing.whisper.transcriber import (
     AudioFormatError,
     AudioProcessingError,
     WhisperTranscriptionError,
     transcribe_audio,
 )
-from src.processing.whisper.transcript_formatter import format_transcript_with_timestamps
+from tkr_docusearch.processing.whisper.transcript_formatter import format_transcript_with_timestamps
 
 logger = logging.getLogger(__name__)
 

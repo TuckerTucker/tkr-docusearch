@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from src.storage.chroma_client import ChromaClient, DocumentNotFoundError
-from src.storage.compression import compress_markdown
+from tkr_docusearch.storage.chroma_client import ChromaClient, DocumentNotFoundError
+from tkr_docusearch.storage.compression import compress_markdown
 
 
 @pytest.fixture

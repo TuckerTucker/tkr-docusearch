@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.audio_metadata import AudioMetadata, save_album_art
+from tkr_docusearch.processing.audio_metadata import AudioMetadata, save_album_art
 
 
 def test_placeholder_created_for_audio_without_album_art(tmp_path):

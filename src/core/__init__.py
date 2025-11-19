@@ -46,8 +46,8 @@ Note:
 """
 
 # Import core components for convenience
-from src.core.exceptions import DocuSearchException
-from src.core.types import ChunkID, DocID, DocType, EmbeddingVector, ProcessingStatus, Score
+from tkr_docusearch.core.exceptions import DocuSearchException
+from tkr_docusearch.core.types import ChunkID, DocID, DocType, EmbeddingVector, ProcessingStatus, Score
 
 # Note: utils exports will be added during Wave 2 migration
 

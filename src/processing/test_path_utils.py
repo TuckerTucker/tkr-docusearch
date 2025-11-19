@@ -13,7 +13,7 @@ import tempfile
 import os
 from pathlib import Path
 
-from src.processing.path_utils import (
+from tkr_docusearch.processing.path_utils import (
     normalize_path,
     safe_cwd_context,
     get_file_extension,

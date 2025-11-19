@@ -17,11 +17,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from src.config.urls import get_service_urls
-from src.embeddings.colpali_wrapper import ColPaliEngine
-from src.research.citation_parser import CitationParser
-from src.research.context_builder import ContextBuilder
-from src.research.litellm_client import (
+from tkr_docusearch.config.urls import get_service_urls
+from tkr_docusearch.embeddings.colpali_wrapper import ColPaliEngine
+from tkr_docusearch.research.citation_parser import CitationParser
+from tkr_docusearch.research.context_builder import ContextBuilder
+from tkr_docusearch.research.litellm_client import (
     AuthenticationError,
     ContextLengthError,
     LiteLLMClient,
@@ -30,10 +30,10 @@ from src.research.litellm_client import (
     RateLimitError,
     TimeoutError,
 )
-from src.research.prompts import RESEARCH_SYSTEM_PROMPT
-from src.search.search_engine import SearchEngine
-from src.storage.chroma_client import ChromaClient
-from src.utils.url_builder import build_details_url
+from tkr_docusearch.research.prompts import RESEARCH_SYSTEM_PROMPT
+from tkr_docusearch.search.search_engine import SearchEngine
+from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.utils.url_builder import build_details_url
 
 logger = structlog.get_logger(__name__)
 

@@ -10,8 +10,8 @@ from typing import List
 
 from docling_core.types.doc import DoclingDocument
 
-from src.config.processing_config import EnhancedModeConfig
-from src.storage.metadata_schema import (
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.storage.metadata_schema import (
     CodeBlockInfo,
     DocumentStructure,
     FormulaInfo,

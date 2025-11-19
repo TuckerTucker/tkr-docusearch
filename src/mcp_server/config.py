@@ -4,7 +4,7 @@ Configuration for DocuSearch MCP Server.
 Centralizes all configuration values for API endpoints, defaults, and URLs.
 """
 
-from src.config.urls import get_service_urls
+from tkr_docusearch.config.urls import get_service_urls
 
 # Get service URLs from centralized configuration
 _urls = get_service_urls()

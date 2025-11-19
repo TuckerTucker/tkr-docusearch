@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 import httpx
 
-from src.utils.url_builder import build_details_url
+from tkr_docusearch.utils.url_builder import build_details_url
 
 logger = logging.getLogger(__name__)
 

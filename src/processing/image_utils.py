@@ -21,7 +21,7 @@ except ImportError:
         "PIL (Pillow) is required for image operations. " "Install with: pip install Pillow"
     )
 
-from src.config.image_config import (
+from tkr_docusearch.config.image_config import (
     IMAGE_FORMAT,
     MAX_IMAGE_SIZE_MB,
     PAGE_IMAGE_DIR,

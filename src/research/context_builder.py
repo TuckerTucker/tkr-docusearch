@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from src.config.urls import get_service_urls
-from src.utils.paths import convert_path_to_url
+from tkr_docusearch.config.urls import get_service_urls
+from tkr_docusearch.utils.paths import convert_path_to_url
 
 from .chunk_extractor import extract_chunk_id
 

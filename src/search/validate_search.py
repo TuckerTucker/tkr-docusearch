@@ -23,8 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import search components
-from src.search import SearchEngine
-from src.search.mocks import MockEmbeddingEngine, MockStorageClient
+from tkr_docusearch.search import SearchEngine
+from tkr_docusearch.search.mocks import MockEmbeddingEngine, MockStorageClient
 
 
 def test_basic_search():

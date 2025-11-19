@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Import the FastAPI app
-from src.processing.worker_webhook import app as worker_app
+from tkr_docusearch.processing.worker_webhook import app as worker_app
 
 # ============================================================================
 # Backend Unit Tests

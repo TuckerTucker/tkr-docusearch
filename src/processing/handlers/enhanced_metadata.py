@@ -10,8 +10,8 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from src.storage.compression import compress_structure_metadata, sanitize_metadata_for_chroma
-from src.storage.metadata_schema import (
+from tkr_docusearch.storage.compression import compress_structure_metadata, sanitize_metadata_for_chroma
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,
     validate_chunk_context,

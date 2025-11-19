@@ -18,9 +18,9 @@ import os
 from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, Any
 
-from src.processing.processor import DocumentProcessor, StorageConfirmation
-from src.processing.docling_parser import ParsedDocument, Page, TextChunk
-from src.processing.mocks import MockEmbeddingEngine, MockStorageClient
+from tkr_docusearch.processing.processor import DocumentProcessor, StorageConfirmation
+from tkr_docusearch.processing.docling_parser import ParsedDocument, Page, TextChunk
+from tkr_docusearch.processing.mocks import MockEmbeddingEngine, MockStorageClient
 
 
 # ============================================================================

@@ -4,7 +4,7 @@ Unit tests for Citation Parser.
 
 import pytest
 
-from src.research.citation_parser import Citation, CitationParser
+from tkr_docusearch.research.citation_parser import Citation, CitationParser
 
 
 class TestCitationParser:

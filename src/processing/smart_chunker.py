@@ -13,9 +13,9 @@ from docling.chunking import HybridChunker
 from docling_core.types.doc import DoclingDocument
 from transformers import AutoTokenizer
 
-from src.config.processing_config import EnhancedModeConfig
-from src.processing.types import Page, TextChunk
-from src.storage.metadata_schema import ChunkContext, DocumentStructure
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.processing.types import Page, TextChunk
+from tkr_docusearch.storage.metadata_schema import ChunkContext, DocumentStructure
 
 logger = logging.getLogger(__name__)
 

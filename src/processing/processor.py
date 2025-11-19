@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.config.processing_config import EnhancedModeConfig
+from tkr_docusearch.config.processing_config import EnhancedModeConfig
 
 from .docling_parser import DoclingParser, ParsingError
 from .text_processor import TextProcessor

@@ -9,7 +9,7 @@ Wave 2 - Backend Implementation
 
 import pytest
 
-from src.processing.text_processor import extract_timestamps_from_text
+from tkr_docusearch.processing.text_processor import extract_timestamps_from_text
 
 
 class TestTimestampExtraction:

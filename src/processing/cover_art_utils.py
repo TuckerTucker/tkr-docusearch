@@ -12,7 +12,7 @@ import logging
 import re
 from typing import Optional
 
-from src.config.image_config import PAGE_IMAGE_DIR
+from tkr_docusearch.config.image_config import PAGE_IMAGE_DIR
 
 logger = logging.getLogger(__name__)
 

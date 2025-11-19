@@ -21,7 +21,7 @@ Example:
         # ... test code
 """
 
-from src.core.testing.mocks import (
+from tkr_docusearch.core.testing.mocks import (
     MockChromaDBClient,
     MockCollection,
     MockColPaliModel,

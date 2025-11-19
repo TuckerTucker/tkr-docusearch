@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from src.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.chroma_client import ChromaClient
 
 logger = logging.getLogger(__name__)
 

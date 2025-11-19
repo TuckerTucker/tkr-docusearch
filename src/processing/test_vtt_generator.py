@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from src.processing.types import TextChunk
-from src.processing.vtt_generator import (
+from tkr_docusearch.processing.types import TextChunk
+from tkr_docusearch.processing.vtt_generator import (
     EmptyChunkError,
     InvalidTimestampError,
     format_timestamp,

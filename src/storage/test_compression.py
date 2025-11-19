@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from src.storage.compression import (
+from tkr_docusearch.storage.compression import (
     CompressionError,
     CorruptedDataError,
     MarkdownTooLargeError,

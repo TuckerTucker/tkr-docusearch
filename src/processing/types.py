@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from PIL import Image
 
-from src.storage.metadata_schema import ChunkContext
+from tkr_docusearch.storage.metadata_schema import ChunkContext
 
 
 @dataclass
