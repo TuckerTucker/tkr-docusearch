@@ -34,6 +34,7 @@ NC='\033[0m'
 # ============================================================================
 
 MODE="${1:-gpu}"  # Default to GPU mode
+ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
@@ -140,7 +141,20 @@ start_docker_services() {
 }
 
 start_native_worker() {
-    echo -e "\n${CYAN}Starting native worker with Metal GPU...${NC}\n"
+    # Check Metal availability first
+    echo -e "\n${CYAN}Checking Metal/MPS availability...${NC}\n"
+
+    # Use the check from run-worker-native.sh
+    if ./scripts/run-worker-native.sh check > /dev/null 2>&1; then
+        ACTUAL_DEVICE="mps"
+        echo -e "${GREEN}✓ Metal/MPS available - using GPU acceleration${NC}\n"
+        echo -e "\n${CYAN}Starting native worker with Metal GPU...${NC}\n"
+    else
+        ACTUAL_DEVICE="cpu"
+        echo -e "${YELLOW}⚠ Metal/MPS not available - falling back to CPU${NC}"
+        echo -e "${YELLOW}Note: Worker will run in CPU mode (slower)${NC}\n"
+        echo -e "\n${CYAN}Starting native worker (CPU mode)...${NC}\n"
+    fi
 
     # Check if virtual environment exists
     if [ ! -d ".venv-native" ]; then
@@ -179,7 +193,11 @@ start_native_worker() {
     local max_wait=15
     while [ $count -lt $max_wait ]; do
         if curl -s http://localhost:8002/health > /dev/null 2>&1; then
-            print_status "Worker (Native)" "ok" "Running on http://localhost:8002 (Metal GPU)"
+            if [ "$ACTUAL_DEVICE" = "mps" ]; then
+                print_status "Worker (Native)" "ok" "Running on http://localhost:8002 (Metal GPU)"
+            else
+                print_status "Worker (Native)" "ok" "Running on http://localhost:8002 (CPU)"
+            fi
             print_status "Worker PID" "info" "$worker_pid (saved to .worker.pid)"
             return
         fi
@@ -432,7 +450,13 @@ show_summary() {
     echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
 
     if [ "$MODE" = "gpu" ]; then
-        echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU${NC}"
+        if [ "$ACTUAL_DEVICE" = "mps" ]; then
+            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
+        elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+            echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Native (CPU fallback - MPS unavailable)${NC}"
+        else
+            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native${NC}"
+        fi
         echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
         echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
         echo -e "  ${BLUE}ℹ${NC} Frontend waits for worker to be ready (model loading ~10s)"
@@ -629,7 +653,13 @@ show_summary
 
 # Final message
 if [ "$MODE" = "gpu" ]; then
-    echo -e "${GREEN}🚀 DocuSearch is running with Metal GPU acceleration!${NC}\n"
+    if [ "$ACTUAL_DEVICE" = "mps" ]; then
+        echo -e "${GREEN}🚀 DocuSearch is running with Metal GPU acceleration!${NC}\n"
+    elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+        echo -e "${YELLOW}🚀 DocuSearch is running (CPU mode - MPS unavailable)${NC}\n"
+    else
+        echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
+    fi
 else
     echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
 fi
