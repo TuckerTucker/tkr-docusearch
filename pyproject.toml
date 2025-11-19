@@ -176,16 +176,13 @@ ignore-init-module-imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=src --cov-report=html --cov-report=json --cov-report=term-missing --cov-fail-under=70"
+addopts = "-ra -q --strict-markers --cov=tkr_docusearch --cov-report=html --cov-report=json --cov-report=term-missing --cov-fail-under=70"
 testpaths = [
     "tests",
 ]
-pythonpath = [
-    "."
-]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["tkr_docusearch"]
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
