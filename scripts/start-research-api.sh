@@ -81,7 +81,7 @@ esac
 echo -e "${BLUE}→ Starting Research API on port 8004...${NC}"
 source "$VENV_DIR/bin/activate"
 
-nohup uvicorn src.api.research:app \
+nohup uvicorn tkr_docusearch.api.research:app \
     --host 0.0.0.0 \
     --port 8004 \
     --log-level info \

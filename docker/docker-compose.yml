@@ -95,8 +95,8 @@ services:
   # ============================================================================
   processing-worker:
     build:
-      context: .
-      dockerfile: Dockerfile.processing-worker
+      context: ..
+      dockerfile: docker/Dockerfile.processing-worker
       args:
         - BUILDPLATFORM=linux/arm64
         - TARGETPLATFORM=linux/arm64

@@ -304,7 +304,7 @@ def on_upload():
     try:
         result = subprocess.run(
             ['docker', 'compose', 'exec', '-T', 'processing-worker',
-             'python', '-m', 'src.processing.worker', 'process', file_path],
+             'python', '-m', 'tkr_docusearch.processing.worker', 'process', file_path],
             capture_output=True,
             text=True,
             timeout=5

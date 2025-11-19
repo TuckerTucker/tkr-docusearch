@@ -27,9 +27,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTORCH_ENABLE_MPS_FALLBACK=1 \
     # Model cache directory
     TRANSFORMERS_CACHE=/models \
-    HF_HOME=/models \
-    # Application directory
-    PYTHONPATH=/app
+    HF_HOME=/models
 
 # ============================================================================
 # Install System Dependencies
@@ -103,31 +101,58 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir git+https://github.com/illuin-tech/colpali.git
 
 # ============================================================================
-# Copy Application Source Code
+# Install tkr-docusearch Package
 # ============================================================================
-# Note: Source code mounted as volume in development mode
-# For production, uncomment and build with source code:
-# COPY --chown=worker:worker src/ /app/src/
-# COPY --chown=worker:worker requirements.txt /app/
+# Copy package configuration files
+COPY --chown=worker:worker pyproject.toml /app/
+COPY --chown=worker:worker README.md /app/
 
-# Create source directory structure
-RUN mkdir -p /app/src/storage \
+# Create complete source directory structure (will be populated by volume mount in dev)
+# Must match all packages defined in pyproject.toml
+RUN mkdir -p /app/src/api/routes \
+             /app/src/config \
+             /app/src/core/exceptions \
+             /app/src/core/testing \
+             /app/src/core/types \
+             /app/src/core/utils \
              /app/src/embeddings \
-             /app/src/processing \
+             /app/src/mcp_server \
+             /app/src/processing/api \
+             /app/src/processing/handlers \
+             /app/src/processing/parsers \
+             /app/src/processing/whisper \
+             /app/src/research \
              /app/src/search \
-             /app/src/config && \
+             /app/src/storage \
+             /app/src/utils && \
     chown -R worker:worker /app/src
 
-# ============================================================================
-# Create __init__.py files for Python packages
-# ============================================================================
+# Create __init__.py files for all Python packages
 RUN touch /app/src/__init__.py \
-          /app/src/storage/__init__.py \
+          /app/src/api/__init__.py \
+          /app/src/api/routes/__init__.py \
+          /app/src/config/__init__.py \
+          /app/src/core/__init__.py \
+          /app/src/core/exceptions/__init__.py \
+          /app/src/core/testing/__init__.py \
+          /app/src/core/types/__init__.py \
+          /app/src/core/utils/__init__.py \
           /app/src/embeddings/__init__.py \
+          /app/src/mcp_server/__init__.py \
           /app/src/processing/__init__.py \
+          /app/src/processing/api/__init__.py \
+          /app/src/processing/handlers/__init__.py \
+          /app/src/processing/parsers/__init__.py \
+          /app/src/processing/whisper/__init__.py \
+          /app/src/research/__init__.py \
           /app/src/search/__init__.py \
-          /app/src/config/__init__.py && \
+          /app/src/storage/__init__.py \
+          /app/src/utils/__init__.py && \
     chown -R worker:worker /app/src
+
+# Install package in editable mode
+# This allows volume-mounted source code to work with proper imports
+RUN pip install -e /app
 
 # ============================================================================
 # Switch to Non-Root User
@@ -150,7 +175,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
 # ============================================================================
 # Run processing worker HTTP server (webhook mode)
 # Note: Will be overridden by docker-compose or docker run command
-CMD ["python3", "-m", "src.processing.worker_webhook"]
+CMD ["python3", "-m", "tkr_docusearch.processing.worker_webhook"]
 
 # ============================================================================
 # Usage

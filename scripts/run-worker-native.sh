@@ -194,9 +194,9 @@ run_worker() {
     cd "$PROJECT_ROOT"
     # Use venv Python if available, otherwise fall back to $PYTHON
     if [ -f "$VENV_DIR/bin/python" ]; then
-        exec "$VENV_DIR/bin/python" -m src.processing.worker_webhook
+        exec "$VENV_DIR/bin/python" -m tkr_docusearch.processing.worker_webhook
     else
-        exec $PYTHON -m src.processing.worker_webhook
+        exec $PYTHON -m tkr_docusearch.processing.worker_webhook
     fi
 }
 
