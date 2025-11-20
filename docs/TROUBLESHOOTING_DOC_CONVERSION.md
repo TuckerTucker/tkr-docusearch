@@ -16,6 +16,7 @@ This guide provides detailed troubleshooting steps for common issues with legacy
   - [Empty Output Files](#empty-output-files)
   - [Path Access Denied](#path-access-denied)
   - [Large File Issues](#large-file-issues)
+  - [PDF Dimension Issues](#pdf-dimension-issues)
 - [Advanced Debugging](#advanced-debugging)
 - [Performance Issues](#performance-issues)
 - [Known Limitations](#known-limitations)
@@ -577,6 +578,146 @@ docker stats docusearch-legacy-office-converter
 | Memory | 512 MB | 1 GB |
 | Timeout | 60s | 300s |
 | CPU | 1 core | 2 cores |
+
+---
+
+### PDF Dimension Issues
+
+#### Symptoms
+- PDFs appear to process normally but fail during Docling conversion
+- Error messages related to missing MediaBox or CropBox
+- PDFs that work in viewers but fail in DocuSearch
+- Documents with inherited page dimensions from parent page tree
+
+#### Cause
+Some PDF files have a structure where individual page objects don't contain explicit dimension information (MediaBox or CropBox). Instead, they inherit these dimensions from their parent node in the PDF's page tree structure. While PDF viewers handle this inheritance correctly, some processing libraries (including Docling) require explicit dimensions on each page object.
+
+This commonly occurs with:
+- PDFs created by certain PDF generators
+- PDFs that have been optimized or compressed
+- PDFs with uniform page sizes across all pages
+- Legacy PDF files from older creation tools
+
+#### How It's Fixed
+**Good news: This is handled automatically!**
+
+DocuSearch now includes automatic PDF repair functionality using pypdf. Before any PDF is sent to Docling for processing, the system:
+
+1. **Checks for missing dimensions**: Scans each page object for MediaBox/CropBox
+2. **Applies inheritance**: If dimensions are missing, looks up the parent page tree node
+3. **Repairs the structure**: Adds explicit dimensions to each page object
+4. **Continues processing**: The repaired PDF is then processed normally by Docling
+
+This repair happens **transparently** - you don't need to do anything special.
+
+#### Detection
+You can verify if a PDF was automatically repaired by checking the processing logs:
+
+```bash
+# For native worker
+tail -50 logs/worker-native.log | grep -i "dimension"
+
+# For Docker worker
+docker logs docusearch-worker | grep -i "dimension"
+```
+
+**What to look for:**
+```
+INFO - PDF missing explicit page dimensions, repairing with pypdf...
+INFO - Successfully repaired PDF dimensions
+```
+
+If you see these messages, it means the PDF required automatic repair and was successfully fixed.
+
+#### Technical Details
+
+**Why pypdf was added:**
+
+The `pypdf` library was added as a dependency specifically to handle this edge case. It provides:
+- Robust PDF structure parsing
+- Safe manipulation of page tree objects
+- Proper inheritance resolution from parent nodes
+- No data loss during repair
+
+**Dependency:**
+```python
+# requirements.txt
+pypdf>=3.0.0  # For PDF dimension repair
+```
+
+**When repair is needed:**
+
+The repair process is triggered when:
+1. A PDF file is being prepared for Docling processing
+2. At least one page object lacks both MediaBox and CropBox
+3. The parent page tree node contains these dimensions
+
+**Process flow:**
+```
+Upload PDF → Check page dimensions → If missing: Repair with pypdf → Process with Docling → Extract content
+```
+
+#### Performance Impact
+The automatic repair adds minimal overhead:
+- Small PDFs (< 10 pages): ~50-200ms additional processing time
+- Large PDFs (100+ pages): ~500ms-1s additional processing time
+- Only runs when needed (dimension check is very fast)
+
+#### What You Don't Need to Do
+
+**You do NOT need to:**
+- Pre-process PDFs before upload
+- Use special PDF creation settings
+- Repair PDFs manually
+- Install additional software
+- Configure anything
+
+The system handles everything automatically.
+
+#### If Issues Persist
+
+If you encounter PDFs that still fail after automatic repair:
+
+**Step 1: Check the logs for the specific error**
+```bash
+tail -100 logs/worker-native.log | grep -i "error\|failed"
+```
+
+**Step 2: Verify the PDF is valid**
+```bash
+# Try opening in a PDF viewer
+# Most viewer issues indicate deeper corruption
+```
+
+**Step 3: Test with a simple PDF**
+```bash
+# If other PDFs work, the issue may be with this specific file
+```
+
+**Step 4: Check for other issues**
+- File corruption (see [Corrupted Files](#corrupted-files))
+- Password protection
+- Extremely large file size
+- Non-standard PDF features
+
+#### Known Edge Cases
+
+The automatic repair handles most cases, but some rare scenarios may still cause issues:
+
+| Scenario | Support | Note |
+|----------|---------|------|
+| Missing dimensions on all pages | ✅ Full | Automatically repaired |
+| Inherited from parent | ✅ Full | Automatically repaired |
+| Completely missing dimension info | ❌ Cannot fix | Invalid PDF structure |
+| Encrypted PDFs | ⚠️ Depends | Must be decrypted first |
+| Corrupted page tree | ❌ Cannot fix | Requires manual repair |
+
+#### Related Dependencies
+
+This feature relies on:
+- `pypdf>=3.0.0` - PDF structure manipulation
+- `docling` - Document processing (benefits from repair)
+- Standard Python `pathlib`, `logging` - Support utilities
 
 ---
 

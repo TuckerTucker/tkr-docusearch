@@ -6,6 +6,7 @@ Supports both visual formats (PDF, images) and text-only formats (MD, HTML, CSV)
 """
 
 import logging
+import tempfile
 import uuid
 from enum import Enum
 from pathlib import Path
@@ -352,6 +353,13 @@ class DoclingParser:
             render_dpi: DPI for page rendering
         """
         self.render_dpi = render_dpi
+        self._temp_repair_files: List[str] = []
+
+        # PDF repair metrics
+        self._pdfs_processed = 0
+        self._pdfs_repaired = 0
+        self._repairs_failed = 0
+
         logger.info(f"Initialized DoclingParser (dpi={render_dpi})")
 
     def parse_document(
@@ -389,6 +397,19 @@ class DoclingParser:
         try:
             # Parse with Docling (supports PDF, DOCX, PPTX)
             pages, metadata, doc = self._parse_with_docling(file_path, config)
+
+            # Cleanup temp repair files after successful processing
+            self._cleanup_temp_repairs()
+
+            # Log repair metrics if any PDFs were processed
+            if self._pdfs_processed > 0:
+                metrics = self.get_repair_metrics()
+                repair_pct = metrics["repair_rate"] * 100
+                logger.info(
+                    f"PDF repair metrics: {metrics['pdfs_processed']} processed, "
+                    f"{metrics['pdfs_repaired']} repaired ({repair_pct:.1f}%), "
+                    f"{metrics['repairs_failed']} failed"
+                )
 
             # Save page images and thumbnails (Wave 1 integration)
             for page in pages:
@@ -454,6 +475,9 @@ class DoclingParser:
         except Exception as e:
             logger.error(f"Failed to parse {filename}: {e}")
             raise ParsingError(f"Parsing failed: {e}") from e
+        finally:
+            # Ensure cleanup happens even on exceptions
+            self._cleanup_temp_repairs()
 
     def _parse_with_docling(
         self, file_path: str, config: Optional[EnhancedModeConfig] = None
@@ -485,6 +509,10 @@ class DoclingParser:
             log_path_info(file_path, context="Docling parsing")
 
             ext = Path(file_path).suffix.lower()
+
+            # Repair PDF dimensions if needed (before Docling processing)
+            if ext == ".pdf":
+                file_path = self._ensure_pdf_dimensions(file_path)
 
             # Convert .doc to .docx if needed
             original_filename = None
@@ -1028,6 +1056,204 @@ class DoclingParser:
             )
 
         return chunks
+
+    def _pdf_has_explicit_dimensions(self, file_path: str) -> bool:
+        """Check if PDF has explicit dimension boxes on first page.
+
+        Uses pypdf to inspect the first page's object for explicit dimension boxes
+        (/MediaBox, /CropBox, /BleedBox, /TrimBox). Returns False if dimensions
+        are inherited from parent, True if explicitly defined.
+
+        Args:
+            file_path: Path to PDF file
+
+        Returns:
+            True if dimensions are explicit, False if inherited from parent
+        """
+        try:
+            from pypdf import PdfReader
+
+            logger.debug(f"Checking PDF dimensions: {file_path}")
+
+            # Read PDF
+            reader = PdfReader(file_path)
+            if not reader.pages or len(reader.pages) == 0:
+                logger.warning(f"PDF has no pages: {file_path}")
+                return True  # Skip repair on error
+
+            # Get first page object
+            first_page = reader.pages[0]
+
+            # Check for explicit dimension boxes in page object
+            # These are the standard PDF page boundary boxes
+            dimension_boxes = ["/MediaBox", "/CropBox", "/BleedBox", "/TrimBox"]
+
+            has_explicit = False
+            for box_name in dimension_boxes:
+                if box_name in first_page:
+                    has_explicit = True
+                    logger.debug(f"Found explicit {box_name} on first page")
+                    break
+
+            if has_explicit:
+                logger.debug(f"PDF has explicit dimensions: {file_path}")
+            else:
+                logger.debug(
+                    f"PDF dimensions are inherited from parent (needs repair): {file_path}"
+                )
+
+            return has_explicit
+
+        except Exception as e:
+            logger.warning(f"Failed to check PDF dimensions: {e}. Skipping repair.")
+            return True  # Skip repair on error
+
+    def _repair_pdf_dimensions(self, file_path: str) -> str:
+        """Repair PDF by making inherited dimensions explicit.
+
+        Creates a repaired copy of the PDF where each page has explicit dimension
+        boxes extracted from the parent. This fixes Docling compatibility issues
+        with PDFs that have inherited dimensions.
+
+        Args:
+            file_path: Path to PDF file with inherited dimensions
+
+        Returns:
+            Path to repaired temporary PDF file
+        """
+        try:
+            from pypdf import PdfReader, PdfWriter
+
+            logger.info(f"Repairing PDF dimensions: {Path(file_path).name}")
+
+            # Read original PDF
+            reader = PdfReader(file_path)
+            writer = PdfWriter()
+
+            # Copy pages with explicit dimensions
+            # Default to US Letter if no dimensions found anywhere
+            DEFAULT_MEDIABOX = [0, 0, 612, 792]  # US Letter in points
+
+            for page in reader.pages:
+                # Get mediabox (auto-resolves from parent)
+                mediabox = page.mediabox
+
+                # Handle case where mediabox is None (no dimensions anywhere)
+                if mediabox is None:
+                    logger.warning(
+                        f"Page has no dimensions in page tree, using default (US Letter)"
+                    )
+                    mediabox = DEFAULT_MEDIABOX
+
+                # Explicitly set it on the page
+                page.mediabox = mediabox
+
+                # Add to writer
+                writer.add_page(page)
+
+            # Create temp file for repaired PDF
+            fd, temp_path = tempfile.mkstemp(suffix=".pdf", prefix="repaired_docling_")
+
+            try:
+                # Write repaired PDF
+                with open(temp_path, "wb") as f:
+                    writer.write(f)
+
+                logger.info(
+                    f"PDF dimension repair complete: {Path(file_path).name} -> {Path(temp_path).name}"
+                )
+
+                # Track temp file for cleanup
+                self._temp_repair_files.append(temp_path)
+
+                return temp_path
+
+            except Exception as e:
+                # Clean up temp file if write fails
+                import os
+
+                os.close(fd)
+                if Path(temp_path).exists():
+                    Path(temp_path).unlink()
+                raise
+
+        except Exception as e:
+            logger.error(f"Failed to repair PDF dimensions: {e}")
+            raise ParsingError(f"PDF dimension repair failed: {e}") from e
+
+    def _ensure_pdf_dimensions(self, file_path: str) -> str:
+        """Ensure PDF has explicit dimensions, repairing if needed.
+
+        Checks if PDF has explicit dimension boxes. If not, creates a repaired
+        temporary copy with explicit dimensions for Docling compatibility.
+
+        Args:
+            file_path: Path to PDF file
+
+        Returns:
+            Path to PDF (original if already has dimensions, repaired temp if not)
+        """
+        # Increment processed counter
+        self._pdfs_processed += 1
+
+        if not self._pdf_has_explicit_dimensions(file_path):
+            logger.info(
+                f"PDF dimensions inherited from parent, repairing: {Path(file_path).name}"
+            )
+            try:
+                repaired_path = self._repair_pdf_dimensions(file_path)
+                # Increment repaired counter on success
+                self._pdfs_repaired += 1
+                return repaired_path
+            except Exception:
+                # Increment failed counter on exception
+                self._repairs_failed += 1
+                raise
+        else:
+            logger.debug(f"PDF has explicit dimensions, no repair needed: {Path(file_path).name}")
+            return file_path
+
+    def _cleanup_temp_repairs(self) -> None:
+        """Clean up temporary repaired PDF files.
+
+        Removes all tracked temporary files created during PDF dimension repair.
+        Safe to call multiple times.
+        """
+        if not self._temp_repair_files:
+            return
+
+        logger.debug(f"Cleaning up {len(self._temp_repair_files)} temporary repair files")
+
+        for temp_file in self._temp_repair_files:
+            try:
+                temp_path = Path(temp_file)
+                if temp_path.exists():
+                    temp_path.unlink()
+                    logger.debug(f"Removed temp file: {temp_file}")
+            except Exception as e:
+                logger.warning(f"Failed to remove temp file {temp_file}: {e}")
+
+        # Clear the list
+        self._temp_repair_files = []
+
+    def get_repair_metrics(self) -> Dict[str, Any]:
+        """Get PDF repair metrics.
+
+        Returns:
+            Dictionary containing repair metrics:
+            - pdfs_processed: Total PDFs processed
+            - pdfs_repaired: Number of PDFs successfully repaired
+            - repairs_failed: Number of repair failures
+            - repair_rate: Percentage of PDFs that required repair (0.0-1.0)
+        """
+        return {
+            "pdfs_processed": self._pdfs_processed,
+            "pdfs_repaired": self._pdfs_repaired,
+            "repairs_failed": self._repairs_failed,
+            "repair_rate": (
+                self._pdfs_repaired / self._pdfs_processed if self._pdfs_processed > 0 else 0.0
+            ),
+        }
 
     def _chunk_document_enhanced(
         self, doc, pages: List[Page], doc_id: str, config: EnhancedModeConfig
