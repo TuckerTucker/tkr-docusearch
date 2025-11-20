@@ -12,7 +12,7 @@ services:
     volumes:
       - ../data/uploads:/uploads
       - ../data/copyparty/www:/www
-      - ../data/copyparty/hooks:/hooks
+      - ../hooks:/hooks  # Mount source hooks directory (not data/copyparty/hooks)
     environment:
       - CPP_PORT=8000
       - CPP_UPLOAD_DIR=/uploads
