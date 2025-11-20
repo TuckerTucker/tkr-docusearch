@@ -546,8 +546,28 @@ class DoclingParser:
             self._log_conversion_start(file_path)
 
             # Convert document with symlink workaround for audio
-            with SymlinkHelper.audio_file_symlink(file_path):
-                result, conversion_duration = self._convert_document(converter, file_path)
+            # If PDF dimension error occurs, force repair and retry
+            try:
+                with SymlinkHelper.audio_file_symlink(file_path):
+                    result, conversion_duration = self._convert_document(converter, file_path)
+            except Exception as e:
+                # Check if this is a PDF dimension error
+                if ext == ".pdf" and "page-dimensions" in str(e).lower():
+                    logger.warning(f"Docling failed with dimension error, forcing PDF repair: {e}")
+                    # Force repair by calling _repair_pdf_dimensions directly
+                    repaired_path = self._repair_pdf_dimensions(file_path)
+                    logger.info(f"Retrying with repaired PDF: {repaired_path}")
+                    # Track the repair
+                    self._pdfs_repaired += 1
+                    # Retry with repaired PDF
+                    converter = DocumentConverter(format_options=format_options if format_options else None)
+                    with SymlinkHelper.audio_file_symlink(repaired_path):
+                        result, conversion_duration = self._convert_document(converter, repaired_path)
+                    # Update file_path to repaired version for downstream processing
+                    file_path = repaired_path
+                else:
+                    # Re-raise if not a dimension error
+                    raise
 
             # Render PPTX slides if needed
             rendered_slide_images = None
