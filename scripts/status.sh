@@ -179,14 +179,14 @@ show_status_text() {
     fi
 
     # Check frontend endpoint
-    local frontend_status=$(check_service "http://localhost:3000")
+    local frontend_status=$(check_service "http://localhost:$FRONTEND_PORT")
 
     if [ "$frontend_status" = "running" ]; then
         echo -e "  ${GREEN}✓${NC} Frontend:  Running (React 19 + Vite)"
         if [ $frontend_running = true ]; then
             echo -e "    ${BLUE}→${NC} PID:     $(cat $FRONTEND_PID_FILE)"
         fi
-        echo -e "    ${BLUE}→${NC} URL:     http://localhost:3000"
+        echo -e "    ${BLUE}→${NC} URL:     http://localhost:$FRONTEND_PORT"
         echo -e "    ${BLUE}→${NC} Logs:    logs/frontend.log"
     else
         if [ $frontend_running = true ]; then
@@ -238,7 +238,7 @@ show_status_text() {
 
     # Port usage
     echo -e "\n${CYAN}Port Usage:${NC}"
-    for port in 3000 8000 8001 8002 8004; do
+    for port in $FRONTEND_PORT 8000 8001 8002 8004; do
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
             local pid=$(lsof -Pi :$port -sTCP:LISTEN -t)
             local process=$(ps -p $pid -o comm= | tr -d '\n')
@@ -302,7 +302,7 @@ show_status_json() {
     local copyparty_status=$(check_service "http://localhost:8000/")
     local worker_status=$(check_service "http://localhost:8002/health")
     local research_api_status=$(check_service "http://localhost:8004/api/research/health")
-    local frontend_status=$(check_service "http://localhost:3000")
+    local frontend_status=$(check_service "http://localhost:$FRONTEND_PORT")
 
     local native_worker=false
     local worker_pid=""
@@ -342,7 +342,7 @@ show_status_json() {
   "services": {
     "frontend": {
       "status": "$frontend_status",
-      "url": "http://localhost:3000",
+      "url": "http://localhost:$FRONTEND_PORT",
       "pid": "$frontend_pid"
     },
     "chromadb": {
