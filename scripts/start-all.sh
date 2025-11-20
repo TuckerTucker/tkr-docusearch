@@ -21,6 +21,13 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Load environment variables
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+    set -a
+    source "${PROJECT_ROOT}/.env"
+    set +a
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,6 +41,7 @@ NC='\033[0m'
 # ============================================================================
 
 MODE="${1:-gpu}"  # Default to GPU mode
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
 ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
@@ -140,7 +148,7 @@ check_docker() {
 }
 
 check_ports() {
-    local ports=("8000" "8001" "8002" "8004" "3000")
+    local ports=("8000" "8001" "8002" "8004" "$FRONTEND_PORT")
     local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
 
     for i in "${!ports[@]}"; do
@@ -482,8 +490,8 @@ start_frontend() {
 
     # Check if frontend is running
     if ps -p "$frontend_pid" > /dev/null 2>&1; then
-        if curl -s http://localhost:3000 > /dev/null 2>&1; then
-            print_status "Frontend" "ok" "Running on http://localhost:3000 (React 19)"
+        if curl -s http://localhost:$FRONTEND_PORT > /dev/null 2>&1; then
+            print_status "Frontend" "ok" "Running on http://localhost:$FRONTEND_PORT (React 19)"
             print_status "Frontend PID" "info" "$frontend_pid (saved to .frontend.pid)"
         else
             print_status "Frontend" "warn" "Starting... (check logs/frontend.log)"
@@ -499,7 +507,7 @@ show_summary() {
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:3000${NC} (React 19)"
+    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:$FRONTEND_PORT${NC} (React 19)"
     echo -e "  ${GREEN}→${NC} Copyparty:        ${BLUE}http://localhost:8000${NC} (File upload)"
     echo -e "  ${GREEN}→${NC} ChromaDB:         ${BLUE}http://localhost:8001${NC}"
     echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
@@ -570,7 +578,7 @@ ${YELLOW}Services:${NC}
   - Worker:      Document processing (http://localhost:8002)
   - Ngrok:       Tunnel for vision mode (auto-managed)
   - Research:    AI research API (http://localhost:8004)
-  - Frontend:    React UI (http://localhost:3000)
+  - Frontend:    React UI (http://localhost:$FRONTEND_PORT)
 
 ${YELLOW}Vision Mode:${NC}
   - Enabled by default (multimodal LLM with images)

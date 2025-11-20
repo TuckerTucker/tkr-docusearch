@@ -10,7 +10,7 @@ Environment Variables:
     CHROMADB_URL: ChromaDB server URL (default: http://localhost:8001)
     RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
     COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
-    FRONTEND_URL: Frontend application URL (default: http://localhost:3000)
+    FRONTEND_URL: Frontend application URL (default: http://localhost:42007)
 
 Usage:
     >>> from src.config.urls import get_service_urls
@@ -53,7 +53,7 @@ class ServiceURLs:
         self.chromadb = os.getenv("CHROMADB_URL", "http://localhost:8001")
         self.research_api = os.getenv("RESEARCH_API_URL", "http://localhost:8004")
         self.copyparty = os.getenv("COPYPARTY_URL", "http://localhost:8000")
-        self.frontend = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        self.frontend = os.getenv("FRONTEND_URL", "http://localhost:42007")
 
         # Log configuration on initialization
         logger.debug(

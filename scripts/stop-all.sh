@@ -19,6 +19,13 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Load environment variables
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+    set -a
+    source "${PROJECT_ROOT}/.env"
+    set +a
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -32,6 +39,7 @@ NC='\033[0m'
 # ============================================================================
 
 FORCE_MODE="${1:-}"
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
