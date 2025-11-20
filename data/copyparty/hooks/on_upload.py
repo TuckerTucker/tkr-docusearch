@@ -17,19 +17,24 @@ from pathlib import Path
 # Configuration
 # ============================================================================
 
-# Supported document types for processing
-# Load from environment variable to support audio, images, etc.
-_formats_str = os.environ.get("SUPPORTED_FORMATS", "pdf,docx,pptx")
+# Supported document types for processing (must match file_validator.py defaults)
+_formats_str = os.environ.get(
+    "SUPPORTED_FORMATS",
+    "pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp",
+)
 SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Worker endpoint
 WORKER_HOST = os.environ.get("WORKER_HOST", "host.docker.internal")
 WORKER_PORT = os.environ.get("WORKER_PORT", "8002")
 
-# Container path (shared between copyparty and worker containers)
-# Both containers see the same volume mounted at: /uploads
-# No path translation needed - worker reads from same mount point
+# Path translation: container path -> host path
+# For native worker (GPU mode): translate container /uploads to host path
+# For Docker worker (CPU mode): no translation needed (both use /uploads)
 CONTAINER_UPLOADS_PATH = "/uploads"
+HOST_UPLOADS_PATH = os.environ.get(
+    "HOST_UPLOADS_PATH", "/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads"
+)
 
 # ============================================================================
 # Main
@@ -56,10 +61,22 @@ def main():
         print(f"📄 New document uploaded: {filename}")
         print(f"   Container path: {container_path}")
 
-        # Trigger processing - send container path directly
-        # Worker container sees same /uploads mount, no translation needed
+        # Translate container path to host path for native worker
+        # Native worker (GPU mode) needs full host path
+        # Docker worker (CPU mode) uses container path
+        if container_path.startswith(CONTAINER_UPLOADS_PATH):
+            # Replace container path with host path
+            relative_path = container_path[len(CONTAINER_UPLOADS_PATH) :].lstrip("/")
+            host_path = os.path.join(HOST_UPLOADS_PATH, relative_path)
+        else:
+            # Already a host path
+            host_path = container_path
+
+        print(f"   Host path: {host_path}")
+
+        # Trigger processing with host path
         url = f"http://{WORKER_HOST}:{WORKER_PORT}/process"
-        data = {"file_path": container_path, "filename": filename}
+        data = {"file_path": host_path, "filename": filename}
 
         req = urllib.request.Request(
             url,
