@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context-kit": {
+      "type": "stdio",
+      "command": "./.claude/mcp_runner.sh"
+    }
+  }
+}
