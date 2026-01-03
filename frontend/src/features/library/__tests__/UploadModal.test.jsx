@@ -187,6 +187,12 @@ describe('UploadModal', () => {
     });
 
     it('should not close modal when Cancel button is clicked during upload', async () => {
+      // Make upload hang until we resolve it manually
+      let resolveUpload;
+      api.upload.uploadFile.mockImplementation(() =>
+        new Promise(resolve => { resolveUpload = resolve; })
+      );
+
       render(
         <UploadModal
           registerUploadBatch={mockRegisterUploadBatch}
@@ -197,19 +203,28 @@ describe('UploadModal', () => {
 
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
-      // Trigger upload
+      // Trigger upload - drop on drop zone, not body
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
+      // Wait for upload to start (upload API called)
       await waitFor(() => {
-        expect(screen.getByText(/uploading/i)).toBeInTheDocument();
+        expect(api.upload.uploadFile).toHaveBeenCalled();
       });
 
-      // Try to cancel during upload
-      const cancelButton = screen.getByRole('button', { name: /uploading/i });
+      // The cancel button should be disabled during upload
+      // Button has aria-label="Cancel upload" but text "Uploading..."
+      const cancelButton = screen.getByRole('button', { name: /cancel upload/i });
       expect(cancelButton).toBeDisabled();
+      expect(cancelButton).toHaveTextContent(/uploading/i);
+
+      // Complete upload to cleanup
+      await act(async () => {
+        resolveUpload({ success: true });
+      });
     });
 
     it('should close modal by clicking backdrop when not uploading', async () => {
@@ -245,7 +260,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -268,7 +284,8 @@ describe('UploadModal', () => {
       });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -289,7 +306,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.exe', { type: 'application/x-msdownload' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -315,7 +333,8 @@ describe('UploadModal', () => {
       Object.defineProperty(file, 'size', { value: 101 * 1024 * 1024 });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -355,7 +374,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -394,7 +414,8 @@ describe('UploadModal', () => {
       ];
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files },
       });
 
@@ -416,10 +437,11 @@ describe('UploadModal', () => {
 
     it('should track upload progress', async () => {
       let progressCallback;
+      let resolveUpload;
       api.upload.uploadFile.mockImplementation((file, onProgress) => {
         progressCallback = onProgress;
         return new Promise((resolve) => {
-          setTimeout(() => resolve({ success: true, filename: file.name }), 100);
+          resolveUpload = () => resolve({ success: true, filename: file.name });
         });
       });
 
@@ -434,7 +456,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -442,15 +465,22 @@ describe('UploadModal', () => {
         expect(progressCallback).toBeDefined();
       });
 
-      // Simulate progress updates
-      progressCallback(25);
-      await waitFor(() => {
-        expect(screen.getByText('25%')).toBeInTheDocument();
+      // Simulate progress updates (use act since these trigger state updates)
+      await act(async () => {
+        progressCallback(25);
       });
+      // Progress is shown as bar width, not text
+      const progressFill = document.querySelector('.upload-modal__progress-fill');
+      expect(progressFill).toHaveStyle('width: 25%');
 
-      progressCallback(75);
-      await waitFor(() => {
-        expect(screen.getByText('75%')).toBeInTheDocument();
+      await act(async () => {
+        progressCallback(75);
+      });
+      expect(progressFill).toHaveStyle('width: 75%');
+
+      // Complete the upload to clean up
+      await act(async () => {
+        resolveUpload();
       });
     });
 
@@ -468,7 +498,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -497,7 +528,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -523,7 +555,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -559,7 +592,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -645,7 +679,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'existing.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -678,7 +713,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'existing.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -734,7 +770,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'existing.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -818,7 +855,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -867,7 +905,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'existing.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -928,6 +967,12 @@ describe('UploadModal', () => {
     });
 
     it('should disable cancel button during upload', async () => {
+      // Make upload hang until we resolve it manually
+      let resolveUpload;
+      api.upload.uploadFile.mockImplementation(() =>
+        new Promise(resolve => { resolveUpload = resolve; })
+      );
+
       render(
         <UploadModal
           registerUploadBatch={mockRegisterUploadBatch}
@@ -939,13 +984,24 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
+      // Wait for upload to start (upload API called)
       await waitFor(() => {
-        const uploadingButton = screen.getByRole('button', { name: /uploading/i });
-        expect(uploadingButton).toBeDisabled();
+        expect(api.upload.uploadFile).toHaveBeenCalled();
+      });
+
+      // Button has aria-label="Cancel upload" but text "Uploading..."
+      const uploadingButton = screen.getByRole('button', { name: /cancel upload/i });
+      expect(uploadingButton).toBeDisabled();
+      expect(uploadingButton).toHaveTextContent(/uploading/i);
+
+      // Complete upload to cleanup
+      await act(async () => {
+        resolveUpload({ success: true });
       });
     });
   });
@@ -1027,7 +1083,8 @@ describe('UploadModal', () => {
       ];
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files },
       });
 
@@ -1064,7 +1121,8 @@ describe('UploadModal', () => {
       ];
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files },
       });
 
@@ -1092,7 +1150,8 @@ describe('UploadModal', () => {
       );
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      const dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [] },
       });
 
@@ -1132,7 +1191,8 @@ describe('UploadModal', () => {
       const file = new File(['content'], 'test.pdf', { type: 'application/pdf' });
 
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      let dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
@@ -1151,7 +1211,8 @@ describe('UploadModal', () => {
 
       // Upload same file again - should work
       fireEvent.dragEnter(document.body);
-      fireEvent.drop(document.body, {
+      dropZone = document.querySelector('.upload-modal__drop-zone');
+      fireEvent.drop(dropZone, {
         dataTransfer: { files: [file] },
       });
 
