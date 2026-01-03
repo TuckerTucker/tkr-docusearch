@@ -132,15 +132,18 @@ export function useThrottleRAF<T extends (...args: any[]) => void>(
   const rafIdRef = useRef<number | null>(null);
   const lastArgsRef = useRef<Parameters<T> | null>(null);
   const callbackRef = useRef(callback);
+  const isMountedRef = useRef(true);
 
   // Keep callback ref up to date
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
 
-  // Cleanup RAF on unmount
+  // Track mount state and cleanup RAF on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
@@ -159,6 +162,10 @@ export function useThrottleRAF<T extends (...args: any[]) => void>(
 
       // Schedule on next animation frame
       rafIdRef.current = requestAnimationFrame(() => {
+        // Guard against callback firing after unmount
+        if (!isMountedRef.current) {
+          return;
+        }
         if (lastArgsRef.current) {
           callbackRef.current(...lastArgsRef.current);
         }

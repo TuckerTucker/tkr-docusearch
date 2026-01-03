@@ -303,8 +303,6 @@ describe('ChunkHighlighter Component', () => {
 
   describe('Keyboard Navigation', () => {
     it('moves focus to next chunk on ArrowDown', async () => {
-      const user = userEvent.setup();
-
       const { container } = render(
         <ChunkHighlighter>
           <p data-chunk-id="chunk-0">First</p>
@@ -315,13 +313,18 @@ describe('ChunkHighlighter Component', () => {
       const firstChunk = container.querySelector('[data-chunk-id="chunk-0"]') as HTMLElement;
       const secondChunk = container.querySelector('[data-chunk-id="chunk-1"]') as HTMLElement;
 
+      // Wait for useEffect to add tabindex
+      await waitFor(() => {
+        expect(firstChunk).toHaveAttribute('tabindex');
+      });
+
       firstChunk.focus();
-      // Dispatch key event directly with proper event object
-      firstChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      // Dispatch key event with bubbles: true so it reaches container
+      firstChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
 
       await waitFor(() => {
         expect(secondChunk).toHaveFocus();
-      }, { timeout: 100 });
+      });
     });
 
     it('moves focus to previous chunk on ArrowUp', async () => {
@@ -335,12 +338,17 @@ describe('ChunkHighlighter Component', () => {
       const firstChunk = container.querySelector('[data-chunk-id="chunk-0"]') as HTMLElement;
       const secondChunk = container.querySelector('[data-chunk-id="chunk-1"]') as HTMLElement;
 
+      // Wait for useEffect to add tabindex
+      await waitFor(() => {
+        expect(secondChunk).toHaveAttribute('tabindex');
+      });
+
       secondChunk.focus();
-      secondChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+      secondChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
 
       await waitFor(() => {
         expect(firstChunk).toHaveFocus();
-      }, { timeout: 100 });
+      });
     });
 
     it('moves focus to first chunk on Home', async () => {
@@ -355,12 +363,17 @@ describe('ChunkHighlighter Component', () => {
       const firstChunk = container.querySelector('[data-chunk-id="chunk-0"]') as HTMLElement;
       const thirdChunk = container.querySelector('[data-chunk-id="chunk-2"]') as HTMLElement;
 
+      // Wait for useEffect to add tabindex
+      await waitFor(() => {
+        expect(thirdChunk).toHaveAttribute('tabindex');
+      });
+
       thirdChunk.focus();
-      thirdChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }));
+      thirdChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
 
       await waitFor(() => {
         expect(firstChunk).toHaveFocus();
-      }, { timeout: 100 });
+      });
     });
 
     it('moves focus to last chunk on End', async () => {
@@ -375,12 +388,17 @@ describe('ChunkHighlighter Component', () => {
       const firstChunk = container.querySelector('[data-chunk-id="chunk-0"]') as HTMLElement;
       const thirdChunk = container.querySelector('[data-chunk-id="chunk-2"]') as HTMLElement;
 
+      // Wait for useEffect to add tabindex
+      await waitFor(() => {
+        expect(firstChunk).toHaveAttribute('tabindex');
+      });
+
       firstChunk.focus();
-      firstChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }));
+      firstChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
 
       await waitFor(() => {
         expect(thirdChunk).toHaveFocus();
-      }, { timeout: 100 });
+      });
     });
   });
 
@@ -532,8 +550,6 @@ describe('ChunkHighlighter Component', () => {
     });
 
     it('supports keyboard navigation', async () => {
-      const user = userEvent.setup();
-
       const { container } = render(
         <ChunkHighlighter>
           <p data-chunk-id="chunk-0">First</p>
@@ -542,14 +558,22 @@ describe('ChunkHighlighter Component', () => {
       );
 
       const firstChunk = container.querySelector('[data-chunk-id="chunk-0"]') as HTMLElement;
-      firstChunk.focus();
+      const secondChunk = container.querySelector('[data-chunk-id="chunk-1"]') as HTMLElement;
 
+      // Wait for useEffect to add tabindex
+      await waitFor(() => {
+        expect(firstChunk).toHaveAttribute('tabindex');
+      });
+
+      firstChunk.focus();
       expect(firstChunk).toHaveFocus();
 
-      await user.keyboard('{ArrowDown}');
+      // Dispatch keyboard event with bubbles
+      firstChunk.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
 
-      const secondChunk = container.querySelector('[data-chunk-id="chunk-1"]') as HTMLElement;
-      expect(secondChunk).toHaveFocus();
+      await waitFor(() => {
+        expect(secondChunk).toHaveFocus();
+      });
     });
   });
 });

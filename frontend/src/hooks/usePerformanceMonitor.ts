@@ -87,7 +87,11 @@ export interface UsePerformanceMonitorResult {
   clear: () => void;
 }
 
-const IS_DEV = process.env.NODE_ENV === 'development';
+/**
+ * Check if we're in development mode.
+ * Evaluated as a function to ensure it's checked at runtime, not module load time.
+ */
+const isDevelopment = (): boolean => process.env.NODE_ENV === 'development';
 
 /**
  * Hook for monitoring component performance.
@@ -103,7 +107,7 @@ export function usePerformanceMonitor(
 ): UsePerformanceMonitorResult {
   const {
     componentName,
-    enabled = IS_DEV,
+    enabled = isDevelopment(),
     logRenders = false,
     slowThreshold = 16.67, // 60fps = 16.67ms per frame
   } = options;

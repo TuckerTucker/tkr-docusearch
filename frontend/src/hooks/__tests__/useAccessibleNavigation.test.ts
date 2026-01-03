@@ -7,22 +7,21 @@
  * Test coverage for keyboard navigation, focus management, and screen reader announcements.
  */
 
+import { describe, test, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAccessibleNavigation } from '../useAccessibleNavigation';
 import * as accessibilityUtils from '../../utils/accessibility';
 
 // Mock accessibility utilities
-jest.mock('../../utils/accessibility', () => ({
-  announceToScreenReader: jest.fn(),
-  getArrowDirection: jest.requireActual('../../utils/accessibility').getArrowDirection,
-  isActivationKey: jest.requireActual('../../utils/accessibility').isActivationKey,
-  isEscapeKey: jest.requireActual('../../utils/accessibility').isEscapeKey,
-  getNextElementIndex: jest.requireActual('../../utils/accessibility').getNextElementIndex,
-  moveFocusToElement: jest.fn(() => true),
-  restoreFocus: jest.fn(),
-  generateBBoxLabel: jest.requireActual('../../utils/accessibility').generateBBoxLabel,
-  generateChunkDescription: jest.requireActual('../../utils/accessibility').generateChunkDescription,
-}));
+vi.mock('../../utils/accessibility', async () => {
+  const actual = await vi.importActual('../../utils/accessibility');
+  return {
+    ...actual,
+    announceToScreenReader: vi.fn(),
+    moveFocusToElement: vi.fn(() => true),
+    restoreFocus: vi.fn(),
+  };
+});
 
 describe('useAccessibleNavigation', () => {
   let container: HTMLDivElement;
@@ -39,15 +38,16 @@ describe('useAccessibleNavigation', () => {
       element.setAttribute('role', 'button');
       element.setAttribute('data-chunk-id', `chunk-${i}`);
       element.textContent = `Button ${i}`;
-      element.style.width = '100px';
-      element.style.height = '50px';
+      // Mock offsetWidth/offsetHeight since jsdom doesn't support layout
+      Object.defineProperty(element, 'offsetWidth', { value: 100, configurable: true });
+      Object.defineProperty(element, 'offsetHeight', { value: 50, configurable: true });
       container.appendChild(element);
     }
 
     containerRef = { current: container };
 
     // Clear mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -81,7 +81,7 @@ describe('useAccessibleNavigation', () => {
 
   describe('Keyboard Navigation', () => {
     it('should navigate to next element on Arrow Down', () => {
-      const onNavigate = jest.fn();
+      const onNavigate = vi.fn();
 
       const { result } = renderHook(() =>
         useAccessibleNavigation({
@@ -104,7 +104,7 @@ describe('useAccessibleNavigation', () => {
     });
 
     it('should navigate to previous element on Arrow Up', () => {
-      const onNavigate = jest.fn();
+      const onNavigate = vi.fn();
 
       const { result } = renderHook(() =>
         useAccessibleNavigation({
@@ -230,7 +230,7 @@ describe('useAccessibleNavigation', () => {
 
   describe('Activation', () => {
     it('should fire onActivate callback on Enter/Space', () => {
-      const onActivate = jest.fn();
+      const onActivate = vi.fn();
 
       const { result } = renderHook(() =>
         useAccessibleNavigation({
@@ -330,7 +330,7 @@ describe('useAccessibleNavigation', () => {
     });
 
     it('should fire onEscape callback', () => {
-      const onEscape = jest.fn();
+      const onEscape = vi.fn();
 
       const { result } = renderHook(() =>
         useAccessibleNavigation({
@@ -350,7 +350,7 @@ describe('useAccessibleNavigation', () => {
 
   describe('Custom Announcements', () => {
     it('should use custom announcement generator', () => {
-      const generateAnnouncement = jest.fn(() => 'Custom announcement');
+      const generateAnnouncement = vi.fn(() => 'Custom announcement');
 
       renderHook(() =>
         useAccessibleNavigation({
@@ -368,7 +368,7 @@ describe('useAccessibleNavigation', () => {
 
   describe('Disabled State', () => {
     it('should not navigate when disabled', () => {
-      const onNavigate = jest.fn();
+      const onNavigate = vi.fn();
 
       const { result } = renderHook(() =>
         useAccessibleNavigation({
@@ -389,11 +389,13 @@ describe('useAccessibleNavigation', () => {
 
   describe('Element Filtering', () => {
     it('should filter out disabled elements', () => {
-      // Add a disabled element
+      // Add a disabled element with layout (filtered by disabled attribute)
       const disabledButton = document.createElement('button');
       disabledButton.setAttribute('disabled', 'true');
       disabledButton.setAttribute('role', 'button');
       disabledButton.setAttribute('data-chunk-id', 'chunk-disabled');
+      Object.defineProperty(disabledButton, 'offsetWidth', { value: 100, configurable: true });
+      Object.defineProperty(disabledButton, 'offsetHeight', { value: 50, configurable: true });
       container.appendChild(disabledButton);
 
       const { result } = renderHook(() =>
@@ -409,12 +411,11 @@ describe('useAccessibleNavigation', () => {
     });
 
     it('should filter out hidden elements', () => {
-      // Add a hidden element
+      // Add a hidden element (offsetWidth/offsetHeight = 0)
       const hiddenButton = document.createElement('button');
       hiddenButton.setAttribute('role', 'button');
       hiddenButton.setAttribute('data-chunk-id', 'chunk-hidden');
-      hiddenButton.style.width = '0';
-      hiddenButton.style.height = '0';
+      // jsdom defaults to 0, so no need to set explicitly
       container.appendChild(hiddenButton);
 
       const { result } = renderHook(() =>
@@ -468,8 +469,8 @@ describe('useAccessibleNavigation - Integration', () => {
   });
 
   it('should handle full navigation workflow', () => {
-    const onNavigate = jest.fn();
-    const onActivate = jest.fn();
+    const onNavigate = vi.fn();
+    const onActivate = vi.fn();
 
     const { result } = renderHook(() =>
       useAccessibleNavigation({

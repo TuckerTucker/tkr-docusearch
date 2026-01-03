@@ -117,7 +117,7 @@ describe('UploadModal', () => {
     });
 
     it('should hide modal when dragleave is fired after delay', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       render(
         <UploadModal
@@ -135,7 +135,7 @@ describe('UploadModal', () => {
 
       // Wait for the 100ms delay
       await act(async () => {
-        vi.advanceTimersByTime(100);
+        await vi.advanceTimersByTimeAsync(100);
       });
 
       await waitFor(() => {
@@ -510,7 +510,7 @@ describe('UploadModal', () => {
     });
 
     it('should auto-hide modal after successful upload', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       render(
         <UploadModal
@@ -533,7 +533,7 @@ describe('UploadModal', () => {
 
       // Fast-forward 500ms
       await act(async () => {
-        vi.advanceTimersByTime(500);
+        await vi.advanceTimersByTimeAsync(500);
       });
 
       await waitFor(() => {
@@ -544,7 +544,7 @@ describe('UploadModal', () => {
     });
 
     it('should not auto-hide modal if upload failed', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       api.upload.uploadFile.mockRejectedValue(new Error('Upload failed'));
 
@@ -569,7 +569,7 @@ describe('UploadModal', () => {
 
       // Fast-forward 500ms
       await act(async () => {
-        vi.advanceTimersByTime(500);
+        await vi.advanceTimersByTimeAsync(500);
       });
 
       // Modal should still be visible
@@ -1119,7 +1119,7 @@ describe('UploadModal', () => {
     });
 
     it('should reset file map after successful upload', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       render(
         <UploadModal
@@ -1142,7 +1142,7 @@ describe('UploadModal', () => {
 
       // Fast-forward to auto-hide
       await act(async () => {
-        vi.advanceTimersByTime(500);
+        await vi.advanceTimersByTimeAsync(500);
       });
 
       await waitFor(() => {

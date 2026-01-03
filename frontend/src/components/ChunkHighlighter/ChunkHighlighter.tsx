@@ -124,7 +124,24 @@ export const ChunkHighlighter: React.FC<ChunkHighlighterProps> = React.memo(({
    * Automatically add chunk IDs and ARIA attributes to block elements
    */
   useEffect(() => {
-    if (!autoAddChunkIds || !containerRef.current) return;
+    if (!containerRef.current) return;
+
+    // First, ensure ALL existing chunk elements have proper accessibility attributes
+    const existingChunks = containerRef.current.querySelectorAll('[data-chunk-id]');
+    existingChunks.forEach((element) => {
+      const htmlElement = element as HTMLElement;
+      // Ensure focusability for keyboard navigation
+      if (!htmlElement.hasAttribute('tabindex')) {
+        htmlElement.setAttribute('tabindex', '-1');
+      }
+      // Add ARIA role if missing
+      if (!htmlElement.hasAttribute('role')) {
+        htmlElement.setAttribute('role', 'article');
+      }
+    });
+
+    // Then, auto-add chunk IDs to block elements if enabled
+    if (!autoAddChunkIds) return;
 
     const blockElements = containerRef.current.querySelectorAll(
       'p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, div.chunk-item'
