@@ -129,14 +129,14 @@ jobs:
 
     steps:
       - name: Download backend coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: backend-coverage-reports
           path: backend-coverage
         continue-on-error: true
 
       - name: Download frontend coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: frontend-coverage-reports
           path: frontend-coverage
