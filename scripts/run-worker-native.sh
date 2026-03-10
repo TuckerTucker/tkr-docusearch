@@ -182,7 +182,7 @@ run_worker() {
     cd "$PROJECT_ROOT"
     # Worker uses bare imports (from embeddings, from processing, etc.)
     # so src/ must be on PYTHONPATH
-    export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+    export PYTHONPATH="${PROJECT_ROOT}/src:${PROJECT_ROOT}:${PYTHONPATH:-}"
 
     # Use venv Python if it has torch, otherwise system Python
     if [ -f "$VENV_DIR/bin/python" ] && "$VENV_DIR/bin/python" -c "import torch" 2>/dev/null; then
