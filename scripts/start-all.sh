@@ -2,17 +2,16 @@
 # ============================================================================
 # DocuSearch - Start All Services (macOS)
 # ============================================================================
-# Starts the complete DocuSearch stack with native Metal GPU support:
-# - Processing Worker (Native) - Document processing with Metal GPU + Koji DB
+# Starts the complete DocuSearch stack natively (no Docker):
+# - Processing Worker - Document processing with Metal GPU + Koji DB
 # - Research API - LLM-powered document Q&A
 # - Frontend - React 19 SPA
 # - Ngrok - Tunnel for vision mode (optional)
 #
 # Usage:
-#   ./scripts/start-all.sh [--gpu|--no-vision]
+#   ./scripts/start-all.sh [--no-vision]
 #
 # Options:
-#   --gpu          Run worker natively with Metal GPU (default, requires setup)
 #   --no-vision    Disable vision mode (skip ngrok tunnel)
 # ============================================================================
 
@@ -40,13 +39,11 @@ NC='\033[0m'
 # Configuration
 # ============================================================================
 
-MODE="${1:-gpu}"  # Default to GPU mode
 FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
 ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
-COMPOSE_DIR="${PROJECT_ROOT}/docker"
 VISION_ENABLED=true  # Vision mode enabled by default
 
 # ============================================================================
@@ -76,77 +73,6 @@ print_status() {
     fi
 }
 
-check_docker() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Error: Docker not found${NC}"
-        echo "Please install Docker Desktop: https://www.docker.com/products/docker-desktop"
-        exit 1
-    fi
-
-    if ! docker info &> /dev/null 2>&1; then
-        # Check if auto-start is enabled (default: true)
-        local auto_start="${AUTO_START_DOCKER:-true}"
-
-        if [ "$auto_start" = "true" ]; then
-            echo -e "${YELLOW}Docker not running. Starting Docker Desktop...${NC}"
-
-            # Start Docker Desktop (OS-specific)
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                # macOS
-                open -a Docker
-            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-                # Linux
-                echo -e "${YELLOW}Attempting to start Docker service...${NC}"
-                if command -v systemctl &> /dev/null; then
-                    sudo systemctl start docker
-                else
-                    echo -e "${RED}Error: Cannot auto-start Docker on this system${NC}"
-                    echo "Please start Docker manually"
-                    exit 1
-                fi
-            else
-                echo -e "${RED}Error: Unsupported OS for auto-start${NC}"
-                echo "Please start Docker Desktop manually"
-                exit 1
-            fi
-
-            # Wait for Docker daemon to be ready
-            echo -n "  Waiting for Docker daemon"
-            local max_wait=60
-            local waited=0
-
-            while ! docker info &> /dev/null 2>&1; do
-                if [ $waited -ge $max_wait ]; then
-                    echo ""
-                    echo -e "${RED}Error: Docker failed to start after ${max_wait}s${NC}"
-                    echo "Please check Docker Desktop and try again"
-                    echo ""
-                    echo "Troubleshooting:"
-                    echo "  1. Check if Docker Desktop is installed"
-                    echo "  2. Try starting Docker Desktop manually"
-                    echo "  3. Check system resources (CPU, memory)"
-                    echo "  4. Set AUTO_START_DOCKER=false to disable auto-start"
-                    exit 1
-                fi
-
-                echo -n "."
-                sleep 2
-                waited=$((waited + 2))
-            done
-
-            echo ""
-            echo -e "${GREEN}✓ Docker started successfully (${waited}s)${NC}"
-
-            # Give Docker a moment to stabilize
-            sleep 3
-        else
-            echo -e "${RED}Error: Docker daemon not running${NC}"
-            echo "Please start Docker Desktop or set AUTO_START_DOCKER=true in .env"
-            exit 1
-        fi
-    fi
-}
-
 check_ports() {
     local ports=("8002" "8004" "$FRONTEND_PORT")
     local port_names=("Worker" "Research API" "Frontend")
@@ -160,16 +86,6 @@ check_ports() {
             print_status "$name port $port" "warn" "Already in use by PID $pid"
         fi
     done
-}
-
-start_docker_services() {
-    echo -e "\n${CYAN}Starting Docker services...${NC}\n"
-
-    cd "$COMPOSE_DIR"
-    docker-compose up -d
-    cd "$PROJECT_ROOT"
-
-    echo -e "  ${GREEN}✓${NC} Docker services started"
 }
 
 start_native_worker() {
@@ -473,26 +389,21 @@ show_summary() {
     echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
     echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
 
-    if [ "$MODE" = "gpu" ]; then
-        if [ "$ACTUAL_DEVICE" = "mps" ]; then
-            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
-        elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
-            echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Native (CPU fallback - MPS unavailable)${NC}"
-        else
-            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native${NC}"
-        fi
-        echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
-        echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
-        echo -e "  ${BLUE}ℹ${NC} Frontend waits for worker to be ready (model loading ~10s)"
+    if [ "$ACTUAL_DEVICE" = "mps" ]; then
+        echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
+    elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+        echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Native (CPU fallback - MPS unavailable)${NC}"
+    else
+        echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native${NC}"
     fi
+    echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
+    echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
 
     echo -e "\n${CYAN}Management:${NC}"
     echo -e "  ${GREEN}→${NC} Stop all:      ${YELLOW}./scripts/stop-all.sh${NC}"
     echo -e "  ${GREEN}→${NC} View logs:     ${YELLOW}tail -f logs/*.log${NC}"
 
-    if [ "$MODE" = "gpu" ]; then
-        echo -e "  ${GREEN}→${NC} Worker logs:   ${YELLOW}tail -f logs/worker-native.log${NC}"
-    fi
+    echo -e "  ${GREEN}→${NC} Worker logs:   ${YELLOW}tail -f logs/worker-native.log${NC}"
 
     echo ""
 }
@@ -505,14 +416,12 @@ ${YELLOW}Usage:${NC}
   ./scripts/start-all.sh [options]
 
 ${YELLOW}Options:${NC}
-  --gpu          Run worker natively with Metal GPU (default, 10-20x faster)
   --no-vision    Disable vision mode (skip ngrok tunnel)
   --help         Show this help message
 
 ${YELLOW}Examples:${NC}
-  # Start with Metal GPU and vision mode (default)
+  # Start all services (default)
   ./scripts/start-all.sh
-  ./scripts/start-all.sh --gpu
 
   # Start without vision mode (no ngrok)
   ./scripts/start-all.sh --no-vision
@@ -529,7 +438,6 @@ ${YELLOW}Vision Mode:${NC}
   - Use --no-vision to disable and skip ngrok
 
 ${YELLOW}Requirements:${NC}
-  - Docker Desktop running (for auxiliary services)
   - Run './scripts/run-worker-native.sh setup' first
   - For vision mode: ngrok installed and configured (optional)
 
@@ -553,14 +461,10 @@ for arg in "$@"; do
             show_help
             exit 0
             ;;
-        --gpu|gpu)
-            MODE="gpu"
-            ;;
-        --cpu|cpu)
-            MODE="gpu"  # CPU-only Docker mode removed; always use native worker
-            ;;
+        --gpu|gpu|--cpu|cpu)
+            ;; # All modes run natively now
         --docker-only)
-            MODE="docker-only"
+            echo -e "${YELLOW}Docker mode removed — all services run natively now.${NC}"
             ;;
         --no-vision)
             VISION_ENABLED=false
@@ -575,11 +479,6 @@ for arg in "$@"; do
     esac
 done
 
-# Set default mode if not specified
-if [ -z "$MODE" ] || [ "$MODE" = "true" ]; then
-    MODE="gpu"
-fi
-
 # Create logs directory
 mkdir -p logs
 
@@ -587,28 +486,15 @@ mkdir -p logs
 print_header
 
 echo -e "${CYAN}Mode:${NC} "
-case "$MODE" in
-    gpu)
-        echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
-        ;;
-    docker-only)
-        echo -e "${BLUE}Docker services only (no worker)${NC}\n"
-        ;;
-esac
+echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
 
 # Pre-flight checks
 echo -e "${CYAN}Pre-flight checks...${NC}\n"
-check_docker
-print_status "Docker" "ok" "Running"
-
 check_ports
 echo ""
 
 # Start services
-start_docker_services
-
-if [ "$MODE" = "gpu" ]; then
-    start_native_worker
+start_native_worker
 
     # Wait for worker to be fully ready before starting ngrok
     if [ "$VISION_ENABLED" = true ]; then
@@ -625,28 +511,18 @@ if [ "$MODE" = "gpu" ]; then
         done
     fi
 
-    start_ngrok  # Start ngrok after worker is ready
-    start_research_api
-    start_frontend
-elif [ "$MODE" = "docker-only" ]; then
-    print_status "Worker" "info" "Skipped (--docker-only mode)"
-    print_status "Ngrok" "info" "Skipped (--docker-only mode)"
-    print_status "Research API" "info" "Skipped (--docker-only mode)"
-    print_status "Frontend" "info" "Skipped (--docker-only mode)"
-fi
+start_ngrok  # Start ngrok after worker is ready
+start_research_api
+start_frontend
 
 # Show summary
 show_summary
 
 # Final message
-if [ "$MODE" = "gpu" ]; then
-    if [ "$ACTUAL_DEVICE" = "mps" ]; then
-        echo -e "${GREEN}🚀 DocuSearch is running with Metal GPU acceleration!${NC}\n"
-    elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
-        echo -e "${YELLOW}🚀 DocuSearch is running (CPU mode - MPS unavailable)${NC}\n"
-    else
-        echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
-    fi
+if [ "$ACTUAL_DEVICE" = "mps" ]; then
+    echo -e "${GREEN}DocuSearch is running with Metal GPU acceleration!${NC}\n"
+elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+    echo -e "${YELLOW}DocuSearch is running (CPU mode - MPS unavailable)${NC}\n"
 else
-    echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
+    echo -e "${GREEN}DocuSearch is running!${NC}\n"
 fi
