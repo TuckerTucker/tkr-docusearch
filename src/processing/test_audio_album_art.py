@@ -148,7 +148,7 @@ class TestMetadataExtension:
     @pytest.fixture
     def mock_chroma_client(self):
         """Mock ChromaDB client with test data."""
-        with patch("src.processing.documents_api.get_chroma_client") as mock_get:
+        with patch("src.processing.documents_api.get_storage_client") as mock_get:
             mock_client = Mock()
 
             # Mock visual collection
@@ -217,7 +217,7 @@ class TestMetadataExtension:
         """Test metadata for non-audio documents (no album art)."""
         test_doc_id = "test-pdf-12345678"
 
-        with patch("src.processing.documents_api.get_chroma_client") as mock_get:
+        with patch("src.processing.documents_api.get_storage_client") as mock_get:
             mock_client = Mock()
 
             # Mock visual collection (PDF pages)

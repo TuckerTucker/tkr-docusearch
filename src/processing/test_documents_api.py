@@ -152,10 +152,10 @@ def test_list_documents_structure(client, monkeypatch):
     mock_client._visual_collection = mock_visual
     mock_client._text_collection = mock_text
 
-    # Monkey patch get_chroma_client
+    # Monkey patch get_storage_client
     import src.processing.documents_api as api_module
 
-    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
+    monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
     response = client.get("/documents")
 
@@ -184,7 +184,7 @@ def test_list_documents_pagination(client, monkeypatch):
 
     import src.processing.documents_api as api_module
 
-    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
+    monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
     response = client.get("/documents?limit=10&offset=5")
 
@@ -260,7 +260,7 @@ def test_get_document_success(client, monkeypatch):
 
     import src.processing.documents_api as api_module
 
-    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
+    monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
     response = client.get(f"/documents/{doc_id}")
 
@@ -289,7 +289,7 @@ def test_get_document_not_found(client, monkeypatch):
 
     import src.processing.documents_api as api_module
 
-    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
+    monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
     response = client.get("/documents/nonexistent-doc-id-12345")
 
@@ -417,7 +417,7 @@ def test_full_workflow(client, monkeypatch, temp_image_dir):
 
     import src.processing.documents_api as api_module
 
-    monkeypatch.setattr(api_module, "get_chroma_client", lambda: mock_client)
+    monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
     # Step 1: List documents
     response = client.get("/documents")

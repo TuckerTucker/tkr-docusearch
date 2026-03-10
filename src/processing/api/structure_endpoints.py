@@ -243,7 +243,7 @@ def parse_chunk_id(chunk_id: str) -> tuple[str, int]:
     return doc_id, chunk_num
 
 
-def get_chroma_client() -> KojiClient:
+def get_storage_client() -> KojiClient:
     """Get Koji storage client instance.
 
     Returns:
@@ -337,7 +337,7 @@ async def get_page_structure(doc_id: str, page: int):
         )
 
     try:
-        client = get_chroma_client()
+        client = get_storage_client()
 
         # Query page from Koji by ID
         page_id = f"{doc_id}-page{page:03d}"
@@ -558,7 +558,7 @@ async def get_chunk_context(doc_id: str, chunk_id: str):
                 },
             )
 
-        client = get_chroma_client()
+        client = get_storage_client()
 
         # Query chunk from Koji by ID
         chunk_data = client.get_chunk(full_chunk_id)
