@@ -83,24 +83,22 @@ export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH}"
 check_metal() {
     echo -e "${BLUE}Checking Metal/MPS availability...${NC}"
 
-    # Use venv Python with absolute path
+    # Try venv Python first, fall back to system Python
     local VENV_PYTHON="${PROJECT_ROOT}/${VENV_DIR}/bin/python"
+    local CHECK_PYTHON=""
 
-    if [ ! -f "$VENV_PYTHON" ]; then
-        echo -e "${RED}Error: Venv Python not found at $VENV_PYTHON${NC}"
-        echo -e "${YELLOW}Run './scripts/run-worker-native.sh setup' first${NC}"
+    if [ -f "$VENV_PYTHON" ] && "$VENV_PYTHON" -c "import torch" 2>/dev/null; then
+        CHECK_PYTHON="$VENV_PYTHON"
+    elif python3 -c "import torch" 2>/dev/null; then
+        CHECK_PYTHON="python3"
+    else
+        echo -e "${YELLOW}PyTorch not found. Cannot check MPS availability.${NC}"
         return 1
     fi
 
-    # Check if PyTorch is installed in venv
-    if ! "$VENV_PYTHON" -c "import torch" 2>/dev/null; then
-        echo -e "${YELLOW}PyTorch not installed in venv. Run './scripts/run-worker-native.sh setup' first${NC}"
-        return 1
-    fi
-
-    # Check MPS availability using venv Python
-    MPS_AVAILABLE=$("$VENV_PYTHON" -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
-    MPS_BUILT=$("$VENV_PYTHON" -c "import torch; print(torch.backends.mps.is_built())" 2>/dev/null)
+    # Check MPS availability
+    MPS_AVAILABLE=$("$CHECK_PYTHON" -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
+    MPS_BUILT=$("$CHECK_PYTHON" -c "import torch; print(torch.backends.mps.is_built())" 2>/dev/null)
 
     echo -e "  MPS Available: ${GREEN}${MPS_AVAILABLE}${NC}"
     echo -e "  MPS Built: ${GREEN}${MPS_BUILT}${NC}"

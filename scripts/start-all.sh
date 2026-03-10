@@ -92,8 +92,7 @@ start_native_worker() {
     # Check Metal availability first
     echo -e "\n${CYAN}Checking Metal/MPS availability...${NC}\n"
 
-    # Use the check from run-worker-native.sh
-    if ./scripts/run-worker-native.sh check > /dev/null 2>&1; then
+    if python3 -c "import torch; exit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null; then
         ACTUAL_DEVICE="mps"
         echo -e "${GREEN}✓ Metal/MPS available - using GPU acceleration${NC}\n"
         echo -e "\n${CYAN}Starting native worker with Metal GPU...${NC}\n"
@@ -102,13 +101,6 @@ start_native_worker() {
         echo -e "${YELLOW}⚠ Metal/MPS not available - falling back to CPU${NC}"
         echo -e "${YELLOW}Note: Worker will run in CPU mode (slower)${NC}\n"
         echo -e "\n${CYAN}Starting native worker (CPU mode)...${NC}\n"
-    fi
-
-    # Check if virtual environment exists
-    if [ ! -d ".venv-native" ]; then
-        echo -e "${YELLOW}Virtual environment not found. Running setup...${NC}\n"
-        ./scripts/run-worker-native.sh setup
-        echo ""
     fi
 
     # Check if worker is already running
