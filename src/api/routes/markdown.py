@@ -99,7 +99,7 @@ async def download_markdown(doc_id: str):
         )
 
     try:
-        # Step 2: Query ChromaDB visual collection for metadata (page 1)
+        # Step 2: Query Koji visual collection for metadata (page 1)
         logger.info(f"Querying markdown metadata for doc_id: {doc_id}")
 
         visual_results = _storage_client.search_visual(

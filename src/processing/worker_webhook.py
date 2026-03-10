@@ -2,7 +2,7 @@
 Document Processing Worker for DocuSearch MVP - Webhook Version.
 
 HTTP server that processes documents when triggered by copyparty webhook.
-Extracts text, generates embeddings, and stores in ChromaDB.
+Extracts text, generates embeddings, and stores in Koji.
 """
 
 import asyncio
@@ -66,8 +66,6 @@ logger.setLevel(logging.DEBUG)  # Ensure this logger also captures DEBUG
 # ============================================================================
 
 UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "uploads")))
-CHROMA_HOST = os.getenv("CHROMA_HOST", "chromadb")
-CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
@@ -105,7 +103,6 @@ _urls = get_service_urls()
 allowed_origins = [
     _urls.frontend,
     _urls.copyparty,
-    _urls.chromadb,
     _urls.worker,
 ]
 app.add_middleware(
@@ -161,7 +158,7 @@ class ProcessResponse(BaseModel):
 
 
 class DeleteRequest(BaseModel):
-    """Request to delete a document from ChromaDB."""
+    """Request to delete a document from Koji."""
 
     file_path: str
     filename: str
@@ -524,10 +521,10 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 @app.post("/delete", response_model=DeleteResponse)
 async def delete_document(request: DeleteRequest):
     """
-    Delete a document from ChromaDB and filesystem.
+    Delete a document from Koji and filesystem.
 
     Performs comprehensive cleanup:
-    1. Deletes embeddings from ChromaDB (visual + text collections)
+    1. Deletes document and related data from Koji (cascades to pages, chunks, relations)
     2. Deletes page images and thumbnails from filesystem
     3. Deletes cover art (for audio files)
     4. Deletes extracted markdown files
@@ -629,12 +626,12 @@ async def delete_document(request: DeleteRequest):
         )
         logger.info(
             f"✓ Comprehensive cleanup completed for {doc_id}: "
-            f"ChromaDB={visual_count + text_count}, "
+            f"Koji={visual_count + text_count}, "
             f"filesystem={total_filesystem_items} items"
         )
 
         return DeleteResponse(
-            message=f"Deleted {request.filename} completely (ChromaDB + filesystem)",
+            message=f"Deleted {request.filename} completely (Koji + filesystem)",
             doc_id=doc_id,
             visual_deleted=visual_count,
             text_deleted=text_count,
@@ -899,7 +896,6 @@ async def startup_event():
     # Log configuration
     logger.info(f"Configuration:")
     logger.info(f"  Uploads Directory: {UPLOADS_DIR}")
-    logger.info(f"  ChromaDB: {CHROMA_HOST}:{CHROMA_PORT}")
     logger.info(f"  Device: {DEVICE}")
     logger.info(f"  Precision: {PRECISION}")
     logger.info(f"  Worker Port: {WORKER_PORT}")

@@ -7,7 +7,6 @@ and provides convenient properties and methods for building service-specific URL
 
 Environment Variables:
     WORKER_URL: Processing worker base URL (default: http://localhost:8002)
-    CHROMADB_URL: ChromaDB server URL (default: http://localhost:8001)
     RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
     COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
     FRONTEND_URL: Frontend application URL (default: http://localhost:42887)
@@ -40,7 +39,6 @@ class ServiceURLs:
 
     Attributes:
         worker: Processing worker base URL
-        chromadb: ChromaDB server base URL
         research_api: Research API base URL
         copyparty: Copyparty file server base URL
         frontend: Frontend application base URL
@@ -50,7 +48,6 @@ class ServiceURLs:
         """Initialize service URLs from environment variables."""
         # Service base URLs
         self.worker = os.getenv("WORKER_URL", "http://localhost:8002")
-        self.chromadb = os.getenv("CHROMADB_URL", "http://localhost:8001")
         self.research_api = os.getenv("RESEARCH_API_URL", "http://localhost:8004")
         self.copyparty = os.getenv("COPYPARTY_URL", "http://localhost:8000")
         self.frontend = os.getenv("FRONTEND_URL", "http://localhost:42887")
@@ -58,7 +55,7 @@ class ServiceURLs:
         # Log configuration on initialization
         logger.debug(
             f"Initialized ServiceURLs: worker={self.worker}, "
-            f"chromadb={self.chromadb}, research_api={self.research_api}, "
+            f"research_api={self.research_api}, "
             f"copyparty={self.copyparty}, frontend={self.frontend}"
         )
 
@@ -90,20 +87,6 @@ class ServiceURLs:
     def worker_document_structure(self) -> str:
         """Worker document structure endpoint URL."""
         return urljoin(self.worker, "/document-structure")
-
-    # =========================================================================
-    # ChromaDB Endpoints
-    # =========================================================================
-
-    @property
-    def chromadb_heartbeat(self) -> str:
-        """ChromaDB heartbeat endpoint URL."""
-        return urljoin(self.chromadb, "/api/v1/heartbeat")
-
-    @property
-    def chromadb_collections(self) -> str:
-        """ChromaDB collections endpoint URL."""
-        return urljoin(self.chromadb, "/api/v1/collections")
 
     # =========================================================================
     # Research API Endpoints

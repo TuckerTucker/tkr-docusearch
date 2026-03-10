@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DocuSearch - Copyparty Delete Event Hook
-Triggers ChromaDB deletion via HTTP webhook when files are deleted.
+Triggers Koji deletion via HTTP webhook when files are deleted.
 
 Simplified version for --xad flag which only provides file path.
 """
@@ -84,7 +84,7 @@ def main():
             print(f"✓ Deletion complete: {filename}")
             print(f"  Doc ID: {result.get('doc_id', 'unknown')}")
             print(f"")
-            print(f"  ChromaDB Cleanup:")
+            print(f"  Koji Cleanup:")
             print(f"    • Visual embeddings: {result.get('visual_deleted', 0)}")
             print(f"    • Text embeddings: {result.get('text_deleted', 0)}")
             print(f"")
@@ -95,7 +95,7 @@ def main():
             print(f"    • Temp directories: {result.get('temp_dirs_cleaned', 0)}")
 
             # Calculate totals
-            total_chromadb = result.get("visual_deleted", 0) + result.get("text_deleted", 0)
+            total_koji = result.get("visual_deleted", 0) + result.get("text_deleted", 0)
             total_filesystem = (
                 result.get("page_images_deleted", 0)
                 + result.get("cover_art_deleted", 0)
@@ -103,7 +103,7 @@ def main():
                 + result.get("temp_dirs_cleaned", 0)
             )
             print(f"")
-            print(f"  Total: {total_chromadb} ChromaDB items, {total_filesystem} filesystem items")
+            print(f"  Total: {total_koji} Koji items, {total_filesystem} filesystem items")
             return 0
 
     except urllib.error.HTTPError as e:

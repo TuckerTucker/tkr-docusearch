@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 API_VERSION = "1.0.0"
 API_TITLE = "DocuSearch API"
 API_DESCRIPTION = """
-DocuSearch MVP - Semantic document search with ColPali embeddings.
+DocuSearch MVP - Semantic document search with Shikomi embeddings.
 
 ## Features
 
@@ -209,7 +209,7 @@ async def get_status():
     if _app_state["embedding_engine"]:
         components.append(
             ComponentHealth(
-                name="embedding_engine", status="healthy", message="ColPali model loaded and ready"
+                name="embedding_engine", status="healthy", message="Shikomi embedding engine loaded and ready"
             )
         )
     else:
@@ -291,7 +291,7 @@ async def get_status():
     response_model=SearchResponse,
     summary="Search Documents",
     description="""
-    Semantic search across indexed documents using ColPali multi-vector embeddings.
+    Semantic search across indexed documents using Shikomi multi-vector embeddings.
 
     **Two-Stage Search Pipeline:**
     1. **Fast Retrieval**: HNSW index search with representative vectors (~50ms)
@@ -482,7 +482,7 @@ async def get_status():
                     "examples": {
                         "search_execution_error": {
                             "summary": "Search execution failed",
-                            "value": {"detail": "Search failed: ChromaDB connection timeout"},
+                            "value": {"detail": "Search failed: database connection timeout"},
                         }
                     }
                 }

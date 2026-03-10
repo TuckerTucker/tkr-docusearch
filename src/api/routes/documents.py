@@ -288,13 +288,13 @@ async def get_document(doc_id: str) -> DocumentAPIResponse:
 @router.delete(
     "/document/{doc_id}",
     summary="Delete document",
-    description="Delete a document and all its embeddings from ChromaDB"
+    description="Delete a document and all its embeddings from Koji"
 )
 async def delete_document(doc_id: str) -> dict:
     """
     Delete a document by ID.
 
-    Removes all visual and text embeddings from ChromaDB and removes from status tracking.
+    Removes all data from Koji (cascades to pages, chunks, relations) and removes from status tracking.
 
     Args:
         doc_id: Document SHA-256 hash
