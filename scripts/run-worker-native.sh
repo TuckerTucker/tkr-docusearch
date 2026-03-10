@@ -147,8 +147,8 @@ setup_venv() {
 run_worker() {
     echo -e "${BLUE}Starting worker with Metal/MPS...${NC}"
 
-    # Activate virtual environment if it exists
-    if [ -d "$VENV_DIR" ]; then
+    # Activate virtual environment only if it has the package installed
+    if [ -d "$VENV_DIR" ] && "$VENV_DIR/bin/python" -c "import tkr_docusearch" 2>/dev/null; then
         source "$VENV_DIR/bin/activate"
     fi
 
@@ -180,11 +180,11 @@ run_worker() {
     echo ""
 
     cd "$PROJECT_ROOT"
-    # Use venv Python if available, otherwise fall back to $PYTHON
-    if [ -f "$VENV_DIR/bin/python" ]; then
+    # Use venv Python if it has the package, otherwise system Python
+    if [ -f "$VENV_DIR/bin/python" ] && "$VENV_DIR/bin/python" -c "import tkr_docusearch" 2>/dev/null; then
         exec "$VENV_DIR/bin/python" -m tkr_docusearch.processing.worker_webhook
     else
-        exec $PYTHON -m tkr_docusearch.processing.worker_webhook
+        exec python3 -m tkr_docusearch.processing.worker_webhook
     fi
 }
 
