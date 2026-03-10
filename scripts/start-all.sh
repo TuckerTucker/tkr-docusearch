@@ -73,6 +73,35 @@ print_status() {
     fi
 }
 
+check_infrastructure() {
+    echo -e "${CYAN}Infrastructure:${NC}\n"
+
+    # Koji database
+    local koji_path="${KOJI_DB_PATH:-data/koji.db}"
+    if [ -e "$koji_path" ]; then
+        print_status "Koji DB" "ok" "Found at $koji_path"
+    else
+        print_status "Koji DB" "info" "Will be created at $koji_path on first use"
+    fi
+
+    # Shikomi embedding service
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    local shikomi_host="${shikomi_target%%:*}"
+    local shikomi_port="${shikomi_target##*:}"
+
+    if python3 -c "
+import socket; s = socket.socket(); s.settimeout(2)
+s.connect(('$shikomi_host', $shikomi_port)); s.close()
+" 2>/dev/null; then
+        print_status "Shikomi" "ok" "Embedding service reachable at $shikomi_target"
+    else
+        print_status "Shikomi" "warn" "Not reachable at $shikomi_target (embeddings will fail)"
+        echo -e "    ${BLUE}→${NC} Start Shikomi or set SHIKOMI_GRPC_TARGET in .env"
+    fi
+
+    echo ""
+}
+
 check_ports() {
     local ports=("8002" "8004" "$FRONTEND_PORT")
     local port_names=("Worker" "Research API" "Frontend")
@@ -375,11 +404,28 @@ show_summary() {
     echo -e "\n${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
-    echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:$FRONTEND_PORT${NC} (React 19)"
-    echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
-    echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
-    echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
+    echo -e "\n${CYAN}Services:${NC}"
+    echo -e "  ${GREEN}→${NC} Frontend:     ${BLUE}http://localhost:$FRONTEND_PORT${NC}"
+    echo -e "  ${GREEN}→${NC} Worker API:   ${BLUE}http://localhost:8002${NC}"
+    echo -e "  ${GREEN}→${NC} Research API: ${BLUE}http://localhost:8004${NC}"
+
+    echo -e "\n${CYAN}Infrastructure:${NC}"
+    local koji_path="${KOJI_DB_PATH:-data/koji.db}"
+    if [ -e "$koji_path" ]; then
+        echo -e "  ${GREEN}→${NC} Koji DB:     ${koji_path}"
+    else
+        echo -e "  ${YELLOW}→${NC} Koji DB:     ${koji_path} (will create on first use)"
+    fi
+
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    if python3 -c "
+import socket; s = socket.socket(); s.settimeout(1)
+s.connect(('${shikomi_target%%:*}', ${shikomi_target##*:})); s.close()
+" 2>/dev/null; then
+        echo -e "  ${GREEN}→${NC} Shikomi:     ${shikomi_target} (connected)"
+    else
+        echo -e "  ${YELLOW}→${NC} Shikomi:     ${shikomi_target} (not reachable)"
+    fi
 
     if [ "$ACTUAL_DEVICE" = "mps" ]; then
         echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
@@ -482,6 +528,7 @@ echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
 
 # Pre-flight checks
 echo -e "${CYAN}Pre-flight checks...${NC}\n"
+check_infrastructure
 check_ports
 echo ""
 
