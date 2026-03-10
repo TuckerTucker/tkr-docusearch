@@ -33,7 +33,10 @@ data/vtt/*
 # Downloaded models (14GB+)
 data/models/
 
-# ChromaDB vector database
+# Koji database
+data/koji.db/
+
+# ChromaDB vector database (legacy)
 data/chroma_db/
 
 # Application logs
@@ -148,6 +151,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-native/
 env/
 venv/
 ENV/
@@ -296,3 +300,4 @@ test_outputs/
 !setup.py
 !README.md
 !LICENSE
+bin/

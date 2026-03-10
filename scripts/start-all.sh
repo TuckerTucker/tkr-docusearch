@@ -44,6 +44,8 @@ ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
+SHIKOMI_PID_FILE="${PROJECT_ROOT}/.shikomi.pid"
+SHIKOMI_BINARY="${PROJECT_ROOT}/bin/shikomi-worker"
 VISION_ENABLED=true  # Vision mode enabled by default
 
 # ============================================================================
@@ -115,6 +117,78 @@ check_ports() {
             print_status "$name port $port" "warn" "Already in use by PID $pid"
         fi
     done
+}
+
+start_shikomi() {
+    echo -e "\n${CYAN}Starting Shikomi embedding service...${NC}\n"
+
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    local shikomi_host="${shikomi_target%%:*}"
+    local shikomi_port="${shikomi_target##*:}"
+
+    # Check if already running
+    if python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('$shikomi_host', $shikomi_port)); s.close()" 2>/dev/null; then
+        print_status "Shikomi" "ok" "Already running at $shikomi_target"
+        return
+    fi
+
+    # Check if binary exists
+    if [ ! -x "$SHIKOMI_BINARY" ]; then
+        print_status "Shikomi" "warn" "Binary not found at $SHIKOMI_BINARY"
+        echo -e "    ${BLUE}→${NC} Build: cd tkr-koji && cargo build --release --features server -p shikomi"
+        echo -e "    ${BLUE}→${NC} Copy:  cp target/release/shikomi-worker ${SHIKOMI_BINARY}"
+        return
+    fi
+
+    # Check for stale PID
+    if [ -f "$SHIKOMI_PID_FILE" ]; then
+        local old_pid=$(cat "$SHIKOMI_PID_FILE")
+        if ps -p "$old_pid" > /dev/null 2>&1; then
+            print_status "Shikomi" "warn" "Already running (PID: $old_pid)"
+            return
+        else
+            rm -f "$SHIKOMI_PID_FILE"
+        fi
+    fi
+
+    # Determine mode: use --mock unless SHIKOMI_USE_MOCK=false
+    local mock_flag="--mock"
+    if [ "${SHIKOMI_USE_MOCK:-true}" = "false" ]; then
+        mock_flag=""
+    fi
+
+    # Start shikomi
+    # shikomi-worker expects IP address, not hostname
+    local listen_addr="$shikomi_host"
+    if [ "$listen_addr" = "localhost" ]; then
+        listen_addr="127.0.0.1"
+    fi
+    nohup "$SHIKOMI_BINARY" --listen "$listen_addr:$shikomi_port" $mock_flag > logs/shikomi.log 2>&1 &
+    local shikomi_pid=$!
+    echo $shikomi_pid > "$SHIKOMI_PID_FILE"
+
+    # Wait for it to be reachable
+    local count=0
+    local max_wait=5
+    while [ $count -lt $max_wait ]; do
+        if python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('$shikomi_host', $shikomi_port)); s.close()" 2>/dev/null; then
+            if [ -n "$mock_flag" ]; then
+                print_status "Shikomi" "ok" "Running in mock mode at $shikomi_target (PID: $shikomi_pid)"
+            else
+                print_status "Shikomi" "ok" "Running at $shikomi_target (PID: $shikomi_pid)"
+            fi
+            return
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    if ps -p "$shikomi_pid" > /dev/null 2>&1; then
+        print_status "Shikomi" "warn" "Started but not yet reachable (check logs/shikomi.log)"
+    else
+        print_status "Shikomi" "error" "Failed to start (check logs/shikomi.log)"
+        rm -f "$SHIKOMI_PID_FILE"
+    fi
 }
 
 start_native_worker() {
@@ -533,6 +607,7 @@ check_ports
 echo ""
 
 # Start services
+start_shikomi
 start_native_worker
 
     # Wait for worker to be fully ready before starting ngrok
