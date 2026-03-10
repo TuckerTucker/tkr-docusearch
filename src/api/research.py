@@ -18,7 +18,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from tkr_docusearch.config.urls import get_service_urls
-from tkr_docusearch.embeddings.colpali_wrapper import ColPaliEngine
+from tkr_docusearch.config.koji_config import KojiConfig, ShikomiConfig
+from tkr_docusearch.embeddings.shikomi_client import ShikomiClient
 from tkr_docusearch.research.citation_parser import CitationParser
 from tkr_docusearch.research.context_builder import ContextBuilder
 from tkr_docusearch.research.litellm_client import (
@@ -31,8 +32,8 @@ from tkr_docusearch.research.litellm_client import (
     TimeoutError,
 )
 from tkr_docusearch.research.prompts import RESEARCH_SYSTEM_PROMPT
-from tkr_docusearch.search.search_engine import SearchEngine
-from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.search.koji_search import KojiSearch
+from tkr_docusearch.storage.koji_client import KojiClient
 from tkr_docusearch.utils.url_builder import build_details_url
 
 logger = structlog.get_logger(__name__)
@@ -197,26 +198,27 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager - startup and shutdown"""
     logger.info("Initializing research API components")
 
-    # Initialize ChromaDB
-    chroma_host = os.getenv("CHROMA_HOST", "localhost")
-    chroma_port = int(os.getenv("CHROMA_PORT", 8001))
+    # Initialize Koji database
+    koji_config = KojiConfig.from_env()
+    koji_client = KojiClient(koji_config)
+    koji_client.open()
+    app.state.koji_client = koji_client
 
-    app.state.chroma_client = ChromaClient(host=chroma_host, port=chroma_port)
-
-    # Initialize ColPali embedding engine
-    app.state.embedding_engine = ColPaliEngine(
-        model_name=os.getenv("MODEL_NAME", "vidore/colpali-v1.2"), device=os.getenv("DEVICE", "mps")
-    )
+    # Initialize Shikomi embedding engine
+    shikomi_config = ShikomiConfig.from_env()
+    shikomi_client = ShikomiClient(shikomi_config)
+    shikomi_client.connect()
+    app.state.embedding_engine = shikomi_client
 
     # Initialize search engine
-    app.state.search_engine = SearchEngine(
-        storage_client=app.state.chroma_client, embedding_engine=app.state.embedding_engine
+    app.state.search_engine = KojiSearch(
+        koji_client=koji_client, shikomi_client=shikomi_client
     )
 
     # Initialize context builder
     app.state.context_builder = ContextBuilder(
         search_engine=app.state.search_engine,
-        chroma_client=app.state.chroma_client,
+        storage_client=koji_client,
         max_sources=10,
         max_tokens=10000,
     )
@@ -280,13 +282,17 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down research API")
+    if hasattr(app.state, "embedding_engine") and app.state.embedding_engine:
+        app.state.embedding_engine.close()
+    if hasattr(app.state, "koji_client") and app.state.koji_client:
+        app.state.koji_client.close()
 
 
 # Create FastAPI app
 app = FastAPI(
     title="DocuSearch Research API",
     version="1.0.0",
-    description="AI-powered document search with citations",
+    description="AI-powered document search with c4288ions",
     lifespan=lifespan,
 )
 
@@ -978,23 +984,24 @@ async def health_check():
         }
     """
     try:
-        # Check ChromaDB
-        chroma_healthy = app.state.chroma_client.heartbeat()
+        # Check Koji database
+        koji_health = app.state.koji_client.health_check()
+        koji_healthy = koji_health.get("connected", False)
 
-        # Check search engine (always healthy if ChromaDB is)
+        # Check search engine (always healthy if Koji is)
         search_healthy = True
 
         # Check LLM client (basic check)
-        llm_healthy = True  # Could do a test completion
+        llm_healthy = True
 
         overall_status = (
-            "healthy" if all([chroma_healthy, llm_healthy, search_healthy]) else "unhealthy"
+            "healthy" if all([koji_healthy, llm_healthy, search_healthy]) else "unhealthy"
         )
 
         return HealthResponse(
             status=overall_status,
             components={
-                "chromadb": "healthy" if chroma_healthy else "unhealthy",
+                "koji": "healthy" if koji_healthy else "unhealthy",
                 "llm_client": "healthy" if llm_healthy else "unhealthy",
                 "search_engine": "healthy" if search_healthy else "unhealthy",
             },
@@ -1005,7 +1012,7 @@ async def health_check():
         return HealthResponse(
             status="unhealthy",
             components={
-                "chromadb": "unhealthy",
+                "koji": "unhealthy",
                 "llm_client": "unknown",
                 "search_engine": "unknown",
             },

@@ -1,0 +1,974 @@
+"""
+Koji database client for DocuSearch.
+
+This module provides the primary interface between DocuSearch and the Koji
+hybrid database (SQL + vector + graph). It replaces ChromaDB for vector
+storage and Copyparty for file storage.
+
+All persistence operations flow through this client. It handles:
+- Connection lifecycle (open, close, sync)
+- Schema synchronization with foreign key registration
+- Document, page, and chunk CRUD operations
+- PyArrow conversion for Koji insert operations
+- Multi-vector embedding binary packing/unpacking
+"""
+
+from __future__ import annotations
+
+import json
+import struct
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pyarrow as pa
+import structlog
+import koji
+from koji._koji import ForeignKey
+
+from ..config.koji_config import KojiConfig
+
+logger = structlog.get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+class KojiClientError(Exception):
+    """Base exception for Koji client operations."""
+
+
+class KojiConnectionError(KojiClientError):
+    """Failed to connect to or operate on the Koji database."""
+
+
+class KojiQueryError(KojiClientError):
+    """SQL query execution failed."""
+
+
+class KojiDuplicateError(KojiClientError):
+    """Attempted to insert a duplicate primary key."""
+
+
+# ---------------------------------------------------------------------------
+# Schema Definition
+# ---------------------------------------------------------------------------
+
+DOCUSEARCH_SCHEMA: dict = {
+    # NOTE: nullable is left as default (True) because Lance file-based
+    # storage has a bug where delete operations silently fail on columns
+    # marked nullable=False. Nullability is enforced at the application
+    # layer in create_document/insert_pages/insert_chunks instead.
+    "documents": {
+        "columns": {
+            "doc_id": {"type": "text", "primary_key": True},
+            "filename": {"type": "text"},
+            "format": {"type": "text"},
+            "num_pages": {"type": "integer"},
+            "markdown": {"type": "text"},
+            "metadata": {"type": "text"},
+            "created_at": {"type": "text"},
+        },
+    },
+    "pages": {
+        "columns": {
+            "id": {"type": "text", "primary_key": True},
+            "doc_id": {"type": "text"},
+            "page_num": {"type": "integer"},
+            "image": {"type": "binary"},
+            "thumb": {"type": "binary"},
+            "embedding": {"type": "binary"},
+            "structure": {"type": "text"},
+            "width": {"type": "integer"},
+            "height": {"type": "integer"},
+        },
+    },
+    "chunks": {
+        "columns": {
+            "id": {"type": "text", "primary_key": True},
+            "doc_id": {"type": "text"},
+            "page_num": {"type": "integer"},
+            "text": {"type": "text"},
+            "embedding": {"type": "binary"},
+            "context": {"type": "text"},
+            "word_count": {"type": "integer"},
+            "start_time": {"type": "float"},
+            "end_time": {"type": "float"},
+        },
+    },
+    "doc_relations": {
+        "columns": {
+            "src_doc_id": {"type": "text", "primary_key": True},
+            "dst_doc_id": {"type": "text", "primary_key": True},
+            "relation_type": {"type": "text", "primary_key": True},
+            "metadata": {"type": "text"},
+        },
+    },
+}
+
+DOCUSEARCH_FOREIGN_KEYS = [
+    ForeignKey(
+        table="pages",
+        columns=["doc_id"],
+        references_table="documents",
+        references_columns=["doc_id"],
+        on_delete="cascade",
+    ),
+    ForeignKey(
+        table="chunks",
+        columns=["doc_id"],
+        references_table="documents",
+        references_columns=["doc_id"],
+        on_delete="cascade",
+    ),
+    ForeignKey(
+        table="doc_relations",
+        columns=["src_doc_id"],
+        references_table="documents",
+        references_columns=["doc_id"],
+        on_delete="cascade",
+    ),
+    ForeignKey(
+        table="doc_relations",
+        columns=["dst_doc_id"],
+        references_table="documents",
+        references_columns=["doc_id"],
+        on_delete="cascade",
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# Multi-vector packing utilities
+# ---------------------------------------------------------------------------
+
+def pack_multivec(embedding: list[list[float]]) -> bytes:
+    """Pack multi-vector embedding into Koji binary format.
+
+    Format:
+        Header: num_tokens (u32 LE) + dim (u32 LE)
+        Data: num_tokens * dim * f32 values (LE, row-major)
+
+    Args:
+        embedding: List of token vectors, each a list of floats.
+
+    Returns:
+        Packed binary blob compatible with Koji ``<~>`` operator.
+    """
+    num_tokens = len(embedding)
+    dim = len(embedding[0])
+    header = struct.pack("<II", num_tokens, dim)
+    data = struct.pack(
+        f"<{num_tokens * dim}f",
+        *(val for vec in embedding for val in vec),
+    )
+    return header + data
+
+
+def unpack_multivec(blob: bytes) -> list[list[float]]:
+    """Unpack Koji binary format to multi-vector embedding.
+
+    Args:
+        blob: Packed binary blob from Koji.
+
+    Returns:
+        List of token vectors.
+    """
+    num_tokens, dim = struct.unpack("<II", blob[:8])
+    values = struct.unpack(f"<{num_tokens * dim}f", blob[8:])
+    return [list(values[i * dim : (i + 1) * dim]) for i in range(num_tokens)]
+
+
+# ---------------------------------------------------------------------------
+# Client
+# ---------------------------------------------------------------------------
+
+class KojiClient:
+    """Koji database client for DocuSearch.
+
+    Manages the full lifecycle of the Koji database connection and provides
+    typed CRUD operations for documents, pages, and chunks.
+
+    Args:
+        config: Koji database configuration.
+    """
+
+    def __init__(self, config: KojiConfig) -> None:
+        self._config = config
+        self._db: koji.Database | None = None
+        self._write_count: int = 0
+
+    # -- lifecycle -----------------------------------------------------------
+
+    def open(self) -> None:
+        """Open the Koji database and synchronize schema.
+
+        Creates the database file and parent directories if they do not exist.
+        Idempotent — calling open() on an already-open client is a no-op.
+
+        Raises:
+            KojiConnectionError: If the database cannot be opened.
+        """
+        if self._db is not None:
+            return
+
+        try:
+            db_path = Path(self._config.db_path)
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+
+            self._db = koji.open(str(db_path))
+            self._sync_schema()
+
+            logger.info(
+                "koji_client.opened",
+                db_path=str(db_path),
+                tables=self._db.list_tables(),
+            )
+        except Exception as exc:
+            self._db = None
+            raise KojiConnectionError(
+                f"Failed to open Koji database at {self._config.db_path}: {exc}"
+            ) from exc
+
+    def close(self) -> None:
+        """Sync and close the database connection.
+
+        Safe to call even if the database is not open.
+        """
+        if self._db is None:
+            return
+
+        try:
+            self._db.sync()
+            logger.info("koji_client.closed", db_path=self._config.db_path)
+        except Exception as exc:
+            logger.warning("koji_client.close_error", error=str(exc))
+        finally:
+            self._db = None
+            self._write_count = 0
+
+    def sync(self) -> None:
+        """Flush pending writes to disk."""
+        self._require_open()
+        self._db.sync()
+
+    def health_check(self) -> dict[str, Any]:
+        """Return database health status.
+
+        Returns:
+            Dictionary with connection status and table list.
+        """
+        if self._db is None:
+            return {
+                "connected": False,
+                "db_path": self._config.db_path,
+                "tables": [],
+            }
+
+        try:
+            tables = self._db.list_tables()
+            return {
+                "connected": True,
+                "db_path": self._config.db_path,
+                "tables": tables,
+            }
+        except Exception:
+            return {
+                "connected": False,
+                "db_path": self._config.db_path,
+                "tables": [],
+            }
+
+    # -- raw SQL -------------------------------------------------------------
+
+    def query(self, sql: str, params: list[Any] | None = None) -> pa.Table:
+        """Execute a SQL query and return results as a PyArrow Table.
+
+        Args:
+            sql: SQL query string.
+            params: Optional positional parameters (``?`` placeholders).
+
+        Returns:
+            Query results as a PyArrow Table.
+
+        Raises:
+            KojiQueryError: If the query fails.
+        """
+        self._require_open()
+        try:
+            return self._db.query(sql, params or [])
+        except Exception as exc:
+            raise KojiQueryError(f"Query failed: {exc}") from exc
+
+    def insert(self, table: str, data: pa.Table | pa.RecordBatch) -> None:
+        """Insert data into a table.
+
+        Args:
+            table: Target table name.
+            data: PyArrow Table or RecordBatch to insert.
+
+        Raises:
+            KojiQueryError: If the insert fails.
+        """
+        self._require_open()
+        try:
+            self._db.insert(table, data)
+            self._after_write()
+        except Exception as exc:
+            raise KojiQueryError(f"Insert into {table} failed: {exc}") from exc
+
+    # -- document CRUD -------------------------------------------------------
+
+    def create_document(
+        self,
+        doc_id: str,
+        filename: str,
+        format: str,
+        num_pages: int | None = None,
+        markdown: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Create a new document record.
+
+        Args:
+            doc_id: Unique document identifier.
+            filename: Original filename.
+            format: File format extension (e.g. ``pdf``, ``md``).
+            num_pages: Number of pages (optional).
+            markdown: Full document markdown (optional).
+            metadata: Arbitrary metadata dict, stored as JSON (optional).
+
+        Raises:
+            KojiDuplicateError: If ``doc_id`` already exists.
+        """
+        existing = self.get_document(doc_id)
+        if existing is not None:
+            raise KojiDuplicateError(f"Document {doc_id} already exists")
+
+        now = datetime.now(timezone.utc).isoformat()
+        # PKs are non-nullable in Koji; use explicit PA schema to match
+        schema = pa.schema([
+            pa.field("doc_id", pa.string(), nullable=False),
+            pa.field("filename", pa.string()),
+            pa.field("format", pa.string()),
+            pa.field("num_pages", pa.int64()),
+            pa.field("markdown", pa.string()),
+            pa.field("metadata", pa.string()),
+            pa.field("created_at", pa.string()),
+        ])
+        table = pa.table(
+            {
+                "doc_id": [doc_id],
+                "filename": [filename],
+                "format": [format],
+                "num_pages": [num_pages],
+                "markdown": [markdown],
+                "metadata": [json.dumps(metadata) if metadata else None],
+                "created_at": [now],
+            },
+            schema=schema,
+        )
+        self.insert("documents", table)
+
+        logger.info(
+            "koji_client.document_created",
+            doc_id=doc_id,
+            filename=filename,
+            format=format,
+        )
+
+    def get_document(self, doc_id: str) -> dict[str, Any] | None:
+        """Retrieve a document by ID.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Document as a dictionary, or ``None`` if not found.
+        """
+        self._require_open()
+        try:
+            result = self.query(
+                "SELECT * FROM documents WHERE doc_id = ?", [doc_id]
+            )
+            if result.num_rows == 0:
+                return None
+            rows = self._arrow_to_dicts(result, json_fields=["metadata"])
+            return rows[0]
+        except Exception:
+            return None
+
+    def get_document_markdown(self, doc_id: str) -> str | None:
+        """Retrieve the markdown content for a document.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Markdown string or ``None`` if document not found.
+        """
+        doc = self.get_document(doc_id)
+        return doc.get("markdown") if doc else None
+
+    def list_documents(
+        self,
+        format: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List documents with optional format filter.
+
+        Args:
+            format: Filter by file format (optional).
+            limit: Maximum results to return.
+            offset: Number of results to skip.
+
+        Returns:
+            List of document dictionaries ordered by ``created_at`` descending.
+        """
+        if format:
+            result = self.query(
+                "SELECT * FROM documents WHERE format = ? "
+                "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                [format, limit, offset],
+            )
+        else:
+            result = self.query(
+                "SELECT * FROM documents ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                [limit, offset],
+            )
+        return self._arrow_to_dicts(result, json_fields=["metadata"])
+
+    def update_document(self, doc_id: str, **fields: Any) -> None:
+        """Update fields on an existing document.
+
+        Args:
+            doc_id: Document identifier.
+            **fields: Fields to update (must be valid column names).
+
+        Raises:
+            ValueError: If no fields provided or invalid field name.
+        """
+        if not fields:
+            raise ValueError("No fields to update")
+
+        valid_columns = {"filename", "format", "num_pages", "markdown", "metadata"}
+        invalid = set(fields.keys()) - valid_columns
+        if invalid:
+            raise ValueError(f"Invalid document fields: {invalid}")
+
+        set_clauses = []
+        params: list[Any] = []
+        for key, value in fields.items():
+            set_clauses.append(f"{key} = ?")
+            if key == "metadata" and isinstance(value, dict):
+                params.append(json.dumps(value))
+            else:
+                params.append(value)
+
+        params.append(doc_id)
+        sql = f"UPDATE documents SET {', '.join(set_clauses)} WHERE doc_id = ?"
+
+        # Koji doesn't have UPDATE — use delete + re-insert pattern
+        existing = self.get_document(doc_id)
+        if existing is None:
+            return
+
+        # Merge fields
+        for key, value in fields.items():
+            existing[key] = value
+
+        self.delete_document(doc_id)
+        self.create_document(
+            doc_id=existing["doc_id"],
+            filename=existing["filename"],
+            format=existing["format"],
+            num_pages=existing.get("num_pages"),
+            markdown=existing.get("markdown"),
+            metadata=existing.get("metadata"),
+        )
+
+    def delete_document(self, doc_id: str) -> None:
+        """Delete a document and all associated pages, chunks, and relations.
+
+        Uses Koji cascade delete. Idempotent — no error if document does not exist.
+
+        Args:
+            doc_id: Document identifier to delete.
+        """
+        self._require_open()
+        # Manual cascade: delete children first, then parent.
+        # Uses _delete_where (filter-truncate-reinsert) to work around
+        # the Lance bug where db.delete() fails on non-nullable columns.
+        for table, condition in [
+            ("doc_relations", f"src_doc_id = '{doc_id}' OR dst_doc_id = '{doc_id}'"),
+            ("chunks", f"doc_id = '{doc_id}'"),
+            ("pages", f"doc_id = '{doc_id}'"),
+            ("documents", f"doc_id = '{doc_id}'"),
+        ]:
+            self._delete_where(table, condition)
+        self._after_write()
+        logger.info("koji_client.document_deleted", doc_id=doc_id)
+
+    # -- page operations -----------------------------------------------------
+
+    def insert_pages(self, pages: list[dict[str, Any]]) -> None:
+        """Insert page records.
+
+        Accepts a list of dictionaries and converts to PyArrow internally.
+        Required keys: ``id``, ``doc_id``, ``page_num``.
+        Optional keys: ``image``, ``thumb``, ``embedding``, ``structure``,
+        ``width``, ``height``.
+
+        Args:
+            pages: List of page data dictionaries.
+
+        Raises:
+            ValueError: If required fields are missing.
+        """
+        if not pages:
+            return
+
+        for p in pages:
+            if not all(k in p for k in ("id", "doc_id", "page_num")):
+                raise ValueError("Pages require id, doc_id, and page_num")
+
+        schema = pa.schema([
+            pa.field("id", pa.string(), nullable=False),
+            pa.field("doc_id", pa.string()),
+            pa.field("page_num", pa.int64()),
+            pa.field("image", pa.binary()),
+            pa.field("thumb", pa.binary()),
+            pa.field("embedding", pa.binary()),
+            pa.field("structure", pa.string()),
+            pa.field("width", pa.int64()),
+            pa.field("height", pa.int64()),
+        ])
+        table = pa.table(
+            {
+                "id": [p["id"] for p in pages],
+                "doc_id": [p["doc_id"] for p in pages],
+                "page_num": [p["page_num"] for p in pages],
+                "image": [p.get("image") for p in pages],
+                "thumb": [p.get("thumb") for p in pages],
+                "embedding": [p.get("embedding") for p in pages],
+                "structure": [
+                    json.dumps(p["structure"]) if p.get("structure") else None
+                    for p in pages
+                ],
+                "width": [p.get("width") for p in pages],
+                "height": [p.get("height") for p in pages],
+            },
+            schema=schema,
+        )
+        self.insert("pages", table)
+
+    def insert_chunks(self, chunks: list[dict[str, Any]]) -> None:
+        """Insert chunk records.
+
+        Accepts a list of dictionaries and converts to PyArrow internally.
+        Required keys: ``id``, ``doc_id``, ``page_num``, ``text``.
+        Optional keys: ``embedding``, ``context``, ``word_count``,
+        ``start_time``, ``end_time``.
+
+        Args:
+            chunks: List of chunk data dictionaries.
+
+        Raises:
+            ValueError: If required fields are missing.
+        """
+        if not chunks:
+            return
+
+        for c in chunks:
+            if not all(k in c for k in ("id", "doc_id", "page_num", "text")):
+                raise ValueError("Chunks require id, doc_id, page_num, and text")
+
+        schema = pa.schema([
+            pa.field("id", pa.string(), nullable=False),
+            pa.field("doc_id", pa.string()),
+            pa.field("page_num", pa.int64()),
+            pa.field("text", pa.string()),
+            pa.field("embedding", pa.binary()),
+            pa.field("context", pa.string()),
+            pa.field("word_count", pa.int64()),
+            pa.field("start_time", pa.float64()),
+            pa.field("end_time", pa.float64()),
+        ])
+        table = pa.table(
+            {
+                "id": [c["id"] for c in chunks],
+                "doc_id": [c["doc_id"] for c in chunks],
+                "page_num": [c["page_num"] for c in chunks],
+                "text": [c["text"] for c in chunks],
+                "embedding": [c.get("embedding") for c in chunks],
+                "context": [
+                    json.dumps(c["context"]) if c.get("context") else None
+                    for c in chunks
+                ],
+                "word_count": [c.get("word_count") for c in chunks],
+                "start_time": [c.get("start_time") for c in chunks],
+                "end_time": [c.get("end_time") for c in chunks],
+            },
+            schema=schema,
+        )
+        self.insert("chunks", table)
+
+    def get_pages_for_document(self, doc_id: str) -> list[dict[str, Any]]:
+        """Retrieve all pages for a document, ordered by page number.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            List of page dictionaries.
+        """
+        result = self.query(
+            "SELECT * FROM pages WHERE doc_id = ? ORDER BY page_num",
+            [doc_id],
+        )
+        return self._arrow_to_dicts(result, json_fields=["structure"])
+
+    def get_chunks_for_document(self, doc_id: str) -> list[dict[str, Any]]:
+        """Retrieve all chunks for a document, ordered by page and chunk ID.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            List of chunk dictionaries.
+        """
+        result = self.query(
+            "SELECT * FROM chunks WHERE doc_id = ? ORDER BY page_num, id",
+            [doc_id],
+        )
+        return self._arrow_to_dicts(result, json_fields=["context"])
+
+    def get_page(self, page_id: str) -> dict[str, Any] | None:
+        """Retrieve a single page by ID.
+
+        Args:
+            page_id: Page identifier.
+
+        Returns:
+            Page dictionary or ``None``.
+        """
+        self._require_open()
+        try:
+            row = self._db.find_by_id("pages", page_id)
+            if row is None:
+                return None
+            if row.get("structure") and isinstance(row["structure"], str):
+                row["structure"] = json.loads(row["structure"])
+            return row
+        except Exception:
+            return None
+
+    def get_chunk(self, chunk_id: str) -> dict[str, Any] | None:
+        """Retrieve a single chunk by ID.
+
+        Args:
+            chunk_id: Chunk identifier.
+
+        Returns:
+            Chunk dictionary or ``None``.
+        """
+        self._require_open()
+        try:
+            row = self._db.find_by_id("chunks", chunk_id)
+            if row is None:
+                return None
+            if row.get("context") and isinstance(row["context"], str):
+                row["context"] = json.loads(row["context"])
+            return row
+        except Exception:
+            return None
+
+    # -- relationship operations ---------------------------------------------
+
+    def create_relation(
+        self,
+        src_doc_id: str,
+        dst_doc_id: str,
+        relation_type: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Create a relationship between two documents.
+
+        Args:
+            src_doc_id: Source document identifier.
+            dst_doc_id: Destination document identifier.
+            relation_type: Relationship type (``cites``, ``references``,
+                ``related``, ``version_of``).
+            metadata: Optional metadata dict, stored as JSON.
+
+        Raises:
+            KojiDuplicateError: If the relation already exists.
+            ValueError: If either document does not exist.
+        """
+        if self.get_document(src_doc_id) is None:
+            raise ValueError(f"Source document {src_doc_id} not found")
+        if self.get_document(dst_doc_id) is None:
+            raise ValueError(f"Destination document {dst_doc_id} not found")
+
+        # Check for duplicate
+        existing = self.query(
+            "SELECT * FROM doc_relations "
+            "WHERE src_doc_id = ? AND dst_doc_id = ? AND relation_type = ?",
+            [src_doc_id, dst_doc_id, relation_type],
+        )
+        if existing.num_rows > 0:
+            raise KojiDuplicateError(
+                f"Relation {src_doc_id} -{relation_type}-> {dst_doc_id} already exists"
+            )
+
+        schema = pa.schema([
+            pa.field("src_doc_id", pa.string(), nullable=False),
+            pa.field("dst_doc_id", pa.string(), nullable=False),
+            pa.field("relation_type", pa.string(), nullable=False),
+            pa.field("metadata", pa.string()),
+        ])
+        table = pa.table(
+            {
+                "src_doc_id": [src_doc_id],
+                "dst_doc_id": [dst_doc_id],
+                "relation_type": [relation_type],
+                "metadata": [json.dumps(metadata) if metadata else None],
+            },
+            schema=schema,
+        )
+        self.insert("doc_relations", table)
+
+        logger.info(
+            "koji_client.relation_created",
+            src=src_doc_id,
+            dst=dst_doc_id,
+            type=relation_type,
+        )
+
+    def get_relations(
+        self,
+        doc_id: str,
+        relation_type: str | None = None,
+        direction: str = "both",
+    ) -> list[dict[str, Any]]:
+        """Get relationships for a document.
+
+        Args:
+            doc_id: Document identifier.
+            relation_type: Filter by type (optional).
+            direction: ``outgoing``, ``incoming``, or ``both`` (default).
+
+        Returns:
+            List of relation dictionaries.
+        """
+        results: list[dict[str, Any]] = []
+
+        if direction in ("outgoing", "both"):
+            if relation_type:
+                out = self.query(
+                    "SELECT * FROM doc_relations "
+                    "WHERE src_doc_id = ? AND relation_type = ?",
+                    [doc_id, relation_type],
+                )
+            else:
+                out = self.query(
+                    "SELECT * FROM doc_relations WHERE src_doc_id = ?",
+                    [doc_id],
+                )
+            results.extend(self._arrow_to_dicts(out, json_fields=["metadata"]))
+
+        if direction in ("incoming", "both"):
+            if relation_type:
+                inc = self.query(
+                    "SELECT * FROM doc_relations "
+                    "WHERE dst_doc_id = ? AND relation_type = ?",
+                    [doc_id, relation_type],
+                )
+            else:
+                inc = self.query(
+                    "SELECT * FROM doc_relations WHERE dst_doc_id = ?",
+                    [doc_id],
+                )
+            results.extend(self._arrow_to_dicts(inc, json_fields=["metadata"]))
+
+        return results
+
+    def delete_relation(
+        self,
+        src_doc_id: str,
+        dst_doc_id: str,
+        relation_type: str,
+    ) -> None:
+        """Delete a specific relationship.
+
+        Idempotent — no error if the relation does not exist.
+
+        Args:
+            src_doc_id: Source document identifier.
+            dst_doc_id: Destination document identifier.
+            relation_type: Relationship type.
+        """
+        self._delete_where(
+            "doc_relations",
+            f"src_doc_id = '{src_doc_id}' "
+            f"AND dst_doc_id = '{dst_doc_id}' "
+            f"AND relation_type = '{relation_type}'",
+        )
+        self._after_write()
+
+    def get_related_documents(
+        self,
+        root_doc_id: str,
+        max_depth: int = 3,
+    ) -> list[dict[str, Any]]:
+        """Find all documents related to a root document via graph traversal.
+
+        Uses Koji's ``WITH RECURSIVE`` for transitive closure.
+
+        Args:
+            root_doc_id: Starting document identifier.
+            max_depth: Maximum traversal depth.
+
+        Returns:
+            List of related document dicts with ``depth`` and ``relation_type``.
+        """
+        result = self.query(
+            """WITH RECURSIVE related AS (
+                   SELECT dst_doc_id AS doc_id, relation_type, 1 AS depth
+                   FROM doc_relations WHERE src_doc_id = ?
+                   UNION
+                   SELECT r.dst_doc_id, r.relation_type, rel.depth + 1
+                   FROM related rel
+                   JOIN doc_relations r ON rel.doc_id = r.src_doc_id
+                   WHERE rel.depth < ?
+               )
+               SELECT DISTINCT d.*, related.depth, related.relation_type
+               FROM related
+               JOIN documents d ON related.doc_id = d.doc_id
+               ORDER BY related.depth""",
+            [root_doc_id, max_depth],
+        )
+        return self._arrow_to_dicts(result, json_fields=["metadata"])
+
+    # -- internal helpers ----------------------------------------------------
+
+    def _delete_where(self, table: str, condition: str) -> int:
+        """Delete rows matching a SQL condition using filter-truncate-reinsert.
+
+        Lance file-based storage has a bug where ``db.delete()`` silently
+        fails (returns ``rows_deleted=0``) when any column is non-nullable.
+        Since Koji marks primary key columns as non-nullable, this affects
+        every table. This method works around the bug by querying rows that
+        do NOT match the condition, truncating the table, and re-inserting
+        the kept rows.
+
+        Args:
+            table: Table name.
+            condition: SQL WHERE clause (e.g. ``"doc_id = 'abc'"``).
+
+        Returns:
+            Number of rows deleted.
+        """
+        self._require_open()
+        try:
+            before = self._db.query(f"SELECT COUNT(*) AS n FROM {table}")
+            total = before.column("n")[0].as_py()
+            if total == 0:
+                return 0
+
+            keep = self._db.query(f"SELECT * FROM {table} WHERE NOT ({condition})")
+            self._db.truncate(table)
+            if keep.num_rows > 0:
+                self._db.insert(table, keep)
+            return total - keep.num_rows
+        except Exception as exc:
+            logger.warning(
+                "koji_client._delete_where_error",
+                table=table,
+                condition=condition,
+                error=str(exc),
+            )
+            return 0
+
+    def _require_open(self) -> None:
+        """Raise if the database is not open."""
+        if self._db is None:
+            raise KojiConnectionError("Database is not open. Call open() first.")
+
+    def _sync_schema(self) -> None:
+        """Synchronize database schema and register foreign keys."""
+        self._db.sync_schema(DOCUSEARCH_SCHEMA)
+        for fk in DOCUSEARCH_FOREIGN_KEYS:
+            self._db.register_foreign_key(fk)
+
+        logger.debug(
+            "koji_client.schema_synced",
+            tables=self._db.list_tables(),
+        )
+
+    def _after_write(self) -> None:
+        """Post-write hook: sync and compact as configured."""
+        self._write_count += 1
+
+        if self._config.sync_on_write:
+            self._db.sync()
+
+        if (
+            self._config.compact_interval > 0
+            and self._write_count % self._config.compact_interval == 0
+        ):
+            self._db.compact()
+            logger.debug(
+                "koji_client.compacted",
+                write_count=self._write_count,
+            )
+
+    @staticmethod
+    def _arrow_row_to_dict(result: pa.Table) -> dict[str, Any]:
+        """Convert a single-row PyArrow Table to a dictionary.
+
+        Args:
+            result: PyArrow Table with exactly one row.
+
+        Returns:
+            Row as a dictionary.
+        """
+        if result.num_rows == 0:
+            return {}
+        return {
+            col: result.column(col)[0].as_py()
+            for col in result.column_names
+        }
+
+    @staticmethod
+    def _arrow_to_dicts(
+        result: pa.Table,
+        json_fields: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Convert a PyArrow Table to a list of dictionaries.
+
+        Args:
+            result: PyArrow Table.
+            json_fields: Column names containing JSON strings to parse.
+
+        Returns:
+            List of row dictionaries.
+        """
+        json_fields = json_fields or []
+        rows = result.to_pydict()
+        num_rows = result.num_rows
+        out: list[dict[str, Any]] = []
+
+        for i in range(num_rows):
+            row = {col: rows[col][i] for col in result.column_names}
+            for field in json_fields:
+                if row.get(field):
+                    try:
+                        row[field] = json.loads(row[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            out.append(row)
+
+        return out

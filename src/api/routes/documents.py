@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from ...processing.status_manager import StatusManager
 from ...processing.status_models import ProcessingStatusEnum
-from ...storage import ChromaClient
+from ...storage import KojiClient
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +29,16 @@ router = APIRouter(prefix="/api", tags=["documents"])
 
 # Global dependencies (set at startup)
 _status_manager: Optional[StatusManager] = None
-_storage_client: Optional[ChromaClient] = None
+_storage_client: Optional[KojiClient] = None
 
 
-def set_dependencies(status_manager: StatusManager, storage_client: ChromaClient) -> None:
+def set_dependencies(status_manager: StatusManager, storage_client: KojiClient) -> None:
     """
     Inject dependencies for document API router.
 
     Args:
         status_manager: StatusManager instance
-        storage_client: ChromaClient instance
+        storage_client: KojiClient instance
     """
     global _status_manager, _storage_client
     _status_manager = status_manager
@@ -322,23 +322,18 @@ async def delete_document(doc_id: str) -> dict:
 
         filename = status.filename
 
-        # Delete from ChromaDB
-        visual_deleted, text_deleted = _storage_client.delete_document(doc_id)
+        # Delete from Koji (cascades to pages, chunks, relations)
+        _storage_client.delete_document(doc_id)
 
         # Remove from status manager
         _status_manager.remove_status(doc_id)
 
-        logger.info(
-            f"Deleted document {doc_id} ({filename}): "
-            f"{visual_deleted} visual, {text_deleted} text embeddings"
-        )
+        logger.info(f"Deleted document {doc_id} ({filename})")
 
         return {
             "success": True,
             "message": f"Document deleted: {filename}",
             "doc_id": doc_id,
-            "visual_deleted": visual_deleted,
-            "text_deleted": text_deleted,
         }
 
     except HTTPException:

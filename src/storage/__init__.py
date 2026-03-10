@@ -1,46 +1,34 @@
 """
-Storage module for DocuSearch MVP.
+Storage module for DocuSearch.
 
-This module provides ChromaDB storage capabilities with multi-vector
-embedding support for visual and text embeddings.
+This module provides Koji hybrid database (SQL + vector + graph) storage
+for documents, pages, chunks, and document relationships.
 
 Components:
-- ChromaClient: Main client for ChromaDB operations
-- CollectionManager: Collection lifecycle management
-- Compression utilities: Embedding compression/decompression
+- KojiClient: Main client for Koji database operations
 - Custom exceptions: Storage-specific error types
+- Multi-vector utilities: Binary packing/unpacking for embeddings
 """
 
-from .chroma_client import (
-    ChromaClient,
-    ChromaDBConnectionError,
-    DocumentNotFoundError,
-    EmbeddingValidationError,
-    MetadataCompressionError,
-    StorageError,
-)
-from .collection_manager import CollectionManager
-from .compression import (
-    compress_embeddings,
-    compression_ratio,
-    decompress_embeddings,
-    estimate_compressed_size,
+from .koji_client import (
+    KojiClient,
+    KojiClientError,
+    KojiConnectionError,
+    KojiDuplicateError,
+    KojiQueryError,
+    pack_multivec,
+    unpack_multivec,
 )
 
 __all__ = [
     # Main client
-    "ChromaClient",
-    # Collection management
-    "CollectionManager",
+    "KojiClient",
     # Exceptions
-    "StorageError",
-    "ChromaDBConnectionError",
-    "EmbeddingValidationError",
-    "MetadataCompressionError",
-    "DocumentNotFoundError",
-    # Compression utilities
-    "compress_embeddings",
-    "decompress_embeddings",
-    "estimate_compressed_size",
-    "compression_ratio",
+    "KojiClientError",
+    "KojiConnectionError",
+    "KojiQueryError",
+    "KojiDuplicateError",
+    # Multi-vector utilities
+    "pack_multivec",
+    "unpack_multivec",
 ]

@@ -16,11 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from tkr_docusearch.processing.api import structure_router
 
-# Import core components
-from ..embeddings import ColPaliEngine
+# Import core components — Koji pipeline (new)
+from ..config.koji_config import KojiConfig, ShikomiConfig
+from ..embeddings.shikomi_client import ShikomiClient
 from ..processing import DocumentProcessor
-from ..search import SearchEngine
-from ..storage import ChromaClient
+from ..search.koji_search import KojiSearch
+from ..storage.koji_client import KojiClient
 from .models import (
     ComponentHealth,
     HealthResponse,
@@ -78,22 +79,20 @@ _app_state = {
 
 
 def create_app(
-    chroma_host: str = "localhost",
-    chroma_port: int = 8001,
-    device: str = "mps",
-    precision: str = "fp16",
+    koji_db_path: str = os.getenv("KOJI_DB_PATH", "./data/koji.db"),
+    device: str = os.getenv("SHIKOMI_DEVICE", "mps"),
+    precision: str = os.getenv("SHIKOMI_QUANTIZATION", "fp16"),
 ) -> FastAPI:
     """
     Create and configure FastAPI application.
 
     Args:
-        chroma_host: ChromaDB host address
-        chroma_port: ChromaDB port number
-        device: Device for embedding model (mps, cuda, cpu)
-        precision: Model precision (fp16, fp32)
+        koji_db_path: Path to Koji database file.
+        device: Device for embedding model (mps, cuda, cpu).
+        precision: Model quantization (fp16, fp32, int8, int4).
 
     Returns:
-        Configured FastAPI application
+        Configured FastAPI application.
     """
     app = FastAPI(
         title=API_TITLE,
@@ -127,34 +126,38 @@ def create_app(
         _app_state["start_time"] = time.time()
 
         try:
-            # Initialize embedding engine
-            logger.info(f"Loading ColPali model (device={device}, precision={precision})...")
-            _app_state["embedding_engine"] = ColPaliEngine(device=device, precision=precision)
-            logger.info("✓ ColPali model loaded")
+            # Initialize Koji storage
+            koji_config = KojiConfig(db_path=koji_db_path)
+            koji_client = KojiClient(koji_config)
+            koji_client.open()
+            _app_state["storage_client"] = koji_client
+            logger.info(f"Koji database opened at {koji_db_path}")
 
-            # Initialize storage client
-            logger.info(f"Connecting to ChromaDB ({chroma_host}:{chroma_port})...")
-            _app_state["storage_client"] = ChromaClient(host=chroma_host, port=chroma_port)
-            logger.info("✓ ChromaDB connected")
+            # Initialize Shikomi embedding engine
+            shikomi_config = ShikomiConfig(device=device, quantization=precision)
+            shikomi_client = ShikomiClient(shikomi_config)
+            shikomi_client.connect()
+            _app_state["embedding_engine"] = shikomi_client
+            logger.info(f"Shikomi connected (model={shikomi_config.model})")
 
             # Set storage client for markdown router
             set_storage_client(_app_state["storage_client"])
 
             # Initialize search engine
-            _app_state["search_engine"] = SearchEngine(
-                storage_client=_app_state["storage_client"],
-                embedding_engine=_app_state["embedding_engine"],
+            _app_state["search_engine"] = KojiSearch(
+                koji_client=koji_client,
+                shikomi_client=shikomi_client,
             )
-            logger.info("✓ Search engine initialized")
+            logger.info("Search engine initialized")
 
             # Initialize document processor
             _app_state["document_processor"] = DocumentProcessor(
-                embedding_engine=_app_state["embedding_engine"],
-                storage_client=_app_state["storage_client"],
+                embedding_engine=shikomi_client,
+                storage_client=koji_client,
             )
-            logger.info("✓ Document processor initialized")
+            logger.info("Document processor initialized")
 
-            logger.info("🎉 DocuSearch API ready!")
+            logger.info("DocuSearch API ready")
 
         except Exception as e:
             logger.error(f"Failed to initialize components: {e}", exc_info=True)
@@ -164,6 +167,10 @@ def create_app(
     async def shutdown_event():
         """Cleanup on shutdown."""
         logger.info("Shutting down DocuSearch API...")
+        if _app_state["embedding_engine"]:
+            _app_state["embedding_engine"].close()
+        if _app_state["storage_client"]:
+            _app_state["storage_client"].close()
 
     return app
 
@@ -216,14 +223,15 @@ async def get_status():
 
     # Check storage client
     storage_status = "unhealthy"
-    storage_message = "ChromaDB not connected"
+    storage_message = "Database not connected"
     storage_latency = None
 
     if _app_state["storage_client"]:
         try:
             start = time.time()
-            # Test connection with heartbeat
-            _app_state["storage_client"].client.heartbeat()
+            health = _app_state["storage_client"].health_check()
+            if not health.get("connected"):
+                raise RuntimeError("Not connected")
             storage_latency = (time.time() - start) * 1000
             storage_status = "healthy"
             storage_message = "Connected and responsive"
@@ -232,7 +240,7 @@ async def get_status():
 
     components.append(
         ComponentHealth(
-            name="chromadb",
+            name="koji",
             status=storage_status,
             message=storage_message,
             latency_ms=storage_latency,
@@ -243,14 +251,16 @@ async def get_status():
     stats = SystemStats()
     if _app_state["storage_client"]:
         try:
-            # Get collection counts
-            visual_count = _app_state["storage_client"].visual_collection.count()
-            text_count = _app_state["storage_client"].text_collection.count()
-
-            stats.total_pages = visual_count
-            stats.total_text_chunks = text_count
-            # Estimate unique documents (rough approximation)
-            stats.total_documents = max(1, visual_count // 5)  # Assume ~5 pages per doc
+            docs = _app_state["storage_client"].list_documents(limit=10000)
+            stats.total_documents = len(docs)
+            pages_result = _app_state["storage_client"].query(
+                "SELECT COUNT(*) AS cnt FROM pages"
+            )
+            chunks_result = _app_state["storage_client"].query(
+                "SELECT COUNT(*) AS cnt FROM chunks"
+            )
+            stats.total_pages = pages_result.column("cnt")[0].as_py()
+            stats.total_text_chunks = chunks_result.column("cnt")[0].as_py()
         except Exception as e:
             logger.warning(f"Failed to get statistics: {e}")
 

@@ -43,7 +43,7 @@ from processing.status_manager import StatusManager, get_status_manager
 # Import WebSocket broadcaster
 from processing.websocket_broadcaster import get_broadcaster
 from tkr_docusearch.config.urls import get_service_urls
-from storage import ChromaClient
+from storage.koji_client import KojiClient
 from storage.markdown_utils import delete_document_markdown
 
 # Configure logging
@@ -512,25 +512,23 @@ async def delete_document(request: DeleteRequest):
     doc_id = None
 
     try:
-        # Initialize ChromaDB client
-        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        # Initialize Koji client
+        from src.storage.koji_client import KojiClient
+        from src.config.koji_config import KojiConfig
 
-        # Find doc_id by filename in visual collection
-        visual_results = storage_client._visual_collection.get(
-            where={"filename": request.filename}, limit=1, include=["metadatas"]
-        )
+        koji = KojiClient(KojiConfig.from_env())
+        koji.open()
 
-        # Try text collection if not found in visual
-        if not visual_results["ids"]:
-            text_results = storage_client._text_collection.get(
-                where={"filename": request.filename}, limit=1, include=["metadatas"]
-            )
-            if text_results["ids"] and text_results["metadatas"]:
-                doc_id = text_results["metadatas"][0].get("doc_id")
-            else:
-                logger.warning(f"No embeddings found for filename: {request.filename}")
+        try:
+            # Find doc_id by filename
+            docs = koji.list_documents(limit=10000)
+            matching = [d for d in docs if d.get("filename") == request.filename]
+
+            if not matching:
+                koji.close()
+                logger.warning(f"No document found for filename: {request.filename}")
                 return DeleteResponse(
-                    message=f"No embeddings found for {request.filename}",
+                    message=f"No document found for {request.filename}",
                     doc_id=None,
                     visual_deleted=0,
                     text_deleted=0,
@@ -540,21 +538,19 @@ async def delete_document(request: DeleteRequest):
                     temp_dirs_cleaned=0,
                     status="not_found",
                 )
-        else:
-            doc_id = visual_results["metadatas"][0].get("doc_id")
 
-        logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
+            doc_id = matching[0]["doc_id"]
+            logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
 
-        # 1. Delete from ChromaDB using doc_id
-        try:
-            visual_count, text_count = storage_client.delete_document(doc_id)
-            logger.info(
-                f"✓ ChromaDB cleanup: {visual_count} visual, {text_count} text embeddings deleted"
-            )
-        except Exception as e:
-            logger.error(f"✗ ChromaDB deletion failed: {e}", exc_info=True)
-            # ChromaDB deletion is critical - re-raise
-            raise
+            # 1. Delete from Koji (cascades to pages, chunks, relations)
+            try:
+                koji.delete_document(doc_id)
+                logger.info(f"Koji cleanup complete for {doc_id}")
+            except Exception as e:
+                logger.error(f"Koji deletion failed: {e}", exc_info=True)
+                raise
+        finally:
+            koji.close()
 
         # 2. Delete page images and thumbnails
         try:
@@ -690,58 +686,29 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
 
         if not force_upload:
             try:
-                # Query ChromaDB directly to check for existing files
-                # (Avoid HTTP self-call which causes timeout)
-                from src.storage.chroma_client import ChromaClient
+                # Query Koji directly to check for existing files
+                from src.storage.koji_client import KojiClient
+                from src.config.koji_config import KojiConfig
 
-                chroma = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+                koji = KojiClient(KojiConfig.from_env())
+                koji.open()
 
-                # Get all documents from text collection (contains metadata)
                 try:
-                    all_docs = chroma._text_collection.get(include=["metadatas"])
-
-                    # Extract unique filenames from metadata
-                    seen_filenames = set()
-                    for metadata in all_docs.get("metadatas", []):
-                        if metadata and "filename" in metadata:
-                            stored_filename = metadata["filename"]
-
-                            # Skip if already checked
-                            if stored_filename in seen_filenames:
-                                continue
-                            seen_filenames.add(stored_filename)
-
-                            # Exact match (for non-Copyparty uploads)
-                            if stored_filename == filename:
-                                is_duplicate = True
-                                existing_doc = {
-                                    "doc_id": metadata.get("doc_id", ""),
-                                    "filename": stored_filename,
-                                    "date_added": metadata.get("date_added", ""),
-                                    "file_type": metadata.get("file_type", ""),
-                                }
-                                logger.info(f"  ⚠️  Duplicate detected (exact): {filename}")
-                                break
-
-                            # Prefix match (for Copyparty deduplication)
-                            # Check if stored filename starts with original filename + "-"
-                            # Example: "file.pdf" matches "file.pdf-1234567890.123456-abc123.pdf"
-                            if stored_filename.startswith(filename + "-"):
-                                is_duplicate = True
-                                existing_doc = {
-                                    "doc_id": metadata.get("doc_id", ""),
-                                    "filename": stored_filename,
-                                    "date_added": metadata.get("date_added", ""),
-                                    "file_type": metadata.get("file_type", ""),
-                                }
-                                logger.info(
-                                    f"  ⚠️  Duplicate detected (Copyparty suffix): {filename} → {stored_filename}"
-                                )
-                                break
-
-                except Exception as coll_err:
-                    logger.debug(f"Text collection query failed (may be empty): {coll_err}")
-                    # Collection might not exist yet or be empty - this is OK
+                    docs = koji.list_documents(limit=10000)
+                    for doc in docs:
+                        stored_filename = doc.get("filename", "")
+                        if stored_filename == filename:
+                            is_duplicate = True
+                            existing_doc = {
+                                "doc_id": doc.get("doc_id", ""),
+                                "filename": stored_filename,
+                                "date_added": doc.get("created_at", ""),
+                                "file_type": doc.get("format", ""),
+                            }
+                            logger.info(f"  Duplicate detected (exact): {filename}")
+                            break
+                finally:
+                    koji.close()
 
             except Exception as e:
                 logger.warning(f"Could not check for duplicates: {e}")
@@ -913,9 +880,12 @@ async def startup_event():
         logger.info("✓ ColPali model loaded")
 
         # Initialize storage client
-        logger.info(f"Connecting to ChromaDB ({CHROMA_HOST}:{CHROMA_PORT})...")
-        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
-        logger.info("✓ ChromaDB connected")
+        from config.koji_config import KojiConfig
+        koji_config = KojiConfig.from_env()
+        logger.info(f"Opening Koji database ({koji_config.db_path})...")
+        storage_client = KojiClient(koji_config)
+        storage_client.open()
+        logger.info("Koji database opened")
 
         # Load enhanced mode configuration
         print("Loading enhanced mode configuration...")
