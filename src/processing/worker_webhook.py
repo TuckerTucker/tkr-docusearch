@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -406,12 +406,47 @@ def _broadcast_from_sync(coro):
 # ============================================================================
 
 
+@app.post("/uploads/")
+@app.post("/uploads")
+async def upload_file(
+    background_tasks: BackgroundTasks,
+    f: UploadFile = File(...),
+):
+    """Accept file upload, save to disk, and trigger processing."""
+    filename = f.filename or "untitled"
+    save_path = UPLOADS_DIR / filename
+
+    # Avoid overwriting: append counter if file exists
+    if save_path.exists():
+        stem = save_path.stem
+        suffix = save_path.suffix
+        counter = 1
+        while save_path.exists():
+            save_path = UPLOADS_DIR / f"{stem}_{counter}{suffix}"
+            counter += 1
+
+    # Save uploaded file
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        content = await f.read()
+        save_path.write_bytes(content)
+        logger.info(f"Saved upload: {filename} → {save_path} ({len(content)} bytes)")
+    except Exception as e:
+        logger.error(f"Failed to save upload {filename}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+
+    # Trigger processing via the /process flow
+    request = ProcessRequest(
+        file_path=str(save_path),
+        filename=filename,
+    )
+    return await process_document(request, background_tasks)
+
+
 @app.post("/process", response_model=ProcessResponse)
 async def process_document(request: ProcessRequest, background_tasks: BackgroundTasks):
     """
     Queue a document for processing.
-
-    Called by copyparty webhook when a file is uploaded.
     """
     logger.info(f"Received processing request for: {request.filename}")
 
