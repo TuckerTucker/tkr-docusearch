@@ -17,7 +17,7 @@ from tkr_docusearch.processing.handlers.enhanced_metadata import (
     prepare_enhanced_text_metadata,
     prepare_enhanced_visual_metadata,
 )
-from tkr_docusearch.storage.compression import decompress_structure_metadata
+from tkr_docusearch.processing.api.structure_endpoints import decompress_structure_metadata
 from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,

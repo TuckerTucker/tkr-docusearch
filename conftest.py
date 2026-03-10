@@ -2,7 +2,70 @@
 
 import os
 import sys
+import types
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Stub deleted/unavailable modules so transitive imports don't fail.
+# These must be installed before any tkr_docusearch imports.
+# ---------------------------------------------------------------------------
+
+# storage_config was removed during Koji migration but config/__init__.py
+# still re-exports it.
+if "tkr_docusearch.config.storage_config" not in sys.modules:
+    _stub = types.ModuleType("tkr_docusearch.config.storage_config")
+    _stub.StorageConfig = type("StorageConfig", (), {})  # type: ignore[attr-defined]
+    sys.modules["tkr_docusearch.config.storage_config"] = _stub
+
+# Some source files use the legacy `src.config.storage_config` import path
+if "src.config.storage_config" not in sys.modules:
+    sys.modules["src.config.storage_config"] = sys.modules[
+        "tkr_docusearch.config.storage_config"
+    ]
+
+# processing.mocks was removed during Koji migration but processing/__init__.py
+# still re-exports from it.
+if "tkr_docusearch.processing.mocks" not in sys.modules:
+    _mock_stub = types.ModuleType("tkr_docusearch.processing.mocks")
+    # Provide minimal mock classes so the import chain doesn't break
+    _mock_stub.BatchEmbeddingOutput = type("BatchEmbeddingOutput", (), {})  # type: ignore[attr-defined]
+    _mock_stub.MockEmbeddingEngine = type("MockEmbeddingEngine", (), {})  # type: ignore[attr-defined]
+    _mock_stub.MockStorageClient = type("MockStorageClient", (), {})  # type: ignore[attr-defined]
+    sys.modules["tkr_docusearch.processing.mocks"] = _mock_stub
+    sys.modules["src.processing.mocks"] = _mock_stub
+
+# mcp SDK is not installed in test environment
+if "mcp" not in sys.modules:
+    _mcp_stub = types.ModuleType("mcp")
+    sys.modules["mcp"] = _mcp_stub
+    for _sub in (
+        "mcp.server",
+        "mcp.server.stdio",
+        "mcp.server.fastmcp",
+        "mcp.types",
+    ):
+        _s = types.ModuleType(_sub)
+        if _sub == "mcp.server":
+            def _decorator(self):
+                """Return a decorator that registers a handler."""
+                def wrapper(fn):
+                    return fn
+                return wrapper
+            _s.Server = type("Server", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, *a, **kw: None,
+                "list_tools": _decorator,
+                "call_tool": _decorator,
+            })
+        elif _sub == "mcp.server.fastmcp":
+            _s.FastMCP = type("FastMCP", (), {"__init__": lambda self, *a, **kw: None})  # type: ignore[attr-defined]
+        elif _sub == "mcp.server.stdio":
+            _s.stdio_server = lambda *a, **kw: None  # type: ignore[attr-defined]
+        elif _sub == "mcp.types":
+            _s.TextContent = type("TextContent", (), {})  # type: ignore[attr-defined]
+            _s.ImageContent = type("ImageContent", (), {})  # type: ignore[attr-defined]
+            _s.Tool = type("Tool", (), {})  # type: ignore[attr-defined]
+        sys.modules[_sub] = _s
+
 
 import numpy as np
 import pytest

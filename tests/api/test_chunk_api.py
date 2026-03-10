@@ -26,7 +26,7 @@ client = TestClient(app)
 @pytest.fixture
 def mock_koji_client():
     """Create mock Koji client."""
-    with patch("tkr_docusearch.processing.api.structure_endpoints.get_chroma_client") as mock_get:
+    with patch("tkr_docusearch.processing.api.structure_endpoints.get_storage_client") as mock_get:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         yield mock_client

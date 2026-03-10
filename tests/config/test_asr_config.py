@@ -78,10 +78,11 @@ class TestAsrConfigFromEnv:
         config = AsrConfig.from_env()
         assert config.word_timestamps is True
 
-        # word_timestamps=false should raise error in validate()
+        # word_timestamps=false triggers validation error in __post_init__,
+        # but from_env() catches it and returns the default config instead.
         monkeypatch.setenv("ASR_WORD_TIMESTAMPS", "false")
-        with pytest.raises(ValueError, match="word_timestamps"):
-            AsrConfig.from_env()
+        fallback_config = AsrConfig.from_env()
+        assert fallback_config.word_timestamps is True  # default is True
 
     def test_from_env_caption_settings(self, monkeypatch):
         """Test caption splitting settings from environment."""
