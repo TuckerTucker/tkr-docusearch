@@ -14,7 +14,7 @@ Tests cover:
 
 import pytest
 
-from storage.metadata_schema import (
+from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     CodeBlockInfo,
     DocumentStructure,

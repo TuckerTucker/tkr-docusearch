@@ -16,7 +16,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from storage.markdown_utils import (
+from tkr_docusearch.storage.markdown_utils import (
     DOC_ID_PATTERN,
     MarkdownStorageError,
     cleanup_orphaned_markdown,
@@ -33,7 +33,7 @@ def temp_markdown_dir(tmp_path):
     markdown_dir.mkdir(parents=True, exist_ok=True)
 
     # Patch MARKDOWN_DIR to use temp directory
-    with patch("storage.markdown_utils.MARKDOWN_DIR", markdown_dir):
+    with patch("tkr_docusearch.storage.markdown_utils.MARKDOWN_DIR", markdown_dir):
         yield markdown_dir
 
 
@@ -237,7 +237,7 @@ class TestCleanupOrphanedMarkdown:
 
     def test_cleanup_nonexistent_directory(self):
         """Test cleanup when markdown directory doesn't exist."""
-        with patch("storage.markdown_utils.MARKDOWN_DIR", Path("/nonexistent/markdown")):
+        with patch("tkr_docusearch.storage.markdown_utils.MARKDOWN_DIR", Path("/nonexistent/markdown")):
             count = cleanup_orphaned_markdown(max_age_days=7)
             assert count == 0
 

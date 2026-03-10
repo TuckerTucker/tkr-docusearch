@@ -136,29 +136,27 @@ def sample_text_content() -> str:
 
 
 # ============================================================================
-# ChromaDB Fixtures
+# Koji Fixtures
 # ============================================================================
 
 
 @pytest.fixture
-def chromadb_available() -> bool:
-    """Check if ChromaDB is available for testing."""
-    try:
-        import chromadb
-        from chromadb.config import Settings
+def koji_config(tmp_path):
+    """Create a KojiConfig pointing to a temporary database."""
+    from src.config.koji_config import KojiConfig
 
-        # Try to create an ephemeral client
-        _ = chromadb.Client(Settings(is_persistent=False, anonymized_telemetry=False))
-        return True
-    except Exception:
-        return False
+    return KojiConfig(db_path=str(tmp_path / "test.db"))
 
 
 @pytest.fixture
-def skip_if_no_chromadb(chromadb_available: bool):
-    """Skip test if ChromaDB is not available."""
-    if not chromadb_available:
-        pytest.skip("ChromaDB not available")
+def koji_client(koji_config):
+    """Create and open a KojiClient with a temporary database."""
+    from src.storage.koji_client import KojiClient
+
+    client = KojiClient(koji_config)
+    client.open()
+    yield client
+    client.close()
 
 
 # ============================================================================
@@ -219,8 +217,8 @@ def pytest_collection_modifyitems(config, items):
         # Add markers based on test path
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
-        elif "test_real_chromadb" in str(item.fspath):
-            item.add_marker(pytest.mark.requires_chromadb)
+        elif "test_koji" in str(item.fspath):
+            item.add_marker(pytest.mark.requires_koji)
         elif "embeddings" in str(item.fspath) and "mps" in item.name.lower():
             item.add_marker(pytest.mark.requires_gpu)
 
@@ -232,7 +230,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "integration: Integration tests")
     config.addinivalue_line("markers", "slow: Slow running tests")
     config.addinivalue_line("markers", "requires_gpu: Tests requiring GPU/MPS")
-    config.addinivalue_line("markers", "requires_chromadb: Tests requiring ChromaDB connection")
+    config.addinivalue_line("markers", "requires_koji: Tests requiring Koji database")
 
 
 def pytest_report_header(config):
@@ -254,11 +252,11 @@ def pytest_report_header(config):
     except ImportError:
         pass
 
-    # Add ChromaDB info if available
+    # Add Koji info if available
     try:
-        import chromadb
+        import koji
 
-        header.append(f"ChromaDB: {chromadb.__version__}")
+        header.append(f"Koji: available")
     except ImportError:
         pass
 
