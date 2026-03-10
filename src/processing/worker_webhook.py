@@ -914,7 +914,8 @@ async def startup_event():
         shikomi_config = ShikomiConfig.from_env()
         logger.info(f"Connecting to Shikomi embedding service ({shikomi_config.grpc_target})...")
         embedding_engine = ShikomiClient(config=shikomi_config)
-        logger.info("✓ Shikomi client initialized")
+        embedding_engine.connect()
+        logger.info("✓ Shikomi client connected")
 
         # Initialize storage client
         from ..config.koji_config import KojiConfig
