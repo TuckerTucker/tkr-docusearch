@@ -65,7 +65,7 @@ logger.setLevel(logging.DEBUG)  # Ensure this logger also captures DEBUG
 # Configuration
 # ============================================================================
 
-UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", "/uploads"))
+UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "uploads")))
 CHROMA_HOST = os.getenv("CHROMA_HOST", "chromadb")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "mps")
