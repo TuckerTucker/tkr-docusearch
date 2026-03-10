@@ -34,7 +34,7 @@ NC='\033[0m'
 # ============================================================================
 
 OUTPUT_FORMAT="${1:-text}"
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"

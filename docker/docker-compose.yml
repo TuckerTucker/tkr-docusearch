@@ -1,68 +1,5 @@
 services:
   # ============================================================================
-  # Copyparty - File Upload and Web UI
-  # ============================================================================
-  copyparty:
-    build:
-      context: .
-      dockerfile: Dockerfile.copyparty
-    container_name: docusearch-copyparty
-    ports:
-      - "${COPYPARTY_PORT:-8000}:8000"
-    volumes:
-      - ../data/uploads:/uploads
-      - ../data/copyparty/www:/www
-      - ../hooks:/hooks  # Mount source hooks directory (not data/copyparty/hooks)
-    environment:
-      - CPP_PORT=8000
-      - CPP_UPLOAD_DIR=/uploads
-      - CPP_HOOK_ON_UPLOAD=/hooks/on_upload.py
-      - CPP_MAX_UPLOAD_SIZE=${MAX_FILE_SIZE_MB:-100}M
-      - WORKER_HOST=host.docker.internal
-      - WORKER_PORT=8002
-      - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,htm,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp,xml,json}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-    networks:
-      - docusearch
-    depends_on:
-      - processing-worker
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # ============================================================================
-  # ChromaDB - Vector Database
-  # ============================================================================
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: docusearch-chromadb
-    platform: linux/arm64
-    ports:
-      - "${CHROMADB_PORT:-8001}:8000"
-    volumes:
-      - ../data/chroma_db:/data
-    environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-    networks:
-      - docusearch
-    restart: unless-stopped
-    # Healthcheck disabled - ChromaDB image doesn't include curl/wget
-    # Service availability can be verified externally
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 3
-    #   start_period: 30s
-
-  # ============================================================================
   # Legacy Office Converter - PPTX to Image Conversion + DOC to DOCX Conversion
   # ============================================================================
   legacy-office-converter:
@@ -74,9 +11,7 @@ services:
     ports:
       - "${LEGACY_OFFICE_PORT:-${SLIDE_RENDERER_PORT:-8003}}:8003"
     volumes:
-      # Read-write access to uploads for PPTX/DOC files and DOCX output
       - ../data/uploads:/uploads
-      # Read-write access to page_images for slide output
       - ../data/page_images:/page_images
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -103,35 +38,24 @@ services:
         - PYTHON_VERSION=3.10
     container_name: docusearch-worker
     volumes:
-      # Read-only access to uploads
       - ../data/uploads:/uploads:ro
-      # Model cache (persistent, 14GB+ for ColNomic 7B)
       - ../data/models:/models
-      # Log output
       - ../data/logs:/data/logs
-      # Page images storage (read-write for image persistence)
       - ../data/page_images:/page_images
-      # Source code (development mode - remove for production)
       - ../src:/app/src
     environment:
-      # Model configuration
-      - MODEL_NAME=${MODEL_NAME:-vidore/colpali-v1.2}
-      - MODEL_PRECISION=${MODEL_PRECISION:-fp16}
-      - DEVICE=${DEVICE:-mps}
-      - BATCH_SIZE_VISUAL=${BATCH_SIZE_VISUAL:-4}
-      - BATCH_SIZE_TEXT=${BATCH_SIZE_TEXT:-8}
-      # ChromaDB connection
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
-      - VISUAL_COLLECTION=${VISUAL_COLLECTION:-visual_collection}
-      - TEXT_COLLECTION=${TEXT_COLLECTION:-text_collection}
+      # Koji database
+      - KOJI_DB_PATH=${KOJI_DB_PATH:-/data/koji.db}
+      # Shikomi embedding service
+      - SHIKOMI_GRPC_TARGET=${SHIKOMI_GRPC_TARGET:-host.docker.internal:50051}
+      - SHIKOMI_USE_MOCK=${SHIKOMI_USE_MOCK:-false}
       # Processing configuration
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
       - SUPPORTED_FORMATS=${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,html,xhtml,md,asciidoc,csv,mp3,wav,vtt,png,jpg,jpeg,tiff,bmp,webp}
       - TEXT_CHUNK_SIZE=${TEXT_CHUNK_SIZE:-250}
       - TEXT_CHUNK_OVERLAP=${TEXT_CHUNK_OVERLAP:-50}
       - PAGE_RENDER_DPI=${PAGE_RENDER_DPI:-150}
-      # ASR (Whisper) configuration for audio transcription
+      # ASR (Whisper) configuration
       - ASR_ENABLED=${ASR_ENABLED:-true}
       - ASR_MODEL=${ASR_MODEL:-turbo}
       - ASR_LANGUAGE=${ASR_LANGUAGE:-en}
@@ -143,26 +67,23 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
       - LOG_FILE=/data/logs/worker.log
-      # Python environment
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-    depends_on:
-      - chromadb
     networks:
       - docusearch
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 10G  # Prevent OOM for ColNomic 7B model
+          memory: 10G
         reservations:
-          memory: 4G   # Minimum required
+          memory: 4G
     healthcheck:
-      test: ["CMD", "python3", "-c", "import torch; print('MPS:', torch.backends.mps.is_available())"]
+      test: ["CMD", "python3", "-c", "import koji; print('Koji OK')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 120s  # Model loading takes time
+      start_period: 120s
 
 # ============================================================================
 # Networks
@@ -173,10 +94,10 @@ networks:
     name: docusearch-network
 
 # ============================================================================
-# Volumes (optional explicit definitions)
+# Volumes
 # ============================================================================
 volumes:
-  chroma_data:
+  koji_data:
     driver: local
   model_cache:
     driver: local

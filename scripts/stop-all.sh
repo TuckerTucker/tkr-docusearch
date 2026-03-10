@@ -39,7 +39,7 @@ NC='\033[0m'
 # ============================================================================
 
 FORCE_MODE="${1:-}"
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"

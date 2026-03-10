@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      port: parseInt(env.VITE_UI_PORT) || 42008,
+      port: parseInt(env.VITE_UI_PORT) || 42888,
       strictPort: false,
     },
   };

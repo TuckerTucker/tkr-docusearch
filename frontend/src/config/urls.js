@@ -11,9 +11,9 @@
  *   VITE_CHROMADB_URL: ChromaDB server URL (default: http://localhost:8001)
  *   VITE_RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
  *   VITE_COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
- *   VITE_FRONTEND_URL: Frontend application URL (default: http://localhost:42007)
- *   VITE_FRONTEND_PORT: Frontend dev server port (default: 42007)
- *   VITE_UI_PORT: UI viewer dev server port (default: 42008)
+ *   VITE_FRONTEND_URL: Frontend application URL (default: http://localhost:42887)
+ *   VITE_FRONTEND_PORT: Frontend dev server port (default: 42887)
+ *   VITE_UI_PORT: UI viewer dev server port (default: 42888)
  *
  * Usage:
  *   import { serviceURLs } from '@/config/urls';
@@ -37,7 +37,7 @@ const BASE_URLS = {
   chromadb: import.meta.env.VITE_CHROMADB_URL || 'http://localhost:8001',
   researchApi: import.meta.env.VITE_RESEARCH_API_URL || 'http://localhost:8004',
   copyparty: import.meta.env.VITE_COPYPARTY_URL || 'http://localhost:8000',
-  frontend: import.meta.env.VITE_FRONTEND_URL || 'http://localhost:42007',
+  frontend: import.meta.env.VITE_FRONTEND_URL || 'http://localhost:42887',
 };
 
 /**

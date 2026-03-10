@@ -313,7 +313,7 @@ print_summary() {
         echo "Next steps:"
         echo "  1. Start services: ./scripts/start-all.sh"
         echo "  2. Check status: ./scripts/status.sh"
-        echo "  3. Open UI: http://localhost:42007"
+        echo "  3. Open UI: http://localhost:42887"
     elif [ "$mlx_ready" = false ] && [ "$colpali_ready" = false ]; then
         echo -e "${YELLOW}⚠ No models downloaded yet${NC}"
         echo ""

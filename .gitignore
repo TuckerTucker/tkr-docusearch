@@ -12,7 +12,7 @@
 # ============================================================================
 # Claude Code agent/command/hook configurations (local development only)
 .claude/
-.context-kit/
+tkr-kit
 CLAUDE.local.md
 
 .archive

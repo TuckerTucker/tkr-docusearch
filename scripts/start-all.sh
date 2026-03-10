@@ -41,7 +41,7 @@ NC='\033[0m'
 # ============================================================================
 
 MODE="${1:-gpu}"  # Default to GPU mode
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
 ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"

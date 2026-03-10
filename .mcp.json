@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "context-kit": {
+    "tkr-kit": {
       "type": "stdio",
       "command": "./.claude/mcp_runner.sh"
     }
