@@ -109,13 +109,14 @@ class VisualProcessor:
             logger.debug(f"Generated embeddings for {len(images)} pages " f"in {elapsed_ms:.0f}ms")
 
             # Create results
+            # batch_output is list[bytes] from ShikomiClient.embed_images
             for idx, page in enumerate(batch_pages):
                 result = VisualEmbeddingResult(
                     doc_id=doc_id,
                     page_num=page.page_num,
-                    embedding=batch_output["embeddings"][idx],
-                    cls_token=batch_output["cls_tokens"][idx],
-                    seq_length=batch_output["seq_lengths"][idx],
+                    embedding=batch_output[idx],
+                    cls_token=None,
+                    seq_length=0,
                     processing_time_ms=elapsed_ms / len(images),
                 )
                 all_results.append(result)

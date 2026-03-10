@@ -673,8 +673,10 @@ async def list_documents(
                 "doc_id": doc_id,
                 "filename": doc.get("filename", "unknown"),
                 "date_added": doc.get("created_at", ""),
-                "visual_count": len(pages),
-                "text_count": len(chunks),
+                "pages": pages,
+                "chunks": chunks,
+                "has_images": len(pages) > 0,
+                "collections": [],
                 "metadata": doc.get("metadata", {}),
             }
 

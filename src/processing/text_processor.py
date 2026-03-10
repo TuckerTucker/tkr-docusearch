@@ -190,14 +190,15 @@ class TextProcessor:
             logger.debug(f"Generated embeddings for {len(texts)} chunks " f"in {elapsed_ms:.0f}ms")
 
             # Create results
+            # batch_output is list[bytes] from ShikomiClient.embed_texts
             for idx, chunk in enumerate(batch_chunks):
                 result = TextEmbeddingResult(
                     doc_id=doc_id,
                     chunk_id=chunk.chunk_id,
                     page_num=chunk.page_num,
-                    embedding=batch_output["embeddings"][idx],
-                    cls_token=batch_output["cls_tokens"][idx],
-                    seq_length=batch_output["seq_lengths"][idx],
+                    embedding=batch_output[idx],
+                    cls_token=None,
+                    seq_length=0,
                     text=chunk.text,
                     processing_time_ms=elapsed_ms / len(texts),
                 )
