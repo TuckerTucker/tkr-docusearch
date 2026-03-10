@@ -1,31 +1,5 @@
 services:
   # ============================================================================
-  # Legacy Office Converter - PPTX to Image Conversion + DOC to DOCX Conversion
-  # ============================================================================
-  legacy-office-converter:
-    build:
-      context: .
-      dockerfile: Dockerfile.legacy-office-converter
-    image: docusearch-legacy-office-converter:latest
-    container_name: docusearch-legacy-office-converter
-    ports:
-      - "${LEGACY_OFFICE_PORT:-${SLIDE_RENDERER_PORT:-8003}}:8003"
-    volumes:
-      - ../data/uploads:/uploads
-      - ../data/page_images:/page_images
-    environment:
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    networks:
-      - docusearch
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # ============================================================================
   # Processing Worker - Document Processing and Embedding
   # ============================================================================
   processing-worker:
