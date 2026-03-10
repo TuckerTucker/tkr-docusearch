@@ -114,9 +114,9 @@ start_native_worker() {
         fi
     fi
 
-    # Start worker in background using bash script
-    # The script will handle venv activation and all environment setup
-    nohup bash -c "cd '${PROJECT_ROOT}' && ./scripts/run-worker-native.sh run" > logs/worker-native.log 2>&1 &
+    # Start worker in background
+    # exec in run-worker-native.sh replaces bash with Python, preserving the PID
+    nohup "${PROJECT_ROOT}/scripts/run-worker-native.sh" run > logs/worker-native.log 2>&1 &
     local worker_pid=$!
     echo $worker_pid > "$WORKER_PID_FILE"
 

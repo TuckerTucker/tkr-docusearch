@@ -118,16 +118,26 @@ stop_native_worker() {
         print_status "Worker" "info" "No PID file found (may not be running)"
     fi
 
-    # Check for orphaned worker processes
-    local orphaned_pids=$(pgrep -f "worker_webhook.py" || true)
-    if [ -n "$orphaned_pids" ]; then
-        print_status "Orphaned workers" "warn" "Found: $orphaned_pids"
+    # Check for orphaned worker processes (also kill by port)
+    local port_pid=$(lsof -Pi :8002 -sTCP:LISTEN -t 2>/dev/null || true)
+    local orphaned_pids=$(pgrep -f "worker_webhook" || true)
+    local all_pids=$(echo -e "${orphaned_pids}\n${port_pid}" | sort -u | grep -v '^$' || true)
+    if [ -n "$all_pids" ]; then
+        print_status "Orphaned workers" "warn" "Found: $(echo $all_pids | tr '\n' ' ')"
 
         if [ "$FORCE_MODE" = "--force" ]; then
-            pkill -9 -f "worker_webhook.py" || true
+            echo "$all_pids" | xargs kill -9 2>/dev/null || true
             print_status "Orphaned workers" "ok" "Killed"
         else
-            echo -e "\n  ${YELLOW}Run with --force to kill orphaned workers${NC}"
+            echo "$all_pids" | xargs kill 2>/dev/null || true
+            sleep 2
+            # Force kill any remaining
+            for pid in $all_pids; do
+                if ps -p "$pid" > /dev/null 2>&1; then
+                    kill -9 "$pid" 2>/dev/null || true
+                fi
+            done
+            print_status "Orphaned workers" "ok" "Stopped"
         fi
     fi
 }
