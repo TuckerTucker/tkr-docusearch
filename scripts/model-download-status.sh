@@ -4,7 +4,6 @@
 # ============================================================================
 # Monitors HuggingFace model downloads for:
 # - gpt-oss-20b-MLX-4bit (~11GB) - Local preprocessing
-# - ColPali models (~2-3GB) - Document embeddings
 #
 # Usage:
 #   ./scripts/model-download-status.sh           # One-time check
@@ -35,11 +34,9 @@ fi
 # Model paths
 MODELS_DIR="${HF_HOME:-$PROJECT_ROOT/data/models}"
 MLX_MODEL_PATH="${MLX_MODEL_PATH:-$MODELS_DIR/gpt-oss-20b-MLX-4bit}"
-COLPALI_MODEL="vidore/colpali-v1.2"
 
 # Expected sizes (in GB)
 MLX_MODEL_SIZE=11
-COLPALI_MODEL_SIZE=2.5
 
 # ============================================================================
 # Helper Functions
@@ -191,52 +188,6 @@ check_mlx_model() {
     fi
 }
 
-check_colpali_model() {
-    print_section "ColPali Model (vidore/colpali-v1.2)"
-
-    # ColPali models are stored in HuggingFace hub cache
-    local hub_dir="$MODELS_DIR/hub"
-
-    if [ ! -d "$hub_dir" ]; then
-        print_status "missing" "HuggingFace cache directory not found"
-        print_status "info" "Model will download on first worker startup"
-        echo ""
-        return 1
-    fi
-
-    # Look for ColPali model in snapshots
-    local colpali_found=false
-    local colpali_size="0"
-
-    # Search for model files (they have specific patterns)
-    if find "$hub_dir" -name "*.safetensors" -o -name "config.json" 2>/dev/null | grep -q "models--vidore--colpali"; then
-        colpali_found=true
-        local model_dir=$(find "$hub_dir" -type d -name "*vidore*colpali*" 2>/dev/null | head -1)
-        if [ -n "$model_dir" ]; then
-            colpali_size=$(get_dir_size_gb "$model_dir")
-        fi
-    fi
-
-    if [ "$colpali_found" = true ]; then
-        local progress=$(calculate_progress ${colpali_size%.*} ${COLPALI_MODEL_SIZE%.*})
-        print_status "info" "Cache location: $hub_dir"
-        print_status "info" "Size: ${colpali_size}GB / ${COLPALI_MODEL_SIZE}GB (${progress}%)"
-
-        if [ "${colpali_size%.*}" -ge "${COLPALI_MODEL_SIZE%.*}" ]; then
-            print_status "complete" "${BOLD}ColPali model is complete and ready${NC}"
-        else
-            print_status "downloading" "${BOLD}ColPali model is downloading (${progress}%)${NC}"
-        fi
-        echo ""
-        return 0
-    else
-        print_status "missing" "ColPali model not found in cache"
-        print_status "info" "Model will download on first worker startup"
-        echo ""
-        return 1
-    fi
-}
-
 check_download_processes() {
     print_section "Active Download Processes"
 
@@ -245,12 +196,6 @@ check_download_processes() {
     # Check for huggingface-cli
     if pgrep -f "huggingface-cli download" > /dev/null; then
         print_status "downloading" "huggingface-cli download (MLX model)"
-        processes_found=true
-    fi
-
-    # Check for Python processes that might be downloading
-    if pgrep -f "python.*from_pretrained" > /dev/null; then
-        print_status "downloading" "Python model download (likely ColPali)"
         processes_found=true
     fi
 
@@ -293,7 +238,6 @@ print_summary() {
 
     # Check overall status
     local mlx_ready=false
-    local colpali_ready=false
 
     if [ -f "$MLX_MODEL_PATH/config.json" ]; then
         local mlx_size=$(get_dir_size_gb "$MLX_MODEL_PATH")
@@ -302,35 +246,18 @@ print_summary() {
         fi
     fi
 
-    local hub_dir="$MODELS_DIR/hub"
-    if [ -d "$hub_dir" ] && find "$hub_dir" -name "*.safetensors" 2>/dev/null | grep -q "colpali"; then
-        colpali_ready=true
-    fi
-
-    if [ "$mlx_ready" = true ] && [ "$colpali_ready" = true ]; then
-        echo -e "${GREEN}✓ All models downloaded and ready!${NC}"
+    if [ "$mlx_ready" = true ]; then
+        echo -e "${GREEN}✓ MLX model downloaded and ready!${NC}"
         echo ""
         echo "Next steps:"
         echo "  1. Start services: ./scripts/start-all.sh"
         echo "  2. Check status: ./scripts/status.sh"
         echo "  3. Open UI: http://localhost:42887"
-    elif [ "$mlx_ready" = false ] && [ "$colpali_ready" = false ]; then
-        echo -e "${YELLOW}⚠ No models downloaded yet${NC}"
-        echo ""
-        echo "To download models:"
-        echo "  1. MLX model: ./scripts/setup-mlx-model.sh"
-        echo "  2. ColPali: Will auto-download on first worker startup"
-        echo "  3. Start all: ./scripts/start-all.sh"
-    elif [ "$mlx_ready" = false ]; then
+    else
         echo -e "${YELLOW}⚠ MLX model not ready${NC}"
         echo ""
         echo "To download MLX model:"
         echo "  ./scripts/setup-mlx-model.sh"
-    elif [ "$colpali_ready" = false ]; then
-        echo -e "${YELLOW}⚠ ColPali model not ready${NC}"
-        echo ""
-        echo "ColPali will auto-download on first worker startup:"
-        echo "  ./scripts/start-all.sh"
     fi
 
     echo ""
@@ -352,7 +279,6 @@ display_status() {
     check_disk_space
     check_download_processes
     check_mlx_model
-    check_colpali_model
     print_summary
 }
 
@@ -389,7 +315,6 @@ case "${1:-}" in
         echo ""
         echo "Models monitored:"
         echo "  - gpt-oss-20b-MLX-4bit (~11GB) - Local preprocessing"
-        echo "  - vidore/colpali-v1.2 (~2.5GB) - Document embeddings"
         exit 0
         ;;
     "")

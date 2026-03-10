@@ -4,7 +4,6 @@
 # ============================================================================
 # Stops all DocuSearch services:
 # - Native worker (if running)
-# - Docker containers (ChromaDB, Copyparty, Worker)
 # - Cleans up PID files
 #
 # Usage:
@@ -44,7 +43,6 @@ WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
-COMPOSE_DIR="${PROJECT_ROOT}/docker"
 
 # ============================================================================
 # Functions
@@ -317,62 +315,12 @@ stop_frontend() {
     fi
 }
 
-stop_docker_services() {
-    echo -e "\n${CYAN}Stopping Docker services...${NC}\n"
-
-    cd "$COMPOSE_DIR"
-
-    # Try to stop with both compose files
-    local stopped=false
-
-    # First try with native worker override
-    if docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml ps -q 2>/dev/null | grep -q .; then
-        print_status "Docker Compose" "info" "Using native worker configuration"
-        docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml down
-        stopped=true
-    fi
-
-    # Then try standard compose
-    if ! $stopped && docker-compose ps -q 2>/dev/null | grep -q .; then
-        print_status "Docker Compose" "info" "Using standard configuration"
-        docker-compose down
-        stopped=true
-    fi
-
-    if ! $stopped; then
-        print_status "Docker services" "info" "No running containers found"
-    else
-        print_status "Docker services" "ok" "Stopped"
-    fi
-
-    cd "$PROJECT_ROOT"
-
-    # Verify containers are stopped
-    echo ""
-    local running_containers=$(docker ps --filter "name=docusearch" --format "{{.Names}}" || true)
-
-    if [ -n "$running_containers" ]; then
-        print_status "Containers" "warn" "Some containers still running:"
-        echo "$running_containers" | while read -r container; do
-            echo -e "    ${YELLOW}→${NC} $container"
-        done
-
-        if [ "$FORCE_MODE" = "--force" ]; then
-            echo -e "\n  ${YELLOW}Force stopping containers...${NC}"
-            docker stop $(docker ps --filter "name=docusearch" -q) 2>/dev/null || true
-            docker rm $(docker ps --filter "name=docusearch" -aq) 2>/dev/null || true
-            print_status "Containers" "ok" "Force stopped"
-        fi
-    else
-        print_status "Containers" "ok" "All stopped"
-    fi
-}
 
 check_ports() {
     echo -e "\n${CYAN}Checking ports...${NC}\n"
 
-    local ports=("8000" "8001" "8002" "8004" "3000")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
+    local ports=("8002" "3000")
+    local port_names=("Worker" "Frontend")
     local ports_in_use=false
 
     for i in "${!ports[@]}"; do
@@ -441,14 +389,6 @@ cleanup_logs() {
         print_status "Ngrok log" "info" "Saved (${log_size}): logs/ngrok.log"
     fi
 
-    # Show recent Docker logs
-    cd "$COMPOSE_DIR"
-    local compose_logs=$(docker-compose logs --tail=0 2>/dev/null || echo "")
-    cd "$PROJECT_ROOT"
-
-    if [ -n "$compose_logs" ]; then
-        print_status "Docker logs" "info" "Available via: docker-compose -f docker/docker-compose.yml logs"
-    fi
 }
 
 show_summary() {
@@ -463,7 +403,7 @@ show_summary() {
     if [ "$FORCE_MODE" != "--force" ]; then
         echo -e "\n${CYAN}Troubleshooting:${NC}"
         echo -e "  ${GREEN}→${NC} Force stop: ${YELLOW}./scripts/stop-all.sh --force${NC}"
-        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :3000,8000,8001,8002,8004${NC}"
+        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :3000,8002${NC}"
     fi
 
     echo ""
@@ -483,11 +423,9 @@ ${YELLOW}Options:${NC}
 ${YELLOW}What gets stopped:${NC}
   1. Native worker process (if running)
   2. Research API process (if running)
-  3. Docker containers:
-     - docusearch-copyparty (Copyparty upload server)
-     - docusearch-chromadb (ChromaDB vector database)
-     - docusearch-worker (Worker, if in Docker mode)
-  4. Cleanup:
+  3. Frontend dev server (if running)
+  4. Ngrok tunnel (if running)
+  5. Cleanup:
      - PID files
      - Orphaned processes
 
@@ -500,16 +438,13 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Troubleshooting:${NC}
   # Check what's running on DocuSearch ports
-  lsof -i :3000,8000,8001,8002,8004
+  lsof -i :3000,8002
 
   # Manually kill worker
   pkill -f worker_webhook.py
 
   # Manually kill research API
   pkill -f src/api/research.py
-
-  # Force remove Docker containers
-  docker rm -f \$(docker ps -aq --filter "name=docusearch")
 
 ${YELLOW}See Also:${NC}
   - Start services: ./scripts/start-all.sh
@@ -553,7 +488,6 @@ stop_native_worker
 stop_research_api
 stop_frontend
 stop_ngrok
-stop_docker_services
 cleanup_python_cache
 check_ports
 cleanup_logs

@@ -99,16 +99,7 @@ echo ""
 
 # Function to check if services are running
 check_services() {
-    local chromadb_ok=false
     local worker_ok=false
-
-    # Check ChromaDB (port 8001)
-    if curl -s http://localhost:8001/api/v1/heartbeat > /dev/null 2>&1; then
-        chromadb_ok=true
-        echo -e "${GREEN}✓${NC} ChromaDB is running (port 8001)"
-    else
-        echo -e "${RED}✗${NC} ChromaDB is not running (port 8001)"
-    fi
 
     # Check Worker API (port 8002)
     if curl -s http://localhost:8002/health > /dev/null 2>&1; then
@@ -118,7 +109,7 @@ check_services() {
         echo -e "${RED}✗${NC} Worker API is not running (port 8002)"
     fi
 
-    if $chromadb_ok && $worker_ok; then
+    if $worker_ok; then
         return 0
     else
         return 1

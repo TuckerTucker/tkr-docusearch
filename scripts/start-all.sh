@@ -3,17 +3,17 @@
 # DocuSearch - Start All Services (macOS)
 # ============================================================================
 # Starts the complete DocuSearch stack with native Metal GPU support:
-# - ChromaDB (Docker) - Vector database
-# - Copyparty (Docker) - File upload server
-# - Processing Worker (Native) - Document processing with Metal GPU
+# - Processing Worker (Native) - Document processing with Metal GPU + Koji DB
+# - Research API - LLM-powered document Q&A
+# - Frontend - React 19 SPA
+# - Ngrok - Tunnel for vision mode (optional)
 #
 # Usage:
-#   ./scripts/start-all.sh [--cpu|--gpu|--docker-only]
+#   ./scripts/start-all.sh [--gpu|--no-vision]
 #
 # Options:
-#   --cpu          Run worker in Docker (CPU only, no setup needed)
 #   --gpu          Run worker natively with Metal GPU (default, requires setup)
-#   --docker-only  Start only Docker services (no worker)
+#   --no-vision    Disable vision mode (skip ngrok tunnel)
 # ============================================================================
 
 set -e
@@ -148,8 +148,8 @@ check_docker() {
 }
 
 check_ports() {
-    local ports=("8000" "8001" "8002" "8004" "$FRONTEND_PORT")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
+    local ports=("8002" "8004" "$FRONTEND_PORT")
+    local port_names=("Worker" "Research API" "Frontend")
 
     for i in "${!ports[@]}"; do
         local port="${ports[$i]}"
@@ -166,43 +166,10 @@ start_docker_services() {
     echo -e "\n${CYAN}Starting Docker services...${NC}\n"
 
     cd "$COMPOSE_DIR"
-
-    if [ "$MODE" = "gpu" ]; then
-        # Use native worker override
-        docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml up -d
-    else
-        # Standard Docker setup (CPU worker)
-        docker-compose up -d
-    fi
-
+    docker-compose up -d
     cd "$PROJECT_ROOT"
 
-    # Wait for services to be ready
-    echo -e "\n${CYAN}Waiting for services to be ready...${NC}\n"
-    sleep 3
-
-    # Check ChromaDB
-    if curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
-        print_status "ChromaDB" "ok" "Running on http://localhost:8001"
-    else
-        print_status "ChromaDB" "error" "Not responding"
-    fi
-
-    # Check Copyparty
-    if curl -s http://localhost:8000/ > /dev/null 2>&1; then
-        print_status "Copyparty" "ok" "Running on http://localhost:8000"
-    else
-        print_status "Copyparty" "error" "Not responding"
-    fi
-
-    # Check worker (if in Docker mode)
-    if [ "$MODE" = "cpu" ]; then
-        if curl -s http://localhost:8002/health > /dev/null 2>&1; then
-            print_status "Worker (Docker)" "ok" "Running on http://localhost:8002 (CPU)"
-        else
-            print_status "Worker (Docker)" "warn" "Starting..."
-        fi
-    fi
+    echo -e "  ${GREEN}✓${NC} Docker services started"
 }
 
 start_native_worker() {
@@ -237,12 +204,6 @@ start_native_worker() {
         else
             rm -f "$WORKER_PID_FILE"
         fi
-    fi
-
-    # Check ChromaDB is running first
-    if ! curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
-        print_status "Worker (Native)" "error" "ChromaDB not running (required for worker)"
-        return
     fi
 
     # Start worker in background using bash script
@@ -508,8 +469,6 @@ show_summary() {
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo -e "\n${CYAN}Available Services:${NC}"
     echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:$FRONTEND_PORT${NC} (React 19)"
-    echo -e "  ${GREEN}→${NC} Copyparty:        ${BLUE}http://localhost:8000${NC} (File upload)"
-    echo -e "  ${GREEN}→${NC} ChromaDB:         ${BLUE}http://localhost:8001${NC}"
     echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
     echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
     echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
@@ -525,14 +484,11 @@ show_summary() {
         echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
         echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
         echo -e "  ${BLUE}ℹ${NC} Frontend waits for worker to be ready (model loading ~10s)"
-    else
-        echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Docker (CPU only)${NC}"
-        echo -e "  ${BLUE}ℹ${NC} For GPU: ${YELLOW}./scripts/start-all.sh --gpu${NC}"
     fi
 
     echo -e "\n${CYAN}Management:${NC}"
     echo -e "  ${GREEN}→${NC} Stop all:      ${YELLOW}./scripts/stop-all.sh${NC}"
-    echo -e "  ${GREEN}→${NC} View logs:     ${YELLOW}docker-compose -f docker/docker-compose.yml logs -f${NC}"
+    echo -e "  ${GREEN}→${NC} View logs:     ${YELLOW}tail -f logs/*.log${NC}"
 
     if [ "$MODE" = "gpu" ]; then
         echo -e "  ${GREEN}→${NC} Worker logs:   ${YELLOW}tail -f logs/worker-native.log${NC}"
@@ -550,8 +506,6 @@ ${YELLOW}Usage:${NC}
 
 ${YELLOW}Options:${NC}
   --gpu          Run worker natively with Metal GPU (default, 10-20x faster)
-  --cpu          Run worker in Docker with CPU (simpler, slower)
-  --docker-only  Start only Docker services (no worker)
   --no-vision    Disable vision mode (skip ngrok tunnel)
   --help         Show this help message
 
@@ -560,24 +514,13 @@ ${YELLOW}Examples:${NC}
   ./scripts/start-all.sh
   ./scripts/start-all.sh --gpu
 
-  # Start with CPU (no GPU setup required)
-  ./scripts/start-all.sh --cpu
-
   # Start without vision mode (no ngrok)
   ./scripts/start-all.sh --no-vision
 
-  # Combine options
-  ./scripts/start-all.sh --gpu --no-vision
-
-  # Start only ChromaDB and Copyparty
-  ./scripts/start-all.sh --docker-only
-
 ${YELLOW}Services:${NC}
-  - ChromaDB:    Vector database (http://localhost:8001)
-  - Copyparty:   File upload server (http://localhost:8000)
-  - Worker:      Document processing (http://localhost:8002)
-  - Ngrok:       Tunnel for vision mode (auto-managed)
+  - Worker:      Document processing + Koji DB (http://localhost:8002)
   - Research:    AI research API (http://localhost:8004)
+  - Ngrok:       Tunnel for vision mode (auto-managed)
   - Frontend:    React UI (http://localhost:$FRONTEND_PORT)
 
 ${YELLOW}Vision Mode:${NC}
@@ -586,8 +529,8 @@ ${YELLOW}Vision Mode:${NC}
   - Use --no-vision to disable and skip ngrok
 
 ${YELLOW}Requirements:${NC}
-  - Docker Desktop running
-  - For --gpu mode: Run './scripts/run-worker-native.sh setup' first
+  - Docker Desktop running (for auxiliary services)
+  - Run './scripts/run-worker-native.sh setup' first
   - For vision mode: ngrok installed and configured (optional)
 
 ${YELLOW}See Also:${NC}
@@ -614,7 +557,7 @@ for arg in "$@"; do
             MODE="gpu"
             ;;
         --cpu|cpu)
-            MODE="cpu"
+            MODE="gpu"  # CPU-only Docker mode removed; always use native worker
             ;;
         --docker-only)
             MODE="docker-only"
@@ -647,9 +590,6 @@ echo -e "${CYAN}Mode:${NC} "
 case "$MODE" in
     gpu)
         echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
-        ;;
-    cpu)
-        echo -e "${YELLOW}Docker worker (CPU only)${NC}\n"
         ;;
     docker-only)
         echo -e "${BLUE}Docker services only (no worker)${NC}\n"
@@ -693,24 +633,6 @@ elif [ "$MODE" = "docker-only" ]; then
     print_status "Ngrok" "info" "Skipped (--docker-only mode)"
     print_status "Research API" "info" "Skipped (--docker-only mode)"
     print_status "Frontend" "info" "Skipped (--docker-only mode)"
-elif [ "$MODE" = "cpu" ]; then
-    # Wait for worker to be ready before starting ngrok
-    if [ "$VISION_ENABLED" = true ]; then
-        max_wait=20
-        wait_count=0
-        echo -e "\n${CYAN}Waiting for worker to be ready before starting ngrok...${NC}\n"
-
-        while [ $wait_count -lt $max_wait ]; do
-            if curl -s http://localhost:8002/health > /dev/null 2>&1; then
-                break
-            fi
-            sleep 1
-            wait_count=$((wait_count + 1))
-        done
-    fi
-
-    start_ngrok  # Start ngrok in CPU mode too
-    start_frontend
 fi
 
 # Show summary

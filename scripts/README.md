@@ -157,21 +157,15 @@ All scripts respect these environment variables:
 **Worker configuration:**
 ```bash
 export DEVICE=mps                    # mps | cpu | cuda
-export MODEL_NAME=vidore/colpali-v1.2
-export BATCH_SIZE_VISUAL=4
+export KOJI_DB_PATH=data/koji.db     # Koji database path
+export SHIKOMI_HOST=localhost         # Shikomi embedding service
+export SHIKOMI_PORT=50051
 ```
 
 **Service ports:**
 ```bash
-export COPYPARTY_PORT=8000
-export CHROMADB_PORT=8001
 export WORKER_PORT=8002
-```
-
-**ChromaDB connection:**
-```bash
-export CHROMA_HOST=localhost
-export CHROMA_PORT=8001
+export RESEARCH_API_PORT=8004
 ```
 
 ## Troubleshooting
@@ -186,7 +180,7 @@ chmod +x scripts/*.sh
 
 ```bash
 # Check ports
-lsof -i :8000,8001,8002
+lsof -i :8002,8004
 
 # Force stop everything
 ./scripts/stop-all.sh --force
@@ -210,7 +204,7 @@ If you see errors about `src.api.server`:
 | `./start-all.sh` (root) | `./scripts/start-all.sh` |
 | `./stop-all.sh` (root) | `./scripts/stop-all.sh` |
 | `./start-api.sh` (root) | `./scripts/start-all.sh` |
-| `./start-ui.sh` (root) | Copyparty UI (auto-started) |
+| `./start-ui.sh` (root) | `./scripts/start-all.sh` (frontend auto-started) |
 
 **The root-level scripts have been moved to `scripts/legacy/`**
 

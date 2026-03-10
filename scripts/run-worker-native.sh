@@ -2,8 +2,7 @@
 # ============================================================================
 # Run Processing Worker Natively (with Metal/MPS support)
 # ============================================================================
-# This script runs the processing worker directly on macOS to access Metal GPU
-# while keeping ChromaDB and Copyparty in Docker containers.
+# This script runs the processing worker directly on macOS to access Metal GPU.
 #
 # Usage:
 #   ./scripts/run-worker-native.sh [setup|run|check]
@@ -35,16 +34,10 @@ VENV_DIR="${VENV_DIR:-.venv-native}"
 
 # Environment variables for worker
 export DEVICE="mps"
-export MODEL_NAME="${MODEL_NAME:-vidore/colpali-v1.2}"
+export MODEL_NAME="${MODEL_NAME:-default}"
 export MODEL_PRECISION="${MODEL_PRECISION:-fp16}"
 export BATCH_SIZE_VISUAL="${BATCH_SIZE_VISUAL:-4}"
 export BATCH_SIZE_TEXT="${BATCH_SIZE_TEXT:-8}"
-
-# ChromaDB connection (Docker)
-export CHROMA_HOST="${CHROMA_HOST:-localhost}"
-export CHROMA_PORT="${CHROMA_PORT:-8001}"
-export VISUAL_COLLECTION="${VISUAL_COLLECTION:-visual_collection}"
-export TEXT_COLLECTION="${TEXT_COLLECTION:-text_collection}"
 
 # File paths
 export UPLOADS_DIR="${UPLOADS_DIR:-${PROJECT_ROOT}/data/uploads}"
@@ -138,7 +131,7 @@ setup_venv() {
     pip install --upgrade pip
 
     # Install all dependencies from requirements.txt
-    # This includes: PyTorch, transformers, ChromaDB, Docling, mutagen, and all other dependencies
+    # This includes: PyTorch, transformers, Koji, Docling, mutagen, and all other dependencies
     if [ -f "${PROJECT_ROOT}/requirements.txt" ]; then
         echo "Installing dependencies from requirements.txt..."
         pip install -r "${PROJECT_ROOT}/requirements.txt"
@@ -164,15 +157,6 @@ run_worker() {
     # Ensure Homebrew binaries (including ffmpeg) are in PATH
     export PATH="/opt/homebrew/bin:$PATH"
 
-    # Verify ChromaDB is running
-    echo "Checking ChromaDB connection..."
-    if ! curl -s "http://${CHROMA_HOST}:${CHROMA_PORT}/api/v2/heartbeat" > /dev/null 2>&1; then
-        echo -e "${RED}Error: ChromaDB not accessible at http://${CHROMA_HOST}:${CHROMA_PORT}${NC}"
-        echo -e "${YELLOW}Start ChromaDB with: docker-compose up -d chromadb${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}✓ ChromaDB is running${NC}"
-
     # Verify uploads directory
     if [ ! -d "$UPLOADS_DIR" ]; then
         echo -e "${YELLOW}Creating uploads directory: $UPLOADS_DIR${NC}"
@@ -189,7 +173,6 @@ run_worker() {
     echo "  Device: $DEVICE"
     echo "  Model: $MODEL_NAME"
     echo "  Precision: $MODEL_PRECISION"
-    echo "  ChromaDB: http://${CHROMA_HOST}:${CHROMA_PORT}"
     echo "  Uploads: $UPLOADS_DIR"
     echo ""
 
@@ -234,13 +217,11 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Environment Variables:${NC}
   DEVICE              GPU device (default: mps)
-  MODEL_NAME          Model to use (default: vidore/colpali-v1.2)
-  CHROMA_HOST         ChromaDB host (default: localhost)
-  CHROMA_PORT         ChromaDB port (default: 8001)
+  MODEL_NAME          Model to use (default: default)
 
 ${YELLOW}Notes:${NC}
   - Requires macOS 12.3+ for Metal/MPS support
-  - ChromaDB and Copyparty still run in Docker
+  - Worker uses Koji (embedded DB) for storage
   - Worker runs on http://0.0.0.0:8002
 EOF
 }

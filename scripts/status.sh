@@ -38,6 +38,7 @@ FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
+KOJI_DB_PATH="${KOJI_DB_PATH:-${PROJECT_ROOT}/data/koji.db}"
 
 # ============================================================================
 # Functions
@@ -54,24 +55,19 @@ check_service() {
     fi
 }
 
+check_koji_db() {
+    if [ -d "$KOJI_DB_PATH" ] || [ -f "$KOJI_DB_PATH" ]; then
+        echo "available"
+    else
+        echo "missing"
+    fi
+}
+
 get_service_info() {
     local service=$1
     local status=$2
 
     case "$service" in
-        copyparty)
-            if [ "$status" = "running" ]; then
-                echo "http://localhost:8000"
-            fi
-            ;;
-        chromadb)
-            if [ "$status" = "running" ]; then
-                local response=$(curl -s http://localhost:8001/api/v2/heartbeat 2>/dev/null)
-                if [ -n "$response" ]; then
-                    echo "http://localhost:8001"
-                fi
-            fi
-            ;;
         worker)
             if [ "$status" = "running" ]; then
                 local response=$(curl -s http://localhost:8002/status 2>/dev/null)
@@ -90,23 +86,14 @@ show_status_text() {
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Check Docker
-    echo -e "${CYAN}Docker Services:${NC}"
+    # Koji Database
+    echo -e "${CYAN}Database:${NC}"
 
-    # ChromaDB
-    local chromadb_status=$(check_service "http://localhost:8001/api/v2/heartbeat")
-    if [ "$chromadb_status" = "running" ]; then
-        echo -e "  ${GREEN}✓${NC} ChromaDB:  Running on http://localhost:8001"
+    local koji_status=$(check_koji_db)
+    if [ "$koji_status" = "available" ]; then
+        echo -e "  ${GREEN}✓${NC} Koji:      Available at $KOJI_DB_PATH"
     else
-        echo -e "  ${RED}✗${NC} ChromaDB:  Stopped"
-    fi
-
-    # Copyparty
-    local copyparty_status=$(check_service "http://localhost:8000/")
-    if [ "$copyparty_status" = "running" ]; then
-        echo -e "  ${GREEN}✓${NC} Copyparty: Running on http://localhost:8000"
-    else
-        echo -e "  ${RED}✗${NC} Copyparty: Stopped"
+        echo -e "  ${RED}✗${NC} Koji:      Not found at $KOJI_DB_PATH"
     fi
 
     # Worker
@@ -238,7 +225,7 @@ show_status_text() {
 
     # Port usage
     echo -e "\n${CYAN}Port Usage:${NC}"
-    for port in $FRONTEND_PORT 8000 8001 8002 8004; do
+    for port in $FRONTEND_PORT 8002 8004; do
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
             local pid=$(lsof -Pi :$port -sTCP:LISTEN -t)
             local process=$(ps -p $pid -o comm= | tr -d '\n')
@@ -270,8 +257,7 @@ show_status_text() {
 
     local all_running=true
     local core_running=true
-    [ "$chromadb_status" != "running" ] && all_running=false && core_running=false
-    [ "$copyparty_status" != "running" ] && all_running=false && core_running=false
+    [ "$koji_status" != "available" ] && all_running=false && core_running=false
     [ "$worker_status" != "running" ] && all_running=false && core_running=false
     [ "$frontend_status" != "running" ] && all_running=false
     [ "$research_api_status" != "running" ] && all_running=false
@@ -298,8 +284,7 @@ show_status_text() {
 
 # JSON output
 show_status_json() {
-    local chromadb_status=$(check_service "http://localhost:8001/api/v2/heartbeat")
-    local copyparty_status=$(check_service "http://localhost:8000/")
+    local koji_status=$(check_koji_db)
     local worker_status=$(check_service "http://localhost:8002/health")
     local research_api_status=$(check_service "http://localhost:8004/api/research/health")
     local frontend_status=$(check_service "http://localhost:$FRONTEND_PORT")
@@ -345,13 +330,9 @@ show_status_json() {
       "url": "http://localhost:$FRONTEND_PORT",
       "pid": "$frontend_pid"
     },
-    "chromadb": {
-      "status": "$chromadb_status",
-      "url": "http://localhost:8001"
-    },
-    "copyparty": {
-      "status": "$copyparty_status",
-      "url": "http://localhost:8000"
+    "koji": {
+      "status": "$koji_status",
+      "path": "$KOJI_DB_PATH"
     },
     "worker": {
       "status": "$worker_status",
@@ -371,7 +352,7 @@ show_status_json() {
       "vision_enabled": $([ "$ngrok_status" = "running" ] && echo 'true' || echo 'false')
     }
   },
-  "all_running": $([ "$chromadb_status" = "running" ] && [ "$copyparty_status" = "running" ] && [ "$worker_status" = "running" ] && [ "$frontend_status" = "running" ] && [ "$research_api_status" = "running" ] && echo 'true' || echo 'false')
+  "all_running": $([ "$koji_status" = "available" ] && [ "$worker_status" = "running" ] && [ "$frontend_status" = "running" ] && [ "$research_api_status" = "running" ] && echo 'true' || echo 'false')
 }
 EOF
 }
