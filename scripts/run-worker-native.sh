@@ -73,8 +73,6 @@ export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-${LEGACY_OFFICE_PORT}}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 export PYTHONUNBUFFERED=1
 
-# Python path - add src directory for module imports
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH}"
 
 # ============================================================================
 # Functions
@@ -147,10 +145,7 @@ setup_venv() {
 run_worker() {
     echo -e "${BLUE}Starting worker with Metal/MPS...${NC}"
 
-    # Activate virtual environment only if it has the package installed
-    if [ -d "$VENV_DIR" ] && "$VENV_DIR/bin/python" -c "import tkr_docusearch" 2>/dev/null; then
-        source "$VENV_DIR/bin/activate"
-    fi
+    # Note: .venv-native is not used — system Python has all deps via pip install -e .
 
     # Ensure Homebrew binaries (including ffmpeg) are in PATH
     export PATH="/opt/homebrew/bin:$PATH"
@@ -180,15 +175,7 @@ run_worker() {
     echo ""
 
     cd "$PROJECT_ROOT"
-    # Project root on PYTHONPATH so tkr_docusearch package is importable
-    export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
-
-    # Use venv Python if it has torch, otherwise system Python
-    if [ -f "$VENV_DIR/bin/python" ] && "$VENV_DIR/bin/python" -c "import torch" 2>/dev/null; then
-        exec "$VENV_DIR/bin/python" -m tkr_docusearch.processing.worker_webhook
-    else
-        exec python3 -m tkr_docusearch.processing.worker_webhook
-    fi
+    exec python3 -m tkr_docusearch.processing.worker_webhook
 }
 
 show_help() {
