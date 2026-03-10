@@ -20,31 +20,31 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocke
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from config.processing_config import EnhancedModeConfig, ProcessingConfig
+from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
 
 # Import core components
-from embeddings import ColPaliEngine
-from processing import DocumentProcessor
-from processing.cover_art_utils import delete_document_cover_art
-from processing.docling_parser import DoclingParser
+from ..embeddings import ShikomiClient
+from . import DocumentProcessor
+from .cover_art_utils import delete_document_cover_art
+from .docling_parser import DoclingParser
 
 # Import documents API router (Wave 3)
-from processing.documents_api import router as documents_router
-from processing.file_validator import validate_file_type
+from .documents_api import router as documents_router
+from .file_validator import validate_file_type
 
 # Import cleanup utilities
-from processing.image_utils import cleanup_temp_directories, delete_document_images
-from processing.status_api import router as status_router
-from processing.status_api import set_status_manager
+from .image_utils import cleanup_temp_directories, delete_document_images
+from .status_api import router as status_router
+from .status_api import set_status_manager
 
 # Import status management components
-from processing.status_manager import StatusManager, get_status_manager
+from .status_manager import StatusManager, get_status_manager
 
 # Import WebSocket broadcaster
-from processing.websocket_broadcaster import get_broadcaster
-from tkr_docusearch.config.urls import get_service_urls
-from storage.koji_client import KojiClient
-from storage.markdown_utils import delete_document_markdown
+from .websocket_broadcaster import get_broadcaster
+from ..config.urls import get_service_urls
+from ..storage.koji_client import KojiClient
+from ..storage.markdown_utils import delete_document_markdown
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -874,13 +874,15 @@ async def startup_event():
     logger.info("Initializing components...")
 
     try:
-        # Initialize embedding engine
-        logger.info(f"Loading ColPali model (device={DEVICE}, precision={PRECISION})...")
-        embedding_engine = ColPaliEngine(device=DEVICE, precision=PRECISION)
-        logger.info("✓ ColPali model loaded")
+        # Initialize embedding engine (Shikomi gRPC client)
+        from ..config.koji_config import ShikomiConfig
+        shikomi_config = ShikomiConfig.from_env()
+        logger.info(f"Connecting to Shikomi embedding service ({shikomi_config.grpc_target})...")
+        embedding_engine = ShikomiClient(config=shikomi_config)
+        logger.info("✓ Shikomi client initialized")
 
         # Initialize storage client
-        from config.koji_config import KojiConfig
+        from ..config.koji_config import KojiConfig
         koji_config = KojiConfig.from_env()
         logger.info(f"Opening Koji database ({koji_config.db_path})...")
         storage_client = KojiClient(koji_config)
