@@ -116,7 +116,7 @@ Claude receives:
 1. **System Prompt**: Instructions for citation format and visual analysis
 2. **Formatted Context**: Numbered sources `[1]`, `[2]`, etc.
 3. **Images**: Page images for visual sources (via ngrok)
-4. **Source Links**: Clickable links to `http://localhost:3000/details/:id`
+4. **Source Links**: Clickable links to `http://localhost:3333/details/:id`
 
 ### Example Interaction
 
@@ -127,7 +127,7 @@ Claude receives:
 - System prompt with citation instructions
 - Context: "[1] [Visual Match] Q3-Report.pdf, Page 8\nSales increased 25%..."
 - Image: [Bar chart from page 8]
-- Links: [1] http://localhost:3000/details/abc123
+- Links: [1] http://localhost:3333/details/abc123
 
 Claude responds:
 "The sales chart in [1] shows a 25% increase in Q3. The bar chart visualizes
@@ -168,7 +168,7 @@ The MCP server respects these environment variables (set in Claude Desktop confi
 
 - `DOCUSEARCH_API_URL`: Research API endpoint (default: `http://localhost:8004`)
 - `WORKER_API_URL`: Worker API for images (default: `http://localhost:8002`)
-- `FRONTEND_URL`: React frontend URL (default: `http://localhost:3000`)
+- `FRONTEND_URL`: React frontend URL (default: `http://localhost:3333`)
 - `NGROK_URL`: Ngrok tunnel URL (required for vision)
 
 ### Customizing Defaults
@@ -200,7 +200,7 @@ curl http://localhost:8004/api/research/health  # Test API
 
 **Fix**:
 - Rephrase your question
-- Upload more documents via the web UI (`http://localhost:3000`)
+- Upload more documents via the web UI (`http://localhost:3333`)
 - Try different search keywords
 
 ### Images Not Displaying

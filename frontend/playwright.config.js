@@ -40,7 +40,7 @@ export default defineConfig({
   // Shared settings for all the projects below
   use: {
     // Base URL to use in actions like `await page.goto('/')`
-    baseURL: process.env.VITE_FRONTEND_URL || `http://localhost:${process.env.VITE_FRONTEND_PORT || 42887}`,
+    baseURL: process.env.VITE_FRONTEND_URL || `http://localhost:${process.env.VITE_FRONTEND_PORT || 3333}`,
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
@@ -83,7 +83,7 @@ export default defineConfig({
   // Run your local dev server before starting the tests
   webServer: {
     command: 'npm run dev',
-    url: process.env.VITE_FRONTEND_URL || `http://localhost:${process.env.VITE_FRONTEND_PORT || 42887}`,
+    url: process.env.VITE_FRONTEND_URL || `http://localhost:${process.env.VITE_FRONTEND_PORT || 3333}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

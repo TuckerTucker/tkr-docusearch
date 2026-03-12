@@ -98,10 +98,10 @@ def build_document_link(doc_id: str, chunk_id: Optional[str] = None) -> str:
 
     Examples:
         >>> build_document_link("abc123")
-        'http://localhost:3000/details/abc123'
+        'http://localhost:3333/details/abc123'
 
         >>> build_document_link("abc123", "abc123-chunk0012")
-        'http://localhost:3000/details/abc123?chunk=abc123-chunk0012'
+        'http://localhost:3333/details/abc123?chunk=abc123-chunk0012'
     """
     # Delegate to centralized URL builder
     return build_details_url(
@@ -125,11 +125,11 @@ def format_source_links(sources: List[Dict]) -> str:
         SOURCE LINKS:
 
         [1] [Visual Match] Q3-Report.pdf (Page 8)
-            http://localhost:3000/details/abc123
+            http://localhost:3333/details/abc123
             Relevance: 92%
 
         [2] Sales-Analysis.pdf (Page 2)
-            http://localhost:3000/details/def456?chunk=def456-chunk0008
+            http://localhost:3333/details/def456?chunk=def456-chunk0008
             Relevance: 78%
     """
     lines = ["", "", "---", "", "SOURCE LINKS:", ""]

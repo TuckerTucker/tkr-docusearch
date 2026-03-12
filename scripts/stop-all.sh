@@ -38,7 +38,7 @@ NC='\033[0m'
 # ============================================================================
 
 FORCE_MODE="${1:-}"
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-3333}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
@@ -358,13 +358,13 @@ stop_frontend() {
         print_status "Frontend" "info" "No PID file found (may not be running)"
     fi
 
-    # Check for orphaned npm/vite processes on port 3000
-    local orphaned_pids=$(lsof -ti :3000 2>/dev/null || true)
+    # Check for orphaned npm/vite processes on port 3333
+    local orphaned_pids=$(lsof -ti :$FRONTEND_PORT 2>/dev/null || true)
     if [ -n "$orphaned_pids" ]; then
-        print_status "Orphaned frontend processes" "warn" "Found on port 3000: $orphaned_pids"
+        print_status "Orphaned frontend processes" "warn" "Found on port 3333: $orphaned_pids"
 
         if [ "$FORCE_MODE" = "--force" ]; then
-            lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+            lsof -ti :$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
             print_status "Orphaned frontend processes" "ok" "Killed"
         else
             echo -e "\n  ${YELLOW}Run with --force to kill orphaned frontend processes${NC}"
@@ -376,7 +376,7 @@ stop_frontend() {
 check_ports() {
     echo -e "\n${CYAN}Checking ports...${NC}\n"
 
-    local ports=("8002" "3000")
+    local ports=("8002" "$FRONTEND_PORT")
     local port_names=("Worker" "Frontend")
     local ports_in_use=false
 
@@ -460,7 +460,7 @@ show_summary() {
     if [ "$FORCE_MODE" != "--force" ]; then
         echo -e "\n${CYAN}Troubleshooting:${NC}"
         echo -e "  ${GREEN}→${NC} Force stop: ${YELLOW}./scripts/stop-all.sh --force${NC}"
-        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :3000,8002${NC}"
+        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :$FRONTEND_PORT,8002${NC}"
     fi
 
     echo ""
@@ -495,7 +495,7 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Troubleshooting:${NC}
   # Check what's running on DocuSearch ports
-  lsof -i :3000,8002
+  lsof -i :$FRONTEND_PORT,8002
 
   # Manually kill worker
   pkill -f worker_webhook.py

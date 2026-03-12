@@ -126,7 +126,7 @@ logger.info(
 # Static File Serving - REMOVED
 # ============================================================================
 # Legacy static file serving has been removed. The Worker API now serves only
-# REST API endpoints. User interface is provided by the React frontend on port 3000.
+# REST API endpoints. User interface is provided by the React frontend on port 3333.
 #
 # Removed mounts:
 # - /static (monitor UI)

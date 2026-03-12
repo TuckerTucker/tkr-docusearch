@@ -15,7 +15,7 @@ class TestBuildDetailsUrl:
     def test_basic_url_absolute(self):
         """Test basic URL with doc_id only (absolute)."""
         url = build_details_url("abc123", absolute=True)
-        assert url == "http://localhost:3000/details/abc123"
+        assert url == "http://localhost:3333/details/abc123"
 
     def test_basic_url_relative(self):
         """Test basic URL with doc_id only (relative)."""
@@ -25,7 +25,7 @@ class TestBuildDetailsUrl:
     def test_url_with_page_absolute(self):
         """Test URL with page parameter (absolute)."""
         url = build_details_url("abc123", page=5, absolute=True)
-        assert url == "http://localhost:3000/details/abc123?page=5"
+        assert url == "http://localhost:3333/details/abc123?page=5"
 
     def test_url_with_page_relative(self):
         """Test URL with page parameter (relative)."""
@@ -35,7 +35,7 @@ class TestBuildDetailsUrl:
     def test_url_with_chunk_absolute(self):
         """Test URL with chunk_id parameter (absolute)."""
         url = build_details_url("abc123", chunk_id="abc123-chunk0042", absolute=True)
-        assert url == "http://localhost:3000/details/abc123?chunk=abc123-chunk0042"
+        assert url == "http://localhost:3333/details/abc123?chunk=abc123-chunk0042"
 
     def test_url_with_chunk_relative(self):
         """Test URL with chunk_id parameter (relative)."""
@@ -45,7 +45,7 @@ class TestBuildDetailsUrl:
     def test_url_with_page_and_chunk_absolute(self):
         """Test URL with both page and chunk_id (absolute)."""
         url = build_details_url("abc123", page=5, chunk_id="abc123-page5", absolute=True)
-        assert url == "http://localhost:3000/details/abc123?page=5&chunk=abc123-page5"
+        assert url == "http://localhost:3333/details/abc123?page=5&chunk=abc123-page5"
 
     def test_url_with_page_and_chunk_relative(self):
         """Test URL with both page and chunk_id (relative)."""
@@ -154,7 +154,7 @@ class TestAddDetailsUrlToSource:
         assert result is source  # Mutates in place
         assert (
             result["details_url"]
-            == "http://localhost:3000/details/abc123?page=5&chunk=abc123-chunk0042"
+            == "http://localhost:3333/details/abc123?page=5&chunk=abc123-chunk0042"
         )
 
     def test_add_url_to_source_relative(self):

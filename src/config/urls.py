@@ -9,7 +9,7 @@ Environment Variables:
     WORKER_URL: Processing worker base URL (default: http://localhost:8002)
     RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
     COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
-    FRONTEND_URL: Frontend application URL (default: http://localhost:42887)
+    FRONTEND_URL: Frontend application URL (default: http://localhost:3333)
 
 Usage:
     >>> from src.config.urls import get_service_urls
@@ -50,7 +50,7 @@ class ServiceURLs:
         self.worker = os.getenv("WORKER_URL", "http://localhost:8002")
         self.research_api = os.getenv("RESEARCH_API_URL", "http://localhost:8004")
         self.copyparty = os.getenv("COPYPARTY_URL", "http://localhost:8000")
-        self.frontend = os.getenv("FRONTEND_URL", "http://localhost:42887")
+        self.frontend = os.getenv("FRONTEND_URL", "http://localhost:3333")
 
         # Log configuration on initialization
         logger.debug(
@@ -221,7 +221,7 @@ class ServiceURLs:
         Example:
             >>> urls = ServiceURLs()
             >>> urls.frontend_details_url("abc123", page=5)
-            'http://localhost:3000/details/abc123?page=5'
+            'http://localhost:3333/details/abc123?page=5'
         """
         from src.utils.url_builder import build_details_url
 

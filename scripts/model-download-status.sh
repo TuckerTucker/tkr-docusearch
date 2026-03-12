@@ -252,7 +252,7 @@ print_summary() {
         echo "Next steps:"
         echo "  1. Start services: ./scripts/start-all.sh"
         echo "  2. Check status: ./scripts/status.sh"
-        echo "  3. Open UI: http://localhost:42887"
+        echo "  3. Open UI: http://localhost:3333"
     else
         echo -e "${YELLOW}⚠ MLX model not ready${NC}"
         echo ""

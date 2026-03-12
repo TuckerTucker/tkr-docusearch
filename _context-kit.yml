@@ -135,7 +135,7 @@ config:
     worker: 8002
     chromadb: 8003
     copyparty: 8004
-    frontend: 42887
+    frontend: 3333
     legacy-office: 42888
   db: {type: ChromaDB, d: "Vector database for embeddings"}
   file-storage: {type: Copyparty, d: "File server for document storage"}
@@ -203,7 +203,7 @@ arch:
     worker: {type: "Processing worker", port: 8002, features: ["Docling parsing", "Whisper ASR", "Embedding generation"]}
     chromadb: {type: "Vector DB", port: 8003, features: ["Embedding storage", "Similarity search"]}
     copyparty: {type: "File server", port: 8004, features: ["Document storage", "File serving"]}
-    frontend: {type: "Vite dev server", port: 42887, features: ["React SPA", "HMR"]}
+    frontend: {type: "Vite dev server", port: 3333, features: ["React SPA", "HMR"]}
   frontend: {framework: "React 19", lang: "JSX/TSX", router: "react-router-dom v7", state: "Zustand + TanStack Query"}
   backend: {framework: FastAPI, lang: Python, db: ChromaDB}
   ml:

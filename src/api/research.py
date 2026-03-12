@@ -298,7 +298,7 @@ app = FastAPI(
 
 # CORS middleware - build allow_origins from service URLs configuration
 _urls = get_service_urls()
-_frontend_port = os.getenv("VITE_FRONTEND_PORT", "42007")
+_frontend_port = os.getenv("VITE_FRONTEND_PORT", "3333")
 _allowed_origins = [
     _urls.frontend,
     f"http://127.0.0.1:{_frontend_port}",  # React Frontend localhost (dynamic)

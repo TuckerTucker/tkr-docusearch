@@ -39,7 +39,7 @@ NC='\033[0m'
 # Configuration
 # ============================================================================
 
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42887}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-3333}
 ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"

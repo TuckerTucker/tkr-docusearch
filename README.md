@@ -176,7 +176,7 @@ python3 src/test_end_to_end.py
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     User Browser                             │
-│           React 19 SPA Frontend (port 3000)                  │
+│           React 19 SPA Frontend (port 3333)                  │
 │      Vite 7 + React Router 7 + React Query 5 + Zustand 5    │
 └───────────────┬─────────────────────────────────────────────┘
                 │ HTTP (proxied by Vite)
@@ -218,7 +218,7 @@ python3 src/test_end_to_end.py
 ```
 
 **User Interface:**
-- **Primary UI**: React 19 SPA at http://localhost:3000 (76 components, 10K+ LOC)
+- **Primary UI**: React 19 SPA at http://localhost:3333 (76 components, 10K+ LOC)
 - **Upload Server**: Copyparty at http://localhost:8000 (file uploads only)
 - **Worker API**: Processing worker at http://localhost:8002 (search, documents)
 - **Research API**: AI research bot at http://localhost:8004 (LLM queries)

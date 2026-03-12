@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     host: '0.0.0.0', // Listen on all network interfaces
-    port: parseInt(env.VITE_FRONTEND_PORT) || 42887,
+    port: parseInt(env.VITE_FRONTEND_PORT) || 3333,
     allowedHosts, // Read from VITE_ALLOWED_HOSTS in .env
     proxy: {
       // Research API endpoints (separate service on port 8004)
