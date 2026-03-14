@@ -9,9 +9,9 @@ Contract: status-api.contract.md
 import pytest
 from fastapi.testclient import TestClient
 
-from processing.status_api import set_status_manager
-from processing.status_manager import StatusManager
-from processing.worker_webhook import app
+from tkr_docusearch.processing.status_api import set_status_manager
+from tkr_docusearch.processing.status_manager import StatusManager
+from tkr_docusearch.processing.worker_webhook import app
 
 
 @pytest.fixture
@@ -235,14 +235,14 @@ class TestCORSHeaders:
         doc_id = "a" * 64
         status_manager.create_status(doc_id, "test.pdf", {})
 
-        response = client.get(f"/status/{doc_id}")
+        response = client.get(f"/status/{doc_id}", headers={"Origin": "http://localhost:3333"})
 
         # CORS middleware should add these headers
         assert "access-control-allow-origin" in response.headers
 
     def test_cors_headers_on_queue(self, client, status_manager):
         """Test CORS headers are present on GET /status/queue."""
-        response = client.get("/status/queue")
+        response = client.get("/status/queue", headers={"Origin": "http://localhost:3333"})
 
         # CORS middleware should add these headers
         assert "access-control-allow-origin" in response.headers

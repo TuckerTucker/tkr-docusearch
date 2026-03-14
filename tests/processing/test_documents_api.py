@@ -49,7 +49,7 @@ def temp_image_dir(monkeypatch):
     temp_dir = Path(tempfile.mkdtemp())
 
     # Monkey patch PAGE_IMAGE_DIR
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "PAGE_IMAGE_DIR", temp_dir)
 
@@ -116,44 +116,20 @@ def test_validate_filename_invalid():
 
 def test_list_documents_structure(client, monkeypatch):
     """Test GET /documents returns correct structure."""
-    # Mock ChromaDB client
-    from unittest.mock import Mock
+    from tkr_docusearch.core.testing.mocks import MockKojiClient
 
-    mock_client = Mock()
-    mock_visual = Mock()
-    mock_text = Mock()
+    mock_client = MockKojiClient()
+    mock_client.create_document("testdoc1", "test.pdf", "pdf", num_pages=1)
+    mock_client.insert_pages([
+        {"id": "testdoc1-page001", "doc_id": "testdoc1", "page_num": 1,
+         "structure": {"image_path": "/page_images/testdoc1/page001.png",
+                       "thumb_path": "/page_images/testdoc1/page001_thumb.jpg"}},
+    ])
+    mock_client.insert_chunks([
+        {"id": "testdoc1-chunk0000", "doc_id": "testdoc1", "page_num": 1, "text": "Sample"},
+    ])
 
-    mock_visual.get.return_value = {
-        "ids": ["testdoc1-page001"],
-        "metadatas": [
-            {
-                "doc_id": "testdoc1",
-                "filename": "test.pdf",
-                "page": 1,
-                "timestamp": "2025-10-11T10:00:00Z",
-                "image_path": "/page_images/testdoc1/page001.png",
-                "thumb_path": "/page_images/testdoc1/page001_thumb.jpg",
-            }
-        ],
-    }
-
-    mock_text.get.return_value = {
-        "ids": ["testdoc1-chunk0000"],
-        "metadatas": [
-            {
-                "doc_id": "testdoc1",
-                "filename": "test.pdf",
-                "chunk_id": 0,
-                "timestamp": "2025-10-11T10:00:00Z",
-            }
-        ],
-    }
-
-    mock_client._visual_collection = mock_visual
-    mock_client._text_collection = mock_text
-
-    # Monkey patch get_storage_client
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
@@ -171,18 +147,11 @@ def test_list_documents_structure(client, monkeypatch):
 
 def test_list_documents_pagination(client, monkeypatch):
     """Test pagination parameters."""
-    # Mock empty response
-    from unittest.mock import Mock
+    from tkr_docusearch.core.testing.mocks import MockKojiClient
 
-    mock_client = Mock()
-    mock_visual = Mock()
-    mock_text = Mock()
-    mock_visual.get.return_value = {"ids": [], "metadatas": []}
-    mock_text.get.return_value = {"ids": [], "metadatas": []}
-    mock_client._visual_collection = mock_visual
-    mock_client._text_collection = mock_text
+    mock_client = MockKojiClient()
 
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
@@ -212,53 +181,26 @@ def test_list_documents_invalid_pagination(client):
 
 def test_get_document_success(client, monkeypatch):
     """Test GET /documents/{doc_id} with valid document."""
-    from unittest.mock import Mock
-
-    mock_client = Mock()
-    mock_visual = Mock()
-    mock_text = Mock()
+    from tkr_docusearch.core.testing.mocks import MockKojiClient
 
     doc_id = "testdoc1"
 
-    mock_visual.get.return_value = {
-        "ids": [f"{doc_id}-page001", f"{doc_id}-page002"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "filename": "test.pdf",
-                "page": 1,
-                "timestamp": "2025-10-11T10:00:00Z",
-                "image_path": f"/page_images/{doc_id}/page001.png",
-                "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
-            },
-            {
-                "doc_id": doc_id,
-                "filename": "test.pdf",
-                "page": 2,
-                "timestamp": "2025-10-11T10:00:00Z",
-                "image_path": f"/page_images/{doc_id}/page002.png",
-                "thumb_path": f"/page_images/{doc_id}/page002_thumb.jpg",
-            },
-        ],
-    }
+    mock_client = MockKojiClient()
+    mock_client.create_document(doc_id, "test.pdf", "pdf", num_pages=2)
+    mock_client.insert_pages([
+        {"id": f"{doc_id}-page001", "doc_id": doc_id, "page_num": 1,
+         "structure": {"image_path": f"/page_images/{doc_id}/page001.png",
+                       "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg"}},
+        {"id": f"{doc_id}-page002", "doc_id": doc_id, "page_num": 2,
+         "structure": {"image_path": f"/page_images/{doc_id}/page002.png",
+                       "thumb_path": f"/page_images/{doc_id}/page002_thumb.jpg"}},
+    ])
+    mock_client.insert_chunks([
+        {"id": f"{doc_id}-chunk0000", "doc_id": doc_id, "page_num": 1,
+         "text": "Sample text..."},
+    ])
 
-    mock_text.get.return_value = {
-        "ids": [f"{doc_id}-chunk0000"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "filename": "test.pdf",
-                "chunk_id": 0,
-                "text_preview": "Sample text...",
-                "timestamp": "2025-10-11T10:00:00Z",
-            }
-        ],
-    }
-
-    mock_client._visual_collection = mock_visual
-    mock_client._text_collection = mock_text
-
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
@@ -277,17 +219,11 @@ def test_get_document_success(client, monkeypatch):
 
 def test_get_document_not_found(client, monkeypatch):
     """Test 404 for non-existent document."""
-    from unittest.mock import Mock
+    from tkr_docusearch.core.testing.mocks import MockKojiClient
 
-    mock_client = Mock()
-    mock_visual = Mock()
-    mock_text = Mock()
-    mock_visual.get.return_value = {"ids": [], "metadatas": []}
-    mock_text.get.return_value = {"ids": [], "metadatas": []}
-    mock_client._visual_collection = mock_visual
-    mock_client._text_collection = mock_text
+    mock_client = MockKojiClient()
 
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 
@@ -377,45 +313,22 @@ def test_get_image_caching_headers(client, temp_image_dir):
 
 def test_full_workflow(client, monkeypatch, temp_image_dir):
     """Test complete workflow: list → detail → image."""
-    from unittest.mock import Mock
-
-    # Mock ChromaDB
-    mock_client = Mock()
-    mock_visual = Mock()
-    mock_text = Mock()
+    from tkr_docusearch.core.testing.mocks import MockKojiClient
 
     doc_id = "test-doc-12345678"
 
-    mock_visual.get.return_value = {
-        "ids": [f"{doc_id}-page001"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "filename": "test.pdf",
-                "page": 1,
-                "timestamp": "2025-10-11T10:00:00Z",
-                "image_path": f"/page_images/{doc_id}/page001.png",
-                "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
-            }
-        ],
-    }
+    mock_client = MockKojiClient()
+    mock_client.create_document(doc_id, "test.pdf", "pdf", num_pages=1)
+    mock_client.insert_pages([
+        {"id": f"{doc_id}-page001", "doc_id": doc_id, "page_num": 1,
+         "structure": {"image_path": f"/page_images/{doc_id}/page001.png",
+                       "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg"}},
+    ])
+    mock_client.insert_chunks([
+        {"id": f"{doc_id}-chunk0000", "doc_id": doc_id, "page_num": 1, "text": "Sample"},
+    ])
 
-    mock_text.get.return_value = {
-        "ids": [f"{doc_id}-chunk0000"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "filename": "test.pdf",
-                "chunk_id": 0,
-                "timestamp": "2025-10-11T10:00:00Z",
-            }
-        ],
-    }
-
-    mock_client._visual_collection = mock_visual
-    mock_client._text_collection = mock_text
-
-    import src.processing.documents_api as api_module
+    import tkr_docusearch.processing.documents_api as api_module
 
     monkeypatch.setattr(api_module, "get_storage_client", lambda: mock_client)
 

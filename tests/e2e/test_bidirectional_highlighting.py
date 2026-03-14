@@ -6,6 +6,8 @@ been replaced by the Koji storage backend. The tests are retained as skipped
 placeholders until equivalent Koji-based E2E tests are written.
 """
 
+from dataclasses import asdict
+
 import pytest
 
 from tkr_docusearch.storage.metadata_schema import (
@@ -57,7 +59,7 @@ class TestCoordinateSystemConsistency:
         assert canvas_bbox["top"] == 792.0 - 125.3
         assert canvas_bbox["bottom"] == 792.0 - 100.5
         assert canvas_bbox["width"] == 468.0
-        assert canvas_bbox["height"] == 24.8
+        assert canvas_bbox["height"] == pytest.approx(24.8)
 
 
 @pytest.mark.skip(reason="Requires migration to Koji storage backend")
@@ -103,7 +105,7 @@ class TestEdgeCases:
                 page_num=1,
                 section_path=section_path,
             )
-            heading_dict = heading.to_dict()
+            heading_dict = asdict(heading)
             assert heading_dict["section_path"] == section_path
 
     @pytest.mark.skip(reason="Requires migration to Koji storage backend")

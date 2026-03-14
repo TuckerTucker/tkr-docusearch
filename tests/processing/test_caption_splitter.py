@@ -7,7 +7,7 @@ of long VTT captions into shorter, more readable segments.
 
 import pytest
 
-from .caption_splitter import (
+from tkr_docusearch.processing.caption_splitter import (
     calculate_reading_speed,
     distribute_timestamps,
     find_phrase_boundaries,

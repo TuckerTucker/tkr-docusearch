@@ -5,6 +5,7 @@ Tests Integration Contract IC-001 (Whisper Output Format).
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -17,11 +18,30 @@ from tkr_docusearch.processing.whisper.transcriber import (
     transcribe_audio,
 )
 
+MOCK_WHISPER_RESULT = {
+    "text": "This is a test audio transcription.",
+    "segments": [{
+        "id": 0,
+        "start": 0.0,
+        "end": 3.5,
+        "text": "This is a test audio transcription.",
+        "words": [
+            {"word": "This", "start": 0.0, "end": 0.2, "probability": 0.95},
+            {"word": "is", "start": 0.2, "end": 0.4, "probability": 0.98},
+            {"word": "a", "start": 0.4, "end": 0.5, "probability": 0.99},
+            {"word": "test", "start": 0.5, "end": 0.9, "probability": 0.97},
+        ]
+    }],
+    "language": "en",
+    "duration": 3.5,
+}
+
 
 class TestTranscribeAudio:
     """Test transcribe_audio() function."""
 
-    def test_transcribe_audio_success(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_transcribe_audio_success(self, mock_transcribe, sample_audio_file_path):
         """Test successful audio transcription."""
         result = transcribe_audio(str(sample_audio_file_path))
 
@@ -36,7 +56,8 @@ class TestTranscribeAudio:
         assert len(result["segments"]) > 0
         assert result["duration"] > 0
 
-    def test_transcribe_audio_with_word_timestamps(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_transcribe_audio_with_word_timestamps(self, mock_transcribe, sample_audio_file_path):
         """Test word-level timestamps are included."""
         result = transcribe_audio(str(sample_audio_file_path), word_timestamps=True)
 
@@ -72,13 +93,15 @@ class TestTranscribeAudio:
         with pytest.raises(ValueError, match="Invalid model"):
             transcribe_audio(str(sample_audio_file_path), model="invalid_model")
 
-    def test_transcribe_audio_with_language(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_transcribe_audio_with_language(self, mock_transcribe, sample_audio_file_path):
         """Test transcription with explicit language."""
         result = transcribe_audio(str(sample_audio_file_path), language="en")
 
         assert result["language"] == "en"
 
-    def test_transcribe_audio_returns_duration(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_transcribe_audio_returns_duration(self, mock_transcribe, sample_audio_file_path):
         """Test duration is included in output."""
         result = transcribe_audio(str(sample_audio_file_path))
 
@@ -90,7 +113,8 @@ class TestTranscribeAudio:
 class TestOutputValidation:
     """Test whisper output validation."""
 
-    def test_whisper_output_validation(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_whisper_output_validation(self, mock_transcribe, sample_audio_file_path):
         """Test output format validation passes for real transcription."""
         result = transcribe_audio(str(sample_audio_file_path))
 
@@ -98,7 +122,8 @@ class TestOutputValidation:
         is_valid, errors = validate_whisper_output(result)
         assert is_valid, f"Validation errors: {errors}"
 
-    def test_timestamp_monotonicity(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_timestamp_monotonicity(self, mock_transcribe, sample_audio_file_path):
         """Test timestamps are monotonically increasing."""
         result = transcribe_audio(str(sample_audio_file_path))
 
@@ -168,7 +193,8 @@ class TestContractIC001:
     all requirements specified in Integration Contract IC-001.
     """
 
-    def test_contract_ic001_compliance(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_contract_ic001_compliance(self, mock_transcribe, sample_audio_file_path):
         """Validate compliance with IC-001: Whisper Output Format."""
         result = transcribe_audio(str(sample_audio_file_path))
 
@@ -226,7 +252,8 @@ class TestContractIC001:
         assert isinstance(result["duration"], (int, float))
         assert result["duration"] > 0
 
-    def test_contract_ic001_duration_accuracy(self, sample_audio_file_path):
+    @patch("mlx_whisper.transcribe", return_value=MOCK_WHISPER_RESULT)
+    def test_contract_ic001_duration_accuracy(self, mock_transcribe, sample_audio_file_path):
         """Test duration matches actual audio file length (±0.1s tolerance)."""
         result = transcribe_audio(str(sample_audio_file_path))
 

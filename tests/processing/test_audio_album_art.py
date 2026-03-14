@@ -49,7 +49,7 @@ class TestCoverEndpoint:
         cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")  # JPEG header
 
         # Patch the Path to use our temp directory
-        with patch("src.processing.documents_api.Path") as mock_path:
+        with patch("tkr_docusearch.processing.documents_api.Path") as mock_path:
 
             def path_side_effect(path_str):
                 if path_str == "data/images":
@@ -63,7 +63,7 @@ class TestCoverEndpoint:
         """Test cover endpoint returns image when album art exists."""
         tmp_path, images_dir = temp_images_dir
 
-        with patch("src.processing.documents_api.Path") as mock_path:
+        with patch("tkr_docusearch.processing.documents_api.Path") as mock_path:
 
             def path_side_effect(path_str):
                 if path_str == "data/images":
@@ -111,7 +111,7 @@ class TestCoverEndpoint:
         cover_jpg = images_dir / "cover.jpg"
         cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
 
-        with patch("src.processing.documents_api.Path") as mock_path:
+        with patch("tkr_docusearch.processing.documents_api.Path") as mock_path:
 
             def path_side_effect(path_str):
                 if path_str == "data/images":
@@ -129,7 +129,7 @@ class TestCoverEndpoint:
         cover_png = images_dir / "cover.png"
         cover_png.write_bytes(b"\x89PNG\r\n\x1a\n")
 
-        with patch("src.processing.documents_api.Path") as mock_path:
+        with patch("tkr_docusearch.processing.documents_api.Path") as mock_path:
             mock_path.side_effect = path_side_effect
 
             response = client.get(f"/documents/{test_doc_id}/cover")
@@ -146,38 +146,29 @@ class TestMetadataExtension:
         return TestClient(worker_app)
 
     @pytest.fixture
-    def mock_chroma_client(self):
-        """Mock ChromaDB client with test data."""
-        with patch("src.processing.documents_api.get_storage_client") as mock_get:
-            mock_client = Mock()
+    def mock_koji_client(self):
+        """Mock Koji client with test data."""
+        from tkr_docusearch.core.testing.mocks import MockKojiClient
 
-            # Mock visual collection
-            mock_visual = Mock()
-            mock_visual.get.return_value = {"ids": [], "metadatas": []}
-            mock_client._visual_collection = mock_visual
-
-            # Mock text collection
-            mock_text = Mock()
-            mock_text.get.return_value = {
-                "ids": ["chunk_0"],
-                "metadatas": [
-                    {
-                        "doc_id": "test-doc-12345678",
-                        "filename": "test_audio.mp3",
-                        "timestamp": "2025-10-15T10:00:00Z",
-                        "chunk_id": 0,
-                        "text_preview": "Test audio content",
-                        "has_timestamps": True,
-                        "vtt_available": True,
-                    }
-                ],
+        mock_client = MockKojiClient()
+        doc_id = "test-doc-12345678"
+        mock_client.create_document(doc_id, "test_audio.mp3", "mp3")
+        mock_client.insert_chunks([
+            {
+                "id": "chunk_0",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "text": "Test audio content",
+                "start_time": 0.0,
+                "end_time": 10.0,
             }
-            mock_client._text_collection = mock_text
+        ])
 
+        with patch("tkr_docusearch.processing.documents_api.get_storage_client") as mock_get:
             mock_get.return_value = mock_client
             yield mock_client
 
-    def test_metadata_has_album_art(self, client, mock_chroma_client, tmp_path):
+    def test_metadata_has_album_art(self, client, mock_koji_client, tmp_path):
         """Test metadata includes has_album_art=True when cover exists."""
         test_doc_id = "test-doc-12345678"
         images_dir = tmp_path / "images" / test_doc_id
@@ -186,7 +177,7 @@ class TestMetadataExtension:
         cover_jpg = images_dir / "cover.jpg"
         cover_jpg.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF")
 
-        with patch("src.processing.documents_api.Path") as mock_path:
+        with patch("tkr_docusearch.processing.documents_api.Path") as mock_path:
 
             def path_side_effect(path_str):
                 if path_str == "data/images":
@@ -202,7 +193,7 @@ class TestMetadataExtension:
             assert data["metadata"]["has_album_art"] is True
             assert data["metadata"]["album_art_url"] == f"/documents/{test_doc_id}/cover"
 
-    def test_metadata_without_album_art(self, client, mock_chroma_client):
+    def test_metadata_without_album_art(self, client, mock_koji_client):
         """Test metadata includes has_album_art=False when cover doesn't exist."""
         test_doc_id = "test-doc-12345678"
 
@@ -215,31 +206,17 @@ class TestMetadataExtension:
 
     def test_metadata_non_audio_document(self, client):
         """Test metadata for non-audio documents (no album art)."""
+        from tkr_docusearch.core.testing.mocks import MockKojiClient
+
         test_doc_id = "test-pdf-12345678"
 
-        with patch("src.processing.documents_api.get_storage_client") as mock_get:
-            mock_client = Mock()
-
-            # Mock visual collection (PDF pages)
-            mock_visual = Mock()
-            mock_visual.get.return_value = {
-                "ids": ["page_0"],
-                "metadatas": [
-                    {
-                        "doc_id": test_doc_id,
-                        "filename": "test.pdf",
-                        "timestamp": "2025-10-15T10:00:00Z",
-                        "page": 1,
-                        "image_path": f"data/page_images/{test_doc_id}/page001.png",
-                    }
-                ],
-            }
-            mock_client._visual_collection = mock_visual
-
-            # Mock text collection
-            mock_text = Mock()
-            mock_text.get.return_value = {"ids": [], "metadatas": []}
-            mock_client._text_collection = mock_text
+        with patch("tkr_docusearch.processing.documents_api.get_storage_client") as mock_get:
+            mock_client = MockKojiClient()
+            mock_client.create_document(test_doc_id, "test.pdf", "pdf", num_pages=1)
+            mock_client.insert_pages([
+                {"id": "page_0", "doc_id": test_doc_id, "page_num": 1,
+                 "structure": {"image_path": f"data/page_images/{test_doc_id}/page001.png"}},
+            ])
 
             mock_get.return_value = mock_client
 

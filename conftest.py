@@ -6,33 +6,9 @@ import types
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Stub deleted/unavailable modules so transitive imports don't fail.
+# Stub unavailable modules so transitive imports don't fail.
 # These must be installed before any tkr_docusearch imports.
 # ---------------------------------------------------------------------------
-
-# storage_config was removed during Koji migration but config/__init__.py
-# still re-exports it.
-if "tkr_docusearch.config.storage_config" not in sys.modules:
-    _stub = types.ModuleType("tkr_docusearch.config.storage_config")
-    _stub.StorageConfig = type("StorageConfig", (), {})  # type: ignore[attr-defined]
-    sys.modules["tkr_docusearch.config.storage_config"] = _stub
-
-# Some source files use the legacy `src.config.storage_config` import path
-if "src.config.storage_config" not in sys.modules:
-    sys.modules["src.config.storage_config"] = sys.modules[
-        "tkr_docusearch.config.storage_config"
-    ]
-
-# processing.mocks was removed during Koji migration but processing/__init__.py
-# still re-exports from it.
-if "tkr_docusearch.processing.mocks" not in sys.modules:
-    _mock_stub = types.ModuleType("tkr_docusearch.processing.mocks")
-    # Provide minimal mock classes so the import chain doesn't break
-    _mock_stub.BatchEmbeddingOutput = type("BatchEmbeddingOutput", (), {})  # type: ignore[attr-defined]
-    _mock_stub.MockEmbeddingEngine = type("MockEmbeddingEngine", (), {})  # type: ignore[attr-defined]
-    _mock_stub.MockStorageClient = type("MockStorageClient", (), {})  # type: ignore[attr-defined]
-    sys.modules["tkr_docusearch.processing.mocks"] = _mock_stub
-    sys.modules["src.processing.mocks"] = _mock_stub
 
 # mcp SDK is not installed in test environment
 if "mcp" not in sys.modules:
@@ -55,15 +31,23 @@ if "mcp" not in sys.modules:
                 "__init__": lambda self, *a, **kw: None,
                 "list_tools": _decorator,
                 "call_tool": _decorator,
+                "run": lambda self, *a, **kw: None,
+                "create_initialization_options": lambda self: {},
             })
         elif _sub == "mcp.server.fastmcp":
             _s.FastMCP = type("FastMCP", (), {"__init__": lambda self, *a, **kw: None})  # type: ignore[attr-defined]
         elif _sub == "mcp.server.stdio":
             _s.stdio_server = lambda *a, **kw: None  # type: ignore[attr-defined]
         elif _sub == "mcp.types":
-            _s.TextContent = type("TextContent", (), {})  # type: ignore[attr-defined]
-            _s.ImageContent = type("ImageContent", (), {})  # type: ignore[attr-defined]
-            _s.Tool = type("Tool", (), {})  # type: ignore[attr-defined]
+            _s.TextContent = type("TextContent", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
+            _s.ImageContent = type("ImageContent", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
+            _s.Tool = type("Tool", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
         sys.modules[_sub] = _s
 
 
@@ -377,63 +361,12 @@ def embedding_engine_instance():
 def storage_client_instance(tmp_path):
     """Create a mock storage client for testing.
 
-    Returns a mock that provides the interface expected by DocumentProcessor.
+    Returns a mock that provides the Koji KojiClient interface expected by
+    DocumentProcessor: create_document, insert_pages, insert_chunks, etc.
     """
-    from unittest.mock import Mock
+    from src.core.testing.mocks import MockKojiClient
 
-    client = Mock()
-
-    # Track stored data
-    client._stored_data = {
-        "visual": [],
-        "text": [],
-    }
-
-    # Mock get_collection method
-    def mock_get_collection(name):
-        """Mock getting a collection."""
-        collection = Mock()
-
-        if name == "text":
-
-            def get_where(where=None):
-                """Mock getting data with filter."""
-                if where is None:
-                    return {"metadatas": client._stored_data["text"]}
-
-                # Filter by metadata
-                filtered = [
-                    m
-                    for m in client._stored_data["text"]
-                    if all(m.get(k) == v for k, v in where.items())
-                ]
-                return {
-                    "ids": [m.get("id") for m in filtered],
-                    "metadatas": filtered,
-                    "documents": [m.get("text") for m in filtered],
-                }
-
-            collection.get = get_where
-
-        return collection
-
-    # Mock add method
-    def mock_add(ids, embeddings, metadatas, documents, collection_name, **kwargs):
-        """Mock adding data to storage."""
-        if collection_name == "text":
-            for id_, meta, doc in zip(ids, metadatas, documents):
-                data = dict(meta)
-                data["id"] = id_
-                data["text"] = doc
-                client._stored_data["text"].append(data)
-        elif collection_name == "visual":
-            for id_, meta in zip(ids, metadatas):
-                data = dict(meta)
-                data["id"] = id_
-                client._stored_data["visual"].append(data)
-
-    client.client = Mock()
-    client.client.get_collection = mock_get_collection
-    client.add = mock_add
+    client = MockKojiClient()
+    client.open()
 
     return client

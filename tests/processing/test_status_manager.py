@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from .status_manager import StatusManager
-from .status_models import ProcessingStatus, ProcessingStatusEnum, QueueItem
+from tkr_docusearch.processing.status_manager import StatusManager
+from tkr_docusearch.processing.status_models import ProcessingStatus, ProcessingStatusEnum, QueueItem
 
 
 @pytest.fixture

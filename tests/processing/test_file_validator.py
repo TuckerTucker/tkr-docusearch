@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from processing.file_validator import (
+from tkr_docusearch.processing.file_validator import (
     get_supported_extensions,
     validate_file,
     validate_file_size,

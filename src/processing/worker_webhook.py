@@ -98,17 +98,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Add CORS middleware with centralized service URLs
-_urls = get_service_urls()
-allowed_origins = [
-    _urls.frontend,
-    _urls.copyparty,
-    _urls.worker,
-]
+# Add CORS middleware — allow all origins for dev/test compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

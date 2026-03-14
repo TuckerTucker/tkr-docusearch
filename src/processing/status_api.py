@@ -55,7 +55,8 @@ def get_status_manager() -> StatusManager:
 # ============================================================================
 # Endpoints
 # ============================================================================
-# NOTE: Specific routes (/queue, /health) must come before path parameter routes (/{doc_id})
+# NOTE: Specific routes (/queue, /health, /) must come BEFORE the /{doc_id}
+# catch-all route. FastAPI matches routes in definition order.
 
 
 @router.get(
@@ -113,6 +114,62 @@ async def get_processing_queue(
     return response
 
 
+# ============================================================================
+# Health/Info Endpoints
+# ============================================================================
+
+
+@router.get(
+    "/health",
+    responses={200: {"description": "Status API is healthy"}},
+    summary="Health check",
+    description="Check if the status API is operational",
+    include_in_schema=True,
+)
+async def health_check():
+    """
+    Health check endpoint.
+
+    Returns:
+        Health status information
+    """
+    manager = get_status_manager()
+    counts = manager.count_by_status()
+
+    return {
+        "status": "healthy",
+        "service": "status-api",
+        "queue_stats": counts,
+    }
+
+
+@router.get(
+    "/",
+    response_model=QueueResponse,
+    responses={
+        200: {"description": "Queue retrieved successfully"},
+    },
+    summary="Get processing queue (root)",
+    description="Alias for /status/queue endpoint",
+    include_in_schema=False,  # Hide from docs (prefer /queue)
+)
+async def get_processing_queue_root(
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum results to return"),
+) -> QueueResponse:
+    """
+    Get all documents in processing queue (root endpoint).
+
+    This is an alias for GET /status/queue for convenience.
+    """
+    return await get_processing_queue(status=status, limit=limit)
+
+
+# ============================================================================
+# Document Status (catch-all path parameter route — must be LAST)
+# ============================================================================
+
+
 @router.get(
     "/{doc_id}",
     response_model=ProcessingStatus,
@@ -156,57 +213,6 @@ async def get_document_status(doc_id: str) -> ProcessingStatus:
 
     logger.debug(f"Retrieved status for document {doc_id}: {status.status.value}")
     return status
-
-
-@router.get(
-    "/",
-    response_model=QueueResponse,
-    responses={
-        200: {"description": "Queue retrieved successfully"},
-    },
-    summary="Get processing queue (root)",
-    description="Alias for /status/queue endpoint",
-    include_in_schema=False,  # Hide from docs (prefer /queue)
-)
-async def get_processing_queue_root(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results to return"),
-) -> QueueResponse:
-    """
-    Get all documents in processing queue (root endpoint).
-
-    This is an alias for GET /status/queue for convenience.
-    """
-    return await get_processing_queue(status=status, limit=limit)
-
-
-# ============================================================================
-# Health/Info Endpoints
-# ============================================================================
-
-
-@router.get(
-    "/health",
-    responses={200: {"description": "Status API is healthy"}},
-    summary="Health check",
-    description="Check if the status API is operational",
-    include_in_schema=True,
-)
-async def health_check():
-    """
-    Health check endpoint.
-
-    Returns:
-        Health status information
-    """
-    manager = get_status_manager()
-    counts = manager.count_by_status()
-
-    return {
-        "status": "healthy",
-        "service": "status-api",
-        "queue_stats": counts,
-    }
 
 
 # ============================================================================

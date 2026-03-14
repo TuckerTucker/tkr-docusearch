@@ -135,7 +135,7 @@ class StatusManager:
             status_dict["updated_at"] = datetime.utcnow().isoformat()
 
             # Calculate elapsed time
-            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
+            started_at = status_dict["started_at"] if isinstance(status_dict["started_at"], datetime) else datetime.fromisoformat(str(status_dict["started_at"]).replace("Z", "+00:00"))
             elapsed = (datetime.utcnow() - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 
@@ -318,7 +318,7 @@ class StatusManager:
             status_dict["estimated_remaining"] = None
 
             # Calculate final elapsed time
-            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
+            started_at = status_dict["started_at"] if isinstance(status_dict["started_at"], datetime) else datetime.fromisoformat(str(status_dict["started_at"]).replace("Z", "+00:00"))
             elapsed = (now - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 
@@ -357,7 +357,7 @@ class StatusManager:
             status_dict["estimated_remaining"] = None
 
             # Calculate final elapsed time
-            started_at = datetime.fromisoformat(status_dict["started_at"].replace("Z", "+00:00"))
+            started_at = status_dict["started_at"] if isinstance(status_dict["started_at"], datetime) else datetime.fromisoformat(str(status_dict["started_at"]).replace("Z", "+00:00"))
             elapsed = (now - started_at).total_seconds()
             status_dict["elapsed_time"] = elapsed
 

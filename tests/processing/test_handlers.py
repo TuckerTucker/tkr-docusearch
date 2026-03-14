@@ -44,8 +44,8 @@ class TestAlbumArtHandler:
             "album_art_description": "Cover art",
         }
 
-        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
+        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("src.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
                 mock_save.return_value = "/path/to/album_art.jpg"
                 mock_metadata_instance = Mock()
                 mock_audio_metadata.return_value = mock_metadata_instance
@@ -80,8 +80,8 @@ class TestAlbumArtHandler:
             # No album art data
         }
 
-        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
+        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("src.processing.audio_metadata.AudioMetadata") as mock_audio_metadata:
                 mock_save.return_value = "/path/to/placeholder.jpg"
 
                 result = AlbumArtHandler.save_album_art_if_present("doc123", doc_metadata)
@@ -108,8 +108,8 @@ class TestAlbumArtHandler:
             "_album_art_mime": "image/jpeg",
         }
 
-        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata"):
+        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("src.processing.audio_metadata.AudioMetadata"):
                 # Simulate error
                 mock_save.side_effect = Exception("Save error")
 
@@ -126,8 +126,8 @@ class TestAlbumArtHandler:
 
         doc_metadata = {"audio_duration_seconds": 180.5}
 
-        with patch("tkr_docusearch.processing.audio_metadata.save_album_art") as mock_save:
-            with patch("tkr_docusearch.processing.audio_metadata.AudioMetadata"):
+        with patch("src.processing.audio_metadata.save_album_art") as mock_save:
+            with patch("src.processing.audio_metadata.AudioMetadata"):
                 # save_album_art returns None
                 mock_save.return_value = None
 
