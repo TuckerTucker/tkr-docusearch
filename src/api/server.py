@@ -646,14 +646,16 @@ async def upload_document(file: UploadFile = File(..., description="Document fil
     queue the document for background processing.
     """
     try:
-        # Validate file type
-        allowed_extensions = {".pdf", ".docx", ".pptx"}
+        # Validate file type using shared validator
+        from ..processing.file_validator import get_supported_extensions
+
+        allowed_extensions = get_supported_extensions()
         file_ext = Path(file.filename).suffix.lower()
 
         if file_ext not in allowed_extensions:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file type: {file_ext}. Allowed: {allowed_extensions}",
+                detail=f"Unsupported file type: {file_ext}. Allowed: {sorted(allowed_extensions)}",
             )
 
         # Read file content
