@@ -1,0 +1,27 @@
+= Test AsciiDoc Document
+:toc:
+
+== Introduction
+
+This is a sample AsciiDoc file for testing the document processing pipeline.
+
+== Features
+
+* Headings and sections
+* Bullet lists
+* Code blocks
+* Admonitions
+
+== Code Example
+
+[source,python]
+----
+def process():
+    return "Processed by Docling"
+----
+
+NOTE: This is a test fixture for format validation.
+
+== Summary
+
+Keywords: asciidoc processing, document parsing, semantic search.
