@@ -35,6 +35,32 @@ logger = structlog.get_logger(__name__)
 # Exceptions
 # ---------------------------------------------------------------------------
 
+_SAFE_IDENTIFIER = __import__("re").compile(r"^[a-zA-Z0-9_\-]{1,128}$")
+
+
+def _sanitize_sql_value(value: str) -> str:
+    """Sanitize a value for safe interpolation into SQL WHERE clauses.
+
+    Only allows alphanumeric characters, hyphens, and underscores.
+    Raises ValueError if the value contains unsafe characters.
+
+    Args:
+        value: String value to sanitize.
+
+    Returns:
+        The original value if safe.
+
+    Raises:
+        ValueError: If value contains characters outside [a-zA-Z0-9_-].
+    """
+    if not _SAFE_IDENTIFIER.match(value):
+        raise ValueError(
+            f"Unsafe value for SQL interpolation: {value!r}. "
+            "Only alphanumeric characters, hyphens, and underscores are allowed."
+        )
+    return value
+
+
 class KojiClientError(Exception):
     """Base exception for Koji client operations."""
 
@@ -458,18 +484,6 @@ class KojiClient:
         if invalid:
             raise ValueError(f"Invalid document fields: {invalid}")
 
-        set_clauses = []
-        params: list[Any] = []
-        for key, value in fields.items():
-            set_clauses.append(f"{key} = ?")
-            if key == "metadata" and isinstance(value, dict):
-                params.append(json.dumps(value))
-            else:
-                params.append(value)
-
-        params.append(doc_id)
-        sql = f"UPDATE documents SET {', '.join(set_clauses)} WHERE doc_id = ?"
-
         # Koji doesn't have UPDATE — use delete + re-insert pattern
         existing = self.get_document(doc_id)
         if existing is None:
@@ -498,14 +512,15 @@ class KojiClient:
             doc_id: Document identifier to delete.
         """
         self._require_open()
+        safe_id = _sanitize_sql_value(doc_id)
         # Manual cascade: delete children first, then parent.
         # Uses _delete_where (filter-truncate-reinsert) to work around
         # the Lance bug where db.delete() fails on non-nullable columns.
         for table, condition in [
-            ("doc_relations", f"src_doc_id = '{doc_id}' OR dst_doc_id = '{doc_id}'"),
-            ("chunks", f"doc_id = '{doc_id}'"),
-            ("pages", f"doc_id = '{doc_id}'"),
-            ("documents", f"doc_id = '{doc_id}'"),
+            ("doc_relations", f"src_doc_id = '{safe_id}' OR dst_doc_id = '{safe_id}'"),
+            ("chunks", f"doc_id = '{safe_id}'"),
+            ("pages", f"doc_id = '{safe_id}'"),
+            ("documents", f"doc_id = '{safe_id}'"),
         ]:
             self._delete_where(table, condition)
         self._after_write()
@@ -810,11 +825,14 @@ class KojiClient:
             dst_doc_id: Destination document identifier.
             relation_type: Relationship type.
         """
+        safe_src = _sanitize_sql_value(src_doc_id)
+        safe_dst = _sanitize_sql_value(dst_doc_id)
+        safe_type = _sanitize_sql_value(relation_type)
         self._delete_where(
             "doc_relations",
-            f"src_doc_id = '{src_doc_id}' "
-            f"AND dst_doc_id = '{dst_doc_id}' "
-            f"AND relation_type = '{relation_type}'",
+            f"src_doc_id = '{safe_src}' "
+            f"AND dst_doc_id = '{safe_dst}' "
+            f"AND relation_type = '{safe_type}'",
         )
         self._after_write()
 

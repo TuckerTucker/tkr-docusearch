@@ -98,11 +98,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Add CORS middleware — allow all origins for dev/test compatibility
+# Add CORS middleware — scoped to known service origins
+_cors_origins = [
+    os.environ.get("FRONTEND_URL", "http://localhost:3333"),
+    os.environ.get("WORKER_URL", "http://localhost:8002"),
+    "http://localhost:8000",  # backend API
+    "http://127.0.0.1:3333",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8002",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -403,7 +411,11 @@ async def upload_file(
     f: UploadFile = File(...),
 ):
     """Accept file upload, save to disk, and trigger processing."""
-    filename = f.filename or "untitled"
+    # Sanitize filename: strip directory components to prevent path traversal
+    raw_filename = f.filename or "untitled"
+    filename = Path(raw_filename).name
+    if not filename or filename.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     save_path = UPLOADS_DIR / filename
 
     # Avoid overwriting: append counter if file exists
@@ -415,10 +427,17 @@ async def upload_file(
             save_path = UPLOADS_DIR / f"{stem}_{counter}{suffix}"
             counter += 1
 
-    # Save uploaded file
+    # Save uploaded file with size limit
+    max_size_mb = int(os.environ.get("MAX_FILE_SIZE_MB", "500"))
+    max_size_bytes = max_size_mb * 1024 * 1024
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     try:
         content = await f.read()
+        if len(content) > max_size_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum size of {max_size_mb}MB",
+            )
         save_path.write_bytes(content)
         logger.info(f"Saved upload: {filename} → {save_path} ({len(content)} bytes)")
     except Exception as e:
