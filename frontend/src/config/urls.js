@@ -8,9 +8,7 @@
  *
  * Environment Variables (Vite):
  *   VITE_WORKER_URL: Processing worker base URL (default: http://localhost:8002)
- *   VITE_CHROMADB_URL: ChromaDB server URL (default: http://localhost:8001)
  *   VITE_RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
- *   VITE_COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
  *   VITE_FRONTEND_URL: Frontend application URL (default: http://localhost:3333)
  *   VITE_FRONTEND_PORT: Frontend dev server port (default: 3333)
  *   VITE_UI_PORT: UI viewer dev server port (default: 42888)
@@ -34,9 +32,7 @@
  */
 const BASE_URLS = {
   worker: import.meta.env.VITE_WORKER_URL || 'http://localhost:8002',
-  chromadb: import.meta.env.VITE_CHROMADB_URL || 'http://localhost:8001',
   researchApi: import.meta.env.VITE_RESEARCH_API_URL || 'http://localhost:8004',
-  copyparty: import.meta.env.VITE_COPYPARTY_URL || 'http://localhost:8000',
   frontend: import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3333',
 };
 
@@ -65,15 +61,6 @@ const workerEndpoints = {
 };
 
 /**
- * ChromaDB endpoints
- */
-const chromadbEndpoints = {
-  base: BASE_URLS.chromadb,
-  heartbeat: urlJoin(BASE_URLS.chromadb, '/api/v1/heartbeat'),
-  collections: urlJoin(BASE_URLS.chromadb, '/api/v1/collections'),
-};
-
-/**
  * Research API endpoints
  */
 const researchApiEndpoints = {
@@ -96,11 +83,11 @@ const documentAssets = {
    *
    * @example
    * documentAssets.imageUrl('abc123', 'page-5.png')
-   * // => 'http://localhost:8000/uploads/abc123/images/page-5.png'
+   * // => 'http://localhost:8002/images/abc123/page-5.png'
    */
   imageUrl: (docId, imageFilename, absolute = true) => {
-    const path = `/uploads/${docId}/images/${imageFilename}`;
-    return absolute ? urlJoin(BASE_URLS.copyparty, path) : path;
+    const path = `/images/${docId}/${imageFilename}`;
+    return absolute ? urlJoin(BASE_URLS.worker, path) : path;
   },
 
   /**
@@ -111,11 +98,11 @@ const documentAssets = {
    *
    * @example
    * documentAssets.thumbnailUrl('abc123')
-   * // => 'http://localhost:8000/uploads/abc123/thumbnail.png'
+   * // => 'http://localhost:8002/images/abc123/page001_thumb.jpg'
    */
   thumbnailUrl: (docId, absolute = true) => {
-    const path = `/uploads/${docId}/thumbnail.png`;
-    return absolute ? urlJoin(BASE_URLS.copyparty, path) : path;
+    const path = `/images/${docId}/page001_thumb.jpg`;
+    return absolute ? urlJoin(BASE_URLS.worker, path) : path;
   },
 
   /**
@@ -126,11 +113,11 @@ const documentAssets = {
    *
    * @example
    * documentAssets.coverArtUrl('abc123')
-   * // => 'http://localhost:8000/uploads/abc123/cover-art.png'
+   * // => 'http://localhost:8002/documents/abc123/cover'
    */
   coverArtUrl: (docId, absolute = true) => {
-    const path = `/uploads/${docId}/cover-art.png`;
-    return absolute ? urlJoin(BASE_URLS.copyparty, path) : path;
+    const path = `/documents/${docId}/cover`;
+    return absolute ? urlJoin(BASE_URLS.worker, path) : path;
   },
 
   /**
@@ -142,11 +129,11 @@ const documentAssets = {
    *
    * @example
    * documentAssets.originalFileUrl('abc123', 'document.pdf')
-   * // => 'http://localhost:8000/uploads/abc123/document.pdf'
+   * // => 'http://localhost:8002/documents/abc123/download'
    */
   originalFileUrl: (docId, filename, absolute = true) => {
-    const path = `/uploads/${docId}/${filename}`;
-    return absolute ? urlJoin(BASE_URLS.copyparty, path) : path;
+    const path = `/documents/${docId}/download`;
+    return absolute ? urlJoin(BASE_URLS.worker, path) : path;
   },
 };
 
@@ -228,7 +215,6 @@ const frontendRoutes = {
  */
 export const serviceURLs = {
   worker: workerEndpoints,
-  chromadb: chromadbEndpoints,
   researchApi: researchApiEndpoints,
   document: documentAssets,
   frontend: frontendRoutes,
@@ -238,7 +224,7 @@ export const serviceURLs = {
 /**
  * Export individual endpoint groups for convenience
  */
-export { workerEndpoints, chromadbEndpoints, researchApiEndpoints, documentAssets, frontendRoutes };
+export { workerEndpoints, researchApiEndpoints, documentAssets, frontendRoutes };
 
 /**
  * Export base URLs for direct access

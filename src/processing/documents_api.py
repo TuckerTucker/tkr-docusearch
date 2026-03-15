@@ -607,6 +607,16 @@ def _build_page_list_from_koji(page_records: List[Dict]) -> List[PageInfo]:
         image_path = convert_path_to_url(structure.get("image_path")) if isinstance(structure, dict) else None
         thumb_path = convert_path_to_url(structure.get("thumb_path")) if isinstance(structure, dict) else None
 
+        # Fall back to conventional paths when structure doesn't have them
+        if not image_path or not thumb_path:
+            doc_id = p.get("doc_id", "")
+            page_num = p.get("page_num", 0)
+            page_str = f"page{page_num:03d}"
+            if not image_path:
+                image_path = f"/images/{doc_id}/{page_str}.png"
+            if not thumb_path:
+                thumb_path = f"/images/{doc_id}/{page_str}_thumb.jpg"
+
         pages.append(
             PageInfo(
                 page_number=p.get("page_num", 0),
