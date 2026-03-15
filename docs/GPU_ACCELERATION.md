@@ -2,90 +2,83 @@
 
 ## Current Status
 
-❌ **Running on CPU** (in Docker container)
-✅ **Can run with Metal GPU** (native macOS)
+✅ **Runs natively on macOS with Metal GPU**
 
-## Why Docker Doesn't Use Metal
+All services run natively — no Docker required. The processing worker uses Metal/MPS
+automatically when running on Apple Silicon.
 
-Docker containers on macOS **cannot access Metal/MPS** because:
+## Why Metal Acceleration Matters
 
-1. **Docker runs in Linux VM** - macOS Docker Desktop uses a Linux virtual machine
-2. **Metal is macOS-only** - Metal APIs don't exist in Linux
-3. **No GPU passthrough** - Unlike NVIDIA CUDA, Metal can't be passed through to containers
+Metal (MPS in PyTorch) provides significant performance gains for the embedding pipeline:
 
-## Solution: Run Worker Natively
+| Device | Speed | Use Case |
+|--------|-------|----------|
+| CPU | 1x (baseline) | Fallback only |
+| Metal GPU | **10-20x faster** | Default on Apple Silicon |
 
-The processing worker can run **directly on macOS** to access Metal GPU while keeping other services in Docker.
+## How It Works
 
-### Quick Start
+PyTorch detects Metal via the MPS backend. The worker selects the device at startup:
+
+1. If `DEVICE=mps` (or auto-detected Apple Silicon) → Metal GPU is used
+2. If Metal is unavailable → falls back to CPU with a warning in the logs
+
+The Shikomi embedding service also runs natively and benefits from Metal when performing
+vision-transformer inference.
+
+## Verifying Metal Is Active
+
+Check the worker logs at startup:
 
 ```bash
-# 1. Setup Python environment with Metal support
-./scripts/run-worker-native.sh setup
+# Check what device the worker is using
+grep -i "device\|mps\|cpu" logs/worker.log
 
-# 2. Start Docker services (ChromaDB + Copyparty only)
-cd docker
-docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml up -d
-
-# 3. Run worker natively with Metal
-./scripts/run-worker-native.sh run
+# Expected outputs:
+# ✅ Metal: "Using device: mps"
+# ❌ CPU:   "Warning: Requested device 'mps' not available, falling back to CPU"
 ```
 
-### Expected Performance
+Or check Activity Monitor → GPU tab while submitting a document for processing.
 
-| Setup | Device | Speed | Use Case |
-|-------|--------|-------|----------|
-| Docker (current) | CPU | 1x (baseline) | Simple deployment, low volume |
-| Native | Metal GPU | **10-20x faster** | High volume, development |
+## Starting the Stack
 
-## Detailed Documentation
+```bash
+# Start all services natively (Shikomi → Worker → Research API → Frontend)
+./scripts/start-all.sh
+```
 
-See [NATIVE_WORKER_SETUP.md](./NATIVE_WORKER_SETUP.md) for:
-- Complete setup instructions
-- Architecture diagram
-- Troubleshooting guide
-- Performance benchmarks
-- Environment configuration
+See [NATIVE_WORKER_SETUP.md](./NATIVE_WORKER_SETUP.md) for detailed setup instructions,
+architecture overview, troubleshooting, and performance benchmarks.
 
 ## Alternative: Cloud GPU
 
-For production without macOS:
+For production deployments without Apple Silicon:
 
 ### Option 1: Cloud with NVIDIA GPUs
-```yaml
-# Use NVIDIA Docker runtime
-services:
-  processing-worker:
-    runtime: nvidia
-    environment:
-      - DEVICE=cuda
-```
 
-Deploy to:
+Deploy to a GPU-enabled cloud instance and set `DEVICE=cuda`:
+
 - AWS EC2 (g4dn, p3 instances)
 - Google Cloud (T4, V100 GPUs)
 - Azure (NC-series VMs)
 
-### Option 2: Accept CPU Processing
-
-Current Docker setup works fine for:
-- Low document volume (<100 docs/day)
-- Non-time-critical processing
-- Development/testing
-
-## Checking Your Current Setup
+Update `.env`:
 
 ```bash
-# Check what device worker is using
-docker logs docusearch-worker 2>&1 | grep -i "device\|mps\|cpu"
-
-# Expected outputs:
-# ❌ CPU:   "Warning: Requested device 'mps' not available, falling back to CPU"
-# ✅ Metal: "Using device: mps"
+DEVICE=cuda
 ```
+
+### Option 2: CPU-Only Processing
+
+CPU processing works for low-volume use cases:
+
+- Low document volume (<100 docs/day)
+- Non-time-critical processing
+- Development and testing without GPU hardware
 
 ## Summary
 
-**Problem**: Docker can't use macOS Metal GPU
-**Solution**: Run worker natively with `./scripts/run-worker-native.sh`
-**Benefit**: 10-20x faster processing with Metal acceleration
+**Architecture**: All services run natively on macOS — no containers needed.
+**GPU**: Metal/MPS is used automatically on Apple Silicon.
+**Benefit**: 10-20x faster document embedding compared to CPU.

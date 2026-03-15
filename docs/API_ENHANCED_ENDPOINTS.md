@@ -649,7 +649,7 @@ def get_chunk_metadata(chunk_id: str):
 
 **Chunk Metadata:**
 - No caching (database is fast enough)
-- ChromaDB provides efficient querying
+- Koji (Lance) provides efficient querying
 
 **Markdown:**
 - No caching (generated on-demand)

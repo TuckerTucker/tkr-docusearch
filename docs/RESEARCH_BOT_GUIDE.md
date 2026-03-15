@@ -30,7 +30,7 @@ The Research Bot is an AI-powered feature that allows you to ask questions about
 
 ### Accessing the Research Page
 
-Navigate to: `http://localhost:8000/research.html`
+Navigate to: `http://localhost:3333/research`
 
 ---
 
@@ -569,7 +569,7 @@ Then restart the API. All other functionality remains unchanged - this is a zero
 ### Q: How does the Research Bot work?
 
 A: It combines two AI systems:
-1. **ColPali Search** - Finds relevant pages in your documents
+1. **Shikomi Search** - Finds relevant pages in your documents using the Shikomi gRPC embedding service
 2. **Large Language Model** - Reads those pages and writes an answer with citations
 
 ### Q: Can I use it offline?

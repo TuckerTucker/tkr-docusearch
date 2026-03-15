@@ -14,17 +14,15 @@
 ```
 
 **Primary Interface**: **http://localhost:3333** (React UI)
-**File Uploads**: **http://localhost:8000** (Copyparty)
+**File Uploads**: **http://localhost:8002/uploads/** (Worker upload endpoint)
 
 ---
 
 ## Prerequisites
 
 - **macOS 12.3+** (for Metal GPU support)
-- **Docker Desktop** (will auto-start if not running)
 - **Python 3.10+**
-
-> **💡 Auto-Start Feature**: Docker Desktop will automatically start if not running. See [Docker Auto-Start](DOCKER_AUTO_START.md) for details.
+- **Rust toolchain** (for building Shikomi embedding service)
 
 ## First-Time Setup
 
@@ -41,7 +39,7 @@
 ### Option 2: CPU Mode (Simpler, slower)
 
 ```bash
-# Start all services in Docker (CPU only)
+# Start all services in CPU mode
 ./scripts/start-all.sh --cpu
 ```
 
@@ -55,9 +53,6 @@
 
 # CPU only (no GPU setup needed)
 ./scripts/start-all.sh --cpu
-
-# Docker services only (no worker)
-./scripts/start-all.sh --docker-only
 ```
 
 ### Check Status
@@ -85,113 +80,76 @@
 | Service | URL | Purpose | Notes |
 |---------|-----|---------|-------|
 | **React Frontend** | http://localhost:3333 | **Primary user interface** | Search, browse, research |
-| **Copyparty** | http://localhost:8000 | File upload server | Login: admin/admin |
-| **ChromaDB** | http://localhost:8001 | Vector database (backend) | API only |
-| **Worker API** | http://localhost:8002 | Processing API (backend) | API only |
+| **Worker API** | http://localhost:8002 | Processing + upload API | API only |
 | **Research API** | http://localhost:8004 | LLM research (backend) | API only |
+| **Shikomi** | localhost:50051 (gRPC) | Embedding service | gRPC only |
 
 **Primary Interface**: Use the React frontend at **http://localhost:3333** for all user interactions (search, document viewing, research).
 
-**File Uploads**: The Copyparty server at port 8000 handles file uploads and requires authentication (admin/admin).
+**File Uploads**: The worker at port 8002 handles file uploads via `POST /uploads/`.
 
-## Architecture Modes
+## Architecture
 
-### GPU Mode (Native Worker)
+### Native Services (All Modes)
 ```
 ┌─────────────────────────────────┐
 │         Host (macOS)            │
 │  ┌─────────────────────────┐    │
 │  │ React Frontend (Vite)   │    │
-│  │ Port: 3000              │    │
+│  │ Port: 3333              │    │
+│  └─────────────────────────┘    │
+│  ┌─────────────────────────┐    │
+│  │  Shikomi (gRPC)         │    │
+│  │  Port: 50051            │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
 │  │  Worker (Native - GPU)  │    │
-│  │  Port: 8002, 8004       │    │
+│  │  Port: 8002             │    │
 │  └─────────────────────────┘    │
-│  ┌───────────┐ ┌───────────┐    │
-│  │ Copyparty │ │ ChromaDB  │    │
-│  │ (Docker)  │ │ (Docker)  │    │
-│  └───────────┘ └───────────┘    │
-└─────────────────────────────────┘
-```
-
-**Pros:**
-- ✅ 10-20x faster processing (Metal GPU)
-- ✅ Real-time document processing
-- ✅ Better for development
-
-**Cons:**
-- ❌ Requires Python setup
-- ❌ macOS only
-
-### CPU Mode (Docker Worker)
-```
-┌─────────────────────────────────┐
-│         Host (macOS)            │
 │  ┌─────────────────────────┐    │
-│  │ React Frontend (Vite)   │    │
-│  │ Port: 3000              │    │
+│  │  Research API           │    │
+│  │  Port: 8004             │    │
 │  └─────────────────────────┘    │
-└─────────────────────────────────┘
-┌─────────────────────────────────┐
-│      Docker Containers          │
-│  ┌───────────┐ ┌───────────┐    │
-│  │  Worker   │ │ Copyparty │    │
-│  │  (CPU)    │ │           │    │
-│  └───────────┘ └───────────┘    │
-│  ┌───────────┐                  │
-│  │ ChromaDB  │                  │
-│  └───────────┘                  │
+│  ┌─────────────────────────┐    │
+│  │  Koji DB (Lance files)  │    │
+│  │  data/koji.db/          │    │
+│  └─────────────────────────┘    │
 └─────────────────────────────────┘
 ```
 
 **Pros:**
-- ✅ Simple deployment
-- ✅ No Python setup
-- ✅ Works anywhere
-
-**Cons:**
-- ❌ Slower (CPU only)
-- ❌ No GPU acceleration
+- Metal GPU acceleration for embedding generation
+- Real-time document processing
+- No container overhead
+- Full native performance
 
 ## Workflow
 
 ### 1. Upload Documents
 
 **Via Web UI:**
-1. Open http://localhost:8000
-2. Log in with username: `admin`, password: `admin`
-3. Drag & drop PDF/DOCX/PPTX/DOC files
-4. Files automatically trigger processing via webhook
-   - Legacy `.doc` files are automatically converted to `.docx`
-   - Original filename is preserved in metadata
+1. Open http://localhost:3333
+2. Use the upload interface to drag & drop PDF/DOCX/PPTX files
+3. Files are sent to the worker at http://localhost:8002/uploads/
+4. Processing begins automatically
 
 **Via CLI:**
 ```bash
-# Upload file (authentication required)
-curl -u admin:admin -F "f=@document.pdf" http://localhost:8000/
-
-# Note: Webhook is automatically triggered on successful upload
+# Upload file directly to worker
+curl -F "file=@document.pdf" http://localhost:8002/uploads/
 ```
 
 ### 2. Processing Pipeline
 
-1. **Copyparty** receives file upload
-2. **Webhook** (`/hooks/on_upload.py`) triggers automatically:
-   - Translates container path → host path
-   - POSTs to worker at http://host.docker.internal:8002/process
-3. **Worker** processes document:
+1. **Worker** receives file upload at `POST /uploads/`
+2. **Worker** processes document:
    - Parse document (Docling)
    - Extract pages as images
-   - Generate visual embeddings (ColPali + Metal GPU)
+   - Generate visual embeddings (Shikomi gRPC + Metal GPU)
    - Extract text chunks
    - Generate text embeddings
-   - Store in ChromaDB
-4. **Status** available via http://localhost:8002/status
-
-**Note**: GPU mode uses container-to-host path translation:
-- Container sees: `/uploads/file.pdf`
-- Worker receives: `/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/file.pdf`
+   - Store in Koji (Lance-based file database at `data/koji.db/`)
+3. **Status** available via http://localhost:8002/status
 
 ### 3. Search Documents
 
@@ -209,24 +167,19 @@ curl http://localhost:8002/documents
 
 ### View Logs
 
-**Native Worker:**
+**All services log to `logs/`:**
 ```bash
 # Follow worker logs
-tail -f logs/worker-native.log
+tail -f logs/worker.log
 
-# Show last 100 lines
-tail -100 logs/worker-native.log
-```
+# Follow research API logs
+tail -f logs/research.log
 
-**Docker Services:**
-```bash
-# All services
-docker-compose -f docker/docker-compose.yml logs -f
+# Follow Shikomi logs
+tail -f logs/shikomi.log
 
-# Specific service
-docker logs -f docusearch-worker
-docker logs -f docusearch-chromadb
-docker logs -f docusearch-copyparty
+# Show last 100 lines of worker log
+tail -100 logs/worker.log
 ```
 
 ### Check Processing Status
@@ -242,7 +195,7 @@ curl http://localhost:8002/health
 curl http://localhost:8002/status | jq '.stats'
 ```
 
-### Monitor GPU Usage (Native Mode)
+### Monitor GPU Usage
 
 ```bash
 # Real-time GPU monitoring
@@ -254,11 +207,8 @@ sudo powermetrics --samplers gpu_power -i 1000
 ### Services Won't Start
 
 ```bash
-# Check Docker is running
-docker info
-
 # Check port conflicts
-lsof -i :8000,8001,8002
+lsof -i :8002,8004,50051,3333
 
 # Force stop and restart
 ./scripts/stop-all.sh --force
@@ -269,11 +219,10 @@ lsof -i :8000,8001,8002
 
 ```bash
 # Check worker logs
-tail -50 logs/worker-native.log
+tail -50 logs/worker.log
 
-# Test webhook manually
-docker exec docusearch-copyparty python3 /hooks/on_upload.py \
-  up /u/test.pdf /uploads/test.pdf "*" "127.0.0.1"
+# Test upload manually
+curl -F "file=@test.pdf" http://localhost:8002/uploads/
 
 # Restart worker
 ./scripts/stop-all.sh
@@ -296,17 +245,27 @@ python3 --version  # 3.10+
 pip3 show torch  # PyTorch installed
 ```
 
-### ChromaDB Connection Error
+### Koji Database Error
 
 ```bash
-# Check ChromaDB is running
-curl http://localhost:8001/api/v2/heartbeat
+# Check Koji DB path exists
+ls data/koji.db/
 
-# Restart ChromaDB
-docker restart docusearch-chromadb
+# Check worker health
+curl http://localhost:8002/health | jq '.koji_connected'
+```
+
+### Shikomi Not Connecting
+
+```bash
+# Check Shikomi is running
+curl http://localhost:8080/health  # Shikomi HTTP health port
 
 # Check logs
-docker logs docusearch-chromadb
+tail -50 logs/shikomi.log
+
+# Verify PID file
+cat .shikomi.pid
 ```
 
 ## Advanced Usage
@@ -316,34 +275,28 @@ docker logs docusearch-chromadb
 **GPU Mode:**
 ```bash
 export DEVICE=mps
-export MODEL_NAME=vidore/colpali-v1.2
+export SHIKOMI_GRPC_TARGET=127.0.0.1:50051
+export SHIKOMI_USE_MOCK=false
 export BATCH_SIZE_VISUAL=4
 ./scripts/start-all.sh
 ```
 
-**CPU Mode:**
+**CPU Mode / Mock Embeddings:**
 ```bash
 export DEVICE=cpu
+export SHIKOMI_USE_MOCK=true
 export BATCH_SIZE_VISUAL=2
 ./scripts/start-all.sh --cpu
 ```
 
-### Custom Ports
-
-Edit `docker/docker-compose.yml`:
-```yaml
-services:
-  copyparty:
-    ports:
-      - "9000:8000"  # Custom port
+**Koji database path:**
+```bash
+export KOJI_DB_PATH=data/koji.db
 ```
 
 ### Development Mode
 
 ```bash
-# Start services
-./scripts/start-all.sh --docker-only
-
 # Run worker manually with debug logging
 export LOG_LEVEL=DEBUG
 ./scripts/run-worker-native.sh run
@@ -356,17 +309,16 @@ export LOG_LEVEL=DEBUG
 - **Model precision**: Use `fp16` for speed, `fp32` for accuracy
 - **Concurrent uploads**: Worker processes one document at a time (by design)
 
-### CPU Mode
+### CPU Mode / Mock Mode
 - **Reduce batch size**: Set `BATCH_SIZE_VISUAL=1` to reduce memory
-- **Limit concurrency**: Disable parallel processing if memory is limited
+- **Use mock embeddings**: Set `SHIKOMI_USE_MOCK=true` for development without a model
 
 ## Next Steps
 
-- 📖 [GPU Acceleration Guide](docs/GPU_ACCELERATION.md)
-- 📖 [Native Worker Setup](docs/NATIVE_WORKER_SETUP.md)
-- 📖 [Multi-Format Support](docs/MULTI_FORMAT_SUPPORT.md)
-- 📖 [Legacy Office Conversion](docs/LEGACY_OFFICE_CONVERSION.md)
-- 📖 [API Documentation](docs/API.md)
+- [GPU Acceleration Guide](GPU_ACCELERATION.md)
+- [Native Worker Setup](NATIVE_WORKER_SETUP.md)
+- [Multi-Format Support](MULTI_FORMAT_SUPPORT.md)
+- [API Documentation](API_REFERENCE.md)
 
 ## Getting Help
 
@@ -377,11 +329,11 @@ export LOG_LEVEL=DEBUG
 
 **View All Logs:**
 ```bash
-# Native worker
-tail -f logs/worker-native.log
+# Worker
+tail -f logs/worker.log
 
-# Docker services
-docker-compose -f docker/docker-compose.yml logs -f
+# All logs
+tail -f logs/*.log
 ```
 
 **Issue Reporting:**
@@ -389,5 +341,4 @@ Include output from:
 ```bash
 ./scripts/status.sh --json
 ./scripts/run-worker-native.sh check
-docker-compose -f docker/docker-compose.yml ps
 ```

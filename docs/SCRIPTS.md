@@ -30,7 +30,6 @@ Start all DocuSearch services with optional GPU acceleration.
 | _(no option)_ | GPU mode (default) | M1/M2/M3 Mac with Metal support |
 | `--gpu` | GPU mode (explicit) | Same as default |
 | `--cpu` | CPU mode | No GPU setup, slower processing |
-| `--docker-only` | Docker services only | Manual worker management |
 
 ### Examples
 
@@ -40,27 +39,28 @@ Start all DocuSearch services with optional GPU acceleration.
 
 # Start with CPU (no setup required)
 ./scripts/start-all.sh --cpu
-
-# Start only ChromaDB and Copyparty
-./scripts/start-all.sh --docker-only
 ```
 
 ### What It Does
 
 1. **Pre-flight checks**
-   - Verifies Docker is running
-   - Checks for port conflicts (8000, 8001, 8002)
+   - Checks for port conflicts (8002, 8004, 50051, 3333)
+   - Verifies Koji DB path is accessible
 
-2. **Starts Docker services**
-   - ChromaDB (vector database)
-   - Copyparty (file upload server)
+2. **Starts Shikomi** (gRPC embedding service)
+   - Listens on `127.0.0.1:50051`
+   - HTTP health check on port 8080
+   - PID saved to `.shikomi.pid`
 
 3. **Starts worker** (mode-dependent)
-   - **GPU mode**: Native worker with Metal acceleration
-   - **CPU mode**: Docker worker with CPU
-   - **Docker-only**: Skips worker
+   - **GPU mode**: Native worker with Metal acceleration on port 8002
+   - **CPU mode**: Native worker with CPU on port 8002
 
-4. **Shows summary**
+4. **Starts Research API** on port 8004
+
+5. **Starts Frontend** (Vite dev server) on port 3333
+
+6. **Shows summary**
    - Service URLs
    - Worker mode (GPU/CPU)
    - Log file locations
@@ -76,36 +76,42 @@ Start all DocuSearch services with optional GPU acceleration.
 Mode: Native worker with Metal GPU acceleration
 
 Pre-flight checks...
-  ✓ Docker: Running
+  ✓ Ports: Available
 
-Starting Docker services...
-  ✓ ChromaDB: Running on http://localhost:8001
-  ✓ Copyparty: Running on http://localhost:8000
+Starting Shikomi embedding service...
+  ✓ Shikomi: Running on 127.0.0.1:50051 (PID: 12340)
 
 Starting native worker with Metal GPU...
   ✓ Worker (Native): Running on http://localhost:8002 (Metal GPU)
   ℹ Worker PID: 12345 (saved to .worker.pid)
+
+Starting Research API...
+  ✓ Research API: Running on http://localhost:8004
+
+Starting Frontend...
+  ✓ Frontend: Running on http://localhost:3333
 
 ╔═══════════════════════════════════════════════════════════╗
 ║  Services Started Successfully                            ║
 ╚═══════════════════════════════════════════════════════════╝
 
 Available Services:
-  → Upload UI:     http://localhost:8000
-  → ChromaDB:      http://localhost:8001
+  → Frontend:      http://localhost:3333
   → Worker API:    http://localhost:8002
   → Worker Status: http://localhost:8002/status
+  → Research API:  http://localhost:8004
+  → Shikomi gRPC:  127.0.0.1:50051
 
 Worker Mode: Native with Metal GPU
-  ℹ Logs: logs/worker-native.log
+  ℹ Logs: logs/worker.log
   ℹ PID file: .worker.pid
 
 Management:
   → Stop all:      ./scripts/stop-all.sh
-  → View logs:     docker-compose -f docker/docker-compose.yml logs -f
-  → Worker logs:   tail -f logs/worker-native.log
+  → Worker logs:   tail -f logs/worker.log
+  → All logs:      tail -f logs/*.log
 
-🚀 DocuSearch is running with Metal GPU acceleration!
+DocuSearch is running with Metal GPU acceleration!
 ```
 
 ---
@@ -146,14 +152,16 @@ Stop all DocuSearch services gracefully or forcefully.
    - Cleans up PID file
    - Detects and kills orphaned workers
 
-2. **Stops Docker services**
-   - Tries native worker compose config first
-   - Falls back to standard compose config
-   - Stops all docusearch-* containers
-   - Force removes if `--force` specified
+2. **Stops Shikomi**
+   - Checks for PID file (`.shikomi.pid`)
+   - Sends SIGTERM (graceful) or SIGKILL (force)
+   - Cleans up PID file
 
-3. **Verifies shutdown**
-   - Checks ports 8000, 8001, 8002
+3. **Stops Research API and Frontend**
+   - Terminates processes by PID files
+
+4. **Verifies shutdown**
+   - Checks ports 8002, 8004, 50051, 3333
    - Reports any lingering processes
    - Shows log file locations
 
@@ -172,19 +180,25 @@ Stopping native worker...
   ✓ Worker: Stopped
   ✓ PID file: Cleaned up
 
-Stopping Docker services...
-  ℹ Docker Compose: Using native worker configuration
-  ✓ Docker services: Stopped
-  ✓ Containers: All stopped
+Stopping Shikomi...
+  ℹ Shikomi PID: Found: 12340
+  ✓ Shikomi: Stopped
+
+Stopping Research API...
+  ✓ Research API: Stopped
+
+Stopping Frontend...
+  ✓ Frontend: Stopped
 
 Checking ports...
-  ✓ Port 8000: Copyparty port is free
-  ✓ Port 8001: ChromaDB port is free
   ✓ Port 8002: Worker port is free
+  ✓ Port 8004: Research API port is free
+  ✓ Port 50051: Shikomi port is free
+  ✓ Port 3333: Frontend port is free
 
 Log files:
-  ℹ Worker log: Saved (1.2M): logs/worker-native.log
-  ℹ Docker logs: Available via: docker-compose -f docker/docker-compose.yml logs
+  ℹ Worker log: Saved (1.2M): logs/worker.log
+  ℹ Shikomi log: Saved: logs/shikomi.log
 
 ╔═══════════════════════════════════════════════════════════╗
 ║  All Services Stopped                                     ║
@@ -194,7 +208,7 @@ To restart services:
   → With GPU:  ./scripts/start-all.sh
   → CPU only:  ./scripts/start-all.sh --cpu
 
-👋 DocuSearch stopped successfully
+DocuSearch stopped successfully
 ```
 
 ---
@@ -233,18 +247,24 @@ fi
 
 ### What It Checks
 
-1. **Docker services**
-   - ChromaDB (http://localhost:8001/api/v2/heartbeat)
-   - Copyparty (http://localhost:8000/)
+1. **Shikomi embedding service**
+   - HTTP health check (http://localhost:8080/health)
+   - gRPC availability on 127.0.0.1:50051
 
 2. **Processing worker**
    - Native worker PID file
    - Worker HTTP endpoint (http://localhost:8002/health)
-   - Worker mode (Native/Docker)
+   - Worker mode (Native/CPU)
    - Processing statistics
 
-3. **Port usage**
-   - Lists what's listening on 8000, 8001, 8002
+3. **Research API**
+   - HTTP endpoint (http://localhost:8004/api/research/health)
+
+4. **Frontend**
+   - Vite dev server (http://localhost:3333)
+
+5. **Port usage**
+   - Lists what's listening on 8002, 8004, 50051, 3333
    - Shows process name and PID
 
 ### Output (Text)
@@ -254,21 +274,27 @@ fi
 ║  DocuSearch - System Status                              ║
 ╚═══════════════════════════════════════════════════════════╝
 
-Docker Services:
-  ✓ ChromaDB:  Running on http://localhost:8001
-  ✓ Copyparty: Running on http://localhost:8000
+Embedding Service:
+  ✓ Shikomi: Running on 127.0.0.1:50051
 
 Processing Worker:
   ✓ Worker:    Running (Native with Metal GPU)
     → PID:     12345
-    → Logs:    logs/worker-native.log
+    → Logs:    logs/worker.log
     → URL:     http://localhost:8002
     → Stats:   42 documents, 315 pages
 
+Research API:
+  ✓ Research:  Running on http://localhost:8004
+
+Frontend:
+  ✓ Frontend:  Running on http://localhost:3333
+
 Port Usage:
-  ✓ :8000 → Python (PID: 12344)
-  ✓ :8001 → docker-proxy (PID: 12343)
-  ✓ :8002 → Python (PID: 12345)
+  ✓ :8002  → Python (PID: 12345)
+  ✓ :8004  → Python (PID: 12346)
+  ✓ :50051 → shikomi-worker (PID: 12340)
+  ✓ :3333  → node (PID: 12347)
 
 System Status:
   ✓ All services running
@@ -279,19 +305,23 @@ System Status:
 ```json
 {
   "services": {
-    "chromadb": {
+    "shikomi": {
       "status": "running",
-      "url": "http://localhost:8001"
-    },
-    "copyparty": {
-      "status": "running",
-      "url": "http://localhost:8000"
+      "grpc_target": "127.0.0.1:50051"
     },
     "worker": {
       "status": "running",
       "url": "http://localhost:8002",
       "mode": "native",
       "pid": "12345"
+    },
+    "research": {
+      "status": "running",
+      "url": "http://localhost:8004"
+    },
+    "frontend": {
+      "status": "running",
+      "url": "http://localhost:3333"
     }
   },
   "all_running": true
@@ -338,20 +368,19 @@ Creates a Python virtual environment and installs all dependencies:
 1. **Creates venv**: `.venv-native/`
 2. **Installs PyTorch** with Metal support
 3. **Installs ML libraries**: transformers, sentence-transformers
-4. **Installs processing**: pypdf, python-docx, PyMuPDF
-5. **Installs ChromaDB** and utilities
-6. **Installs ColPali** (from GitHub)
-7. **Verifies Metal** availability
+4. **Installs processing**: pypdf, python-docx, PyMuPDF, docling
+5. **Installs Koji** (Lance-based database client)
+6. **Verifies Metal** availability
 
 ### Run Command
 
 Starts the worker with Metal GPU:
 
 1. **Activates venv** (if exists)
-2. **Checks ChromaDB** connection
-3. **Verifies uploads** directory
+2. **Checks Shikomi** connection on `127.0.0.1:50051`
+3. **Verifies uploads** directory (`data/uploads/`)
 4. **Checks Metal** availability
-5. **Shows config** (device, model, endpoints)
+5. **Shows config** (device, Shikomi target, endpoints)
 6. **Starts worker** on http://0.0.0.0:8002
 
 ### Check Command
@@ -372,14 +401,15 @@ Checking Metal/MPS availability...
 Configure worker behavior:
 
 ```bash
-# Model configuration
+# Device configuration
 export DEVICE=mps                          # mps | cpu
-export MODEL_NAME=vidore/colpali-v1.2
-export MODEL_PRECISION=fp16                # fp16 | fp32
 
-# ChromaDB connection
-export CHROMA_HOST=localhost
-export CHROMA_PORT=8001
+# Shikomi embedding service
+export SHIKOMI_GRPC_TARGET=127.0.0.1:50051
+export SHIKOMI_USE_MOCK=false              # true for development without model
+
+# Koji database
+export KOJI_DB_PATH=data/koji.db
 
 # Performance tuning
 export BATCH_SIZE_VISUAL=4
@@ -424,16 +454,14 @@ export BATCH_SIZE_TEXT=8
 ### Quick CPU Setup (No GPU)
 
 ```bash
-# Just start with CPU
+# Start with CPU and mock embeddings
+export SHIKOMI_USE_MOCK=true
 ./scripts/start-all.sh --cpu
 ```
 
 ### Debugging
 
 ```bash
-# Start Docker services only
-./scripts/start-all.sh --docker-only
-
 # Run worker manually with debug logging
 export LOG_LEVEL=DEBUG
 ./scripts/run-worker-native.sh run
@@ -448,9 +476,10 @@ export LOG_LEVEL=DEBUG
 # Force stop everything
 ./scripts/stop-all.sh --force
 
-# Check specific service
-docker logs docusearch-chromadb
-tail -f logs/worker-native.log
+# Check specific service logs
+tail -f logs/worker.log
+tail -f logs/shikomi.log
+tail -f logs/research.log
 
 # Restart everything
 ./scripts/stop-all.sh
@@ -472,8 +501,9 @@ jobs:
 
       - name: Setup services
         run: |
+          export SHIKOMI_USE_MOCK=true
           ./scripts/run-worker-native.sh setup
-          ./scripts/start-all.sh
+          ./scripts/start-all.sh --cpu
 
       - name: Wait for services
         run: |
@@ -485,22 +515,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: ./scripts/stop-all.sh
-```
-
-### Docker Compose Alternative
-
-```yaml
-# Use scripts in docker-compose
-version: '3.8'
-services:
-  test:
-    build: .
-    command: |
-      sh -c "
-        ./scripts/start-all.sh --cpu &&
-        pytest tests/ &&
-        ./scripts/stop-all.sh
-      "
 ```
 
 ---
@@ -526,7 +540,7 @@ chmod +x scripts/*.sh
 
 ## See Also
 
-- [Quick Start Guide](../QUICK_START.md)
+- [Quick Start Guide](QUICK_START.md)
 - [GPU Acceleration](GPU_ACCELERATION.md)
 - [Native Worker Setup](NATIVE_WORKER_SETUP.md)
 - [Main README](../README.md)

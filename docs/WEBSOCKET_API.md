@@ -218,7 +218,7 @@ Sent when document processing completes successfully.
   "chunks": 42,
   "pages": 20,
   "file_type": "pdf",
-  "thumbnail_url": "http://localhost:8000/images/abc123xyz789_page_1.png"
+  "thumbnail_url": "http://localhost:8002/images/abc123xyz789_page_1.png"
 }
 ```
 

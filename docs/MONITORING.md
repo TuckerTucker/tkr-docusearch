@@ -34,9 +34,9 @@ DocuSearch has built-in monitoring capabilities for tracking document processing
 ProcessingStatusEnum:
     QUEUED           # Document queued for processing
     PARSING          # Docling/Whisper parsing in progress
-    EMBEDDING_VISUAL # ColPali visual embeddings
-    EMBEDDING_TEXT   # ColPali text embeddings
-    STORING          # Saving to ChromaDB
+    EMBEDDING_VISUAL # Shikomi visual embeddings
+    EMBEDDING_TEXT   # Shikomi text embeddings
+    STORING          # Saving to Koji
     COMPLETED        # Successfully completed
     FAILED           # Processing failed
 ```
@@ -117,7 +117,7 @@ grep -i "markdown" logs/worker-native.log
 {
   "status": "healthy",
   "embeddings_loaded": true,
-  "chroma_connected": true,
+  "koji_connected": true,
   "uptime_seconds": 1234.5
 }
 ```

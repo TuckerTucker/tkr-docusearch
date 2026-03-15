@@ -109,7 +109,7 @@ def test_audio_timestamp_extraction(audio_file, processor, tmp_path):
     # Process audio file
     result = processor.process_document(file_path=audio_file)
 
-    # Retrieve from ChromaDB
+    # Retrieve from Koji
     storage = processor.storage_client
     text_data = storage.client.get_collection("text").get(
         where={"filename": Path(audio_file).name}
@@ -179,7 +179,7 @@ tail -f logs/worker-native.log | grep AUDIO
 
 ### 2. Upload Audio File
 
-1. Go to http://localhost:3000
+1. Go to http://localhost:3333
 2. Upload an MP3/WAV file
 3. Check ingestion success
 
@@ -244,7 +244,7 @@ python scripts/inspect_whisper_output.py tests/fixtures/sample.mp3
 r"\[time:\s*([\d.]+)-([\d.]+)\]"
 ```
 
-**In ChromaDB**:
+**In Koji**:
 ```json
 {
   "start_time": 0.0,

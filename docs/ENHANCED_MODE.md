@@ -105,7 +105,7 @@ Edit your environment file:
 export ENHANCED_MODE=true
 ```
 
-Or edit `docker/.env`:
+Or edit `.env`:
 
 ```bash
 ENHANCED_MODE=true
@@ -132,7 +132,7 @@ You should see:
 ### Step 3: Process Documents
 
 **Option A: Process New Documents**
-- Upload new documents via Copyparty
+- Upload new documents via the frontend (POST /uploads/ on port 8002)
 - They automatically process with enhanced mode
 
 **Option B: Reprocess Existing Documents**
@@ -678,7 +678,7 @@ python scripts/convert_structure_to_coco.py structure.json > annotations.json
 
 Enhanced mode extracts additional metadata but:
 - ✅ All data stays local (no external calls)
-- ✅ Structure data stored in ChromaDB (same as embeddings)
+- ✅ Structure data stored in Koji (same as embeddings)
 - ✅ No additional cloud dependencies
 - ✅ Same security model as standard mode
 

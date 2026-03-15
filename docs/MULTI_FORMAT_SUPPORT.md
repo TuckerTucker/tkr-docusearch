@@ -57,21 +57,21 @@ DocuSearch supports **23 document formats** with intelligent processing strategi
 
 ### Visual Processing (PDF, Images)
 ```
-Document → Docling Parser → Pages with Images → Visual Embeddings + Text Embeddings → ChromaDB
-                                                 ├─ visual_collection (page images)
-                                                 └─ text_collection (text chunks)
+Document → Docling Parser → Pages with Images → Visual Embeddings + Text Embeddings → Koji
+                                                 ├─ visual_embeddings table (page images)
+                                                 └─ text_embeddings table (text chunks)
 ```
 
 **Characteristics:**
-- Full ColPali visual embeddings (1031 tokens × 128 dim per page)
-- Text chunk embeddings (30 tokens × 128 dim per chunk)
-- Both stored in ChromaDB for hybrid search
+- Full Shikomi visual embeddings (gRPC, port 50051) per page
+- Text chunk embeddings via Shikomi
+- Both stored in Koji (Lance-based file database) for hybrid search
 - Processing time: ~2.3s per page (Metal GPU)
 
 ### Text-Only Processing (MD, HTML, DOCX, CSV, etc.)
 ```
-Document → Docling Parser → Pages with NO Images → Text Embeddings Only → ChromaDB
-                                                     └─ text_collection (text chunks)
+Document → Docling Parser → Pages with NO Images → Text Embeddings Only → Koji
+                                                     └─ text_embeddings table (text chunks)
 ```
 
 **Characteristics:**
@@ -96,8 +96,8 @@ Document → Docling Parser → Pages with NO Images → Text Embeddings Only �
 
 ### Audio Processing (VTT, WAV, MP3)
 ```
-Audio File → Docling Parser (ASR/VTT) → Transcript → Text Embeddings → ChromaDB
-                                                      └─ text_collection
+Audio File → Docling Parser (ASR/VTT) → Transcript → Text Embeddings → Koji
+                                                      └─ text_embeddings table
 ```
 
 **Characteristics:**
@@ -109,7 +109,7 @@ Audio File → Docling Parser (ASR/VTT) → Transcript → Text Embeddings → C
 
 ### Enable/Disable Formats
 
-All formats configured in `docker/.env`:
+All formats configured in `.env`:
 
 ```bash
 SUPPORTED_FORMATS=pdf,doc,dot,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json
@@ -130,7 +130,7 @@ Format detection is automatic based on file extension. The system determines:
 
 1. **Format Type**: `get_format_type(file_path)` → `VISUAL`, `TEXT_ONLY`, or `AUDIO`
 2. **Processing Strategy**: Automatically skips visual embeddings for text-only/audio
-3. **Storage**: Only creates ChromaDB entries for generated embeddings
+3. **Storage**: Only creates Koji entries for generated embeddings
 
 ## Performance Comparison
 
@@ -198,23 +198,23 @@ All processed documents include format metadata:
 
 ### Upload PDF (Visual Processing)
 ```bash
-curl -F "file=@report.pdf" http://localhost:8000/upload
+curl -F "file=@report.pdf" http://localhost:8002/uploads/
 # → Full visual + text processing
 # → ~2.3s per page
-# → Visual + text embeddings stored
+# → Visual + text embeddings stored in Koji
 ```
 
 ### Upload Markdown (Text-Only)
 ```bash
-curl -F "file=@readme.md" http://localhost:8000/upload
+curl -F "file=@readme.md" http://localhost:8002/uploads/
 # → Text-only processing
 # → ~0.24s per chunk
-# → Only text embeddings stored
+# → Only text embeddings stored in Koji
 ```
 
 ### Upload Legacy .doc (Auto-Converted)
 ```bash
-curl -F "file=@quarterly_report.doc" http://localhost:8000/upload
+curl -F "file=@quarterly_report.doc" http://localhost:8002/uploads/
 # → Auto-detected as legacy format
 # → Converted to .docx (~2s typical)
 # → Text-only processing
@@ -223,7 +223,7 @@ curl -F "file=@quarterly_report.doc" http://localhost:8000/upload
 
 ### Upload Image (Visual Processing)
 ```bash
-curl -F "file=@chart.png" http://localhost:8000/upload
+curl -F "file=@chart.png" http://localhost:8002/uploads/
 # → Treated as single-page visual document
 # → Full visual embedding
 # → OCR text extraction
@@ -250,7 +250,7 @@ Expected output:
 ```
 Error: Unsupported format: xyz
 ```
-→ Add `.xyz` to `SUPPORTED_FORMATS` in `docker/.env` and restart
+→ Add `.xyz` to `SUPPORTED_FORMATS` in `.env` and restart
 
 ### Text-Only Format Shows "No Visual Embeddings"
 → This is expected behavior! Text-only formats intentionally skip visual processing for speed

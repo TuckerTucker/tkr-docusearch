@@ -111,7 +111,7 @@ DELETE /documents/{doc_id}
   "doc_id": "abc123...",
   "filename": "example.pdf",
   "deleted": {
-    "chromadb": {
+    "koji": {
       "visual_embeddings": 10,
       "text_embeddings": 5,
       "status": "deleted"
@@ -133,7 +133,7 @@ DELETE /documents/{doc_id}
       "cleaned": false,
       "status": "none_found"
     },
-    "copyparty": {
+    "uploads": {
       "deleted": true,
       "status": "deleted"
     }
@@ -145,7 +145,7 @@ DELETE /documents/{doc_id}
 **Errors:**
 - 400: Invalid document ID format
 - 404: Document not found
-- 500: Critical deletion failure (ChromaDB error)
+- 500: Critical deletion failure (Koji error)
 
 #### Frontend API Service (`/frontend/src/services/api.js`)
 ```javascript
@@ -168,7 +168,7 @@ api.documents.delete(docId)
 5. **Mutation** → `useDocuments` hook's `deleteDocument` called
 6. **Optimistic Update** → React Query removes card immediately
 7. **API Request** → DELETE request to backend
-8. **Backend Processing** → 6-stage deletion (ChromaDB, images, cover art, markdown, temp, copyparty)
+8. **Backend Processing** → 6-stage deletion (Koji, images, cover art, markdown, temp, uploads)
 9. **Response** → Success or error returned
 10. **UI Update** → On error, rollback; On success, refetch to sync
 
@@ -288,12 +288,12 @@ onMutate: async (docId) => {
 ### API Performance
 - Average delete time: <600ms
 - Stages:
-  - ChromaDB deletion: ~100ms (CRITICAL)
+  - Koji deletion: ~100ms (CRITICAL)
   - Page images: ~50ms
   - Cover art: ~20ms
   - Markdown: ~10ms
   - Temp cleanup: ~10ms
-  - Copyparty deletion: ~50ms (MEDIUM)
+  - Uploads deletion: ~50ms (MEDIUM)
 
 ### Network
 - Single DELETE request

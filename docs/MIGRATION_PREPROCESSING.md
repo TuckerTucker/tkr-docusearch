@@ -62,7 +62,6 @@ If any checks fail, resolve them before proceeding.
 **Create a backup of your working `.env` file:**
 
 ```bash
-cd /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch
 cp .env .env.backup.$(date +%Y%m%d)
 ```
 
@@ -83,7 +82,6 @@ This allows easy rollback if needed.
 Use the automated setup script:
 
 ```bash
-cd /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch
 ./scripts/setup-mlx-model.sh
 ```
 
@@ -106,7 +104,7 @@ If you prefer manual setup:
 2. **Download model:**
    ```bash
    huggingface-cli download InferenceIllusionist/gpt-oss-20b-MLX-4bit \
-     --local-dir /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/models/gpt-oss-20b-MLX-4bit
+     --local-dir data/models/gpt-oss-20b-MLX-4bit
    ```
 
 3. **Verify installation:**

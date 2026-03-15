@@ -93,7 +93,7 @@ Configuration validated with successful Python syntax check and module import.
 
 1. **Performance Benchmarking** (User action required)
    - Start worker: `./scripts/start-all.sh`
-   - Upload test audio file via Copyparty
+   - Upload test audio file via the frontend
    - Monitor `logs/worker-native.log` for MLX initialization and performance metrics
    - Compare frames/sec against CPU baseline (~250-300 fps)
    - Expected improvement: 19x (target ~4,750-5,700 fps)

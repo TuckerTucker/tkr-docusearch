@@ -78,7 +78,7 @@ Bidirectional highlighting **unifies both**, allowing:
 │  │  Storage Layer                                     │  │
 │  │  - Structure cache (compressed)                    │  │
 │  │  - Chunk metadata (chunk_id, page, bbox)          │  │
-│  │  - ChromaDB (chunk-to-structure mapping)          │  │
+│  │  - Koji (chunk-to-structure mapping)              │  │
 │  └────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -103,7 +103,7 @@ Bidirectional highlighting **unifies both**, allowing:
    ↓
 5. Structure data compressed and cached
    ↓
-6. Metadata stored in ChromaDB with embeddings
+6. Metadata stored in Koji with embeddings
 ```
 
 **User Interaction → Highlighting:**
@@ -244,7 +244,7 @@ structure_cache = {
     # ...
 }
 
-# Chunk metadata stored in ChromaDB (small, queryable)
+# Chunk metadata stored in Koji (small, queryable)
 chunk_metadata = {
     "chunk_id": "chunk_12345_5",
     "element_id": "elem_1_3",

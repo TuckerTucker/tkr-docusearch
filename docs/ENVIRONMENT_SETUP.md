@@ -15,7 +15,7 @@ DocuSearch uses **two separate `.env` files** for different purposes:
 ┌─────────────────────────────────────────────────────────────┐
 │ Root .env (Backend)                                         │
 │ ────────────────────────────────────────────────────────── │
-│ • Used by: Python worker, Docker Compose, scripts          │
+│ • Used by: Python worker, scripts                          │
 │ • Contains: API keys, database credentials, secrets        │
 │ • Security: NEVER exposed to browser                       │
 │ • Location: /Volumes/.../tkr-docusearch/.env              │
@@ -96,11 +96,8 @@ nano .env
 # API endpoint (backend worker)
 VITE_API_URL=http://localhost:8002
 
-# Copyparty upload credentials
-# WARNING: These are exposed to the browser!
-# Use a dedicated upload-only account
-VITE_UPLOAD_USERNAME=uploader
-VITE_UPLOAD_PASSWORD=docusearch2024  # Change in production!
+# Upload worker URL (files are uploaded directly to the worker)
+# VITE_UPLOAD_URL defaults to VITE_API_URL/uploads/
 ```
 
 ## Getting API Keys
@@ -140,8 +137,7 @@ VITE_UPLOAD_PASSWORD=docusearch2024  # Change in production!
 | `ASR_ENABLED` | Boolean | `true` | Enable audio transcription |
 | `ASR_BACKEND` | Config | `mlx` | ASR backend: mlx, whisper |
 | `DEVICE` | Config | `mps` | Compute device: mps, cuda, cpu |
-| `CHROMA_HOST` | Config | `localhost` | ChromaDB host |
-| `CHROMA_PORT` | Number | `8001` | ChromaDB port |
+| `KOJI_DB_PATH` | Path | `data/koji.db` | Path to Koji (Lance) database file |
 | `WORKER_PORT` | Number | `8002` | Worker API port |
 | `ALLOWED_ORIGINS` | List | See example | CORS allowed origins |
 
@@ -150,8 +146,6 @@ VITE_UPLOAD_PASSWORD=docusearch2024  # Change in production!
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `VITE_API_URL` | URL | `http://localhost:8002` | Backend API endpoint |
-| `VITE_UPLOAD_USERNAME` | String | `uploader` | Copyparty upload username |
-| `VITE_UPLOAD_PASSWORD` | String | `docusearch2024` | Copyparty upload password |
 
 ## Security Best Practices
 
@@ -180,8 +174,8 @@ ls -la .env
 # Check if variable is set
 grep OPENAI_API_KEY .env
 
-# Check if services can read it
-docker-compose config | grep OPENAI
+# Restart services to pick up .env changes
+./scripts/stop-all.sh && ./scripts/start-all.sh
 ```
 
 ### Frontend can't access backend API
@@ -199,23 +193,9 @@ npm run dev
 # Check allowed origins in backend .env
 grep ALLOWED_ORIGINS .env
 
-# Should include http://localhost:3000
+# Should include http://localhost:3333
 # Restart worker after changes:
 ./scripts/stop-all.sh && ./scripts/start-all.sh
-```
-
-### Upload authentication fails
-```bash
-# Check credentials match in both places:
-# 1. docker/Dockerfile.copyparty (line 74)
-grep 'uploader:' docker/Dockerfile.copyparty
-
-# 2. frontend/.env
-cd frontend
-grep VITE_UPLOAD frontend/.env
-
-# Rebuild Copyparty if credentials changed:
-docker-compose -f docker/docker-compose.yml up -d --build copyparty
 ```
 
 ## Production Deployment
@@ -228,10 +208,9 @@ For production deployments:
    frontend/.env.production  # Frontend production
    ```
 
-2. **Change all default passwords:**
-   - Copyparty upload password
+2. **Secure credentials:**
    - Admin credentials
-   - Database passwords
+   - API keys
 
 3. **Use secret management:**
    - AWS Secrets Manager

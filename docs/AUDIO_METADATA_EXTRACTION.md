@@ -2,7 +2,7 @@
 
 ## Overview
 
-DocuSearch automatically extracts ID3 metadata tags and audio properties from MP3 and WAV files during processing. This metadata is stored in ChromaDB alongside transcriptions and embeddings, making audio files fully searchable by both content and metadata.
+DocuSearch automatically extracts ID3 metadata tags and audio properties from MP3 and WAV files during processing. This metadata is stored in Koji (Lance-based file database) alongside transcriptions and embeddings, making audio files fully searchable by both content and metadata.
 
 ## Features
 
@@ -52,13 +52,13 @@ Extracts and stores embedded album artwork:
 
 3. **`src/processing/processor.py`** - Storage coordination
    - Saves album art to filesystem
-   - Stores metadata in ChromaDB with embeddings
-   - Filters binary data from ChromaDB metadata
+   - Stores metadata in Koji with embeddings
+   - Filters binary data from Koji metadata
 
 ### Processing Flow
 
 ```
-1. Audio file uploaded via Copyparty
+1. Audio file uploaded via POST /uploads/ (worker, port 8002)
    ↓
 2. Webhook triggers processing
    ↓
@@ -69,21 +69,21 @@ Extracts and stores embedded album artwork:
    ↓
 4. Whisper transcription (docling_parser.py)
    - Convert audio to text
-   - Generate embeddings
+   - Generate embeddings via Shikomi (gRPC, port 50051)
    ↓
 5. Metadata merging
    - Combine ID3 tags + audio properties + transcription metadata
    ↓
 6. Storage (processor.py)
    - Save album art to filesystem
-   - Store embeddings + metadata in ChromaDB
+   - Store embeddings + metadata in Koji
 ```
 
 ## Usage
 
 ### Automatic Processing
 
-Audio metadata extraction is automatic. Simply upload MP3 or WAV files through the Copyparty interface at `http://localhost:8000`:
+Audio metadata extraction is automatic. Simply upload MP3 or WAV files through the worker upload endpoint at `http://localhost:8002/uploads/`:
 
 1. Upload audio file
 2. Wait for processing to complete
@@ -108,35 +108,34 @@ print(f"Duration: {metadata.duration_seconds}s")
 print(f"Bitrate: {metadata.bitrate_kbps} kbps")
 print(f"Album art: {'Yes' if metadata.has_album_art else 'No'}")
 
-# Display all metadata
-print("\nChromaDB format:")
-print(metadata.to_chromadb_metadata())
+# Display all metadata as dict
+print("\nMetadata dict:")
+print(metadata.to_dict())
 EOF
 ```
 
 ### Querying Metadata
 
-Search ChromaDB for audio files with specific metadata:
+Search Koji for audio files with specific metadata:
 
 ```python
-import chromadb
+import koji
 
-client = chromadb.HttpClient(host="localhost", port=8001)
-collection = client.get_collection("text_collection")
+db = koji.open("data/koji.db")
 
 # Find all audio files
-results = collection.get(
+results = db.query(
+    "text_embeddings",
+    filter="format_type = 'audio'",
     limit=100,
-    include=["metadatas"],
-    where={"format_type": "audio"}
 )
 
 # Filter by specific artist (example)
-for metadata in results['metadatas']:
-    if metadata.get('audio_artist') == 'Artist Name':
-        print(f"Found: {metadata['filename']}")
-        print(f"  Album: {metadata.get('audio_album')}")
-        print(f"  Duration: {metadata.get('audio_duration_seconds')}s")
+for row in results:
+    if row.get('audio_artist') == 'Artist Name':
+        print(f"Found: {row['filename']}")
+        print(f"  Album: {row.get('audio_album')}")
+        print(f"  Duration: {row.get('audio_duration_seconds')}s")
 ```
 
 ## Album Art Storage
@@ -166,9 +165,9 @@ if album_art_path and os.path.exists(album_art_path):
 
 ## Metadata Schema
 
-All audio metadata fields use the `audio_` prefix in ChromaDB. See [AUDIO_METADATA_SCHEMA.md](../src/processing/AUDIO_METADATA_SCHEMA.md) for complete schema documentation.
+All audio metadata fields use the `audio_` prefix in Koji. See [AUDIO_METADATA_SCHEMA.md](../src/processing/AUDIO_METADATA_SCHEMA.md) for complete schema documentation.
 
-### Example Metadata in ChromaDB
+### Example Metadata in Koji
 
 ```json
 {
@@ -271,27 +270,27 @@ ffmpeg -version
 tail -100 logs/worker-native.log | grep -i error
 ```
 
-### Metadata Missing in ChromaDB
+### Metadata Missing in Koji
 
-**Problem**: Audio processed but metadata not in ChromaDB
+**Problem**: Audio processed but metadata not in Koji
 
 **Causes**:
-1. ChromaDB connection issue
+1. Koji DB file not found or path misconfigured (`KOJI_DB_PATH`)
 2. Metadata filtering removed fields
 3. Field name mismatch
 
 **Solution**:
 ```bash
-# Verify ChromaDB is running
-curl http://localhost:8001/api/v2/heartbeat
+# Verify KOJI_DB_PATH is set
+echo $KOJI_DB_PATH
 
 # Check what metadata was stored
 python3 << 'EOF'
-import chromadb
-client = chromadb.HttpClient(host="localhost", port=8001)
-collection = client.get_collection("text_collection")
-results = collection.get(limit=1, include=["metadatas"])
-print(results['metadatas'][0].keys())
+import koji
+db = koji.open("data/koji.db")
+results = db.query("text_embeddings", limit=1)
+if results:
+    print(list(results[0].keys()))
 EOF
 ```
 

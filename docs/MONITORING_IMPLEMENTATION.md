@@ -182,7 +182,7 @@ Verifies:
 Visit: http://localhost:8002/static/monitor.html
 
 ### 3. Upload Documents
-Visit: http://localhost:8000
+Visit: http://localhost:3333
 
 Upload a document and watch real-time processing updates in the dashboard.
 
@@ -244,9 +244,9 @@ tail -f logs/worker-native.log
 ### Data Flow
 
 ```
-Document Upload (Copyparty)
+Document Upload (POST /uploads/ on port 8002)
     ↓
-Worker Receives Webhook
+Worker Receives Upload
     ↓
 process_document_sync() [Thread Pool]
     ↓

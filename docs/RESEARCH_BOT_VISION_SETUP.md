@@ -42,7 +42,7 @@ The Research Bot Vision feature enables multimodal AI responses by sending **bot
 
 1. User Query
    │
-   ├─> Search Engine (ColPali)
+   ├─> Search Engine (Shikomi)
    │   ├─> Visual Collection (image embeddings)
    │   └─> Text Collection (text embeddings)
    │
@@ -113,9 +113,8 @@ The Research Bot Vision feature enables multimodal AI responses by sending **bot
 ### Required Services
 
 1. **DocuSearch Running**
-   - ChromaDB (port 8001)
-   - Copyparty (port 8000)
-   - Worker API (port 8002)
+   - Shikomi embedding service (port 50051)
+   - Worker API (port 8002) — serves uploads and images
    - Documents uploaded and indexed
 
 2. **Ngrok Installed**
@@ -199,11 +198,11 @@ cat ~/.ngrok2/ngrok.yml
 **Option B: Manual Start**
 
 ```bash
-# Terminal 1: Start ngrok tunnel
-ngrok http 8000
+# Terminal 1: Start ngrok tunnel to worker (port 8002)
+ngrok http 8002
 
 # Expected Output:
-# Forwarding  https://abc123-456-789.ngrok-free.app -> http://localhost:8000
+# Forwarding  https://abc123-456-789.ngrok-free.app -> http://localhost:8002
 
 # Copy the https:// URL (the ngrok URL)
 # Terminal 2: Update .env
@@ -557,11 +556,11 @@ curl https://YOUR-NGROK-URL.ngrok-free.app/images/abc123/page001_thumb.jpg
 
 2. **Verify worker API port:**
    ```bash
-   # Ngrok must tunnel port 8000 (Copyparty) not 8002 (Worker)
+   # Ngrok must tunnel port 8002 (Worker)
    # Check ngrok config:
    curl http://localhost:4040/api/tunnels | jq
 
-   # Should show: "config": { "addr": "http://localhost:8000" }
+   # Should show: "config": { "addr": "http://localhost:8002" }
    ```
 
 3. **Check image files exist:**
@@ -572,7 +571,7 @@ curl https://YOUR-NGROK-URL.ngrok-free.app/images/abc123/page001_thumb.jpg
 
 4. **Test image endpoint locally:**
    ```bash
-   # Find a real image path from ChromaDB metadata
+   # Find a real image path from Koji metadata
    curl http://localhost:8002/images/YOUR-DOC-ID/page001_thumb.jpg --output test.jpg
    # Should download image
    ```
@@ -600,7 +599,7 @@ curl https://YOUR-NGROK-URL.ngrok-free.app/images/abc123/page001_thumb.jpg
 - Set once in `.env`, never changes:
   ```bash
   # Start ngrok with static domain
-  ngrok http 8000 --domain=your-app.ngrok-free.app
+  ngrok http 8002 --domain=your-app.ngrok-free.app
 
   # Update .env once
   NGROK_URL=https://your-app.ngrok-free.app
@@ -697,25 +696,30 @@ curl -X POST http://localhost:8004/api/research/ask \
 ### Issue: "Worker API not accessible via ngrok"
 
 **Symptoms:**
-- Ngrok URL works for Copyparty (port 8000)
-- But images served by Worker (port 8002) return 404
+- Ngrok URL returns 404 for image paths
 - Logs show "Image fetch failed"
 
 **Root Cause:**
-- Ngrok tunnels port 8000 (Copyparty)
-- Worker API serves images on port 8002
-- Need to tunnel 8000 and proxy images to 8002
+- Ngrok must tunnel port 8002 (Worker API), not any other port
+- Worker API serves both uploads and page images on port 8002
 
 **Solution:**
-This is handled by the existing setup where:
-1. Copyparty (8000) is publicly accessible via ngrok
-2. Worker API (8002) remains local
-3. Context builder uses Worker API paths that are served via Copyparty static file serving
+Ensure ngrok is tunneling port 8002:
+```bash
+# Stop any existing ngrok tunnel
+pkill ngrok
+
+# Start tunnel on correct port
+ngrok http 8002
+
+# Re-run setup script to update .env with new URL
+./scripts/start-vision-research.sh
+```
 
 **Verify:**
 ```bash
-# Images should be accessible via Copyparty
-curl http://localhost:8000/page_images/YOUR-DOC/page001_thumb.jpg
+# Images should be accessible via Worker
+curl http://localhost:8002/images/YOUR-DOC/page001_thumb.jpg
 # If this works, ngrok will also work
 ```
 
@@ -771,8 +775,8 @@ scoop install ngrok
 # Install
 npm install -g localtunnel
 
-# Start tunnel
-lt --port 8000 --subdomain your-app
+# Start tunnel to worker
+lt --port 8002 --subdomain your-app
 
 # Output: https://your-app.loca.lt
 
@@ -797,8 +801,8 @@ cloudflared tunnel login
 # Create tunnel
 cloudflared tunnel create docusearch
 
-# Start tunnel
-cloudflared tunnel --url http://localhost:8000 run docusearch
+# Start tunnel to worker
+cloudflared tunnel --url http://localhost:8002 run docusearch
 
 # Update .env with tunnel URL
 ```
@@ -813,8 +817,8 @@ cloudflared tunnel --url http://localhost:8000 run docusearch
 **If you have a VPS:**
 
 ```bash
-# SSH tunnel from VPS to local
-ssh -R 8000:localhost:8000 user@your-vps.com
+# SSH tunnel from VPS to local worker
+ssh -R 8002:localhost:8002 user@your-vps.com
 
 # Update .env
 NGROK_URL=https://your-vps.com
@@ -847,7 +851,7 @@ NGROK_URL=https://your-vps.com
 ### Security Considerations
 
 **Risks:**
-1. **Public tunnel exposes Worker API** - Anyone with ngrok URL can access your documents
+1. **Public tunnel exposes Worker API (port 8002)** - Anyone with the ngrok URL can access your documents and uploaded files
 2. **No authentication** - Ngrok free has no password protection
 3. **Temporary exposure** - Images accessible during query processing
 
@@ -859,7 +863,7 @@ NGROK_URL=https://your-vps.com
 
 2. **Use ngrok auth (paid):**
    ```bash
-   ngrok http 8000 --basic-auth="username:password"
+   ngrok http 8002 --basic-auth="username:password"
    ```
 
 3. **Monitor access:**
@@ -1053,7 +1057,7 @@ Then set `RESEARCH_IMAGE_BASE_URL=https://yourdomain.com` in `.env`.
 **What the script does:**
 
 1. **Check ngrok installed** - Verifies `ngrok` command exists
-2. **Start ngrok** - Launches `ngrok http 8000` in background
+2. **Start ngrok** - Launches `ngrok http 8002` in background
 3. **Get ngrok URL** - Queries ngrok API at `localhost:4040` for public URL
 4. **Update .env** - Writes `NGROK_URL` and enables vision
 5. **Start research API** - Launches or restarts the research service
@@ -1071,11 +1075,11 @@ if ! command -v ngrok &> /dev/null; then
 fi
 
 # Start ngrok if not running
-if pgrep -f "ngrok http 8000" > /dev/null; then
+if pgrep -f "ngrok http 8002" > /dev/null; then
     echo "✅ Ngrok already running"
 else
     echo "🚀 Starting ngrok tunnel..."
-    nohup ngrok http 8000 > logs/ngrok.log 2>&1 &
+    nohup ngrok http 8002 > logs/ngrok.log 2>&1 &
     sleep 3  # Wait for ngrok to initialize
 fi
 

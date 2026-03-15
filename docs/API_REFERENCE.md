@@ -26,13 +26,13 @@ DocuSearch provides RESTful APIs for document processing, search, and research. 
 
 ### Upload Document
 
-**Endpoint:** `POST /documents/upload`
+**Endpoint:** `POST /uploads/`
 
-Upload and process a document.
+Upload and process a document. Files are received by the worker service and immediately queued for processing.
 
 **Request:**
 ```bash
-curl -X POST "http://localhost:8002/documents/upload" \
+curl -X POST "http://localhost:8002/uploads/" \
   -F "file=@document.pdf"
 ```
 
@@ -262,7 +262,7 @@ Check service health.
 ```json
 {
   "status": "healthy",
-  "chromadb": "connected",
+  "koji_connected": true,
   "enhanced_mode": true,
   "version": "1.0.0"
 }

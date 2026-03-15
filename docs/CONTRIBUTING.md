@@ -17,7 +17,6 @@ Thank you for your interest in contributing to tkr-docusearch! This document pro
 
 - Python 3.10 or higher
 - macOS with M1/M2/M3 chip (for Metal GPU acceleration) or any system with CPU
-- Docker and Docker Compose
 - Git
 
 ### Initial Setup
@@ -160,7 +159,7 @@ Good commit messages:
 ```
 feat(embeddings): add batch processing for images
 
-fix(storage): resolve ChromaDB connection timeout issue
+fix(storage): resolve Koji connection timeout issue
 
 docs: update QUICK_START with GPU setup instructions
 
@@ -271,27 +270,27 @@ Follow these Python conventions:
 ### Docstring Format (Google Style)
 
 ```python
-def embed_images(self, images: List[Image.Image]) -> torch.Tensor:
-    """Embed a list of images using the ColPali model.
+async def embed_images(self, images: List[Image.Image]) -> List[List[float]]:
+    """Embed a list of images using the Shikomi embedding service.
 
     Args:
         images: List of PIL Image objects to embed.
 
     Returns:
-        Tensor of shape (batch_size, seq_length, embedding_dim) containing
-        the multi-vector embeddings for each image.
+        List of embedding vectors, one per image.
 
     Raises:
         ValueError: If images list is empty.
-        RuntimeError: If model inference fails.
+        RuntimeError: If the Shikomi gRPC call fails.
 
     Example:
         >>> from PIL import Image
-        >>> engine = ColPaliEngine()
+        >>> client = ShikomiClient()
+        >>> await client.connect()
         >>> images = [Image.open("doc1.png")]
-        >>> embeddings = engine.embed_images(images)
-        >>> print(embeddings.shape)
-        torch.Size([1, 1031, 128])
+        >>> embeddings = await client.embed_images(images)
+        >>> print(len(embeddings))
+        1
     """
     if not images:
         raise ValueError("Images list cannot be empty")
@@ -324,13 +323,12 @@ Follow the established project structure:
 ```
 tkr-docusearch/
 ├── src/               # Source code
-│   ├── embeddings/    # ColPali embedding layer
-│   ├── storage/       # ChromaDB storage layer
+│   ├── embeddings/    # Shikomi embedding client (gRPC, port 50051)
+│   ├── storage/       # Koji storage layer (Lance-based file database)
 │   ├── processing/    # Document processing
 │   ├── search/        # Two-stage search engine
 │   └── config/        # Configuration modules
 ├── scripts/           # Management scripts
-├── docker/            # Docker configuration
 ├── docs/              # Documentation
 └── data/              # Data storage (gitignored)
 ```

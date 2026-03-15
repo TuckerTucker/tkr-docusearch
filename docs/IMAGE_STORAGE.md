@@ -27,10 +27,9 @@ data/
 
 ### Storage Locations
 
-| Environment | Base Path | Mount Point |
-|-------------|-----------|-------------|
-| **Docker** | `data/page_images/` (host) | `/page_images` (container) |
-| **Native** | `data/page_images/` | N/A |
+| Environment | Base Path |
+|-------------|-----------|
+| **Native** | `data/page_images/` |
 
 ---
 
@@ -89,7 +88,7 @@ ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 
 ### 1. Document Upload
 
-User uploads document via Copyparty (port 8000) → Stored in `data/uploads/`
+User uploads document via the frontend (POST /uploads/ on worker port 8002) → Stored in `data/uploads/`
 
 ### 2. Docling Parsing
 
@@ -120,7 +119,7 @@ image_path, thumb_path = save_page_image(
 
 ### 4. Metadata Storage
 
-Paths stored in ChromaDB alongside embeddings:
+Paths stored in Koji alongside embeddings:
 ```python
 metadata = {
     "doc_id": "a3b2c1d4...",
@@ -246,13 +245,13 @@ count = delete_document_images(doc_id="a3b2c1d4...")
 
 ### Orphaned Images
 
-Images without corresponding ChromaDB entries can be cleaned up:
+Images without corresponding Koji entries can be cleaned up:
 
 ```bash
 # Find all doc_ids in page_images/
 ls data/page_images/
 
-# Query ChromaDB for existing doc_ids
+# Query Koji for existing doc_ids
 # Compare and delete orphans
 ```
 
@@ -284,8 +283,7 @@ New documents automatically get images upon re-processing.
 **Check:**
 1. Directory exists: `ls data/page_images/`
 2. Permissions: `touch data/page_images/.test && rm data/page_images/.test`
-3. Docker mount: `docker exec docusearch-worker ls /page_images`
-4. Logs: `tail -f logs/worker-native.log | grep image`
+3. Logs: `tail -f logs/worker-native.log | grep image`
 
 ### Images not displaying in UI
 

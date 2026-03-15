@@ -822,7 +822,7 @@ from playwright.sync_api import Page
 def test_bbox_alignment(page: Page):
     """Verify bboxes visually align with content."""
     # Navigate to document page
-    page.goto('http://localhost:8000/documents/test_doc')
+    page.goto('http://localhost:3333/documents/test_doc')
 
     # Take screenshot
     screenshot = page.screenshot()
@@ -832,7 +832,7 @@ def test_bbox_alignment(page: Page):
 
 def test_bbox_hover_highlighting(page: Page):
     """Verify hover highlights correct region."""
-    page.goto('http://localhost:8000/documents/test_doc')
+    page.goto('http://localhost:3333/documents/test_doc')
 
     # Hover over first chunk
     page.hover('[data-chunk-id="chunk_0"]')
@@ -843,7 +843,7 @@ def test_bbox_hover_highlighting(page: Page):
 
 def test_bbox_click_navigation(page: Page):
     """Verify clicking bbox scrolls to chunk."""
-    page.goto('http://localhost:8000/documents/test_doc')
+    page.goto('http://localhost:3333/documents/test_doc')
 
     # Click bbox
     page.click('[data-element-id="elem_5"]')
