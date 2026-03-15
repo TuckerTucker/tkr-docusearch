@@ -10,23 +10,22 @@ All mocks follow the Inversion of Control (IoC) principle and match their
 respective interface contracts defined in the project documentation.
 
 Usage:
-    >>> from src.core.testing.mocks import MockColPaliModel, MockChromaDBClient
+    >>> from src.core.testing.mocks import MockColPaliModel, MockKojiClient
     >>> model = MockColPaliModel()
     >>> embeddings = model.embed_images([image1, image2])
 
 Classes:
     MockColPaliModel: Mock ColPali embedding model
-    MockEmbeddingEngine: Mock embedding engine (legacy name, same as MockColPaliModel)
-    MockChromaDBClient: Mock ChromaDB storage client
-    MockStorageClient: Mock storage client (legacy name, same as MockChromaDBClient)
-    MockCollection: Mock ChromaDB collection
+    MockEmbeddingEngine: Mock embedding engine (alias for MockColPaliModel)
+    MockKojiClient: Mock Koji storage client
+    MockStorageClient: Mock storage client (alias for MockKojiClient)
     MockSearchEngine: Mock two-stage search engine
 """
 
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from PIL import Image
@@ -390,543 +389,264 @@ MockEmbeddingEngine = MockColPaliModel
 # ============================================================================
 
 
-class MockCollection:
-    """Mock ChromaDB collection.
+class MockKojiClient:
+    """In-memory mock of KojiClient for testing.
 
-    Simulates a ChromaDB collection with in-memory storage for testing.
-
-    Attributes:
-        name: Collection name
-        metadata: Collection metadata
-        _data: In-memory storage for embeddings
-    """
-
-    def __init__(self, name: str, metadata: Optional[Dict[str, Any]] = None):
-        """Initialize mock collection.
-
-        Args:
-            name: Collection name
-            metadata: Optional collection metadata
-        """
-        self.name = name
-        self.metadata = metadata or {}
-        self._data: Dict[str, Dict[str, Any]] = {}
-        logger.debug(f"Initialized MockCollection: {name}")
-
-    def add(
-        self,
-        ids: List[str],
-        embeddings: List[np.ndarray],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
-        documents: Optional[List[str]] = None,
-    ):
-        """Add embeddings to collection.
-
-        Args:
-            ids: List of unique IDs
-            embeddings: List of embedding vectors
-            metadatas: Optional list of metadata dicts
-            documents: Optional list of document texts
-        """
-        for i, item_id in enumerate(ids):
-            self._data[item_id] = {
-                "id": item_id,
-                "embedding": embeddings[i],
-                "metadata": metadatas[i] if metadatas else {},
-                "document": documents[i] if documents else None,
-            }
-
-    def query(
-        self,
-        query_embeddings: List[np.ndarray],
-        n_results: int = 10,
-        where: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, List[List[Any]]]:
-        """Query collection for similar embeddings.
-
-        Args:
-            query_embeddings: List of query vectors
-            n_results: Number of results to return
-            where: Optional metadata filter
-
-        Returns:
-            Dictionary with ids, distances, metadatas, documents
-        """
-        results = {"ids": [], "distances": [], "metadatas": [], "documents": []}
-
-        for query_emb in query_embeddings:
-            # Compute similarities
-            similarities = []
-            for item_id, data in self._data.items():
-                # Apply filters
-                if where and not self._matches_filter(data["metadata"], where):
-                    continue
-
-                # Compute cosine similarity
-                sim = self._cosine_similarity(query_emb, data["embedding"])
-                similarities.append((item_id, sim, data))
-
-            # Sort by similarity and get top-n
-            similarities.sort(key=lambda x: x[1], reverse=True)
-            top_n = similarities[:n_results]
-
-            # Format results
-            results["ids"].append([item[0] for item in top_n])
-            results["distances"].append([1.0 - item[1] for item in top_n])  # Convert to distance
-            results["metadatas"].append([item[2]["metadata"] for item in top_n])
-            results["documents"].append([item[2]["document"] for item in top_n])
-
-        return results
-
-    def get(self, ids: Optional[List[str]] = None) -> Dict[str, List[Any]]:
-        """Get items by ID.
-
-        Args:
-            ids: Optional list of IDs to retrieve
-
-        Returns:
-            Dictionary with ids, embeddings, metadatas, documents
-        """
-        target_ids = ids if ids else list(self._data.keys())
-        return {
-            "ids": target_ids,
-            "embeddings": [self._data[i]["embedding"] for i in target_ids if i in self._data],
-            "metadatas": [self._data[i]["metadata"] for i in target_ids if i in self._data],
-            "documents": [self._data[i]["document"] for i in target_ids if i in self._data],
-        }
-
-    def delete(self, ids: Optional[List[str]] = None, where: Optional[Dict[str, Any]] = None):
-        """Delete items from collection.
-
-        Args:
-            ids: Optional list of IDs to delete
-            where: Optional metadata filter for deletion
-        """
-        if ids:
-            for item_id in ids:
-                self._data.pop(item_id, None)
-        elif where:
-            to_delete = [
-                item_id
-                for item_id, data in self._data.items()
-                if self._matches_filter(data["metadata"], where)
-            ]
-            for item_id in to_delete:
-                del self._data[item_id]
-
-    def count(self) -> int:
-        """Get count of items in collection.
-
-        Returns:
-            Number of items
-        """
-        return len(self._data)
-
-    def _matches_filter(self, metadata: Dict[str, Any], where: Dict[str, Any]) -> bool:
-        """Check if metadata matches filter."""
-        for key, value in where.items():
-            if key not in metadata or metadata[key] != value:
-                return False
-        return True
-
-    def _cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
-        """Compute cosine similarity between two vectors."""
-        vec1_flat = vec1.flatten() if vec1.ndim > 1 else vec1
-        vec2_flat = vec2.flatten() if vec2.ndim > 1 else vec2
-
-        vec1_norm = vec1_flat / np.linalg.norm(vec1_flat)
-        vec2_norm = vec2_flat / np.linalg.norm(vec2_flat)
-        return float(np.dot(vec1_norm, vec2_norm))
-
-
-class MockChromaDBClient:
-    """Mock ChromaDB client for testing.
-
-    Simulates the ChromaDB storage client defined in storage-interface.md.
-    Stores embeddings in memory using MockCollection instances.
+    Mirrors the public API of ``src.storage.koji_client.KojiClient`` so that
+    any code accepting a KojiClient via dependency injection can be tested
+    without a real Koji database.
 
     Attributes:
-        host: ChromaDB server host
-        port: ChromaDB server port
-        visual_collection_name: Visual embeddings collection name
-        text_collection_name: Text embeddings collection name
-        simulate_latency: Whether to add realistic processing delays
-        _visual_collection: Mock visual collection
-        _text_collection: Mock text collection
+        _documents: In-memory document store keyed by doc_id.
+        _pages: In-memory list of page dicts.
+        _chunks: In-memory list of chunk dicts.
+        _relations: In-memory list of relation dicts.
+        _open: Whether the mock client is "connected".
 
     Example:
-        >>> client = MockChromaDBClient()
-        >>> client.add_visual_embedding("doc1", 1, embeddings, {"filename": "test.pdf"})
-        'doc1-page001'
+        >>> client = MockKojiClient()
+        >>> client.open()
+        >>> client.create_document("doc1", "test.pdf", "pdf")
+        >>> client.get_document("doc1")["filename"]
+        'test.pdf'
     """
 
-    def __init__(
-        self,
-        host: str = "chromadb",
-        port: int = 8000,
-        visual_collection: str = "visual_collection",
-        text_collection: str = "text_collection",
-        simulate_latency: bool = False,
-    ):
-        """Initialize mock ChromaDB client.
+    def __init__(self) -> None:
+        """Initialize mock Koji client with empty in-memory stores."""
+        self._documents: Dict[str, Dict[str, Any]] = {}
+        self._pages: List[Dict[str, Any]] = []
+        self._chunks: List[Dict[str, Any]] = []
+        self._relations: List[Dict[str, Any]] = []
+        self._open: bool = False
 
-        Args:
-            host: ChromaDB server host (ignored in mock)
-            port: ChromaDB server port (ignored in mock)
-            visual_collection: Visual embeddings collection name
-            text_collection: Text embeddings collection name
-            simulate_latency: If True, add realistic latency to operations
-        """
-        self.host = host
-        self.port = port
-        self.visual_collection_name = visual_collection
-        self.text_collection_name = text_collection
-        self.simulate_latency = simulate_latency
+    # ------------------------------------------------------------------
+    # Connection lifecycle
+    # ------------------------------------------------------------------
 
-        # Create mock collections
-        self._visual_collection = MockCollection(visual_collection)
-        self._text_collection = MockCollection(text_collection)
+    def open(self) -> None:
+        """Mark the mock client as connected."""
+        self._open = True
 
-        # Generate initial mock data for search testing
-        self._generate_mock_data()
+    def close(self) -> None:
+        """Mark the mock client as disconnected."""
+        self._open = False
 
-        logger.info(
-            f"Initialized MockChromaDBClient (host={host}, port={port}, "
-            f"latency={simulate_latency})"
-        )
+    def sync(self) -> None:
+        """No-op — in-memory store requires no syncing."""
 
-    def _generate_mock_data(self):
-        """Generate mock document data for testing."""
-        # Create 5 mock documents with varying relevance
-        doc_ids = ["doc001", "doc002", "doc003", "doc004", "doc005"]
-        filenames = [
-            "Q3-2023-Earnings.pdf",
-            "Product-Roadmap.pdf",
-            "Legal-Contract.pdf",
-            "Marketing-Report.pdf",
-            "Technical-Specs.pdf",
-        ]
+    # ------------------------------------------------------------------
+    # Health / introspection
+    # ------------------------------------------------------------------
 
-        for i, (doc_id, filename) in enumerate(zip(doc_ids, filenames)):
-            # Visual embeddings (3 pages per document)
-            for page in range(1, 4):
-                emb_id = f"{doc_id}-page{page:03d}"
-                seq_length = np.random.randint(80, 120)
-                embeddings = self._generate_mock_embedding(seq_length, seed=hash(emb_id))
-
-                self._visual_collection.add(
-                    ids=[emb_id],
-                    embeddings=[embeddings[0]],  # Store CLS token for Stage 1
-                    metadatas=[
-                        {
-                            "filename": filename,
-                            "page": page,
-                            "doc_id": doc_id,
-                            "type": "visual",
-                            "seq_length": seq_length,
-                            "full_embeddings": embeddings,  # Store full for Stage 2
-                        }
-                    ],
-                )
-
-            # Text embeddings (10 chunks per document)
-            for chunk_id in range(10):
-                emb_id = f"{doc_id}-chunk{chunk_id:04d}"
-                seq_length = np.random.randint(50, 80)
-                embeddings = self._generate_mock_embedding(seq_length, seed=hash(emb_id))
-                page = (chunk_id // 3) + 1
-
-                self._text_collection.add(
-                    ids=[emb_id],
-                    embeddings=[embeddings[0]],  # Store CLS token for Stage 1
-                    metadatas=[
-                        {
-                            "filename": filename,
-                            "chunk_id": chunk_id,
-                            "page": page,
-                            "doc_id": doc_id,
-                            "type": "text",
-                            "seq_length": seq_length,
-                            "full_embeddings": embeddings,  # Store full for Stage 2
-                            "text_preview": f"Sample text from {filename} chunk {chunk_id}...",
-                        }
-                    ],
-                )
-
-    def _generate_mock_embedding(self, seq_length: int, seed: int = None) -> np.ndarray:
-        """Generate mock embedding with given sequence length."""
-        if seed is not None:
-            rng = np.random.default_rng(seed % (2**31))
-        else:
-            rng = np.random.default_rng()
-
-        embeddings = rng.standard_normal((seq_length, 768)).astype(np.float32)
-        # Normalize to unit vectors
-        embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-        return embeddings
-
-    def add_visual_embedding(
-        self, doc_id: str, page: int, full_embeddings: np.ndarray, metadata: Dict[str, Any]
-    ) -> str:
-        """Store visual embedding.
-
-        Args:
-            doc_id: Unique document identifier
-            page: Page number (1-indexed)
-            full_embeddings: Multi-vector sequence, shape (seq_length, 768)
-            metadata: Additional metadata
+    def health_check(self) -> Dict[str, Any]:
+        """Return mock health status.
 
         Returns:
-            Embedding ID: "{doc_id}-page{page:03d}"
-
-        Raises:
-            ValueError: If embedding shape is invalid
+            Dictionary with connection status and table list.
         """
-        # Validate shape
-        if len(full_embeddings.shape) != 2:
-            raise ValueError(
-                f"Invalid embedding shape: {full_embeddings.shape}. Expected (seq_length, 768)"
-            )
-
-        seq_length, dim = full_embeddings.shape
-        # Support both real ColPali (128) and mock (768) dimensions
-        if dim not in [128, 768]:
-            raise ValueError(f"Invalid embedding dimension: {dim}. Expected 128 or 768")
-
-        # Generate ID
-        embedding_id = f"{doc_id}-page{page:03d}"
-
-        # Store in collection
-        self._visual_collection.add(
-            ids=[embedding_id],
-            embeddings=[full_embeddings[0]],  # CLS token for Stage 1
-            metadatas=[{**metadata, "full_embeddings": full_embeddings, "seq_length": seq_length}],
-        )
-
-        logger.debug(f"Stored visual embedding: {embedding_id} (shape={full_embeddings.shape})")
-
-        return embedding_id
-
-    def add_text_embedding(
-        self, doc_id: str, chunk_id: int, full_embeddings: np.ndarray, metadata: Dict[str, Any]
-    ) -> str:
-        """Store text embedding.
-
-        Args:
-            doc_id: Unique document identifier
-            chunk_id: Chunk number (0-indexed)
-            full_embeddings: Multi-vector sequence, shape (seq_length, 768)
-            metadata: Additional metadata
-
-        Returns:
-            Embedding ID: "{doc_id}-chunk{chunk_id:04d}"
-
-        Raises:
-            ValueError: If embedding shape is invalid
-        """
-        # Validate shape
-        if len(full_embeddings.shape) != 2:
-            raise ValueError(
-                f"Invalid embedding shape: {full_embeddings.shape}. Expected (seq_length, 768)"
-            )
-
-        seq_length, dim = full_embeddings.shape
-        # Support both real ColPali (128) and mock (768) dimensions
-        if dim not in [128, 768]:
-            raise ValueError(f"Invalid embedding dimension: {dim}. Expected 128 or 768")
-
-        # Generate ID
-        embedding_id = f"{doc_id}-chunk{chunk_id:04d}"
-
-        # Store in collection
-        self._text_collection.add(
-            ids=[embedding_id],
-            embeddings=[full_embeddings[0]],  # CLS token for Stage 1
-            metadatas=[{**metadata, "full_embeddings": full_embeddings, "seq_length": seq_length}],
-        )
-
-        logger.debug(f"Stored text embedding: {embedding_id} (shape={full_embeddings.shape})")
-
-        return embedding_id
-
-    def search_visual(
-        self,
-        query_embedding: np.ndarray,
-        n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """Mock Stage 1 visual search using representative vectors.
-
-        Args:
-            query_embedding: Query embedding CLS token, shape (768,)
-            n_results: Number of candidates to retrieve
-            filters: Optional metadata filters
-
-        Returns:
-            List of candidates with scores and metadata
-        """
-        start_time = time.time()
-
-        if query_embedding.ndim != 1 or query_embedding.shape[0] != 768:
-            raise ValueError(f"Query embedding must have shape (768,), got {query_embedding.shape}")
-
-        # Query collection
-        results = self._visual_collection.query(
-            query_embeddings=[query_embedding], n_results=n_results, where=filters
-        )
-
-        # Format results
-        candidates = []
-        for i, item_id in enumerate(results["ids"][0]):
-            metadata = results["metadatas"][0][i]
-            candidates.append(
-                {
-                    "id": item_id,
-                    "score": 1.0 - results["distances"][0][i],  # Convert distance to score
-                    "metadata": metadata,
-                    "full_embeddings": metadata.get("full_embeddings"),
-                }
-            )
-
-        # Simulate latency
-        if self.simulate_latency:
-            time.sleep(0.1)
-
-        logger.debug(
-            f"Visual search returned {len(candidates)} results in "
-            f"{(time.time()-start_time)*1000:.1f}ms"
-        )
-        return candidates
-
-    def search_text(
-        self,
-        query_embedding: np.ndarray,
-        n_results: int = 100,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """Mock Stage 1 text search using representative vectors.
-
-        Args:
-            query_embedding: Query embedding CLS token, shape (768,)
-            n_results: Number of candidates to retrieve
-            filters: Optional metadata filters
-
-        Returns:
-            List of candidates with scores and metadata
-        """
-        start_time = time.time()
-
-        if query_embedding.ndim != 1 or query_embedding.shape[0] != 768:
-            raise ValueError(f"Query embedding must have shape (768,), got {query_embedding.shape}")
-
-        # Query collection
-        results = self._text_collection.query(
-            query_embeddings=[query_embedding], n_results=n_results, where=filters
-        )
-
-        # Format results
-        candidates = []
-        for i, item_id in enumerate(results["ids"][0]):
-            metadata = results["metadatas"][0][i]
-            candidates.append(
-                {
-                    "id": item_id,
-                    "score": 1.0 - results["distances"][0][i],  # Convert distance to score
-                    "metadata": metadata,
-                    "full_embeddings": metadata.get("full_embeddings"),
-                }
-            )
-
-        # Simulate latency
-        if self.simulate_latency:
-            time.sleep(0.1)
-
-        logger.debug(
-            f"Text search returned {len(candidates)} results in "
-            f"{(time.time()-start_time)*1000:.1f}ms"
-        )
-        return candidates
-
-    def get_collection_stats(self) -> Dict[str, Any]:
-        """Get collection statistics.
-
-        Returns:
-            Dictionary with collection statistics
-        """
-        # Get unique doc_ids
-        visual_data = self._visual_collection.get()
-        text_data = self._text_collection.get()
-
-        visual_docs = set(m.get("doc_id") for m in visual_data.get("metadatas", []))
-        text_docs = set(m.get("doc_id") for m in text_data.get("metadatas", []))
-        all_docs = visual_docs.union(text_docs)
-
         return {
-            "visual_count": self._visual_collection.count(),
-            "text_count": self._text_collection.count(),
-            "total_documents": len(all_docs),
-            "storage_size_mb": 0.0,  # Mock - no actual storage
-            "is_mock": True,
-            "mock": True,
+            "connected": self._open,
+            "db_path": ":memory:",
+            "tables": ["documents", "pages", "chunks", "doc_relations"],
         }
 
-    def delete_document(self, doc_id: str) -> Tuple[int, int]:
-        """Delete all embeddings for a document.
+    # ------------------------------------------------------------------
+    # Document CRUD
+    # ------------------------------------------------------------------
+
+    def create_document(
+        self,
+        doc_id: str,
+        filename: str,
+        format: str,
+        num_pages: Optional[int] = None,
+        markdown: Optional[str] = None,
+        metadata: Optional[str] = None,
+    ) -> None:
+        """Create a document record.
 
         Args:
-            doc_id: Document identifier
-
-        Returns:
-            Tuple of (visual_count, text_count) deleted
+            doc_id: Unique document identifier (primary key).
+            filename: Original filename.
+            format: File format (e.g. "pdf", "docx").
+            num_pages: Number of pages (optional).
+            markdown: Extracted markdown content (optional).
+            metadata: JSON-encoded metadata string (optional).
         """
-        # Delete from visual collection
-        visual_data = self._visual_collection.get()
-        visual_ids = [
-            item_id
-            for item_id, metadata in zip(visual_data["ids"], visual_data["metadatas"])
-            if metadata.get("doc_id") == doc_id
-        ]
-        if visual_ids:
-            self._visual_collection.delete(ids=visual_ids)
+        from datetime import datetime, timezone
 
-        # Delete from text collection
-        text_data = self._text_collection.get()
-        text_ids = [
-            item_id
-            for item_id, metadata in zip(text_data["ids"], text_data["metadatas"])
-            if metadata.get("doc_id") == doc_id
-        ]
-        if text_ids:
-            self._text_collection.delete(ids=text_ids)
+        self._documents[doc_id] = {
+            "doc_id": doc_id,
+            "filename": filename,
+            "format": format,
+            "num_pages": num_pages,
+            "markdown": markdown,
+            "metadata": metadata,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
 
-        logger.info(f"Deleted document {doc_id}: {len(visual_ids)} visual, {len(text_ids)} text")
-
-        return len(visual_ids), len(text_ids)
-
-    def get_full_embeddings(self, embedding_id: str, collection: str = "visual") -> np.ndarray:
-        """Retrieve full embeddings.
+    def get_document(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a document by ID.
 
         Args:
-            embedding_id: ID of the embedding
-            collection: "visual" or "text"
+            doc_id: Document identifier.
 
         Returns:
-            Full multi-vector embedding
+            Document dict or ``None`` if not found.
+        """
+        return self._documents.get(doc_id)
+
+    def list_documents(
+        self,
+        format: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """List documents with optional format filter.
+
+        Args:
+            format: Filter by file format (optional).
+            limit: Maximum number of results.
+            offset: Number of results to skip.
+
+        Returns:
+            List of document dicts.
+        """
+        docs = list(self._documents.values())
+        if format:
+            docs = [d for d in docs if d["format"] == format]
+        return docs[offset : offset + limit]
+
+    def update_document(self, doc_id: str, **fields: Any) -> None:
+        """Update fields on an existing document.
+
+        Args:
+            doc_id: Document identifier.
+            **fields: Key-value pairs to update.
+        """
+        if doc_id in self._documents:
+            self._documents[doc_id].update(fields)
+
+    def delete_document(self, doc_id: str) -> None:
+        """Delete a document and all associated pages, chunks, and relations.
+
+        Args:
+            doc_id: Document identifier.
+        """
+        self._documents.pop(doc_id, None)
+        self._pages = [p for p in self._pages if p.get("doc_id") != doc_id]
+        self._chunks = [c for c in self._chunks if c.get("doc_id") != doc_id]
+        self._relations = [
+            r
+            for r in self._relations
+            if r.get("src_doc_id") != doc_id and r.get("dst_doc_id") != doc_id
+        ]
+
+    # ------------------------------------------------------------------
+    # Page operations
+    # ------------------------------------------------------------------
+
+    def insert_pages(self, pages: List[Dict[str, Any]]) -> None:
+        """Insert page records.
+
+        Args:
+            pages: List of page dicts (must include ``id``, ``doc_id``, ``page_num``).
+        """
+        self._pages.extend(pages)
+
+    def get_pages_for_document(self, doc_id: str) -> List[Dict[str, Any]]:
+        """Get all pages for a document, sorted by page number.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Sorted list of page dicts.
+        """
+        return sorted(
+            [p for p in self._pages if p.get("doc_id") == doc_id],
+            key=lambda p: p.get("page_num", 0),
+        )
+
+    def get_page(self, page_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single page by ID.
+
+        Args:
+            page_id: Page identifier.
+
+        Returns:
+            Page dict or ``None`` if not found.
+        """
+        return next((p for p in self._pages if p.get("id") == page_id), None)
+
+    # ------------------------------------------------------------------
+    # Chunk operations
+    # ------------------------------------------------------------------
+
+    def insert_chunks(self, chunks: List[Dict[str, Any]]) -> None:
+        """Insert chunk records.
+
+        Args:
+            chunks: List of chunk dicts (must include ``id``, ``doc_id``, ``page_num``).
+        """
+        self._chunks.extend(chunks)
+
+    def get_chunks_for_document(self, doc_id: str) -> List[Dict[str, Any]]:
+        """Get all chunks for a document, sorted by page then chunk ID.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Sorted list of chunk dicts.
+        """
+        return sorted(
+            [c for c in self._chunks if c.get("doc_id") == doc_id],
+            key=lambda c: (c.get("page_num", 0), c.get("id", "")),
+        )
+
+    def get_chunk(self, chunk_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single chunk by ID.
+
+        Args:
+            chunk_id: Chunk identifier.
+
+        Returns:
+            Chunk dict or ``None`` if not found.
+        """
+        return next((c for c in self._chunks if c.get("id") == chunk_id), None)
+
+    # ------------------------------------------------------------------
+    # Raw operations (not supported in mock)
+    # ------------------------------------------------------------------
+
+    def query(self, sql: str, params: Optional[List[Any]] = None) -> Any:
+        """Not supported in mock — raises ``NotImplementedError``.
+
+        Args:
+            sql: SQL query string.
+            params: Optional query parameters.
 
         Raises:
-            ValueError: If embedding_id not found
+            NotImplementedError: Always.
         """
-        coll = self._visual_collection if collection == "visual" else self._text_collection
-        data = coll.get(ids=[embedding_id])
+        raise NotImplementedError("MockKojiClient does not support raw SQL")
 
-        if not data["ids"]:
-            raise ValueError(f"Embedding not found: {embedding_id}")
+    def insert(self, table: str, data: Any) -> None:
+        """Not supported in mock — raises ``NotImplementedError``.
 
-        return data["metadatas"][0].get("full_embeddings")
+        Args:
+            table: Target table name.
+            data: Data to insert.
+
+        Raises:
+            NotImplementedError: Always.
+        """
+        raise NotImplementedError("MockKojiClient does not support raw insert")
 
 
-# Legacy alias for backwards compatibility
-MockStorageClient = MockChromaDBClient
+# Alias for backwards compatibility and generic naming
+MockStorageClient = MockKojiClient
 
 
 # ============================================================================
@@ -956,22 +676,20 @@ class MockSearchEngine:
     def __init__(
         self,
         embedding_engine: Optional[MockColPaliModel] = None,
-        storage_client: Optional[MockChromaDBClient] = None,
+        storage_client: Any = None,
         simulate_latency: bool = False,
     ):
         """Initialize mock search engine.
 
         Args:
             embedding_engine: Mock embedding engine (creates new if None)
-            storage_client: Mock storage client (creates new if None)
+            storage_client: Storage client instance (accepts any implementation)
             simulate_latency: If True, add realistic latency to operations
         """
         self.embedding_engine = embedding_engine or MockColPaliModel(
             simulate_latency=simulate_latency
         )
-        self.storage_client = storage_client or MockChromaDBClient(
-            simulate_latency=simulate_latency
-        )
+        self.storage_client = storage_client
         self.simulate_latency = simulate_latency
         logger.info(f"Initialized MockSearchEngine (latency={simulate_latency})")
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tkr-docusearch"
 version = "0.9.0"
-description = "Production-ready local document search with real ColPali embeddings, ChromaDB storage, two-stage semantic search, and hybrid Metal GPU/Docker architecture"
+description = "Local-first document intelligence with multimodal embeddings, Koji hybrid database, and AI-powered research"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
@@ -21,17 +21,18 @@ dependencies = [
     "transformers>=4.30.0",
     "sentence-transformers>=2.2.0",
 
-    # ColPali - Multimodal embedding model
-    "colpali-engine>=0.2.0",
-
     # Image processing
     "Pillow>=10.0.0",
 
     # Document parsing - unified with Docling
     "docling[asr]>=2.55.0",
 
-    # Vector database
-    "chromadb>=0.4.0",
+    # Koji hybrid database
+    "pyarrow>=14.0.0",
+
+    # Shikomi embedding service (gRPC)
+    "grpcio>=1.60.0",
+    "protobuf>=4.25.0",
 
     # Data and utilities
     "numpy>=1.24.0",

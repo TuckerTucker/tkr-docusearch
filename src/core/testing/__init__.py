@@ -7,9 +7,8 @@ This module provides centralized test infrastructure including:
 - Helper functions for common test operations
 
 Usage:
-    >>> from src.core.testing.mocks import MockColPaliModel, MockChromaDBClient
-    >>> from src.core.testing.fixtures import sample_document, sample_embeddings
-    >>> from src.core.testing.helpers import create_temp_pdf, assert_embeddings_valid
+    >>> from src.core.testing.mocks import MockColPaliModel, MockKojiClient
+    >>> from src.core.testing.mocks import MockEmbeddingEngine, MockStorageClient
 
 Example:
     # In a test file
@@ -22,18 +21,16 @@ Example:
 """
 
 from tkr_docusearch.core.testing.mocks import (
-    MockChromaDBClient,
-    MockCollection,
     MockColPaliModel,
     MockEmbeddingEngine,
+    MockKojiClient,
     MockSearchEngine,
     MockStorageClient,
 )
 
 __all__ = [
     "MockColPaliModel",
-    "MockChromaDBClient",
-    "MockCollection",
+    "MockKojiClient",
     "MockSearchEngine",
     "MockEmbeddingEngine",
     "MockStorageClient",

@@ -2,7 +2,7 @@
 Document Processing Worker for DocuSearch MVP - Webhook Version.
 
 HTTP server that processes documents when triggered by copyparty webhook.
-Extracts text, generates embeddings, and stores in ChromaDB.
+Extracts text, generates embeddings, and stores in Koji.
 """
 
 import asyncio
@@ -16,35 +16,35 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from config.processing_config import EnhancedModeConfig, ProcessingConfig
+from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
 
 # Import core components
-from embeddings import ColPaliEngine
-from processing import DocumentProcessor
-from processing.cover_art_utils import delete_document_cover_art
-from processing.docling_parser import DoclingParser
+from ..embeddings import ShikomiClient
+from . import DocumentProcessor
+from .cover_art_utils import delete_document_cover_art
+from .docling_parser import DoclingParser
 
 # Import documents API router (Wave 3)
-from processing.documents_api import router as documents_router
-from processing.file_validator import validate_file_type
+from .documents_api import router as documents_router
+from .file_validator import validate_file_type
 
 # Import cleanup utilities
-from processing.image_utils import cleanup_temp_directories, delete_document_images
-from processing.status_api import router as status_router
-from processing.status_api import set_status_manager
+from .image_utils import cleanup_temp_directories, delete_document_images
+from .status_api import router as status_router
+from .status_api import set_status_manager
 
 # Import status management components
-from processing.status_manager import StatusManager, get_status_manager
+from .status_manager import StatusManager, get_status_manager
 
 # Import WebSocket broadcaster
-from processing.websocket_broadcaster import get_broadcaster
-from tkr_docusearch.config.urls import get_service_urls
-from storage import ChromaClient
-from storage.markdown_utils import delete_document_markdown
+from .websocket_broadcaster import get_broadcaster
+from ..config.urls import get_service_urls
+from ..storage.koji_client import KojiClient
+from ..storage.markdown_utils import delete_document_markdown
 
 # Configure logging
 LOG_FILE = os.getenv("LOG_FILE", "./logs/worker-webhook.log")
@@ -65,9 +65,7 @@ logger.setLevel(logging.DEBUG)  # Ensure this logger also captures DEBUG
 # Configuration
 # ============================================================================
 
-UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", "/uploads"))
-CHROMA_HOST = os.getenv("CHROMA_HOST", "chromadb")
-CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
+UPLOADS_DIR = Path(os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "uploads")))
 DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
@@ -100,19 +98,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Add CORS middleware with centralized service URLs
-_urls = get_service_urls()
-allowed_origins = [
-    _urls.frontend,
-    _urls.copyparty,
-    _urls.chromadb,
-    _urls.worker,
+# Add CORS middleware — scoped to known service origins
+_cors_origins = [
+    os.environ.get("FRONTEND_URL", "http://localhost:3333"),
+    os.environ.get("WORKER_URL", "http://localhost:8002"),
+    "http://localhost:8000",  # backend API
+    "http://127.0.0.1:3333",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8002",
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -129,7 +127,7 @@ logger.info(
 # Static File Serving - REMOVED
 # ============================================================================
 # Legacy static file serving has been removed. The Worker API now serves only
-# REST API endpoints. User interface is provided by the React frontend on port 3000.
+# REST API endpoints. User interface is provided by the React frontend on port 3333.
 #
 # Removed mounts:
 # - /static (monitor UI)
@@ -161,7 +159,7 @@ class ProcessResponse(BaseModel):
 
 
 class DeleteRequest(BaseModel):
-    """Request to delete a document from ChromaDB."""
+    """Request to delete a document from Koji."""
 
     file_path: str
     filename: str
@@ -406,12 +404,58 @@ def _broadcast_from_sync(coro):
 # ============================================================================
 
 
+@app.post("/uploads/")
+@app.post("/uploads")
+async def upload_file(
+    background_tasks: BackgroundTasks,
+    f: UploadFile = File(...),
+):
+    """Accept file upload, save to disk, and trigger processing."""
+    # Sanitize filename: strip directory components to prevent path traversal
+    raw_filename = f.filename or "untitled"
+    filename = Path(raw_filename).name
+    if not filename or filename.startswith("."):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    save_path = UPLOADS_DIR / filename
+
+    # Avoid overwriting: append counter if file exists
+    if save_path.exists():
+        stem = save_path.stem
+        suffix = save_path.suffix
+        counter = 1
+        while save_path.exists():
+            save_path = UPLOADS_DIR / f"{stem}_{counter}{suffix}"
+            counter += 1
+
+    # Save uploaded file with size limit
+    max_size_mb = int(os.environ.get("MAX_FILE_SIZE_MB", "500"))
+    max_size_bytes = max_size_mb * 1024 * 1024
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        content = await f.read()
+        if len(content) > max_size_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum size of {max_size_mb}MB",
+            )
+        save_path.write_bytes(content)
+        logger.info(f"Saved upload: {filename} → {save_path} ({len(content)} bytes)")
+    except Exception as e:
+        logger.error(f"Failed to save upload {filename}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+
+    # Trigger processing via the /process flow
+    request = ProcessRequest(
+        file_path=str(save_path),
+        filename=filename,
+    )
+    return await process_document(request, background_tasks)
+
+
 @app.post("/process", response_model=ProcessResponse)
 async def process_document(request: ProcessRequest, background_tasks: BackgroundTasks):
     """
     Queue a document for processing.
-
-    Called by copyparty webhook when a file is uploaded.
     """
     logger.info(f"Received processing request for: {request.filename}")
 
@@ -489,10 +533,10 @@ async def process_document(request: ProcessRequest, background_tasks: Background
 @app.post("/delete", response_model=DeleteResponse)
 async def delete_document(request: DeleteRequest):
     """
-    Delete a document from ChromaDB and filesystem.
+    Delete a document from Koji and filesystem.
 
     Performs comprehensive cleanup:
-    1. Deletes embeddings from ChromaDB (visual + text collections)
+    1. Deletes document and related data from Koji (cascades to pages, chunks, relations)
     2. Deletes page images and thumbnails from filesystem
     3. Deletes cover art (for audio files)
     4. Deletes extracted markdown files
@@ -512,25 +556,23 @@ async def delete_document(request: DeleteRequest):
     doc_id = None
 
     try:
-        # Initialize ChromaDB client
-        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        # Initialize Koji client
+        from src.storage.koji_client import KojiClient
+        from src.config.koji_config import KojiConfig
 
-        # Find doc_id by filename in visual collection
-        visual_results = storage_client._visual_collection.get(
-            where={"filename": request.filename}, limit=1, include=["metadatas"]
-        )
+        koji = KojiClient(KojiConfig.from_env())
+        koji.open()
 
-        # Try text collection if not found in visual
-        if not visual_results["ids"]:
-            text_results = storage_client._text_collection.get(
-                where={"filename": request.filename}, limit=1, include=["metadatas"]
-            )
-            if text_results["ids"] and text_results["metadatas"]:
-                doc_id = text_results["metadatas"][0].get("doc_id")
-            else:
-                logger.warning(f"No embeddings found for filename: {request.filename}")
+        try:
+            # Find doc_id by filename
+            docs = koji.list_documents(limit=10000)
+            matching = [d for d in docs if d.get("filename") == request.filename]
+
+            if not matching:
+                koji.close()
+                logger.warning(f"No document found for filename: {request.filename}")
                 return DeleteResponse(
-                    message=f"No embeddings found for {request.filename}",
+                    message=f"No document found for {request.filename}",
                     doc_id=None,
                     visual_deleted=0,
                     text_deleted=0,
@@ -540,21 +582,19 @@ async def delete_document(request: DeleteRequest):
                     temp_dirs_cleaned=0,
                     status="not_found",
                 )
-        else:
-            doc_id = visual_results["metadatas"][0].get("doc_id")
 
-        logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
+            doc_id = matching[0]["doc_id"]
+            logger.info(f"Starting comprehensive cleanup for document: {doc_id}")
 
-        # 1. Delete from ChromaDB using doc_id
-        try:
-            visual_count, text_count = storage_client.delete_document(doc_id)
-            logger.info(
-                f"✓ ChromaDB cleanup: {visual_count} visual, {text_count} text embeddings deleted"
-            )
-        except Exception as e:
-            logger.error(f"✗ ChromaDB deletion failed: {e}", exc_info=True)
-            # ChromaDB deletion is critical - re-raise
-            raise
+            # 1. Delete from Koji (cascades to pages, chunks, relations)
+            try:
+                koji.delete_document(doc_id)
+                logger.info(f"Koji cleanup complete for {doc_id}")
+            except Exception as e:
+                logger.error(f"Koji deletion failed: {e}", exc_info=True)
+                raise
+        finally:
+            koji.close()
 
         # 2. Delete page images and thumbnails
         try:
@@ -598,12 +638,12 @@ async def delete_document(request: DeleteRequest):
         )
         logger.info(
             f"✓ Comprehensive cleanup completed for {doc_id}: "
-            f"ChromaDB={visual_count + text_count}, "
+            f"Koji={visual_count + text_count}, "
             f"filesystem={total_filesystem_items} items"
         )
 
         return DeleteResponse(
-            message=f"Deleted {request.filename} completely (ChromaDB + filesystem)",
+            message=f"Deleted {request.filename} completely (Koji + filesystem)",
             doc_id=doc_id,
             visual_deleted=visual_count,
             text_deleted=text_count,
@@ -690,58 +730,29 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
 
         if not force_upload:
             try:
-                # Query ChromaDB directly to check for existing files
-                # (Avoid HTTP self-call which causes timeout)
-                from src.storage.chroma_client import ChromaClient
+                # Query Koji directly to check for existing files
+                from src.storage.koji_client import KojiClient
+                from src.config.koji_config import KojiConfig
 
-                chroma = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
+                koji = KojiClient(KojiConfig.from_env())
+                koji.open()
 
-                # Get all documents from text collection (contains metadata)
                 try:
-                    all_docs = chroma._text_collection.get(include=["metadatas"])
-
-                    # Extract unique filenames from metadata
-                    seen_filenames = set()
-                    for metadata in all_docs.get("metadatas", []):
-                        if metadata and "filename" in metadata:
-                            stored_filename = metadata["filename"]
-
-                            # Skip if already checked
-                            if stored_filename in seen_filenames:
-                                continue
-                            seen_filenames.add(stored_filename)
-
-                            # Exact match (for non-Copyparty uploads)
-                            if stored_filename == filename:
-                                is_duplicate = True
-                                existing_doc = {
-                                    "doc_id": metadata.get("doc_id", ""),
-                                    "filename": stored_filename,
-                                    "date_added": metadata.get("date_added", ""),
-                                    "file_type": metadata.get("file_type", ""),
-                                }
-                                logger.info(f"  ⚠️  Duplicate detected (exact): {filename}")
-                                break
-
-                            # Prefix match (for Copyparty deduplication)
-                            # Check if stored filename starts with original filename + "-"
-                            # Example: "file.pdf" matches "file.pdf-1234567890.123456-abc123.pdf"
-                            if stored_filename.startswith(filename + "-"):
-                                is_duplicate = True
-                                existing_doc = {
-                                    "doc_id": metadata.get("doc_id", ""),
-                                    "filename": stored_filename,
-                                    "date_added": metadata.get("date_added", ""),
-                                    "file_type": metadata.get("file_type", ""),
-                                }
-                                logger.info(
-                                    f"  ⚠️  Duplicate detected (Copyparty suffix): {filename} → {stored_filename}"
-                                )
-                                break
-
-                except Exception as coll_err:
-                    logger.debug(f"Text collection query failed (may be empty): {coll_err}")
-                    # Collection might not exist yet or be empty - this is OK
+                    docs = koji.list_documents(limit=10000)
+                    for doc in docs:
+                        stored_filename = doc.get("filename", "")
+                        if stored_filename == filename:
+                            is_duplicate = True
+                            existing_doc = {
+                                "doc_id": doc.get("doc_id", ""),
+                                "filename": stored_filename,
+                                "date_added": doc.get("created_at", ""),
+                                "file_type": doc.get("format", ""),
+                            }
+                            logger.info(f"  Duplicate detected (exact): {filename}")
+                            break
+                finally:
+                    koji.close()
 
             except Exception as e:
                 logger.warning(f"Could not check for duplicates: {e}")
@@ -897,7 +908,6 @@ async def startup_event():
     # Log configuration
     logger.info(f"Configuration:")
     logger.info(f"  Uploads Directory: {UPLOADS_DIR}")
-    logger.info(f"  ChromaDB: {CHROMA_HOST}:{CHROMA_PORT}")
     logger.info(f"  Device: {DEVICE}")
     logger.info(f"  Precision: {PRECISION}")
     logger.info(f"  Worker Port: {WORKER_PORT}")
@@ -907,15 +917,21 @@ async def startup_event():
     logger.info("Initializing components...")
 
     try:
-        # Initialize embedding engine
-        logger.info(f"Loading ColPali model (device={DEVICE}, precision={PRECISION})...")
-        embedding_engine = ColPaliEngine(device=DEVICE, precision=PRECISION)
-        logger.info("✓ ColPali model loaded")
+        # Initialize embedding engine (Shikomi gRPC client)
+        from ..config.koji_config import ShikomiConfig
+        shikomi_config = ShikomiConfig.from_env()
+        logger.info(f"Connecting to Shikomi embedding service ({shikomi_config.grpc_target})...")
+        embedding_engine = ShikomiClient(config=shikomi_config)
+        embedding_engine.connect()
+        logger.info("✓ Shikomi client connected")
 
         # Initialize storage client
-        logger.info(f"Connecting to ChromaDB ({CHROMA_HOST}:{CHROMA_PORT})...")
-        storage_client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
-        logger.info("✓ ChromaDB connected")
+        from ..config.koji_config import KojiConfig
+        koji_config = KojiConfig.from_env()
+        logger.info(f"Opening Koji database ({koji_config.db_path})...")
+        storage_client = KojiClient(koji_config)
+        storage_client.open()
+        logger.info("Koji database opened")
 
         # Load enhanced mode configuration
         print("Loading enhanced mode configuration...")

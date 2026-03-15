@@ -2,7 +2,54 @@
 
 import os
 import sys
+import types
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Stub unavailable modules so transitive imports don't fail.
+# These must be installed before any tkr_docusearch imports.
+# ---------------------------------------------------------------------------
+
+# mcp SDK is not installed in test environment
+if "mcp" not in sys.modules:
+    _mcp_stub = types.ModuleType("mcp")
+    sys.modules["mcp"] = _mcp_stub
+    for _sub in (
+        "mcp.server",
+        "mcp.server.stdio",
+        "mcp.server.fastmcp",
+        "mcp.types",
+    ):
+        _s = types.ModuleType(_sub)
+        if _sub == "mcp.server":
+            def _decorator(self):
+                """Return a decorator that registers a handler."""
+                def wrapper(fn):
+                    return fn
+                return wrapper
+            _s.Server = type("Server", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, *a, **kw: None,
+                "list_tools": _decorator,
+                "call_tool": _decorator,
+                "run": lambda self, *a, **kw: None,
+                "create_initialization_options": lambda self: {},
+            })
+        elif _sub == "mcp.server.fastmcp":
+            _s.FastMCP = type("FastMCP", (), {"__init__": lambda self, *a, **kw: None})  # type: ignore[attr-defined]
+        elif _sub == "mcp.server.stdio":
+            _s.stdio_server = lambda *a, **kw: None  # type: ignore[attr-defined]
+        elif _sub == "mcp.types":
+            _s.TextContent = type("TextContent", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
+            _s.ImageContent = type("ImageContent", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
+            _s.Tool = type("Tool", (), {  # type: ignore[attr-defined]
+                "__init__": lambda self, **kw: self.__dict__.update(kw),
+            })
+        sys.modules[_sub] = _s
+
 
 import numpy as np
 import pytest
@@ -136,29 +183,27 @@ def sample_text_content() -> str:
 
 
 # ============================================================================
-# ChromaDB Fixtures
+# Koji Fixtures
 # ============================================================================
 
 
 @pytest.fixture
-def chromadb_available() -> bool:
-    """Check if ChromaDB is available for testing."""
-    try:
-        import chromadb
-        from chromadb.config import Settings
+def koji_config(tmp_path):
+    """Create a KojiConfig pointing to a temporary database."""
+    from src.config.koji_config import KojiConfig
 
-        # Try to create an ephemeral client
-        _ = chromadb.Client(Settings(is_persistent=False, anonymized_telemetry=False))
-        return True
-    except Exception:
-        return False
+    return KojiConfig(db_path=str(tmp_path / "test.db"))
 
 
 @pytest.fixture
-def skip_if_no_chromadb(chromadb_available: bool):
-    """Skip test if ChromaDB is not available."""
-    if not chromadb_available:
-        pytest.skip("ChromaDB not available")
+def koji_client(koji_config):
+    """Create and open a KojiClient with a temporary database."""
+    from src.storage.koji_client import KojiClient
+
+    client = KojiClient(koji_config)
+    client.open()
+    yield client
+    client.close()
 
 
 # ============================================================================
@@ -219,8 +264,8 @@ def pytest_collection_modifyitems(config, items):
         # Add markers based on test path
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
-        elif "test_real_chromadb" in str(item.fspath):
-            item.add_marker(pytest.mark.requires_chromadb)
+        elif "test_koji" in str(item.fspath):
+            item.add_marker(pytest.mark.requires_koji)
         elif "embeddings" in str(item.fspath) and "mps" in item.name.lower():
             item.add_marker(pytest.mark.requires_gpu)
 
@@ -232,7 +277,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "integration: Integration tests")
     config.addinivalue_line("markers", "slow: Slow running tests")
     config.addinivalue_line("markers", "requires_gpu: Tests requiring GPU/MPS")
-    config.addinivalue_line("markers", "requires_chromadb: Tests requiring ChromaDB connection")
+    config.addinivalue_line("markers", "requires_koji: Tests requiring Koji database")
 
 
 def pytest_report_header(config):
@@ -254,11 +299,11 @@ def pytest_report_header(config):
     except ImportError:
         pass
 
-    # Add ChromaDB info if available
+    # Add Koji info if available
     try:
-        import chromadb
+        import koji
 
-        header.append(f"ChromaDB: {chromadb.__version__}")
+        header.append(f"Koji: available")
     except ImportError:
         pass
 
@@ -316,63 +361,12 @@ def embedding_engine_instance():
 def storage_client_instance(tmp_path):
     """Create a mock storage client for testing.
 
-    Returns a mock that provides the interface expected by DocumentProcessor.
+    Returns a mock that provides the Koji KojiClient interface expected by
+    DocumentProcessor: create_document, insert_pages, insert_chunks, etc.
     """
-    from unittest.mock import Mock
+    from src.core.testing.mocks import MockKojiClient
 
-    client = Mock()
-
-    # Track stored data
-    client._stored_data = {
-        "visual": [],
-        "text": [],
-    }
-
-    # Mock get_collection method
-    def mock_get_collection(name):
-        """Mock getting a collection."""
-        collection = Mock()
-
-        if name == "text":
-
-            def get_where(where=None):
-                """Mock getting data with filter."""
-                if where is None:
-                    return {"metadatas": client._stored_data["text"]}
-
-                # Filter by metadata
-                filtered = [
-                    m
-                    for m in client._stored_data["text"]
-                    if all(m.get(k) == v for k, v in where.items())
-                ]
-                return {
-                    "ids": [m.get("id") for m in filtered],
-                    "metadatas": filtered,
-                    "documents": [m.get("text") for m in filtered],
-                }
-
-            collection.get = get_where
-
-        return collection
-
-    # Mock add method
-    def mock_add(ids, embeddings, metadatas, documents, collection_name, **kwargs):
-        """Mock adding data to storage."""
-        if collection_name == "text":
-            for id_, meta, doc in zip(ids, metadatas, documents):
-                data = dict(meta)
-                data["id"] = id_
-                data["text"] = doc
-                client._stored_data["text"].append(data)
-        elif collection_name == "visual":
-            for id_, meta in zip(ids, metadatas):
-                data = dict(meta)
-                data["id"] = id_
-                client._stored_data["visual"].append(data)
-
-    client.client = Mock()
-    client.client.get_collection = mock_get_collection
-    client.add = mock_add
+    client = MockKojiClient()
+    client.open()
 
     return client

@@ -23,48 +23,23 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope="session")
-def chromadb_host() -> str:
-    """ChromaDB host from environment."""
-    return os.getenv("CHROMA_HOST", "localhost")
-
-
-@pytest.fixture(scope="session")
-def chromadb_port() -> int:
-    """ChromaDB port from environment."""
-    return int(os.getenv("CHROMA_PORT", 8001))
-
-
-@pytest.fixture(scope="session")
 def worker_api_url() -> str:
     """Worker API base URL."""
     return os.getenv("WORKER_API_URL", "http://localhost:8002")
 
 
 @pytest.fixture(scope="session")
-def copyparty_url() -> str:
-    """Copyparty UI base URL."""
-    return os.getenv("COPYPARTY_URL", "http://localhost:8000")
+def koji_db_path() -> str:
+    """Koji database path from environment."""
+    return os.getenv("KOJI_DB_PATH", "data/koji.db")
 
 
 @pytest.fixture(scope="session")
-def chromadb_url(chromadb_host: str, chromadb_port: int) -> str:
-    """ChromaDB base URL."""
-    return f"http://{chromadb_host}:{chromadb_port}"
-
-
-@pytest.fixture(scope="session")
-def services_available(chromadb_url: str, worker_api_url: str) -> bool:
+def services_available(worker_api_url: str) -> bool:
     """Check if required services are running."""
     try:
-        # Check ChromaDB
-        response = httpx.get(f"{chromadb_url}/api/v1/heartbeat", timeout=5)
-        chromadb_ok = response.status_code == 200
-
-        # Check Worker API
         response = httpx.get(f"{worker_api_url}/health", timeout=5)
-        worker_ok = response.status_code == 200
-
-        return chromadb_ok and worker_ok
+        return response.status_code == 200
     except Exception:
         return False
 
@@ -82,11 +57,16 @@ def skip_if_services_unavailable(services_available: bool):
 
 
 @pytest.fixture
-def chromadb_client(chromadb_host: str, chromadb_port: int, skip_if_services_unavailable):
-    """Real ChromaDB client for E2E tests."""
-    from tkr_docusearch.storage.chroma_client import ChromaClient
+def koji_client(skip_if_services_unavailable, tmp_path):
+    """KojiClient for E2E tests backed by a temporary database."""
+    from tkr_docusearch.config.koji_config import KojiConfig
+    from tkr_docusearch.storage.koji_client import KojiClient
 
-    return ChromaClient(host=chromadb_host, port=chromadb_port)
+    config = KojiConfig(db_path=str(tmp_path / "e2e_test.db"))
+    client = KojiClient(config)
+    client.open()
+    yield client
+    client.close()
 
 
 @pytest.fixture
@@ -167,23 +147,15 @@ def test_doc_ids() -> list[str]:
 
 
 @pytest.fixture(autouse=True)
-def cleanup_test_documents(test_doc_ids: list[str], chromadb_client):
+def cleanup_test_documents(test_doc_ids: list[str]):
     """
     Auto-cleanup test documents after each test.
 
-    Removes all documents tracked in test_doc_ids from ChromaDB.
+    Note: With Koji, cleanup is handled by the temporary database
+    created per-test via the koji_client fixture.
     """
     yield  # Test runs first
-
-    # Cleanup after test
-    for doc_id in test_doc_ids:
-        try:
-            # Delete from visual collection
-            chromadb_client._visual_collection.delete(where={"doc_id": doc_id})
-            # Delete from text collection
-            chromadb_client._text_collection.delete(where={"doc_id": doc_id})
-        except Exception as e:
-            print(f"Warning: Failed to cleanup doc_id {doc_id}: {e}")
+    # No explicit cleanup needed — temp DB is discarded on fixture teardown
 
 
 # ============================================================================

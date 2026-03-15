@@ -72,44 +72,31 @@ class TestFormatOptionsBuilder:
                 assert result == {"DOCX": "docx_option"}
 
     def test_build_audio_options_enabled(self):
-        """Test audio format options building with ASR enabled."""
+        """Test audio format options building with ASR for non-MP3/WAV files."""
         from tkr_docusearch.processing.parsers.format_options_builder import FormatOptionsBuilder
 
-        with patch("tkr_docusearch.config.processing_config.AsrConfig") as mock_asr_config_class:
-            with patch("docling.document_converter.AudioFormatOption") as mock_audio_opt:
-                with patch(
-                    "docling.datamodel.pipeline_options.AsrPipelineOptions"
-                ) as mock_asr_pipeline:
-                    with patch("docling.pipeline.asr_pipeline.AsrPipeline") as mock_pipeline:
-                        with patch(
-                            "docling.datamodel.base_models.InputFormat"
-                        ) as mock_input_format:
-                            # Configure mocks
-                            mock_config = Mock()
-                            mock_config.enabled = True
-                            mock_config.model = "mlx-community/whisper-large-v3-turbo"
-                            mock_config.to_docling_model_spec.return_value = "model_spec"
-                            mock_asr_config_class.from_env.return_value = mock_config
+        with patch("docling.document_converter.AudioFormatOption") as mock_audio_opt:
+            with patch(
+                "docling.datamodel.pipeline_options.AsrPipelineOptions"
+            ) as mock_asr_pipeline:
+                with patch("docling.pipeline.asr_pipeline.AsrPipeline") as mock_pipeline:
+                    with patch(
+                        "docling.datamodel.base_models.InputFormat"
+                    ) as mock_input_format:
+                        mock_input_format.AUDIO = "AUDIO"
+                        mock_audio_opt.return_value = "audio_option"
+                        mock_pipeline_options = Mock()
+                        mock_asr_pipeline.return_value = mock_pipeline_options
 
-                            mock_input_format.AUDIO = "AUDIO"
-                            mock_audio_opt.return_value = "audio_option"
-                            mock_pipeline_options = Mock()
-                            mock_asr_pipeline.return_value = mock_pipeline_options
+                        # Use .vtt file to exercise the Docling ASR path
+                        result = FormatOptionsBuilder.build_audio_options("test.vtt")
 
-                            result = FormatOptionsBuilder.build_audio_options("test.mp3")
+                        # Verify AudioFormatOption created with AsrPipeline
+                        mock_audio_opt.assert_called_once_with(
+                            pipeline_cls=mock_pipeline, pipeline_options=mock_pipeline_options
+                        )
 
-                            # Verify ASR configuration loaded
-                            mock_asr_config_class.from_env.assert_called_once()
-
-                            # Verify ASR options set
-                            assert mock_pipeline_options.asr_options == "model_spec"
-
-                            # Verify AudioFormatOption created
-                            mock_audio_opt.assert_called_once_with(
-                                pipeline_cls=mock_pipeline, pipeline_options=mock_pipeline_options
-                            )
-
-                            assert result == {"AUDIO": "audio_option"}
+                        assert result == {"AUDIO": "audio_option"}
 
     def test_build_audio_options_disabled(self):
         """Test audio format options building with ASR disabled."""
@@ -329,7 +316,7 @@ class TestAudioMetadataExtractor:
             "artist": "Test Artist",
         }
 
-        with patch("tkr_docusearch.processing.audio_metadata.extract_audio_metadata") as mock_extract:
+        with patch("src.processing.audio_metadata.extract_audio_metadata") as mock_extract:
             mock_extract.return_value = mock_metadata
 
             result = AudioMetadataExtractor.extract_id3_metadata("test.mp3")
@@ -341,7 +328,7 @@ class TestAudioMetadataExtractor:
         """Test ID3 metadata extraction with error."""
         from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
-        with patch("tkr_docusearch.processing.audio_metadata.extract_audio_metadata") as mock_extract:
+        with patch("src.processing.audio_metadata.extract_audio_metadata") as mock_extract:
             mock_extract.side_effect = Exception("Extract error")
 
             result = AudioMetadataExtractor.extract_id3_metadata("test.mp3")
@@ -558,7 +545,7 @@ class TestSymlinkHelper:
             existing_file = Path(tmpdir) / "test.mp3"
             existing_file.write_text("existing")
 
-            with patch("tkr_docusearch.utils.paths.PROJECT_ROOT", Path(tmpdir)):
+            with patch("src.utils.paths.PROJECT_ROOT", Path(tmpdir)):
                 with patch("os.symlink") as mock_symlink:
                     with SymlinkHelper.audio_file_symlink(str(audio_file)):
                         # Should not create symlink if file exists

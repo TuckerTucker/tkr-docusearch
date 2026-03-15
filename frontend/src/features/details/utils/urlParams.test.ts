@@ -36,10 +36,10 @@ describe('urlParams', () => {
     // Mock window.location
     delete (window as any).location;
     (window as any).location = {
-      href: 'http://localhost:3000/documents/123',
+      href: 'http://localhost:3333/documents/123',
       search: '',
       pathname: '/documents/123',
-      origin: 'http://localhost:3000',
+      origin: 'http://localhost:3333',
     };
 
     // Mock window.history
@@ -194,43 +194,43 @@ describe('urlParams', () => {
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?chunk=chunk-0-page-1'
+          'http://localhost:3333/documents/123?chunk=chunk-0-page-1'
         );
       });
 
       test('adds chunk parameter to URL with existing params', () => {
-        window.location.href = 'http://localhost:3000/documents/123?foo=bar';
+        window.location.href = 'http://localhost:3333/documents/123?foo=bar';
         window.location.search = '?foo=bar';
         updateChunkInUrl('chunk-0-page-1');
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?foo=bar&chunk=chunk-0-page-1'
+          'http://localhost:3333/documents/123?foo=bar&chunk=chunk-0-page-1'
         );
       });
 
       test('updates existing chunk parameter', () => {
-        window.location.href = 'http://localhost:3000/documents/123?chunk=old-chunk';
+        window.location.href = 'http://localhost:3333/documents/123?chunk=old-chunk';
         window.location.search = '?chunk=old-chunk';
         updateChunkInUrl('new-chunk');
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?chunk=new-chunk'
+          'http://localhost:3333/documents/123?chunk=new-chunk'
         );
       });
 
       test('preserves other parameters when updating chunk', () => {
-        window.location.href = 'http://localhost:3000/documents/123?foo=bar&chunk=old&baz=qux';
+        window.location.href = 'http://localhost:3333/documents/123?foo=bar&chunk=old&baz=qux';
         window.location.search = '?foo=bar&chunk=old&baz=qux';
         updateChunkInUrl('new-chunk');
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?foo=bar&chunk=new-chunk&baz=qux'
+          'http://localhost:3333/documents/123?foo=bar&chunk=new-chunk&baz=qux'
         );
       });
 
@@ -240,7 +240,7 @@ describe('urlParams', () => {
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?chunk=chunk-0-page-1'
+          'http://localhost:3333/documents/123?chunk=chunk-0-page-1'
         );
       });
     });
@@ -248,18 +248,18 @@ describe('urlParams', () => {
     describe('preserves URL structure', () => {
       test('preserves pathname', () => {
         window.location.pathname = '/documents/456/details';
-        window.location.href = 'http://localhost:3000/documents/456/details';
+        window.location.href = 'http://localhost:3333/documents/456/details';
         updateChunkInUrl('chunk-0-page-1');
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/456/details?chunk=chunk-0-page-1'
+          'http://localhost:3333/documents/456/details?chunk=chunk-0-page-1'
         );
       });
 
       test('preserves hash fragment', () => {
-        window.location.href = 'http://localhost:3000/documents/123#section';
+        window.location.href = 'http://localhost:3333/documents/123#section';
         updateChunkInUrl('chunk-0-page-1');
 
         const callArgs = (window.history.replaceState as any).mock.calls[0];
@@ -268,7 +268,7 @@ describe('urlParams', () => {
       });
 
       test('preserves complex query parameters', () => {
-        window.location.href = 'http://localhost:3000/documents/123?search=test&page=1&sort=asc';
+        window.location.href = 'http://localhost:3333/documents/123?search=test&page=1&sort=asc';
         window.location.search = '?search=test&page=1&sort=asc';
         updateChunkInUrl('chunk-0-page-1');
 
@@ -333,38 +333,38 @@ describe('urlParams', () => {
   describe('removeChunkFromUrl', () => {
     describe('basic removal', () => {
       test('removes chunk parameter from URL', () => {
-        window.location.href = 'http://localhost:3000/documents/123?chunk=chunk-0-page-1';
+        window.location.href = 'http://localhost:3333/documents/123?chunk=chunk-0-page-1';
         window.location.search = '?chunk=chunk-0-page-1';
         removeChunkFromUrl();
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123'
+          'http://localhost:3333/documents/123'
         );
       });
 
       test('removes chunk while preserving other parameters', () => {
-        window.location.href = 'http://localhost:3000/documents/123?foo=bar&chunk=chunk-0-page-1&baz=qux';
+        window.location.href = 'http://localhost:3333/documents/123?foo=bar&chunk=chunk-0-page-1&baz=qux';
         window.location.search = '?foo=bar&chunk=chunk-0-page-1&baz=qux';
         removeChunkFromUrl();
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?foo=bar&baz=qux'
+          'http://localhost:3333/documents/123?foo=bar&baz=qux'
         );
       });
 
       test('handles URL without chunk parameter (no-op)', () => {
-        window.location.href = 'http://localhost:3000/documents/123?foo=bar';
+        window.location.href = 'http://localhost:3333/documents/123?foo=bar';
         window.location.search = '?foo=bar';
         removeChunkFromUrl();
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123?foo=bar'
+          'http://localhost:3333/documents/123?foo=bar'
         );
       });
 
@@ -374,7 +374,7 @@ describe('urlParams', () => {
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/123'
+          'http://localhost:3333/documents/123'
         );
       });
     });
@@ -382,19 +382,19 @@ describe('urlParams', () => {
     describe('preserves URL structure', () => {
       test('preserves pathname', () => {
         window.location.pathname = '/documents/456/details';
-        window.location.href = 'http://localhost:3000/documents/456/details?chunk=chunk-0-page-1';
+        window.location.href = 'http://localhost:3333/documents/456/details?chunk=chunk-0-page-1';
         window.location.search = '?chunk=chunk-0-page-1';
         removeChunkFromUrl();
 
         expect(window.history.replaceState).toHaveBeenCalledWith(
           null,
           '',
-          'http://localhost:3000/documents/456/details'
+          'http://localhost:3333/documents/456/details'
         );
       });
 
       test('preserves hash fragment', () => {
-        window.location.href = 'http://localhost:3000/documents/123?chunk=chunk-0-page-1#section';
+        window.location.href = 'http://localhost:3333/documents/123?chunk=chunk-0-page-1#section';
         window.location.search = '?chunk=chunk-0-page-1';
         removeChunkFromUrl();
 
@@ -404,7 +404,7 @@ describe('urlParams', () => {
       });
 
       test('preserves other query parameters', () => {
-        window.location.href = 'http://localhost:3000/documents/123?search=test&chunk=chunk-0-page-1&page=1';
+        window.location.href = 'http://localhost:3333/documents/123?search=test&chunk=chunk-0-page-1&page=1';
         window.location.search = '?search=test&chunk=chunk-0-page-1&page=1';
         removeChunkFromUrl();
 

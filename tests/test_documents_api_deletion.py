@@ -2,7 +2,7 @@
 Unit tests for Document Deletion API endpoint.
 
 Tests comprehensive 7-stage deletion process:
-1. ChromaDB embeddings (visual and text) - CRITICAL
+1. Koji database records (documents, pages, chunks) - CRITICAL
 2. Page images and thumbnails - HIGH
 3. Cover art (audio files) - MEDIUM
 4. VTT caption files (audio files) - MEDIUM
@@ -44,47 +44,27 @@ def client(app):
 
 
 @pytest.fixture
-def mock_chroma_client():
-    """Create mock ChromaDB client."""
+def mock_koji_client():
+    """Create mock KojiClient.
+
+    Returns a MagicMock configured with default empty document lookup.
+    """
     mock = MagicMock()
-
-    # Mock collections with empty results by default
-    mock._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-    mock._text_collection.get.return_value = {"ids": [], "metadatas": []}
-    mock.delete_document.return_value = (0, 0)
-
+    mock.get_document.return_value = None
+    mock.delete_document.return_value = None
     return mock
 
 
 @pytest.fixture
-def mock_existing_document(mock_chroma_client):
+def mock_existing_document(mock_koji_client):
     """Configure mock to return an existing document."""
-    # Visual collection has 3 pages
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": ["v1", "v2", "v3"],
-        "metadatas": [
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "page": 1},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "page": 2},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "page": 3},
-        ],
+    mock_koji_client.get_document.return_value = {
+        "doc_id": "test-doc-12345678",
+        "filename": "test.pdf",
+        "format": "pdf",
+        "created_at": "2025-10-26T12:00:00Z",
     }
-
-    # Text collection has 5 chunks
-    mock_chroma_client._text_collection.get.return_value = {
-        "ids": ["t1", "t2", "t3", "t4", "t5"],
-        "metadatas": [
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "chunk_id": 0},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "chunk_id": 1},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "chunk_id": 2},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "chunk_id": 3},
-            {"doc_id": "test-doc-12345678", "filename": "test.pdf", "chunk_id": 4},
-        ],
-    }
-
-    # Mock successful ChromaDB deletion
-    mock_chroma_client.delete_document.return_value = (3, 5)
-
-    return mock_chroma_client
+    return mock_koji_client
 
 
 @pytest.fixture
@@ -118,7 +98,7 @@ def temp_data_dirs():
 # ============================================================================
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -159,11 +139,9 @@ def test_delete_document_success_all_stages(
     assert data["filename"] == "test.pdf"
     assert len(data["errors"]) == 0
 
-    # Verify Stage 1: ChromaDB
-    assert "chromadb" in data["deleted"]
-    assert data["deleted"]["chromadb"]["visual_embeddings"] == 3
-    assert data["deleted"]["chromadb"]["text_embeddings"] == 5
-    assert data["deleted"]["chromadb"]["status"] == "deleted"
+    # Verify Stage 1: Koji
+    assert "koji" in data["deleted"]
+    assert data["deleted"]["koji"]["status"] == "deleted"
 
     # Verify Stage 2: Page images
     assert "page_images" in data["deleted"]
@@ -206,7 +184,7 @@ def test_delete_document_success_all_stages(
     mock_copyparty.assert_called_once_with("test.pdf")
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -224,8 +202,8 @@ def test_delete_document_minimal_cleanup(
     client,
     mock_existing_document,
 ):
-    """Test deletion where only ChromaDB has data (minimal cleanup)."""
-    # Setup mocks - only ChromaDB has data
+    """Test deletion where only Koji has data (minimal cleanup)."""
+    # Setup mocks - only Koji has data
     mock_get_client.return_value = mock_existing_document
     mock_delete_images.return_value = (0, 0)  # No images
     mock_delete_cover_art.return_value = 0  # No cover art
@@ -244,9 +222,8 @@ def test_delete_document_minimal_cleanup(
     assert data["success"] is True
     assert len(data["errors"]) == 0
 
-    # ChromaDB should have data
-    assert data["deleted"]["chromadb"]["visual_embeddings"] == 3
-    assert data["deleted"]["chromadb"]["text_embeddings"] == 5
+    # Koji should have succeeded
+    assert data["deleted"]["koji"]["status"] == "deleted"
 
     # Everything else should be "not_found"
     assert data["deleted"]["cover_art"]["status"] == "not_found"
@@ -260,13 +237,14 @@ def test_delete_document_minimal_cleanup(
 # ============================================================================
 
 
-def test_delete_document_not_found(client, mock_chroma_client):
+def test_delete_document_not_found(client, mock_koji_client):
     """Test deletion of non-existent document returns 404."""
-    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
-        # Configure mock to return empty results (document doesn't exist)
-        mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
-        mock_get_client.return_value = mock_chroma_client
+    with patch(
+        "tkr_docusearch.processing.documents_api.get_storage_client"
+    ) as mock_get_client:
+        # get_document returns None for non-existent doc
+        mock_koji_client.get_document.return_value = None
+        mock_get_client.return_value = mock_koji_client
 
         response = client.delete("/documents/nonexistent-doc-id")
 
@@ -279,9 +257,6 @@ def test_delete_document_not_found(client, mock_chroma_client):
 
 def test_delete_document_invalid_doc_id_format(client):
     """Test deletion with invalid doc_id format returns 400."""
-    # These IDs should fail validation (too short, too long, invalid chars)
-    # Note: FastAPI routing may intercept some patterns (like paths with slashes)
-    # so we focus on IDs that reach the endpoint but fail validation
     invalid_doc_ids = [
         "short12",  # Too short (< 8 chars)
         "a" * 65,  # Too long (> 64 chars)
@@ -298,32 +273,31 @@ def test_delete_document_invalid_doc_id_format(client):
         assert data["detail"]["code"] == "INVALID_DOC_ID"
 
 
-def test_delete_document_chromadb_delete_failure(client):
-    """Test that ChromaDB deletion failure returns 500 (critical error)."""
-    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
-        # Create a mock client that exists but fails on delete
+def test_delete_document_koji_delete_failure(client):
+    """Test that Koji deletion failure returns 500 (critical error)."""
+    with patch(
+        "tkr_docusearch.processing.documents_api.get_storage_client"
+    ) as mock_get_client:
         mock_client = MagicMock()
-        mock_client._visual_collection.get.return_value = {
-            "ids": ["v1"],
-            "metadatas": [{"doc_id": "test-doc-12345678", "filename": "test.pdf"}],
+        mock_client.get_document.return_value = {
+            "doc_id": "test-doc-12345678",
+            "filename": "test.pdf",
+            "format": "pdf",
+            "created_at": "2025-10-26T12:00:00Z",
         }
-        mock_client._text_collection.get.return_value = {
-            "ids": ["t1"],
-            "metadatas": [{"doc_id": "test-doc-12345678", "filename": "test.pdf"}],
-        }
-        mock_client.delete_document.side_effect = Exception("ChromaDB connection lost")
+        mock_client.delete_document.side_effect = Exception("Koji database error")
         mock_get_client.return_value = mock_client
 
         response = client.delete("/documents/test-doc-12345678")
 
         assert response.status_code == 500
         data = response.json()
-        assert data["detail"]["error"] == "Failed to delete document embeddings"
-        assert data["detail"]["code"] == "CHROMADB_DELETE_ERROR"
-        assert "ChromaDB connection lost" in data["detail"]["details"]["message"]
+        assert data["detail"]["error"] == "Failed to delete document"
+        assert data["detail"]["code"] == "DATABASE_DELETE_ERROR"
+        assert "Koji database error" in data["detail"]["details"]["message"]
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -345,8 +319,8 @@ def test_delete_document_non_critical_errors(
     # Setup mocks
     mock_get_client.return_value = mock_existing_document
 
-    # ChromaDB succeeds (critical)
-    mock_existing_document.delete_document.return_value = (3, 5)
+    # Koji succeeds (critical)
+    mock_existing_document.delete_document.return_value = None
 
     # Non-critical stages fail
     mock_delete_images.side_effect = Exception("Disk I/O error")
@@ -366,8 +340,8 @@ def test_delete_document_non_critical_errors(
     assert data["success"] is True
     assert data["doc_id"] == "test-doc-12345678"
 
-    # ChromaDB should succeed
-    assert data["deleted"]["chromadb"]["status"] == "deleted"
+    # Koji should succeed
+    assert data["deleted"]["koji"]["status"] == "deleted"
 
     # Other stages should have error status
     assert data["deleted"]["page_images"]["status"] == "error"
@@ -384,11 +358,12 @@ def test_delete_document_non_critical_errors(
 
 
 def test_delete_document_database_connection_error(client):
-    """Test deletion when ChromaDB connection fails."""
+    """Test deletion when database connection fails."""
     from fastapi import HTTPException
 
-    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
-        # Simulate HTTPException from get_chroma_client
+    with patch(
+        "tkr_docusearch.processing.documents_api.get_storage_client"
+    ) as mock_get_client:
         mock_get_client.side_effect = HTTPException(
             status_code=500,
             detail={
@@ -409,7 +384,7 @@ def test_delete_document_database_connection_error(client):
 # ============================================================================
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -425,18 +400,18 @@ def test_delete_document_no_filename_in_metadata(
     mock_delete_images,
     mock_get_client,
     client,
-    mock_chroma_client,
+    mock_koji_client,
 ):
-    """Test deletion when metadata doesn't contain filename."""
-    # Configure mock with metadata missing filename
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": ["v1"],
-        "metadatas": [{"doc_id": "test-doc-12345678", "page": 1}],  # No filename
+    """Test deletion when document metadata doesn't contain filename."""
+    # Configure mock with document missing filename
+    mock_koji_client.get_document.return_value = {
+        "doc_id": "test-doc-12345678",
+        "format": "pdf",
+        "created_at": "2025-10-26T12:00:00Z",
+        # No "filename" key
     }
-    mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
-    mock_chroma_client.delete_document.return_value = (1, 0)
 
-    mock_get_client.return_value = mock_chroma_client
+    mock_get_client.return_value = mock_koji_client
     mock_delete_images.return_value = (0, 0)
     mock_delete_cover_art.return_value = 0
     mock_delete_vtt.return_value = False
@@ -458,110 +433,7 @@ def test_delete_document_no_filename_in_metadata(
     mock_copyparty.assert_not_called()
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
-@patch("tkr_docusearch.processing.documents_api.delete_document_images")
-@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
-@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
-@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
-def test_delete_document_visual_only(
-    mock_copyparty,
-    mock_cleanup_temp,
-    mock_delete_markdown,
-    mock_delete_vtt,
-    mock_delete_cover_art,
-    mock_delete_images,
-    mock_get_client,
-    client,
-    mock_chroma_client,
-):
-    """Test deletion of document with only visual embeddings (no text)."""
-    # Configure mock with only visual data
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": ["v1", "v2"],
-        "metadatas": [
-            {"doc_id": "test-doc-12345678", "filename": "image.pdf", "page": 1},
-            {"doc_id": "test-doc-12345678", "filename": "image.pdf", "page": 2},
-        ],
-    }
-    mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
-    mock_chroma_client.delete_document.return_value = (2, 0)
-
-    mock_get_client.return_value = mock_chroma_client
-    mock_delete_images.return_value = (2, 2)
-    mock_delete_cover_art.return_value = 0
-    mock_delete_vtt.return_value = False
-    mock_delete_markdown.return_value = False
-    mock_cleanup_temp.return_value = 0
-    mock_copyparty.return_value = True
-
-    # Execute deletion
-    response = client.delete("/documents/test-doc-12345678")
-
-    # Should succeed
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["success"] is True
-    assert data["deleted"]["chromadb"]["visual_embeddings"] == 2
-    assert data["deleted"]["chromadb"]["text_embeddings"] == 0
-
-
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
-@patch("tkr_docusearch.processing.documents_api.delete_document_images")
-@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
-@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
-@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
-def test_delete_document_text_only(
-    mock_copyparty,
-    mock_cleanup_temp,
-    mock_delete_markdown,
-    mock_delete_vtt,
-    mock_delete_cover_art,
-    mock_delete_images,
-    mock_get_client,
-    client,
-    mock_chroma_client,
-):
-    """Test deletion of document with only text embeddings (no visual)."""
-    # Configure mock with only text data
-    mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-    mock_chroma_client._text_collection.get.return_value = {
-        "ids": ["t1", "t2", "t3"],
-        "metadatas": [
-            {"doc_id": "test-doc-12345678", "filename": "audio.mp3", "chunk_id": 0},
-            {"doc_id": "test-doc-12345678", "filename": "audio.mp3", "chunk_id": 1},
-            {"doc_id": "test-doc-12345678", "filename": "audio.mp3", "chunk_id": 2},
-        ],
-    }
-    mock_chroma_client.delete_document.return_value = (0, 3)
-
-    mock_get_client.return_value = mock_chroma_client
-    mock_delete_images.return_value = (0, 0)
-    mock_delete_cover_art.return_value = 1  # Audio might have cover art
-    mock_delete_vtt.return_value = True  # Audio has VTT
-    mock_delete_markdown.return_value = True
-    mock_cleanup_temp.return_value = 0
-    mock_copyparty.return_value = True
-
-    # Execute deletion
-    response = client.delete("/documents/test-doc-12345678")
-
-    # Should succeed
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["success"] is True
-    assert data["deleted"]["chromadb"]["visual_embeddings"] == 0
-    assert data["deleted"]["chromadb"]["text_embeddings"] == 3
-    assert data["deleted"]["cover_art"]["deleted"] == 1
-    assert data["deleted"]["vtt_captions"]["deleted"] is True
-
-
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -597,7 +469,7 @@ def test_delete_document_copyparty_failure_non_critical(
     data = response.json()
 
     assert data["success"] is True
-    assert data["deleted"]["chromadb"]["status"] == "deleted"
+    assert data["deleted"]["koji"]["status"] == "deleted"
     assert data["deleted"]["copyparty"]["status"] == "failed"
 
 
@@ -642,7 +514,7 @@ def test_delete_document_validates_doc_id_characters(client):
 # ============================================================================
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -691,7 +563,7 @@ def test_delete_document_response_format(
 
     # Verify all stages present in deleted dict
     expected_stages = [
-        "chromadb",
+        "koji",
         "page_images",
         "cover_art",
         "vtt_captions",
@@ -708,7 +580,7 @@ def test_delete_document_response_format(
 # ============================================================================
 
 
-@patch("tkr_docusearch.processing.documents_api.get_chroma_client")
+@patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
@@ -730,9 +602,9 @@ def test_delete_document_cascade_order(
     # Setup mocks with side effects to track call order
     call_order = []
 
-    def track_chromadb(*args, **kwargs):
-        call_order.append("chromadb")
-        return (3, 5)
+    def track_koji(*args, **kwargs):
+        call_order.append("koji")
+        return None
 
     def track_images(*args, **kwargs):
         call_order.append("images")
@@ -758,7 +630,7 @@ def test_delete_document_cascade_order(
         call_order.append("copyparty")
         return True
 
-    mock_existing_document.delete_document.side_effect = track_chromadb
+    mock_existing_document.delete_document.side_effect = track_koji
     mock_delete_images.side_effect = track_images
     mock_delete_cover_art.side_effect = track_cover_art
     mock_delete_vtt.side_effect = track_vtt
@@ -773,8 +645,8 @@ def test_delete_document_cascade_order(
 
     assert response.status_code == 200
 
-    # Verify execution order (ChromaDB must be first, rest can be in any order)
-    assert call_order[0] == "chromadb", "ChromaDB deletion must be first (critical)"
+    # Verify execution order (Koji must be first, rest can be in any order)
+    assert call_order[0] == "koji", "Koji deletion must be first (critical)"
     assert "images" in call_order
     assert "cover_art" in call_order
     assert "vtt" in call_order
@@ -783,17 +655,21 @@ def test_delete_document_cascade_order(
     assert "copyparty" in call_order
 
 
-def test_delete_document_stops_on_chromadb_failure(client):
-    """Test that deletion stops if ChromaDB deletion fails (critical stage)."""
-    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get_client:
-        with patch("tkr_docusearch.processing.documents_api.delete_document_images") as mock_images:
-            # Create a mock client that exists but fails on delete
+def test_delete_document_stops_on_koji_failure(client):
+    """Test that deletion stops if Koji deletion fails (critical stage)."""
+    with patch(
+        "tkr_docusearch.processing.documents_api.get_storage_client"
+    ) as mock_get_client:
+        with patch(
+            "tkr_docusearch.processing.documents_api.delete_document_images"
+        ) as mock_images:
             mock_client = MagicMock()
-            mock_client._visual_collection.get.return_value = {
-                "ids": ["v1"],
-                "metadatas": [{"doc_id": "test-doc-12345678", "filename": "test.pdf"}],
+            mock_client.get_document.return_value = {
+                "doc_id": "test-doc-12345678",
+                "filename": "test.pdf",
+                "format": "pdf",
+                "created_at": "2025-10-26T12:00:00Z",
             }
-            mock_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
             mock_client.delete_document.side_effect = Exception("Database error")
             mock_get_client.return_value = mock_client
 

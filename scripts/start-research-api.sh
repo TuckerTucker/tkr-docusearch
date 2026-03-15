@@ -13,18 +13,10 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-VENV_DIR=".venv-native"
 PID_FILE=".research-api.pid"
 LOG_FILE="logs/research-api.log"
 
 echo -e "${BLUE}Starting Research API...${NC}"
-
-# Check if venv exists
-if [ ! -d "$VENV_DIR" ]; then
-    echo -e "${RED}✗ Virtual environment not found at $VENV_DIR${NC}"
-    echo -e "${YELLOW}  Run: ./scripts/run-worker-native.sh setup${NC}"
-    exit 1
-fi
 
 # Check if already running
 if [ -f "$PID_FILE" ]; then
@@ -79,9 +71,8 @@ esac
 
 # Start the research API
 echo -e "${BLUE}→ Starting Research API on port 8004...${NC}"
-source "$VENV_DIR/bin/activate"
 
-nohup uvicorn tkr_docusearch.api.research:app \
+nohup python3 -m uvicorn tkr_docusearch.api.research:app \
     --host 0.0.0.0 \
     --port 8004 \
     --log-level info \

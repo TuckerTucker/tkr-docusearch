@@ -149,14 +149,14 @@ class ContextBuilder:
     """Builds formatted context from search results"""
 
     def __init__(
-        self, search_engine, chroma_client, max_sources: int = 10, max_tokens: int = 10000
+        self, search_engine, storage_client, max_sources: int = 10, max_tokens: int = 10000
     ):
         """
         Initialize context builder
 
         Args:
             search_engine: Configured search engine instance
-            chroma_client: ChromaDB client for metadata retrieval
+            storage_client: Storage client for metadata retrieval (KojiClient)
             max_sources: Maximum number of sources to include (default: 10)
             max_tokens: Maximum context tokens (default: 10K for ~8K context)
 
@@ -164,7 +164,7 @@ class ContextBuilder:
             max_tokens includes overhead for formatting, aim for ~80% of model's limit
         """
         self.search_engine = search_engine
-        self.chroma_client = chroma_client
+        self.storage_client = storage_client
         self.max_sources = max_sources
         self.max_tokens = max_tokens
 
@@ -366,31 +366,40 @@ class ContextBuilder:
             SourceDocument with all available metadata
 
         Raises:
-            ValueError: If document not found in ChromaDB
+            ValueError: If document page not found in storage
         """
-        # Try visual collection first for page metadata
-        visual_results = self.chroma_client._visual_collection.get(
-            where={"$and": [{"doc_id": {"$eq": doc_id}}, {"page": {"$eq": page}}]},
-            include=["metadatas"],
-            limit=1,
-        )
+        # Look up page by constructed ID (processor uses zero-padded format)
+        page_id = f"{doc_id}-page{page:03d}"
+        page_data = self.storage_client.get_page(page_id)
 
-        metadata = None
-        if visual_results["ids"]:
-            metadata = visual_results["metadatas"][0]
-        else:
-            # Fallback to text collection if not in visual
-            text_results = self.chroma_client._text_collection.get(
-                where={"$and": [{"doc_id": {"$eq": doc_id}}, {"page": {"$eq": page}}]},
-                include=["metadatas"],
-                limit=1,
+        if page_data is None:
+            # Fallback: scan pages for this document by page number
+            all_pages = self.storage_client.get_pages_for_document(doc_id)
+            page_data = next(
+                (p for p in all_pages if p.get("page_num") == page), None
             )
-            if text_results["ids"]:
-                metadata = text_results["metadatas"][0]
-            else:
-                raise ValueError(
-                    f"Document {doc_id} page {page} not found in visual or text collections"
-                )
+
+        if page_data is None:
+            raise ValueError(
+                f"Document {doc_id} page {page} not found"
+            )
+
+        # Merge document-level fields into metadata dict
+        doc_data = self.storage_client.get_document(doc_id)
+        metadata = {**page_data}
+        if doc_data:
+            metadata["filename"] = doc_data.get("filename", "unknown")
+            metadata["format"] = doc_data.get("format", "")
+            metadata["extension"] = doc_data.get("format", "")
+            metadata["timestamp"] = doc_data.get("created_at", "")
+
+        # Extract structure fields if available
+        structure = metadata.get("structure")
+        if isinstance(structure, dict):
+            if "section_path" in structure:
+                metadata["section_path"] = structure["section_path"]
+            if "parent_heading" in structure:
+                metadata["parent_heading"] = structure["parent_heading"]
 
         # Get full markdown from file or compressed metadata
         full_markdown = None
@@ -412,12 +421,12 @@ class ContextBuilder:
             except Exception as e:
                 logger.warning("Failed to read markdown file", path=markdown_path, error=str(e))
 
-        # Fallback: try to get from compressed metadata
+        # Fallback: try to get from storage
         if not full_markdown:
             try:
-                full_markdown = self.chroma_client.get_document_markdown(doc_id)
+                full_markdown = self.storage_client.get_document_markdown(doc_id)
             except Exception as e:
-                logger.warning("Failed to get markdown from ChromaDB", doc_id=doc_id, error=str(e))
+                logger.warning("Failed to get markdown from storage", doc_id=doc_id, error=str(e))
 
         # Last resort: use full_text from chunk metadata if available
         if not full_markdown:

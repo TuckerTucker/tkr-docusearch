@@ -10,7 +10,17 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from tkr_docusearch.storage.compression import compress_structure_metadata, sanitize_metadata_for_chroma
+import json
+
+
+def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Pass-through — ChromaDB sanitization no longer needed with Koji."""
+    return metadata
+
+
+def compress_structure_metadata(structure: Dict[str, Any]) -> str:
+    """Serialize structure to JSON string for Koji text column."""
+    return json.dumps(structure)
 from tkr_docusearch.storage.metadata_schema import (
     ChunkContext,
     DocumentStructure,

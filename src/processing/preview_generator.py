@@ -16,10 +16,9 @@ from typing import Any, Dict, Optional
 from PIL import Image
 
 try:
-    from ..storage import ChromaClient
+    from ..storage import KojiClient
 except ImportError:
-    # Handle import error during testing
-    from src.storage import ChromaClient
+    from src.storage import KojiClient
 
 from .docling_parser import DoclingParser
 
@@ -50,7 +49,7 @@ class PreviewResponse:
 class PreviewGenerator:
     """Generate page previews from original documents."""
 
-    def __init__(self, storage_client: ChromaClient, parser: DoclingParser):
+    def __init__(self, storage_client: KojiClient, parser: DoclingParser):
         """
         Initialize preview generator.
 
@@ -163,31 +162,23 @@ class PreviewGenerator:
             Tuple of (file_path, metadata_dict)
         """
         try:
-            # Try visual collection first (pages have file_path)
-            results = self.storage_client._visual_collection.get(
-                where={"$and": [{"doc_id": doc_id}, {"page": page_num}]},
-                limit=1,
-                include=["metadatas"],
-            )
+            # Get page from Koji
+            page_id = f"{doc_id}-page{page_num:03d}"
+            page_data = self.storage_client.get_page(page_id)
 
-            if results["ids"] and results["metadatas"]:
-                metadata = results["metadatas"][0]
-                file_path = metadata.get("file_path")
+            if page_data:
+                structure = page_data.get("structure") or {}
+                file_path = structure.get("file_path") if isinstance(structure, dict) else None
                 if file_path:
-                    return file_path, metadata
+                    return file_path, page_data
 
-            # Fallback to text collection
-            results = self.storage_client._text_collection.get(
-                where={"$and": [{"doc_id": doc_id}, {"page": page_num}]},
-                limit=1,
-                include=["metadatas"],
-            )
-
-            if results["ids"] and results["metadatas"]:
-                metadata = results["metadatas"][0]
-                file_path = metadata.get("file_path")
+            # Fallback: get document metadata
+            doc_data = self.storage_client.get_document(doc_id)
+            if doc_data:
+                metadata = doc_data.get("metadata") or {}
+                file_path = metadata.get("file_path") if isinstance(metadata, dict) else None
                 if file_path:
-                    return file_path, metadata
+                    return file_path, doc_data
 
             logger.warning(f"No metadata found for doc_id={doc_id}, page={page_num}")
             return None, {}

@@ -1,0 +1,239 @@
+---
+name: <agent-name>
+description: <when to use, keywords>
+model: <sonnet|opus|haiku>
+skills:
+  - <skill-name>
+---
+```
+```yaml
+meta:
+  kit: tkr-docusearch
+  fmt: 14
+  type: fullstack-app
+  desc: "Local document search with ColPali multimodal embeddings, ChromaDB vector storage, two-stage semantic search, and hybrid Metal GPU/Docker architecture"
+  ver: "0.9.0"
+  ts: "2026-03-09T21:53:00Z"
+  status: development
+  entry: src/api/server.py
+  stack: "Python 3.10+ (FastAPI) + React 19 (Vite) + ChromaDB + Docker"
+  cmds: [scripts/start-all.sh, scripts/stop-all.sh, scripts/status.sh, scripts/setup.sh]
+  langs: {py: 0.51, js: 0.13, jsx: 0.12, ts: 0.10, tsx: 0.05, css: 0.07, sh: 0.02}
+
+struct:
+  _: {n: 662, t: {py: 218, js: 56, jsx: 53, ts: 41, tsx: 20, css: 33, sh: 13, md: 89}}
+  src:
+    _: {n: 220, t: {py: 220}, d: "Python backend — FastAPI + ML pipeline"}
+    api: {n: 8, t: {py: 8}, d: "FastAPI routes and models"}
+    config: {n: 3, t: {py: 3}, d: "App configuration"}
+    core: {n: 10, t: {py: 10}, d: "Core types, exceptions, utils"}
+    embeddings: {n: 5, t: {py: 5}, d: "ColPali multimodal embeddings"}
+    mcp_server: {n: 5, t: {py: 5}, d: "MCP tool server"}
+    processing: {n: 15, t: {py: 15}, d: "Document parsing, Docling, Whisper ASR"}
+    research: {n: 5, t: {py: 5}, d: "LLM-powered research with LiteLLM + MLX"}
+    search: {n: 5, t: {py: 5}, d: "Two-stage semantic search"}
+    storage: {n: 5, t: {py: 5}, d: "ChromaDB vector storage + Copyparty file server"}
+    utils: {n: 5, t: {py: 5}, d: "Shared utilities"}
+  frontend:
+    _: {n: 160, t: {jsx: 53, tsx: 20, js: 56, ts: 41, css: 33}, d: "React 19 SPA"}
+    src:
+      components: {n: 25, t: {jsx: 15, tsx: 10}, d: "UI components"}
+      features: {n: 20, t: {jsx: 12, tsx: 8}, d: "Feature modules (library, details)"}
+      views: {n: 5, t: {jsx: 5}, d: "Page-level views"}
+      hooks: {n: 10, t: {ts: 8, tsx: 2}, d: "Custom React hooks"}
+      services: {n: 3, t: {js: 3}, d: "API client"}
+      stores: {n: 3, t: {js: 3}, d: "Zustand state stores"}
+    e2e: {n: 5, t: {js: 5}, d: "Playwright E2E tests"}
+  tests: {n: 68, t: {py: 68}, d: "Backend pytest suite"}
+  docker: {n: 4, t: {yml: 2}, d: "Docker Compose + Dockerfiles"}
+  scripts: {n: 13, t: {sh: 13}, d: "Dev/ops shell scripts"}
+  tkr-kit: {d: "Shared toolkit (submodule/vendored)"}
+
+deps:
+  py:
+    prod:
+      fastapi: {v: ">=0.104.0", d: "REST API framework"}
+      uvicorn: {v: ">=0.24.0", d: "ASGI server"}
+      torch: {v: ">=2.8.0", d: "PyTorch ML runtime"}
+      transformers: {v: ">=4.30.0", d: "Hugging Face transformers"}
+      colpali-engine: {v: ">=0.2.0", d: "Multimodal document embeddings"}
+      chromadb: {v: ">=0.4.0", d: "Vector database"}
+      docling: {v: ">=2.55.0", d: "Document parsing (PDF, Office, etc.)"}
+      litellm: {v: ">=1.0.0", d: "LLM provider abstraction"}
+      mlx-lm: {v: ">=0.26.3", d: "Apple Silicon local inference"}
+      structlog: {v: ">=23.1.0", d: "Structured logging"}
+      pydantic: {v: ">=2.0.0", d: "Data validation"}
+      watchdog: {v: ">=3.0.0", d: "File system watcher"}
+    dev:
+      pytest: {v: ">=7.4.0"}
+      pytest-asyncio: {v: ">=0.21.0"}
+      ruff: {v: ">=0.1.0"}
+      mypy: {v: ">=1.0.0"}
+  js:
+    prod:
+      react: {v: "^19.1.1", d: "UI framework"}
+      react-router-dom: {v: "^7.9.4", d: "Client-side routing"}
+      "@tanstack/react-query": {v: "^5.90.5", d: "Server state management"}
+      zustand: {v: "^5.0.8", d: "Client state management"}
+      lucide-react: {v: "^0.545.0", d: "Icon library"}
+    dev:
+      vite: {v: "^7.1.7", d: "Build tool"}
+      vitest: {v: "^4.0.3", d: "Test runner"}
+      "@playwright/test": {v: "^1.56.1", d: "E2E testing"}
+      typescript: {v: "^5.8.3"}
+
+nav:
+  start:
+    backend: src/api/server.py
+    frontend: frontend/src/main.jsx
+    config: .env.example
+  views:
+    library: {route: "/", file: frontend/src/views/LibraryView.jsx, d: "Document library grid"}
+    details: {route: "/details/:id", file: frontend/src/views/DetailsView.jsx, d: "Document detail with bounding boxes"}
+    research: {route: "/research", file: frontend/src/views/ResearchView.jsx, d: "AI research Q&A interface"}
+    research-explore: {route: "/research-explore", file: frontend/src/views/ResearchExploreView.jsx, d: "Experimental research UI"}
+    local-inference: {route: "/local-inference", file: frontend/src/views/LocalInferenceView.jsx, d: "Local MLX inference test"}
+  reading_order:
+    - {p: src/api/server.py, d: "FastAPI app factory, middleware, core routes"}
+    - {p: src/api/research.py, d: "Research API — LLM-powered document Q&A"}
+    - {p: src/embeddings/, d: "ColPali multimodal embedding pipeline"}
+    - {p: src/search/, d: "Two-stage semantic search"}
+    - {p: src/processing/, d: "Document ingestion — Docling + Whisper ASR"}
+    - {p: frontend/src/App.jsx, d: "React router and layout"}
+
+api:
+  endpoints:
+    - {m: GET, p: /health, d: "Health check"}
+    - {m: GET, p: /status, d: "System status"}
+    - {m: POST, p: /search, d: "Semantic document search"}
+    - {m: POST, p: /upload, d: "Document upload + processing"}
+    - {m: GET, p: /processing/{doc_id}, d: "Processing status"}
+    - {m: GET, p: /stats/search, d: "Search performance stats"}
+    - {m: GET, p: /api/documents, d: "List documents"}
+    - {m: GET, p: /api/document/{doc_id}, d: "Get document"}
+    - {m: DELETE, p: /api/document/{doc_id}, d: "Delete document"}
+    - {m: POST, p: /api/document/{doc_id}/reprocess, d: "Reprocess document"}
+    - {m: GET, p: /api/document/{doc_id}/download, d: "Download document"}
+    - {m: GET, p: /api/document/{doc_id}/markdown, d: "Get markdown content"}
+    - {m: POST, p: /api/research/ask, d: "Research Q&A with LLM"}
+    - {m: POST, p: /api/research/context-only, d: "Retrieve context without LLM"}
+    - {m: POST, p: /api/research/local-inference, d: "Local MLX inference"}
+    - {m: GET, p: /api/research/health, d: "Research API health"}
+    - {m: GET, p: /api/research/models, d: "Available LLM models"}
+  schemas:
+    BoundingBox: {t: [left, bottom, right, top]}
+    PageStructure: {t: [doc_id, page, headings, tables, pictures, code_blocks, formulas]}
+    HeadingInfo: {t: [text, level, page, section_path, bbox]}
+
+config:
+  env:
+    required: [CHROMADB_URL, COPYPARTY_URL]
+    optional: [OPENAI_API_KEY, LLM_PROVIDER, LLM_MODEL, MLX_MODEL_PATH, ASR_ENABLED, ASR_MODEL, LOG_LEVEL, DEVICE]
+  ports: &ports
+    backend: 8000
+    research-api: 8001
+    worker: 8002
+    chromadb: 8003
+    copyparty: 8004
+    frontend: 3333
+    legacy-office: 42888
+  db: {type: ChromaDB, d: "Vector database for embeddings"}
+  file-storage: {type: Copyparty, d: "File server for document storage"}
+
+relations:
+  frontend_backend:
+    proto: HTTP/REST
+    base: "http://localhost:8000"
+    fmt: JSON
+    services:
+      - {svc: api, file: frontend/src/services/, calls: ["/search", "/upload", "/api/documents", "/api/research/ask"]}
+  backend_internal:
+    pattern: "Routes → Services → Embeddings/Search → ChromaDB"
+  docker_services:
+    pattern: "docker-compose.yml orchestrates ChromaDB + Copyparty + legacy-office-converter"
+
+testing:
+  backend:
+    framework: pytest
+    files: 68
+    config: pyproject.toml
+    cmd: "pytest"
+    coverage: ">=70%"
+    by_module:
+      api: {tested: true}
+      embeddings: {tested: true}
+      processing: {tested: true}
+      search: {tested: true}
+      storage: {tested: true}
+      research: {tested: true}
+      mcp_server: {tested: true}
+  frontend:
+    framework: vitest
+    files: 23
+    config: frontend/vitest.config.ts
+    cmd: "cd frontend && npm test"
+    by_module:
+      components: {tested: true}
+      hooks: {tested: true}
+      utils: {tested: true}
+      services: {tested: true}
+      features: {tested: true}
+    e2e:
+      framework: playwright
+      files: 5
+      cmd: "cd frontend && npm run test:e2e"
+
+issues:
+  total: 13
+  byTag: {TODO: 13}
+
+design:
+  tokens:
+    color: {count: 40, file: frontend/src/index.css, d: "OKLCH + HSL design tokens via CSS custom properties"}
+    spacing: {count: 5}
+    typography: {count: 5}
+  system: "shadcn/ui-inspired with OKLCH color space"
+
+arch:
+  stack: "Python 3.10+ (FastAPI/Uvicorn) + React 19 (Vite) + ChromaDB + Docker"
+  patterns: ["IoC/DI", "Feature-based frontend modules", "Two-stage semantic search", "Hybrid Metal GPU/Docker"]
+  services:
+    backend: {type: "FastAPI HTTP", port: 8000, features: ["REST API", "Document processing", "Search", "Upload"]}
+    research-api: {type: "FastAPI HTTP", port: 8001, features: ["LLM Q&A", "Context retrieval", "Local MLX inference"]}
+    worker: {type: "Processing worker", port: 8002, features: ["Docling parsing", "Whisper ASR", "Embedding generation"]}
+    chromadb: {type: "Vector DB", port: 8003, features: ["Embedding storage", "Similarity search"]}
+    copyparty: {type: "File server", port: 8004, features: ["Document storage", "File serving"]}
+    frontend: {type: "Vite dev server", port: 3333, features: ["React SPA", "HMR"]}
+  frontend: {framework: "React 19", lang: "JSX/TSX", router: "react-router-dom v7", state: "Zustand + TanStack Query"}
+  backend: {framework: FastAPI, lang: Python, db: ChromaDB}
+  ml:
+    embeddings: {model: ColPali, d: "Multimodal document embeddings via vision transformers"}
+    asr: {model: "Whisper (MLX)", d: "Audio transcription with Metal GPU acceleration"}
+    llm: {providers: ["OpenAI via LiteLLM", "Local MLX"], d: "Research Q&A generation"}
+
+ops:
+  paths:
+    "src/": "Python backend source"
+    "frontend/": "React frontend"
+    "tests/": "Backend test suite"
+    "docker/": "Docker Compose and Dockerfiles"
+    "scripts/": "Dev/ops scripts"
+    "data/": "Runtime data (uploads, embeddings)"
+  ports: *ports
+  scripts:
+    setup: "scripts/setup.sh"
+    start: "scripts/start-all.sh"
+    stop: "scripts/stop-all.sh"
+    status: "scripts/status.sh"
+    test-backend: "pytest"
+    test-frontend: "cd frontend && npm test"
+    test-e2e: "cd frontend && npm run test:e2e"
+    dev-frontend: "cd frontend && npm run dev"
+    build-frontend: "cd frontend && npm run build"
+
+semantic:
+  ~patterns: "IoC with dependency injection, feature-based frontend modules, two-stage semantic search pipeline"
+  ~conventions: "Python PEP 8 + structlog + type hints; React JSX with Zustand stores; ES Modules"
+  ~learning_path: "server.py → search/ → embeddings/ → processing/ → frontend App.jsx → views/"
+  ~focus: "Local-first document intelligence — upload, parse, embed, search, research with AI"
+  ~key_feature: "ColPali multimodal embeddings enable visual+text document understanding with bounding box overlays"

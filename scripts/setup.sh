@@ -133,22 +133,19 @@ log_info "Creating directory structure..."
 mkdir -p \
   "$PROJECT_ROOT/data/uploads" \
   "$PROJECT_ROOT/data/models" \
-  "$PROJECT_ROOT/data/chroma_db" \
+  "$PROJECT_ROOT/data/koji" \
   "$PROJECT_ROOT/data/logs" \
-  "$PROJECT_ROOT/data/copyparty/www" \
-  "$PROJECT_ROOT/data/copyparty/hooks" \
   "$PROJECT_ROOT/src/storage" \
   "$PROJECT_ROOT/src/embeddings" \
   "$PROJECT_ROOT/src/processing" \
   "$PROJECT_ROOT/src/search" \
-  "$PROJECT_ROOT/src/ui" \
   "$PROJECT_ROOT/src/config"
 
 # Set permissions
 chmod 755 "$PROJECT_ROOT/data"
-chmod 777 "$PROJECT_ROOT/data/uploads"  # Writable by copyparty
+chmod 777 "$PROJECT_ROOT/data/uploads"  # Writable by worker
 chmod 777 "$PROJECT_ROOT/data/models"   # Writable by worker
-chmod 777 "$PROJECT_ROOT/data/chroma_db" # Writable by chromadb
+chmod 777 "$PROJECT_ROOT/data/koji"     # Writable by Koji Lance DB
 chmod 777 "$PROJECT_ROOT/data/logs"     # Writable by worker
 
 log_success "Directory structure created"
@@ -260,109 +257,7 @@ fi
 
 echo ""
 
-# ============================================================================
-# Create Event Hook Script
-# ============================================================================
-
-log_info "Creating copyparty event hook..."
-
-cat > "$PROJECT_ROOT/data/copyparty/hooks/on_upload.py" << 'EOFHOOK'
-#!/usr/bin/env python3
-"""
-Copyparty event hook: Trigger document processing on upload.
-
-Called by copyparty with environment variables:
-- CPP_PATH: Full path to uploaded file
-- CPP_FN: Filename
-- CPP_SIZE: File size in bytes
-"""
-
-import os
-import subprocess
-import sys
-
-def on_upload():
-    """Trigger processing worker."""
-    file_path = os.environ.get('CPP_PATH')
-    filename = os.environ.get('CPP_FN', 'unknown')
-    file_size = int(os.environ.get('CPP_SIZE', 0))
-
-    print(f"Upload detected: {filename} ({file_size} bytes)")
-
-    # Validate file type
-    if not filename.lower().endswith(('.pdf', '.docx', '.pptx')):
-        print(f"Skipping unsupported file: {filename}")
-        return
-
-    # Check file size (max 100MB)
-    max_size_mb = 100
-    if file_size > max_size_mb * 1024 * 1024:
-        print(f"File too large: {file_size / 1024 / 1024:.1f}MB > {max_size_mb}MB")
-        return
-
-    # Trigger processing worker
-    try:
-        result = subprocess.run(
-            ['docker', 'compose', 'exec', '-T', 'processing-worker',
-             'python', '-m', 'tkr_docusearch.processing.worker', 'process', file_path],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        print(f"Processing triggered: {result.stdout}")
-    except subprocess.TimeoutExpired:
-        print("Processing trigger timed out (worker may be busy)")
-    except Exception as e:
-        print(f"Processing trigger failed: {e}")
-
-if __name__ == '__main__':
-    on_upload()
-EOFHOOK
-
-chmod +x "$PROJECT_ROOT/data/copyparty/hooks/on_upload.py"
-log_success "Event hook created"
-echo ""
-
-# ============================================================================
-# Create Placeholder UI Files
-# ============================================================================
-
-log_info "Creating placeholder UI files..."
-
-cat > "$PROJECT_ROOT/data/copyparty/www/index.html" << 'EOFHTML'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DocuSearch MVP - Coming Soon</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      max-width: 800px;
-      margin: 50px auto;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 { color: #2563eb; }
-    .status { background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .success { color: #10b981; }
-  </style>
-</head>
-<body>
-  <h1>DocuSearch MVP</h1>
-  <div class="status">
-    <h2 class="success">✓ Setup Complete</h2>
-    <p>The system is ready. UI components will be implemented in Wave 2-3.</p>
-    <p>For now, use the copyparty interface to upload documents.</p>
-  </div>
-  <p>Wave 1: Foundation & Contracts ✓</p>
-  <p>Wave 2: Component Implementation (Coming Soon)</p>
-</body>
-</html>
-EOFHTML
-
-log_success "Placeholder UI created"
+log_success "Koji database directory created at data/koji"
 echo ""
 
 # ============================================================================
@@ -376,7 +271,7 @@ echo ""
 log_info "Next steps:"
 echo "  1. Start services:     cd docker && docker-compose up"
 echo "  2. Access UI:          http://localhost:8000"
-echo "  3. Upload documents:   Use copyparty web interface"
+echo "  3. Upload documents:   Use the web interface"
 echo "  4. View logs:          docker-compose logs -f processing-worker"
 echo ""
 log_info "Wave 1 Status:"

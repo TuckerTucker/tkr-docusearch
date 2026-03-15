@@ -52,22 +52,17 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
         >>> extract_timestamps_from_text("[time: 5.0-2.0] Invalid")
         (None, None, "[time: 5.0-2.0] Invalid")
     """
-    # Match ALL [time: X-Y] markers anywhere in text
-    pattern = r"\[time:\s*([\d.]+)-([\d.]+)\]"
-    matches = list(re.finditer(pattern, text))
+    # Match a [time: X-Y] marker at the start of text (with optional leading whitespace)
+    pattern = r"^\s*\[time:\s*([\d.]+)-([\d.]+)\]"
+    match = re.search(pattern, text)
 
-    if not matches:
-        # No timestamp markers found
+    if not match:
+        # No timestamp marker found at start
         return (None, None, text)
 
     try:
-        # Parse FIRST marker for start_time
-        first_match = matches[0]
-        start_time = float(first_match.group(1))
-
-        # Parse LAST marker for end_time
-        last_match = matches[-1]
-        end_time = float(last_match.group(2))
+        start_time = float(match.group(1))
+        end_time = float(match.group(2))
 
         # Validate timestamps
         if start_time < 0.0:
@@ -78,13 +73,11 @@ def extract_timestamps_from_text(text: str) -> Tuple[Optional[float], Optional[f
             logger.warning(f"Malformed timestamp in text (invalid_duration): {text[:50]}...")
             return (None, None, text)
 
-        # Remove ALL timestamp markers from text
-        cleaned_text = re.sub(pattern, "", text)
-        # Clean up multiple spaces left by removal
-        cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+        # Remove the matched marker (including leading whitespace)
+        cleaned_text = text[match.end():]
 
         logger.debug(
-            f"Extracted timestamp: {start_time:.2f}-{end_time:.2f} (from {len(matches)} markers)"
+            f"Extracted timestamp: {start_time:.2f}-{end_time:.2f}"
         )
         return (start_time, end_time, cleaned_text)
 
@@ -190,14 +183,32 @@ class TextProcessor:
             logger.debug(f"Generated embeddings for {len(texts)} chunks " f"in {elapsed_ms:.0f}ms")
 
             # Create results
+            # batch_output is list[bytes] from ShikomiClient or
+            # BatchEmbeddingOutput from MockColPaliModel
+            embeddings = (
+                batch_output.embeddings
+                if hasattr(batch_output, "embeddings")
+                else batch_output
+            )
             for idx, chunk in enumerate(batch_chunks):
+                embedding = embeddings[idx]
+                cls_token = (
+                    batch_output.cls_tokens[idx]
+                    if hasattr(batch_output, "cls_tokens")
+                    else None
+                )
+                seq_length = (
+                    batch_output.seq_lengths[idx]
+                    if hasattr(batch_output, "seq_lengths")
+                    else 0
+                )
                 result = TextEmbeddingResult(
                     doc_id=doc_id,
                     chunk_id=chunk.chunk_id,
                     page_num=chunk.page_num,
-                    embedding=batch_output["embeddings"][idx],
-                    cls_token=batch_output["cls_tokens"][idx],
-                    seq_length=batch_output["seq_lengths"][idx],
+                    embedding=embedding,
+                    cls_token=cls_token,
+                    seq_length=seq_length,
                     text=chunk.text,
                     processing_time_ms=elapsed_ms / len(texts),
                 )

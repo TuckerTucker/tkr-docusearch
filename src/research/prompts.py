@@ -22,8 +22,8 @@ USING SOURCE LINKS:
 - The context includes SOURCE LINKS at the bottom with URLs for each numbered source
 - When citing [1], use the URL from source [1] in the SOURCE LINKS section
 - Create markdown links using the format [[N]](url) where N is the source number
-- Example: If SOURCE LINKS shows "[1] document.pdf http://localhost:3000/details/abc123"
-  then cite as: "This is true [[1]](http://localhost:3000/details/abc123)."
+- Example: If SOURCE LINKS shows "[1] document.pdf http://localhost:3333/details/abc123"
+  then cite as: "This is true [[1]](http://localhost:3333/details/abc123)."
 - For multiple citations, chain them: [[1]](url1)[[2]](url2)
 
 VISUAL ANALYSIS (when images are provided):
@@ -35,7 +35,7 @@ VISUAL ANALYSIS (when images are provided):
 
 CITATION FORMAT:
 - Use markdown links for all citations
-- Correct: "Paris is the capital of France [[1]](http://localhost:3000/details/abc123)."
+- Correct: "Paris is the capital of France [[1]](http://localhost:3333/details/abc123)."
 - Incorrect: "Paris is the capital of France. [1]" or "Paris is the capital of France [1]."
 - Multiple sources: "This is supported by research [[1]](url1)[[2]](url2)."
 - When multiple documents say the same thing, cite all with their respective URLs

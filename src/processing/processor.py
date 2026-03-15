@@ -5,7 +5,7 @@ This module orchestrates the complete document processing pipeline:
 1. Document parsing (Docling)
 2. Visual processing (page embeddings)
 3. Text processing (chunk embeddings)
-4. Storage (ChromaDB)
+4. Storage (Koji)
 """
 
 import logging
@@ -399,7 +399,7 @@ class DocumentProcessor:
                 filename=filename,
                 status="storing",
                 progress=0.9,
-                stage="Storing embeddings in ChromaDB",
+                stage="Storing embeddings",
                 total_pages=total_pages,
                 elapsed_seconds=int(time.time() - start_time),
             )
@@ -491,73 +491,216 @@ class DocumentProcessor:
         doc_metadata: Dict[str, Any],
         filename: str,
         file_path: str,
-        pages: Optional[List] = None,  # Wave 1: Optional pages for image paths
-        structure: Optional[Any] = None,  # DocumentStructure object
+        pages: Optional[List] = None,
+        structure: Optional[Any] = None,
     ) -> StorageConfirmation:
-        """Store embeddings in ChromaDB with enhanced metadata.
+        """Store embeddings via the injected KojiClient.
 
         Args:
-            doc_id: Document ID (for album art storage)
-            visual_results: List of VisualEmbeddingResult
-            text_results: List of TextEmbeddingResult
-            text_chunks: List of TextChunk (with context)
-            doc_metadata: Document metadata
-            filename: Original filename
-            file_path: Source file path
-            pages: Optional list of Page objects (for image paths - Wave 1)
+            doc_id: Document identifier.
+            visual_results: List of VisualEmbeddingResult.
+            text_results: List of TextEmbeddingResult.
+            text_chunks: List of TextChunk objects.
+            doc_metadata: Document metadata dict.
+            filename: Original filename.
+            file_path: Source file path.
+            pages: Optional page objects (for image data).
+            structure: Optional DocumentStructure.
 
         Returns:
-            StorageConfirmation
+            StorageConfirmation with storage details.
 
         Raises:
-            StorageError: If storage fails
+            StorageError: If storage fails.
         """
         try:
-            from src.processing.handlers import (
-                AlbumArtHandler,
-                MetadataFilter,
-                TextEmbeddingHandler,
-                VisualEmbeddingHandler,
+            return self._store_koji(
+                doc_id, visual_results, text_results, text_chunks,
+                doc_metadata, filename, file_path, pages, structure,
             )
-
-            # Log structure availability if enhanced mode
-            if structure and self.enhanced_mode_config:
-                logger.debug(
-                    f"Enhanced mode: Document structure available ({len(structure.headings)} headings, {len(structure.tables)} tables)"
-                )
-
-            # Save album art for audio files
-            AlbumArtHandler.save_album_art_if_present(doc_id, doc_metadata)
-
-            # Filter metadata for ChromaDB storage
-            safe_doc_metadata = MetadataFilter.filter_metadata(doc_metadata)
-
-            # Store visual embeddings
-            visual_handler = VisualEmbeddingHandler(self.storage_client, self.enhanced_mode_config)
-            visual_ids, visual_size = visual_handler.store_visual_embeddings(
-                visual_results, filename, file_path, safe_doc_metadata, structure, pages
-            )
-
-            # Store text embeddings
-            text_handler = TextEmbeddingHandler(self.storage_client, self.enhanced_mode_config)
-            text_ids, text_size = text_handler.store_text_embeddings(
-                text_results, text_chunks, filename, file_path, safe_doc_metadata
-            )
-
-            # Create confirmation
-            confirmation = StorageConfirmation(
-                doc_id=visual_results[0].doc_id if visual_results else text_results[0].doc_id,
-                visual_ids=visual_ids,
-                text_ids=text_ids,
-                total_size_bytes=visual_size + text_size,
-                timestamp=datetime.utcnow().isoformat() + "Z",
-            )
-
-            return confirmation
-
         except Exception as e:
             logger.error(f"Storage failed: {e}")
             raise StorageError(f"Failed to store embeddings: {e}") from e
+
+    def _store_koji(
+        self,
+        doc_id: str,
+        visual_results,
+        text_results,
+        text_chunks,
+        doc_metadata: Dict[str, Any],
+        filename: str,
+        file_path: str,
+        pages: Optional[List] = None,
+        structure: Optional[Any] = None,
+    ) -> StorageConfirmation:
+        """Store embeddings in Koji database.
+
+        Creates a document record, then inserts page and chunk records
+        with their embeddings as binary blobs.
+        """
+        import json
+
+        file_ext = os.path.splitext(filename)[1].lstrip(".").lower()
+
+        # Save album art for audio files (side effect, not storage-dependent)
+        try:
+            from src.processing.handlers import AlbumArtHandler
+            AlbumArtHandler.save_album_art_if_present(doc_id, doc_metadata)
+        except ImportError:
+            pass
+
+        # Create document record
+        num_pages = len(visual_results) if visual_results else None
+        markdown_content = doc_metadata.get("markdown")
+        self.storage_client.create_document(
+            doc_id=doc_id,
+            filename=filename,
+            format=file_ext,
+            num_pages=num_pages,
+            markdown=markdown_content,
+            metadata=doc_metadata,
+        )
+
+        # Insert pages from visual results
+        visual_ids = []
+        visual_size = 0
+        if visual_results:
+            page_records = []
+            for vr in visual_results:
+                page_id = f"{doc_id}-page{vr.page_num:03d}"
+                visual_ids.append(page_id)
+
+                # Get embedding as bytes (ShikomiClient returns bytes,
+                # ColPali returns np.ndarray — convert if needed)
+                embedding_blob = self._to_embedding_blob(vr.embedding)
+
+                # Get page image bytes if available
+                image_bytes = None
+                if pages and vr.page_num - 1 < len(pages):
+                    page_obj = pages[vr.page_num - 1]
+                    if hasattr(page_obj, "image") and page_obj.image is not None:
+                        import io
+                        buf = io.BytesIO()
+                        page_obj.image.save(buf, format="PNG")
+                        image_bytes = buf.getvalue()
+
+                # Get structure for this page
+                structure_dict = None
+                if structure and hasattr(structure, "get_page_structure"):
+                    structure_dict = structure.get_page_structure(vr.page_num)
+
+                record = {
+                    "id": page_id,
+                    "doc_id": doc_id,
+                    "page_num": vr.page_num,
+                    "embedding": embedding_blob,
+                    "image": image_bytes,
+                    "structure": structure_dict,
+                }
+                if image_bytes:
+                    visual_size += len(image_bytes)
+                if embedding_blob:
+                    visual_size += len(embedding_blob)
+                page_records.append(record)
+
+            self.storage_client.insert_pages(page_records)
+
+        # Insert chunks from text results
+        text_ids = []
+        text_size = 0
+        if text_results:
+            chunk_records = []
+            for tr in text_results:
+                chunk_id = tr.chunk_id
+                text_ids.append(chunk_id)
+
+                embedding_blob = self._to_embedding_blob(tr.embedding)
+
+                # Build context from text chunk metadata
+                context_dict = None
+                matching_chunks = [
+                    c for c in (text_chunks or [])
+                    if hasattr(c, "text") and c.text == tr.text
+                ]
+                if matching_chunks:
+                    tc = matching_chunks[0]
+                    context_dict = {}
+                    if hasattr(tc, "parent_heading") and tc.parent_heading:
+                        context_dict["parent_heading"] = tc.parent_heading
+                    if hasattr(tc, "section_path") and tc.section_path:
+                        context_dict["section_path"] = tc.section_path
+                    if hasattr(tc, "element_type") and tc.element_type:
+                        context_dict["element_type"] = tc.element_type
+
+                record = {
+                    "id": chunk_id,
+                    "doc_id": doc_id,
+                    "page_num": tr.page_num,
+                    "text": tr.text,
+                    "embedding": embedding_blob,
+                    "context": context_dict if context_dict else None,
+                    "word_count": len(tr.text.split()) if tr.text else 0,
+                }
+
+                # Audio timestamps
+                if matching_chunks:
+                    tc = matching_chunks[0]
+                    if hasattr(tc, "start_time") and tc.start_time is not None:
+                        record["start_time"] = tc.start_time
+                    if hasattr(tc, "end_time") and tc.end_time is not None:
+                        record["end_time"] = tc.end_time
+
+                if embedding_blob:
+                    text_size += len(embedding_blob)
+                text_size += len(tr.text.encode()) if tr.text else 0
+                chunk_records.append(record)
+
+            self.storage_client.insert_chunks(chunk_records)
+
+        return StorageConfirmation(
+            doc_id=doc_id,
+            visual_ids=visual_ids,
+            text_ids=text_ids,
+            total_size_bytes=visual_size + text_size,
+            timestamp=datetime.utcnow().isoformat() + "Z",
+        )
+
+    @staticmethod
+    def _to_embedding_blob(embedding) -> Optional[bytes]:
+        """Convert an embedding to bytes for Koji storage.
+
+        Handles both numpy arrays (ColPali) and raw bytes (Shikomi).
+
+        Args:
+            embedding: numpy ndarray, bytes, or None.
+
+        Returns:
+            Packed binary blob or None.
+        """
+        if embedding is None:
+            return None
+        if isinstance(embedding, bytes):
+            return embedding
+        # numpy ndarray → pack as multi-vector blob
+        try:
+            import struct
+            import numpy as np
+            if isinstance(embedding, np.ndarray):
+                if embedding.ndim == 2:
+                    num_tokens, dim = embedding.shape
+                    header = struct.pack("<II", num_tokens, dim)
+                    data = embedding.astype(np.float32).tobytes()
+                    return header + data
+                elif embedding.ndim == 1:
+                    # Single vector — wrap as 1-token multi-vector
+                    dim = embedding.shape[0]
+                    header = struct.pack("<II", 1, dim)
+                    data = embedding.astype(np.float32).tobytes()
+                    return header + data
+        except ImportError:
+            pass
+        return None
 
     def _update_status(self, status: ProcessingStatus, callback):
         """Update processing status.

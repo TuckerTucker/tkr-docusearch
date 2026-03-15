@@ -31,7 +31,7 @@ from tkr_docusearch.processing.cover_art_utils import delete_document_cover_art
 from tkr_docusearch.processing.file_validator import get_supported_extensions
 from tkr_docusearch.processing.image_utils import cleanup_temp_directories, delete_document_images
 from tkr_docusearch.processing.vtt_utils import delete_document_vtt
-from tkr_docusearch.storage import ChromaClient
+from tkr_docusearch.storage import KojiClient
 from tkr_docusearch.storage.markdown_utils import delete_document_markdown
 from tkr_docusearch.utils.paths import convert_path_to_url
 
@@ -110,7 +110,7 @@ class PageInfo(BaseModel):
     page_number: int = Field(..., description="Page number (1-indexed)")
     image_path: Optional[str] = Field(None, description="URL to full-resolution image")
     thumb_path: Optional[str] = Field(None, description="URL to thumbnail")
-    embedding_id: str = Field(..., description="ChromaDB embedding ID")
+    embedding_id: str = Field(..., description="embedding ID")
 
 
 class ChunkInfo(BaseModel):
@@ -118,7 +118,7 @@ class ChunkInfo(BaseModel):
 
     chunk_id: str = Field(..., description="Chunk identifier")
     text_content: str = Field(..., description="Full text content")
-    embedding_id: str = Field(..., description="ChromaDB embedding ID")
+    embedding_id: str = Field(..., description="embedding ID")
     start_time: Optional[float] = Field(None, description="Start time in seconds (audio only)")
     end_time: Optional[float] = Field(None, description="End time in seconds (audio only)")
     has_timestamps: bool = Field(False, description="True if chunk has timestamps")
@@ -133,7 +133,7 @@ class DocumentMetadata(BaseModel):
     has_images: bool
     collections: List[str]
     raw_metadata: Optional[Dict[str, Any]] = Field(
-        None, description="Raw metadata from ChromaDB (includes audio metadata)"
+        None, description="Raw metadata (includes audio metadata)"
     )
     vtt_available: bool = Field(False, description="True if VTT file exists (audio only)")
     markdown_available: bool = Field(False, description="True if markdown file exists")
@@ -279,23 +279,25 @@ def delete_from_copyparty(filename: str) -> bool:
         return False
 
 
-def get_chroma_client() -> ChromaClient:
-    """Get ChromaDB client instance.
+def get_storage_client() -> KojiClient:
+    """Get Koji storage client instance.
 
     Returns:
-        ChromaClient instance
+        KojiClient instance
 
     Raises:
         HTTPException: If client initialization fails
     """
     try:
         import os
+        from tkr_docusearch.config.koji_config import KojiConfig
 
-        host = os.getenv("CHROMA_HOST", "localhost")
-        port = int(os.getenv("CHROMA_PORT", "8001"))
-        return ChromaClient(host=host, port=port)
+        config = KojiConfig.from_env()
+        client = KojiClient(config)
+        client.open()
+        return client
     except Exception as e:
-        logger.error(f"Failed to initialize ChromaDB client: {e}")
+        logger.error(f"Failed to initialize Koji client: {e}")
         raise HTTPException(
             status_code=500,
             detail={
@@ -305,126 +307,6 @@ def get_chroma_client() -> ChromaClient:
             },
         )
 
-
-def _create_empty_document(doc_id: str, filename: str, timestamp: str) -> Dict[str, Any]:
-    """Create empty document structure.
-
-    Args:
-        doc_id: Document identifier
-        filename: Original filename
-        timestamp: Document timestamp
-
-    Returns:
-        Empty document dictionary
-    """
-    return {
-        "doc_id": doc_id,
-        "filename": filename,
-        "date_added": timestamp,
-        "pages": [],
-        "chunks": [],
-        "collections": [],
-        "has_images": False,
-    }
-
-
-def _process_visual_metadata(documents: Dict[str, Dict], visual_metadata: List[Dict]) -> None:
-    """Process visual embeddings and update documents dict.
-
-    Args:
-        documents: Documents dictionary to update
-        visual_metadata: List of visual embedding metadata
-    """
-    for item in visual_metadata:
-        doc_id = item.get("doc_id")
-        if not doc_id:
-            continue
-
-        # Initialize document if needed
-        if doc_id not in documents:
-            documents[doc_id] = _create_empty_document(
-                doc_id, item.get("filename", "unknown"), item.get("timestamp", "")
-            )
-
-        # Add page info
-        page_num = item.get("page")
-        if page_num:
-            documents[doc_id]["pages"].append(
-                {
-                    "page_number": page_num,
-                    "image_path": item.get("image_path"),
-                    "thumb_path": item.get("thumb_path"),
-                    "metadata": item,
-                }
-            )
-
-        # Track if document has images
-        if item.get("image_path") or item.get("thumb_path"):
-            documents[doc_id]["has_images"] = True
-
-        # Add visual collection
-        if "visual" not in documents[doc_id]["collections"]:
-            documents[doc_id]["collections"].append("visual")
-
-
-def _process_text_metadata(documents: Dict[str, Dict], text_metadata: List[Dict]) -> None:
-    """Process text embeddings and update documents dict.
-
-    Args:
-        documents: Documents dictionary to update
-        text_metadata: List of text embedding metadata
-    """
-    for item in text_metadata:
-        doc_id = item.get("doc_id")
-        if not doc_id:
-            continue
-
-        # Initialize document if needed
-        if doc_id not in documents:
-            documents[doc_id] = _create_empty_document(
-                doc_id, item.get("filename", "unknown"), item.get("timestamp", "")
-            )
-
-        # Add chunk info
-        chunk_id = item.get("chunk_id")
-        if chunk_id is not None:
-            documents[doc_id]["chunks"].append({"chunk_id": f"chunk_{chunk_id}", "metadata": item})
-
-        # Add text collection
-        if "text" not in documents[doc_id]["collections"]:
-            documents[doc_id]["collections"].append("text")
-
-
-def _sort_document_pages(documents: Dict[str, Dict]) -> None:
-    """Sort pages by page number for all documents.
-
-    Args:
-        documents: Documents dictionary to update
-    """
-    for doc_id in documents:
-        documents[doc_id]["pages"].sort(key=lambda p: p["page_number"])
-
-
-def aggregate_documents(visual_metadata: List[Dict], text_metadata: List[Dict]) -> Dict[str, Dict]:
-    """Aggregate document information from ChromaDB metadata.
-
-    Args:
-        visual_metadata: List of visual embedding metadata
-        text_metadata: List of text embedding metadata
-
-    Returns:
-        Dictionary mapping doc_id to aggregated document info
-    """
-    documents: Dict[str, Dict] = {}
-
-    # Process visual and text embeddings
-    _process_visual_metadata(documents, visual_metadata)
-    _process_text_metadata(documents, text_metadata)
-
-    # Sort pages by page number
-    _sort_document_pages(documents)
-
-    return documents
 
 
 # ============================================================================
@@ -656,16 +538,27 @@ async def list_documents(
         HTTPException: On database error
     """
     try:
-        client = get_chroma_client()
+        client = get_storage_client()
 
-        # Get all visual and text embeddings
-        visual_data = client._visual_collection.get()
-        text_data = client._text_collection.get()
+        # Get all documents from Koji
+        doc_list_raw = client.list_documents(limit=10000)
 
-        # Aggregate by document
-        documents = aggregate_documents(
-            visual_data.get("metadatas", []), text_data.get("metadatas", [])
-        )
+        # Build document aggregation matching legacy format
+        documents = {}
+        for doc in doc_list_raw:
+            doc_id = doc["doc_id"]
+            pages = client.get_pages_for_document(doc_id)
+            chunks = client.get_chunks_for_document(doc_id)
+            documents[doc_id] = {
+                "doc_id": doc_id,
+                "filename": doc.get("filename", "unknown"),
+                "date_added": doc.get("created_at", ""),
+                "pages": pages,
+                "chunks": chunks,
+                "has_images": len(pages) > 0,
+                "collections": [],
+                "metadata": doc.get("metadata", {}),
+            }
 
         # Convert to list and apply filters/sorting
         doc_list = list(documents.values())
@@ -698,30 +591,28 @@ async def list_documents(
         )
 
 
-def _build_page_list(visual_data: Dict, visual_ids: List[str]) -> List[PageInfo]:
-    """Build list of page information from visual data.
+
+def _build_page_list_from_koji(page_records: List[Dict]) -> List[PageInfo]:
+    """Build list of page information from Koji page records.
 
     Args:
-        visual_data: Visual collection data from ChromaDB
-        visual_ids: List of visual embedding IDs
+        page_records: List of page dicts from KojiClient.
 
     Returns:
-        List of PageInfo objects sorted by page number
+        List of PageInfo objects sorted by page number.
     """
     pages = []
-    visual_metadatas = visual_data.get("metadatas", [])
-
-    for idx, metadata in enumerate(visual_metadatas):
-        page_num = metadata.get("page")
-        image_path = convert_path_to_url(metadata.get("image_path"))
-        thumb_path = convert_path_to_url(metadata.get("thumb_path"))
+    for p in page_records:
+        structure = p.get("structure") or {}
+        image_path = convert_path_to_url(structure.get("image_path")) if isinstance(structure, dict) else None
+        thumb_path = convert_path_to_url(structure.get("thumb_path")) if isinstance(structure, dict) else None
 
         pages.append(
             PageInfo(
-                page_number=page_num,
+                page_number=p.get("page_num", 0),
                 image_path=image_path,
                 thumb_path=thumb_path,
-                embedding_id=visual_ids[idx],
+                embedding_id=p.get("id", ""),
             )
         )
 
@@ -729,68 +620,30 @@ def _build_page_list(visual_data: Dict, visual_ids: List[str]) -> List[PageInfo]
     return pages
 
 
-def _build_chunk_list(text_data: Dict, text_ids: List[str]) -> List[ChunkInfo]:
-    """Build list of chunk information from text data.
+def _build_chunk_list_from_koji(chunk_records: List[Dict]) -> List[ChunkInfo]:
+    """Build list of chunk information from Koji chunk records.
 
     Args:
-        text_data: Text collection data from ChromaDB
-        text_ids: List of text embedding IDs
+        chunk_records: List of chunk dicts from KojiClient.
 
     Returns:
-        List of ChunkInfo objects
+        List of ChunkInfo objects.
     """
     chunks = []
-    text_metadatas = text_data.get("metadatas", [])
-
-    for idx, metadata in enumerate(text_metadatas):
-        chunk_id = metadata.get("chunk_id", idx)
-        text_content = metadata.get("full_text") or metadata.get("text_preview", "")
-        start_time = metadata.get("start_time")
-        end_time = metadata.get("end_time")
-        has_timestamps = metadata.get("has_timestamps", False)
-        page_number = metadata.get("page")
-
+    for c in chunk_records:
         chunks.append(
             ChunkInfo(
-                chunk_id=f"chunk_{chunk_id}",
-                text_content=text_content,
-                embedding_id=text_ids[idx],
-                start_time=start_time,
-                end_time=end_time,
-                has_timestamps=has_timestamps,
-                page_number=page_number,
+                chunk_id=c.get("id", ""),
+                text_content=c.get("text", ""),
+                embedding_id=c.get("id", ""),
+                start_time=c.get("start_time"),
+                end_time=c.get("end_time"),
+                has_timestamps=c.get("start_time") is not None,
+                page_number=c.get("page_num"),
             )
         )
-
     return chunks
 
-
-def _extract_document_metadata(
-    visual_metadatas: List[Dict], text_metadatas: List[Dict]
-) -> tuple[str, str, Optional[Dict]]:
-    """Extract filename, date, and raw metadata.
-
-    Args:
-        visual_metadatas: Visual metadata list
-        text_metadatas: Text metadata list
-
-    Returns:
-        Tuple of (filename, date_added, raw_metadata)
-    """
-    filename = "unknown"
-    date_added = ""
-    raw_metadata = None
-
-    if visual_metadatas:
-        filename = visual_metadatas[0].get("filename", filename)
-        date_added = visual_metadatas[0].get("timestamp", date_added)
-        raw_metadata = visual_metadatas[0]
-    elif text_metadatas:
-        filename = text_metadatas[0].get("filename", filename)
-        date_added = text_metadatas[0].get("timestamp", date_added)
-        raw_metadata = text_metadatas[0]
-
-    return filename, date_added, raw_metadata
 
 
 def _check_album_art_availability(doc_id: str) -> tuple[bool, Optional[str]]:
@@ -844,17 +697,11 @@ async def get_document(doc_id: str):
         )
 
     try:
-        client = get_chroma_client()
+        client = get_storage_client()
 
-        # Query visual and text collections
-        visual_data = client._visual_collection.get(where={"doc_id": doc_id})
-        text_data = client._text_collection.get(where={"doc_id": doc_id})
-
-        visual_ids = visual_data.get("ids", [])
-        text_ids = text_data.get("ids", [])
-
-        # Check if document exists
-        if not visual_ids and not text_ids:
+        # Query document from Koji
+        doc_data = client.get_document(doc_id)
+        if doc_data is None:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -864,23 +711,23 @@ async def get_document(doc_id: str):
                 },
             )
 
-        # Build pages and chunks
-        pages = _build_page_list(visual_data, visual_ids)
-        chunks = _build_chunk_list(text_data, text_ids)
+        page_records = client.get_pages_for_document(doc_id)
+        chunk_records = client.get_chunks_for_document(doc_id)
 
-        # Extract document metadata
-        visual_metadatas = visual_data.get("metadatas", [])
-        text_metadatas = text_data.get("metadatas", [])
-        filename, date_added, raw_metadata = _extract_document_metadata(
-            visual_metadatas, text_metadatas
-        )
+        # Build pages and chunks from Koji records
+        pages = _build_page_list_from_koji(page_records)
+        chunks = _build_chunk_list_from_koji(chunk_records)
+
+        filename = doc_data.get("filename", "unknown")
+        date_added = doc_data.get("created_at", "")
+        raw_metadata = doc_data.get("metadata", {})
 
         # Build collections list
         has_images = any(p.image_path or p.thumb_path for p in pages)
         collections = []
-        if visual_ids:
+        if page_records:
             collections.append("visual")
-        if text_ids:
+        if chunk_records:
             collections.append("text")
 
         # Check availability flags
@@ -980,18 +827,17 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
             },
         )
 
-    # Get filename from ChromaDB for the download filename
+    # Get filename from Koji for the download filename
     try:
-        client = get_chroma_client()
-        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
+        client = get_storage_client()
+        doc_data = client.get_document(doc_id)
 
         filename = "unknown.md"
-        if text_data.get("metadatas"):
-            original_filename = text_data["metadatas"][0].get("filename", "unknown")
-            # Remove extension and add .md
+        if doc_data:
+            original_filename = doc_data.get("filename", "unknown")
             filename = Path(original_filename).stem + ".md"
     except Exception as e:
-        logger.warning(f"Failed to get filename from ChromaDB: {e}")
+        logger.warning(f"Failed to get filename from Koji: {e}")
         filename = f"{doc_id}.md"
 
     # Insert chunk markers if requested
@@ -1100,18 +946,17 @@ async def get_vtt(doc_id: str):
             },
         )
 
-    # Get filename from ChromaDB for the download filename
+    # Get filename from Koji for the download filename
     try:
-        client = get_chroma_client()
-        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
+        client = get_storage_client()
+        doc_data = client.get_document(doc_id)
 
         filename = "unknown.vtt"
-        if text_data.get("metadatas"):
-            original_filename = text_data["metadatas"][0].get("filename", "unknown")
-            # Remove extension and add .vtt
+        if doc_data:
+            original_filename = doc_data.get("filename", "unknown")
             filename = Path(original_filename).stem + ".vtt"
     except Exception as e:
-        logger.warning(f"Failed to get filename from ChromaDB: {e}")
+        logger.warning(f"Failed to get filename from Koji: {e}")
         filename = f"{doc_id}.vtt"
 
     # Return file with appropriate headers and sanitized filename
@@ -1164,12 +1009,11 @@ async def get_audio(doc_id: str):
 
     # Get document metadata to find audio filename
     try:
-        chroma_client = get_chroma_client()
+        koji_client = get_storage_client()
 
-        # Try text collection first (audio transcripts)
-        text_results = chroma_client._text_collection.get(where={"doc_id": doc_id}, limit=1)
+        doc_data = koji_client.get_document(doc_id)
 
-        if not text_results["ids"]:
+        if doc_data is None:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -1182,8 +1026,7 @@ async def get_audio(doc_id: str):
                 },
             )
 
-        metadata = text_results["metadatas"][0]
-        filename = metadata.get("filename") or metadata.get("original_filename")
+        filename = doc_data.get("filename") or doc_data.get("original_filename")
 
         if not filename:
             raise HTTPException(
@@ -1502,13 +1345,11 @@ async def delete_document(doc_id: str):  # noqa: C901
     filename = None
 
     try:
-        client = get_chroma_client()
+        client = get_storage_client()
 
-        # First, check if document exists and get filename
-        visual_data = client._visual_collection.get(where={"doc_id": doc_id}, limit=1)
-        text_data = client._text_collection.get(where={"doc_id": doc_id}, limit=1)
-
-        if not visual_data["ids"] and not text_data["ids"]:
+        # Check if document exists
+        doc_data = client.get_document(doc_id)
+        if doc_data is None:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -1518,33 +1359,21 @@ async def delete_document(doc_id: str):  # noqa: C901
                 },
             )
 
-        # Extract filename for response
-        if visual_data.get("metadatas"):
-            filename = visual_data["metadatas"][0].get("filename")
-        elif text_data.get("metadatas"):
-            filename = text_data["metadatas"][0].get("filename")
+        filename = doc_data.get("filename")
 
-        # STAGE 1: Delete ChromaDB embeddings (CRITICAL)
+        # STAGE 1: Delete from Koji (cascades to pages, chunks, relations)
         try:
-            visual_count, text_count = client.delete_document(doc_id)
-            deleted["chromadb"] = {
-                "visual_embeddings": visual_count,
-                "text_embeddings": text_count,
-                "status": "deleted",
-            }
-            logger.info(
-                f"Deleted ChromaDB embeddings for {doc_id}: "
-                f"{visual_count} visual, {text_count} text"
-            )
+            client.delete_document(doc_id)
+            deleted["koji"] = {"status": "deleted"}
+            logger.info(f"Deleted Koji records for {doc_id}")
         except Exception as e:
-            error_msg = f"Failed to delete ChromaDB embeddings: {str(e)}"
+            error_msg = f"Failed to delete Koji records: {str(e)}"
             logger.error(error_msg)
-            # This is critical - raise exception
             raise HTTPException(
                 status_code=500,
                 detail={
-                    "error": "Failed to delete document embeddings",
-                    "code": "CHROMADB_DELETE_ERROR",
+                    "error": "Failed to delete document",
+                    "code": "DATABASE_DELETE_ERROR",
                     "details": {"doc_id": doc_id, "message": str(e)},
                 },
             )

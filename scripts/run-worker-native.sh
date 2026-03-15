@@ -2,8 +2,7 @@
 # ============================================================================
 # Run Processing Worker Natively (with Metal/MPS support)
 # ============================================================================
-# This script runs the processing worker directly on macOS to access Metal GPU
-# while keeping ChromaDB and Copyparty in Docker containers.
+# This script runs the processing worker directly on macOS to access Metal GPU.
 #
 # Usage:
 #   ./scripts/run-worker-native.sh [setup|run|check]
@@ -35,16 +34,10 @@ VENV_DIR="${VENV_DIR:-.venv-native}"
 
 # Environment variables for worker
 export DEVICE="mps"
-export MODEL_NAME="${MODEL_NAME:-vidore/colpali-v1.2}"
+export MODEL_NAME="${MODEL_NAME:-default}"
 export MODEL_PRECISION="${MODEL_PRECISION:-fp16}"
 export BATCH_SIZE_VISUAL="${BATCH_SIZE_VISUAL:-4}"
 export BATCH_SIZE_TEXT="${BATCH_SIZE_TEXT:-8}"
-
-# ChromaDB connection (Docker)
-export CHROMA_HOST="${CHROMA_HOST:-localhost}"
-export CHROMA_PORT="${CHROMA_PORT:-8001}"
-export VISUAL_COLLECTION="${VISUAL_COLLECTION:-visual_collection}"
-export TEXT_COLLECTION="${TEXT_COLLECTION:-text_collection}"
 
 # File paths
 export UPLOADS_DIR="${UPLOADS_DIR:-${PROJECT_ROOT}/data/uploads}"
@@ -80,8 +73,6 @@ export SLIDE_RENDERER_PORT="${SLIDE_RENDERER_PORT:-${LEGACY_OFFICE_PORT}}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 export PYTHONUNBUFFERED=1
 
-# Python path - add src directory for module imports
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH}"
 
 # ============================================================================
 # Functions
@@ -90,24 +81,22 @@ export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH}"
 check_metal() {
     echo -e "${BLUE}Checking Metal/MPS availability...${NC}"
 
-    # Use venv Python with absolute path
+    # Try venv Python first, fall back to system Python
     local VENV_PYTHON="${PROJECT_ROOT}/${VENV_DIR}/bin/python"
+    local CHECK_PYTHON=""
 
-    if [ ! -f "$VENV_PYTHON" ]; then
-        echo -e "${RED}Error: Venv Python not found at $VENV_PYTHON${NC}"
-        echo -e "${YELLOW}Run './scripts/run-worker-native.sh setup' first${NC}"
+    if [ -f "$VENV_PYTHON" ] && "$VENV_PYTHON" -c "import torch" 2>/dev/null; then
+        CHECK_PYTHON="$VENV_PYTHON"
+    elif python3 -c "import torch" 2>/dev/null; then
+        CHECK_PYTHON="python3"
+    else
+        echo -e "${YELLOW}PyTorch not found. Cannot check MPS availability.${NC}"
         return 1
     fi
 
-    # Check if PyTorch is installed in venv
-    if ! "$VENV_PYTHON" -c "import torch" 2>/dev/null; then
-        echo -e "${YELLOW}PyTorch not installed in venv. Run './scripts/run-worker-native.sh setup' first${NC}"
-        return 1
-    fi
-
-    # Check MPS availability using venv Python
-    MPS_AVAILABLE=$("$VENV_PYTHON" -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
-    MPS_BUILT=$("$VENV_PYTHON" -c "import torch; print(torch.backends.mps.is_built())" 2>/dev/null)
+    # Check MPS availability
+    MPS_AVAILABLE=$("$CHECK_PYTHON" -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
+    MPS_BUILT=$("$CHECK_PYTHON" -c "import torch; print(torch.backends.mps.is_built())" 2>/dev/null)
 
     echo -e "  MPS Available: ${GREEN}${MPS_AVAILABLE}${NC}"
     echo -e "  MPS Built: ${GREEN}${MPS_BUILT}${NC}"
@@ -138,7 +127,7 @@ setup_venv() {
     pip install --upgrade pip
 
     # Install all dependencies from requirements.txt
-    # This includes: PyTorch, transformers, ChromaDB, Docling, mutagen, and all other dependencies
+    # This includes: PyTorch, transformers, Koji, Docling, mutagen, and all other dependencies
     if [ -f "${PROJECT_ROOT}/requirements.txt" ]; then
         echo "Installing dependencies from requirements.txt..."
         pip install -r "${PROJECT_ROOT}/requirements.txt"
@@ -156,22 +145,10 @@ setup_venv() {
 run_worker() {
     echo -e "${BLUE}Starting worker with Metal/MPS...${NC}"
 
-    # Activate virtual environment if it exists
-    if [ -d "$VENV_DIR" ]; then
-        source "$VENV_DIR/bin/activate"
-    fi
+    # Note: .venv-native is not used — system Python has all deps via pip install -e .
 
     # Ensure Homebrew binaries (including ffmpeg) are in PATH
     export PATH="/opt/homebrew/bin:$PATH"
-
-    # Verify ChromaDB is running
-    echo "Checking ChromaDB connection..."
-    if ! curl -s "http://${CHROMA_HOST}:${CHROMA_PORT}/api/v2/heartbeat" > /dev/null 2>&1; then
-        echo -e "${RED}Error: ChromaDB not accessible at http://${CHROMA_HOST}:${CHROMA_PORT}${NC}"
-        echo -e "${YELLOW}Start ChromaDB with: docker-compose up -d chromadb${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}✓ ChromaDB is running${NC}"
 
     # Verify uploads directory
     if [ ! -d "$UPLOADS_DIR" ]; then
@@ -189,7 +166,6 @@ run_worker() {
     echo "  Device: $DEVICE"
     echo "  Model: $MODEL_NAME"
     echo "  Precision: $MODEL_PRECISION"
-    echo "  ChromaDB: http://${CHROMA_HOST}:${CHROMA_PORT}"
     echo "  Uploads: $UPLOADS_DIR"
     echo ""
 
@@ -199,12 +175,7 @@ run_worker() {
     echo ""
 
     cd "$PROJECT_ROOT"
-    # Use venv Python if available, otherwise fall back to $PYTHON
-    if [ -f "$VENV_DIR/bin/python" ]; then
-        exec "$VENV_DIR/bin/python" -m tkr_docusearch.processing.worker_webhook
-    else
-        exec $PYTHON -m tkr_docusearch.processing.worker_webhook
-    fi
+    exec python3 -m tkr_docusearch.processing.worker_webhook
 }
 
 show_help() {
@@ -234,13 +205,11 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Environment Variables:${NC}
   DEVICE              GPU device (default: mps)
-  MODEL_NAME          Model to use (default: vidore/colpali-v1.2)
-  CHROMA_HOST         ChromaDB host (default: localhost)
-  CHROMA_PORT         ChromaDB port (default: 8001)
+  MODEL_NAME          Model to use (default: default)
 
 ${YELLOW}Notes:${NC}
   - Requires macOS 12.3+ for Metal/MPS support
-  - ChromaDB and Copyparty still run in Docker
+  - Worker uses Koji (embedded DB) for storage
   - Worker runs on http://0.0.0.0:8002
 EOF
 }

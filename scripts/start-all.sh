@@ -2,18 +2,17 @@
 # ============================================================================
 # DocuSearch - Start All Services (macOS)
 # ============================================================================
-# Starts the complete DocuSearch stack with native Metal GPU support:
-# - ChromaDB (Docker) - Vector database
-# - Copyparty (Docker) - File upload server
-# - Processing Worker (Native) - Document processing with Metal GPU
+# Starts the complete DocuSearch stack natively (no Docker):
+# - Processing Worker - Document processing with Metal GPU + Koji DB
+# - Research API - LLM-powered document Q&A
+# - Frontend - React 19 SPA
+# - Ngrok - Tunnel for vision mode (optional)
 #
 # Usage:
-#   ./scripts/start-all.sh [--cpu|--gpu|--docker-only]
+#   ./scripts/start-all.sh [--no-vision]
 #
 # Options:
-#   --cpu          Run worker in Docker (CPU only, no setup needed)
-#   --gpu          Run worker natively with Metal GPU (default, requires setup)
-#   --docker-only  Start only Docker services (no worker)
+#   --no-vision    Disable vision mode (skip ngrok tunnel)
 # ============================================================================
 
 set -e
@@ -40,13 +39,13 @@ NC='\033[0m'
 # Configuration
 # ============================================================================
 
-MODE="${1:-gpu}"  # Default to GPU mode
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-3333}
 ACTUAL_DEVICE=""  # Will be set to 'mps' or 'cpu' during worker startup
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
-COMPOSE_DIR="${PROJECT_ROOT}/docker"
+SHIKOMI_PID_FILE="${PROJECT_ROOT}/.shikomi.pid"
+SHIKOMI_BINARY="${PROJECT_ROOT}/bin/shikomi-worker"
 VISION_ENABLED=true  # Vision mode enabled by default
 
 # ============================================================================
@@ -76,80 +75,38 @@ print_status() {
     fi
 }
 
-check_docker() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Error: Docker not found${NC}"
-        echo "Please install Docker Desktop: https://www.docker.com/products/docker-desktop"
-        exit 1
+check_infrastructure() {
+    echo -e "${CYAN}Infrastructure:${NC}\n"
+
+    # Koji database
+    local koji_path="${KOJI_DB_PATH:-data/koji.db}"
+    if [ -e "$koji_path" ]; then
+        print_status "Koji DB" "ok" "Found at $koji_path"
+    else
+        print_status "Koji DB" "info" "Will be created at $koji_path on first use"
     fi
 
-    if ! docker info &> /dev/null 2>&1; then
-        # Check if auto-start is enabled (default: true)
-        local auto_start="${AUTO_START_DOCKER:-true}"
+    # Shikomi embedding service
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    local shikomi_host="${shikomi_target%%:*}"
+    local shikomi_port="${shikomi_target##*:}"
 
-        if [ "$auto_start" = "true" ]; then
-            echo -e "${YELLOW}Docker not running. Starting Docker Desktop...${NC}"
-
-            # Start Docker Desktop (OS-specific)
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                # macOS
-                open -a Docker
-            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-                # Linux
-                echo -e "${YELLOW}Attempting to start Docker service...${NC}"
-                if command -v systemctl &> /dev/null; then
-                    sudo systemctl start docker
-                else
-                    echo -e "${RED}Error: Cannot auto-start Docker on this system${NC}"
-                    echo "Please start Docker manually"
-                    exit 1
-                fi
-            else
-                echo -e "${RED}Error: Unsupported OS for auto-start${NC}"
-                echo "Please start Docker Desktop manually"
-                exit 1
-            fi
-
-            # Wait for Docker daemon to be ready
-            echo -n "  Waiting for Docker daemon"
-            local max_wait=60
-            local waited=0
-
-            while ! docker info &> /dev/null 2>&1; do
-                if [ $waited -ge $max_wait ]; then
-                    echo ""
-                    echo -e "${RED}Error: Docker failed to start after ${max_wait}s${NC}"
-                    echo "Please check Docker Desktop and try again"
-                    echo ""
-                    echo "Troubleshooting:"
-                    echo "  1. Check if Docker Desktop is installed"
-                    echo "  2. Try starting Docker Desktop manually"
-                    echo "  3. Check system resources (CPU, memory)"
-                    echo "  4. Set AUTO_START_DOCKER=false to disable auto-start"
-                    exit 1
-                fi
-
-                echo -n "."
-                sleep 2
-                waited=$((waited + 2))
-            done
-
-            echo ""
-            echo -e "${GREEN}✓ Docker started successfully (${waited}s)${NC}"
-
-            # Give Docker a moment to stabilize
-            sleep 3
-        else
-            echo -e "${RED}Error: Docker daemon not running${NC}"
-            echo "Please start Docker Desktop or set AUTO_START_DOCKER=true in .env"
-            exit 1
-        fi
+    if python3 -c "
+import socket; s = socket.socket(); s.settimeout(2)
+s.connect(('$shikomi_host', $shikomi_port)); s.close()
+" 2>/dev/null; then
+        print_status "Shikomi" "ok" "Embedding service reachable at $shikomi_target"
+    else
+        print_status "Shikomi" "warn" "Not reachable at $shikomi_target (embeddings will fail)"
+        echo -e "    ${BLUE}→${NC} Start Shikomi or set SHIKOMI_GRPC_TARGET in .env"
     fi
+
+    echo ""
 }
 
 check_ports() {
-    local ports=("8000" "8001" "8002" "8004" "$FRONTEND_PORT")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
+    local ports=("8002" "8004" "$FRONTEND_PORT")
+    local port_names=("Worker" "Research API" "Frontend")
 
     for i in "${!ports[@]}"; do
         local port="${ports[$i]}"
@@ -162,46 +119,75 @@ check_ports() {
     done
 }
 
-start_docker_services() {
-    echo -e "\n${CYAN}Starting Docker services...${NC}\n"
+start_shikomi() {
+    echo -e "\n${CYAN}Starting Shikomi embedding service...${NC}\n"
 
-    cd "$COMPOSE_DIR"
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    local shikomi_host="${shikomi_target%%:*}"
+    local shikomi_port="${shikomi_target##*:}"
 
-    if [ "$MODE" = "gpu" ]; then
-        # Use native worker override
-        docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml up -d
-    else
-        # Standard Docker setup (CPU worker)
-        docker-compose up -d
+    # Check if already running
+    if python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('$shikomi_host', $shikomi_port)); s.close()" 2>/dev/null; then
+        print_status "Shikomi" "ok" "Already running at $shikomi_target"
+        return
     fi
 
-    cd "$PROJECT_ROOT"
-
-    # Wait for services to be ready
-    echo -e "\n${CYAN}Waiting for services to be ready...${NC}\n"
-    sleep 3
-
-    # Check ChromaDB
-    if curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
-        print_status "ChromaDB" "ok" "Running on http://localhost:8001"
-    else
-        print_status "ChromaDB" "error" "Not responding"
+    # Check if binary exists
+    if [ ! -x "$SHIKOMI_BINARY" ]; then
+        print_status "Shikomi" "warn" "Binary not found at $SHIKOMI_BINARY"
+        echo -e "    ${BLUE}→${NC} Build: cd tkr-koji && cargo build --release --features server -p shikomi"
+        echo -e "    ${BLUE}→${NC} Copy:  cp target/release/shikomi-worker ${SHIKOMI_BINARY}"
+        return
     fi
 
-    # Check Copyparty
-    if curl -s http://localhost:8000/ > /dev/null 2>&1; then
-        print_status "Copyparty" "ok" "Running on http://localhost:8000"
-    else
-        print_status "Copyparty" "error" "Not responding"
-    fi
-
-    # Check worker (if in Docker mode)
-    if [ "$MODE" = "cpu" ]; then
-        if curl -s http://localhost:8002/health > /dev/null 2>&1; then
-            print_status "Worker (Docker)" "ok" "Running on http://localhost:8002 (CPU)"
+    # Check for stale PID
+    if [ -f "$SHIKOMI_PID_FILE" ]; then
+        local old_pid=$(cat "$SHIKOMI_PID_FILE")
+        if ps -p "$old_pid" > /dev/null 2>&1; then
+            print_status "Shikomi" "warn" "Already running (PID: $old_pid)"
+            return
         else
-            print_status "Worker (Docker)" "warn" "Starting..."
+            rm -f "$SHIKOMI_PID_FILE"
         fi
+    fi
+
+    # Determine mode: use --mock unless SHIKOMI_USE_MOCK=false
+    local mock_flag="--mock"
+    if [ "${SHIKOMI_USE_MOCK:-true}" = "false" ]; then
+        mock_flag=""
+    fi
+
+    # Start shikomi
+    # shikomi-worker expects IP address, not hostname
+    local listen_addr="$shikomi_host"
+    if [ "$listen_addr" = "localhost" ]; then
+        listen_addr="127.0.0.1"
+    fi
+    nohup "$SHIKOMI_BINARY" --listen "$listen_addr:$shikomi_port" $mock_flag > logs/shikomi.log 2>&1 &
+    local shikomi_pid=$!
+    echo $shikomi_pid > "$SHIKOMI_PID_FILE"
+
+    # Wait for it to be reachable
+    local count=0
+    local max_wait=5
+    while [ $count -lt $max_wait ]; do
+        if python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('$shikomi_host', $shikomi_port)); s.close()" 2>/dev/null; then
+            if [ -n "$mock_flag" ]; then
+                print_status "Shikomi" "ok" "Running in mock mode at $shikomi_target (PID: $shikomi_pid)"
+            else
+                print_status "Shikomi" "ok" "Running at $shikomi_target (PID: $shikomi_pid)"
+            fi
+            return
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    if ps -p "$shikomi_pid" > /dev/null 2>&1; then
+        print_status "Shikomi" "warn" "Started but not yet reachable (check logs/shikomi.log)"
+    else
+        print_status "Shikomi" "error" "Failed to start (check logs/shikomi.log)"
+        rm -f "$SHIKOMI_PID_FILE"
     fi
 }
 
@@ -209,8 +195,7 @@ start_native_worker() {
     # Check Metal availability first
     echo -e "\n${CYAN}Checking Metal/MPS availability...${NC}\n"
 
-    # Use the check from run-worker-native.sh
-    if ./scripts/run-worker-native.sh check > /dev/null 2>&1; then
+    if python3 -c "import torch; exit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null; then
         ACTUAL_DEVICE="mps"
         echo -e "${GREEN}✓ Metal/MPS available - using GPU acceleration${NC}\n"
         echo -e "\n${CYAN}Starting native worker with Metal GPU...${NC}\n"
@@ -219,13 +204,6 @@ start_native_worker() {
         echo -e "${YELLOW}⚠ Metal/MPS not available - falling back to CPU${NC}"
         echo -e "${YELLOW}Note: Worker will run in CPU mode (slower)${NC}\n"
         echo -e "\n${CYAN}Starting native worker (CPU mode)...${NC}\n"
-    fi
-
-    # Check if virtual environment exists
-    if [ ! -d ".venv-native" ]; then
-        echo -e "${YELLOW}Virtual environment not found. Running setup...${NC}\n"
-        ./scripts/run-worker-native.sh setup
-        echo ""
     fi
 
     # Check if worker is already running
@@ -239,15 +217,9 @@ start_native_worker() {
         fi
     fi
 
-    # Check ChromaDB is running first
-    if ! curl -s http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
-        print_status "Worker (Native)" "error" "ChromaDB not running (required for worker)"
-        return
-    fi
-
-    # Start worker in background using bash script
-    # The script will handle venv activation and all environment setup
-    nohup bash -c "cd '${PROJECT_ROOT}' && ./scripts/run-worker-native.sh run" > logs/worker-native.log 2>&1 &
+    # Start worker in background
+    # exec in run-worker-native.sh replaces bash with Python, preserving the PID
+    nohup "${PROJECT_ROOT}/scripts/run-worker-native.sh" run > logs/worker-native.log 2>&1 &
     local worker_pid=$!
     echo $worker_pid > "$WORKER_PID_FILE"
 
@@ -506,37 +478,44 @@ show_summary() {
     echo -e "\n${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║${NC}  ${GREEN}Services Started Successfully${NC}                        ${BLUE}║${NC}"
     echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
-    echo -e "\n${CYAN}Available Services:${NC}"
-    echo -e "  ${GREEN}→${NC} React Frontend:   ${BLUE}http://localhost:$FRONTEND_PORT${NC} (React 19)"
-    echo -e "  ${GREEN}→${NC} Copyparty:        ${BLUE}http://localhost:8000${NC} (File upload)"
-    echo -e "  ${GREEN}→${NC} ChromaDB:         ${BLUE}http://localhost:8001${NC}"
-    echo -e "  ${GREEN}→${NC} Worker API:       ${BLUE}http://localhost:8002${NC}"
-    echo -e "  ${GREEN}→${NC} Worker Status:    ${BLUE}http://localhost:8002/status${NC}"
-    echo -e "  ${GREEN}→${NC} Research API:     ${BLUE}http://localhost:8004${NC}"
+    echo -e "\n${CYAN}Services:${NC}"
+    echo -e "  ${GREEN}→${NC} Frontend:     ${BLUE}http://localhost:$FRONTEND_PORT${NC}"
+    echo -e "  ${GREEN}→${NC} Worker API:   ${BLUE}http://localhost:8002${NC}"
+    echo -e "  ${GREEN}→${NC} Research API: ${BLUE}http://localhost:8004${NC}"
 
-    if [ "$MODE" = "gpu" ]; then
-        if [ "$ACTUAL_DEVICE" = "mps" ]; then
-            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
-        elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
-            echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Native (CPU fallback - MPS unavailable)${NC}"
-        else
-            echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native${NC}"
-        fi
-        echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
-        echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
-        echo -e "  ${BLUE}ℹ${NC} Frontend waits for worker to be ready (model loading ~10s)"
+    echo -e "\n${CYAN}Infrastructure:${NC}"
+    local koji_path="${KOJI_DB_PATH:-data/koji.db}"
+    if [ -e "$koji_path" ]; then
+        echo -e "  ${GREEN}→${NC} Koji DB:     ${koji_path}"
     else
-        echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Docker (CPU only)${NC}"
-        echo -e "  ${BLUE}ℹ${NC} For GPU: ${YELLOW}./scripts/start-all.sh --gpu${NC}"
+        echo -e "  ${YELLOW}→${NC} Koji DB:     ${koji_path} (will create on first use)"
     fi
+
+    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
+    if python3 -c "
+import socket; s = socket.socket(); s.settimeout(1)
+s.connect(('${shikomi_target%%:*}', ${shikomi_target##*:})); s.close()
+" 2>/dev/null; then
+        echo -e "  ${GREEN}→${NC} Shikomi:     ${shikomi_target} (connected)"
+    else
+        echo -e "  ${YELLOW}→${NC} Shikomi:     ${shikomi_target} (not reachable)"
+    fi
+
+    if [ "$ACTUAL_DEVICE" = "mps" ]; then
+        echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native with Metal GPU (MPS)${NC}"
+    elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+        echo -e "\n${CYAN}Worker Mode:${NC} ${YELLOW}Native (CPU fallback - MPS unavailable)${NC}"
+    else
+        echo -e "\n${CYAN}Worker Mode:${NC} ${GREEN}Native${NC}"
+    fi
+    echo -e "  ${BLUE}ℹ${NC} Logs: ${YELLOW}logs/worker-native.log${NC}"
+    echo -e "  ${BLUE}ℹ${NC} PID file: ${YELLOW}.worker.pid${NC}"
 
     echo -e "\n${CYAN}Management:${NC}"
     echo -e "  ${GREEN}→${NC} Stop all:      ${YELLOW}./scripts/stop-all.sh${NC}"
-    echo -e "  ${GREEN}→${NC} View logs:     ${YELLOW}docker-compose -f docker/docker-compose.yml logs -f${NC}"
+    echo -e "  ${GREEN}→${NC} View logs:     ${YELLOW}tail -f logs/*.log${NC}"
 
-    if [ "$MODE" = "gpu" ]; then
-        echo -e "  ${GREEN}→${NC} Worker logs:   ${YELLOW}tail -f logs/worker-native.log${NC}"
-    fi
+    echo -e "  ${GREEN}→${NC} Worker logs:   ${YELLOW}tail -f logs/worker-native.log${NC}"
 
     echo ""
 }
@@ -549,35 +528,20 @@ ${YELLOW}Usage:${NC}
   ./scripts/start-all.sh [options]
 
 ${YELLOW}Options:${NC}
-  --gpu          Run worker natively with Metal GPU (default, 10-20x faster)
-  --cpu          Run worker in Docker with CPU (simpler, slower)
-  --docker-only  Start only Docker services (no worker)
   --no-vision    Disable vision mode (skip ngrok tunnel)
   --help         Show this help message
 
 ${YELLOW}Examples:${NC}
-  # Start with Metal GPU and vision mode (default)
+  # Start all services (default)
   ./scripts/start-all.sh
-  ./scripts/start-all.sh --gpu
-
-  # Start with CPU (no GPU setup required)
-  ./scripts/start-all.sh --cpu
 
   # Start without vision mode (no ngrok)
   ./scripts/start-all.sh --no-vision
 
-  # Combine options
-  ./scripts/start-all.sh --gpu --no-vision
-
-  # Start only ChromaDB and Copyparty
-  ./scripts/start-all.sh --docker-only
-
 ${YELLOW}Services:${NC}
-  - ChromaDB:    Vector database (http://localhost:8001)
-  - Copyparty:   File upload server (http://localhost:8000)
-  - Worker:      Document processing (http://localhost:8002)
-  - Ngrok:       Tunnel for vision mode (auto-managed)
+  - Worker:      Document processing + Koji DB (http://localhost:8002)
   - Research:    AI research API (http://localhost:8004)
+  - Ngrok:       Tunnel for vision mode (auto-managed)
   - Frontend:    React UI (http://localhost:$FRONTEND_PORT)
 
 ${YELLOW}Vision Mode:${NC}
@@ -586,8 +550,7 @@ ${YELLOW}Vision Mode:${NC}
   - Use --no-vision to disable and skip ngrok
 
 ${YELLOW}Requirements:${NC}
-  - Docker Desktop running
-  - For --gpu mode: Run './scripts/run-worker-native.sh setup' first
+  - Run './scripts/run-worker-native.sh setup' first
   - For vision mode: ngrok installed and configured (optional)
 
 ${YELLOW}See Also:${NC}
@@ -610,14 +573,10 @@ for arg in "$@"; do
             show_help
             exit 0
             ;;
-        --gpu|gpu)
-            MODE="gpu"
-            ;;
-        --cpu|cpu)
-            MODE="cpu"
-            ;;
+        --gpu|gpu|--cpu|cpu)
+            ;; # All modes run natively now
         --docker-only)
-            MODE="docker-only"
+            echo -e "${YELLOW}Docker mode removed — all services run natively now.${NC}"
             ;;
         --no-vision)
             VISION_ENABLED=false
@@ -632,11 +591,6 @@ for arg in "$@"; do
     esac
 done
 
-# Set default mode if not specified
-if [ -z "$MODE" ] || [ "$MODE" = "true" ]; then
-    MODE="gpu"
-fi
-
 # Create logs directory
 mkdir -p logs
 
@@ -644,31 +598,17 @@ mkdir -p logs
 print_header
 
 echo -e "${CYAN}Mode:${NC} "
-case "$MODE" in
-    gpu)
-        echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
-        ;;
-    cpu)
-        echo -e "${YELLOW}Docker worker (CPU only)${NC}\n"
-        ;;
-    docker-only)
-        echo -e "${BLUE}Docker services only (no worker)${NC}\n"
-        ;;
-esac
+echo -e "${GREEN}Native worker with Metal GPU acceleration${NC}\n"
 
 # Pre-flight checks
 echo -e "${CYAN}Pre-flight checks...${NC}\n"
-check_docker
-print_status "Docker" "ok" "Running"
-
+check_infrastructure
 check_ports
 echo ""
 
 # Start services
-start_docker_services
-
-if [ "$MODE" = "gpu" ]; then
-    start_native_worker
+start_shikomi
+start_native_worker
 
     # Wait for worker to be fully ready before starting ngrok
     if [ "$VISION_ENABLED" = true ]; then
@@ -685,46 +625,18 @@ if [ "$MODE" = "gpu" ]; then
         done
     fi
 
-    start_ngrok  # Start ngrok after worker is ready
-    start_research_api
-    start_frontend
-elif [ "$MODE" = "docker-only" ]; then
-    print_status "Worker" "info" "Skipped (--docker-only mode)"
-    print_status "Ngrok" "info" "Skipped (--docker-only mode)"
-    print_status "Research API" "info" "Skipped (--docker-only mode)"
-    print_status "Frontend" "info" "Skipped (--docker-only mode)"
-elif [ "$MODE" = "cpu" ]; then
-    # Wait for worker to be ready before starting ngrok
-    if [ "$VISION_ENABLED" = true ]; then
-        max_wait=20
-        wait_count=0
-        echo -e "\n${CYAN}Waiting for worker to be ready before starting ngrok...${NC}\n"
-
-        while [ $wait_count -lt $max_wait ]; do
-            if curl -s http://localhost:8002/health > /dev/null 2>&1; then
-                break
-            fi
-            sleep 1
-            wait_count=$((wait_count + 1))
-        done
-    fi
-
-    start_ngrok  # Start ngrok in CPU mode too
-    start_frontend
-fi
+start_ngrok  # Start ngrok after worker is ready
+start_research_api
+start_frontend
 
 # Show summary
 show_summary
 
 # Final message
-if [ "$MODE" = "gpu" ]; then
-    if [ "$ACTUAL_DEVICE" = "mps" ]; then
-        echo -e "${GREEN}🚀 DocuSearch is running with Metal GPU acceleration!${NC}\n"
-    elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
-        echo -e "${YELLOW}🚀 DocuSearch is running (CPU mode - MPS unavailable)${NC}\n"
-    else
-        echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
-    fi
+if [ "$ACTUAL_DEVICE" = "mps" ]; then
+    echo -e "${GREEN}DocuSearch is running with Metal GPU acceleration!${NC}\n"
+elif [ "$ACTUAL_DEVICE" = "cpu" ]; then
+    echo -e "${YELLOW}DocuSearch is running (CPU mode - MPS unavailable)${NC}\n"
 else
-    echo -e "${GREEN}🚀 DocuSearch is running!${NC}\n"
+    echo -e "${GREEN}DocuSearch is running!${NC}\n"
 fi

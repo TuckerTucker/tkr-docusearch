@@ -17,8 +17,16 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from tkr_docusearch.storage import ChromaClient
-from tkr_docusearch.storage.compression import decompress_structure_metadata
+import json
+
+from tkr_docusearch.storage import KojiClient
+
+
+def decompress_structure_metadata(data: str) -> dict:
+    """Deserialize structure from JSON string."""
+    if isinstance(data, dict):
+        return data
+    return json.loads(data) if data else {}
 from tkr_docusearch.storage.metadata_schema import DocumentStructure
 
 logger = logging.getLogger(__name__)
@@ -235,21 +243,22 @@ def parse_chunk_id(chunk_id: str) -> tuple[str, int]:
     return doc_id, chunk_num
 
 
-def get_chroma_client() -> ChromaClient:
-    """Get ChromaDB client instance.
+def get_storage_client() -> KojiClient:
+    """Get Koji storage client instance.
 
     Returns:
-        ChromaClient instance
+        KojiClient instance.
 
     Raises:
-        HTTPException: If client initialization fails
+        HTTPException: If client initialization fails.
     """
     try:
-        import os
+        from tkr_docusearch.config.koji_config import KojiConfig
 
-        host = os.getenv("CHROMA_HOST", "localhost")
-        port = int(os.getenv("CHROMA_PORT", "8001"))
-        return ChromaClient(host=host, port=port)
+        config = KojiConfig.from_env()
+        client = KojiClient(config)
+        client.open()
+        return client
     except Exception as e:
         logger.error(f"Failed to initialize ChromaDB client: {e}")
         raise HTTPException(
@@ -328,15 +337,13 @@ async def get_page_structure(doc_id: str, page: int):
         )
 
     try:
-        client = get_chroma_client()
+        client = get_storage_client()
 
-        # Query visual collection for this doc_id and page using embedding ID
-        # Format: {doc_id}-page{page:03d}
-        embedding_id = f"{doc_id}-page{page:03d}"
-        visual_data = client._visual_collection.get(ids=[embedding_id], include=["metadatas"])
+        # Query page from Koji by ID
+        page_id = f"{doc_id}-page{page:03d}"
+        page_data = client.get_page(page_id)
 
-        # Check if page exists
-        if not visual_data["ids"]:
+        if page_data is None:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -346,10 +353,9 @@ async def get_page_structure(doc_id: str, page: int):
                 },
             )
 
-        metadata = visual_data["metadatas"][0]
-
-        # Check if structure metadata exists
-        has_structure = metadata.get("has_structure", False)
+        metadata = page_data
+        structure_raw = metadata.get("structure")
+        has_structure = structure_raw is not None and structure_raw != {}
 
         if not has_structure:
             # Return empty structure
@@ -552,13 +558,12 @@ async def get_chunk_context(doc_id: str, chunk_id: str):
                 },
             )
 
-        client = get_chroma_client()
+        client = get_storage_client()
 
-        # Query text collection by chunk_id
-        text_data = client._text_collection.get(ids=[full_chunk_id], include=["metadatas"])
+        # Query chunk from Koji by ID
+        chunk_data = client.get_chunk(full_chunk_id)
 
-        # Check if chunk exists
-        if not text_data["ids"]:
+        if chunk_data is None:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -568,15 +573,16 @@ async def get_chunk_context(doc_id: str, chunk_id: str):
                 },
             )
 
-        metadata = text_data["metadatas"][0]
+        metadata = chunk_data
+        context = metadata.get("context") or {}
 
         # Extract basic fields
-        text_content = metadata.get("full_text") or metadata.get("text_preview", "")
-        parent_heading = metadata.get("parent_heading")
-        parent_heading_level = metadata.get("parent_heading_level")
-        section_path = metadata.get("section_path", "")
-        element_type = metadata.get("element_type", "text")
-        is_page_boundary = metadata.get("is_page_boundary", False)
+        text_content = metadata.get("text", "")
+        parent_heading = context.get("parent_heading") if isinstance(context, dict) else None
+        parent_heading_level = context.get("parent_heading_level") if isinstance(context, dict) else None
+        section_path = context.get("section_path", "") if isinstance(context, dict) else ""
+        element_type = context.get("element_type", "text") if isinstance(context, dict) else "text"
+        is_page_boundary = context.get("is_page_boundary", False) if isinstance(context, dict) else False
 
         # Parse JSON array fields (ChromaDB stores lists as JSON strings)
         related_tables = parse_json_field(metadata.get("related_tables", []))

@@ -4,7 +4,6 @@
 # ============================================================================
 # Stops all DocuSearch services:
 # - Native worker (if running)
-# - Docker containers (ChromaDB, Copyparty, Worker)
 # - Cleans up PID files
 #
 # Usage:
@@ -39,12 +38,12 @@ NC='\033[0m'
 # ============================================================================
 
 FORCE_MODE="${1:-}"
-FRONTEND_PORT=${VITE_FRONTEND_PORT:-42007}
+FRONTEND_PORT=${VITE_FRONTEND_PORT:-3333}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
-COMPOSE_DIR="${PROJECT_ROOT}/docker"
+SHIKOMI_PID_FILE="${PROJECT_ROOT}/.shikomi.pid"
 
 # ============================================================================
 # Functions
@@ -120,16 +119,26 @@ stop_native_worker() {
         print_status "Worker" "info" "No PID file found (may not be running)"
     fi
 
-    # Check for orphaned worker processes
-    local orphaned_pids=$(pgrep -f "worker_webhook.py" || true)
-    if [ -n "$orphaned_pids" ]; then
-        print_status "Orphaned workers" "warn" "Found: $orphaned_pids"
+    # Check for orphaned worker processes (also kill by port)
+    local port_pid=$(lsof -Pi :8002 -sTCP:LISTEN -t 2>/dev/null || true)
+    local orphaned_pids=$(pgrep -f "worker_webhook" || true)
+    local all_pids=$(echo -e "${orphaned_pids}\n${port_pid}" | sort -u | grep -v '^$' || true)
+    if [ -n "$all_pids" ]; then
+        print_status "Orphaned workers" "warn" "Found: $(echo $all_pids | tr '\n' ' ')"
 
         if [ "$FORCE_MODE" = "--force" ]; then
-            pkill -9 -f "worker_webhook.py" || true
+            echo "$all_pids" | xargs kill -9 2>/dev/null || true
             print_status "Orphaned workers" "ok" "Killed"
         else
-            echo -e "\n  ${YELLOW}Run with --force to kill orphaned workers${NC}"
+            echo "$all_pids" | xargs kill 2>/dev/null || true
+            sleep 2
+            # Force kill any remaining
+            for pid in $all_pids; do
+                if ps -p "$pid" > /dev/null 2>&1; then
+                    kill -9 "$pid" 2>/dev/null || true
+                fi
+            done
+            print_status "Orphaned workers" "ok" "Stopped"
         fi
     fi
 }
@@ -256,6 +265,52 @@ stop_ngrok() {
     fi
 }
 
+stop_shikomi() {
+    echo -e "\n${CYAN}Stopping Shikomi embedding service...${NC}\n"
+
+    if [ -f "$SHIKOMI_PID_FILE" ]; then
+        local shikomi_pid=$(cat "$SHIKOMI_PID_FILE")
+
+        if ps -p "$shikomi_pid" > /dev/null 2>&1; then
+            print_status "Shikomi PID" "info" "Found: $shikomi_pid"
+            kill "$shikomi_pid" 2>/dev/null || true
+
+            local count=0
+            while ps -p "$shikomi_pid" > /dev/null 2>&1 && [ $count -lt 5 ]; do
+                sleep 1
+                count=$((count + 1))
+            done
+
+            if ps -p "$shikomi_pid" > /dev/null 2>&1; then
+                kill -9 "$shikomi_pid" 2>/dev/null || true
+            fi
+
+            print_status "Shikomi" "ok" "Stopped"
+        else
+            print_status "Shikomi" "info" "Not running (stale PID file)"
+        fi
+
+        rm -f "$SHIKOMI_PID_FILE"
+        print_status "Shikomi PID file" "ok" "Cleaned up"
+    else
+        print_status "Shikomi" "info" "No PID file found (may not be running)"
+    fi
+
+    # Kill orphaned shikomi-worker processes
+    local orphaned=$(pgrep -f "shikomi-worker" || true)
+    if [ -n "$orphaned" ]; then
+        print_status "Orphaned shikomi" "warn" "Found: $orphaned"
+        echo "$orphaned" | xargs kill 2>/dev/null || true
+        sleep 1
+        for pid in $orphaned; do
+            if ps -p "$pid" > /dev/null 2>&1; then
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+        done
+        print_status "Orphaned shikomi" "ok" "Stopped"
+    fi
+}
+
 stop_frontend() {
     echo -e "\n${CYAN}Stopping React frontend...${NC}\n"
 
@@ -303,13 +358,13 @@ stop_frontend() {
         print_status "Frontend" "info" "No PID file found (may not be running)"
     fi
 
-    # Check for orphaned npm/vite processes on port 3000
-    local orphaned_pids=$(lsof -ti :3000 2>/dev/null || true)
+    # Check for orphaned npm/vite processes on port 3333
+    local orphaned_pids=$(lsof -ti :$FRONTEND_PORT 2>/dev/null || true)
     if [ -n "$orphaned_pids" ]; then
-        print_status "Orphaned frontend processes" "warn" "Found on port 3000: $orphaned_pids"
+        print_status "Orphaned frontend processes" "warn" "Found on port 3333: $orphaned_pids"
 
         if [ "$FORCE_MODE" = "--force" ]; then
-            lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+            lsof -ti :$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
             print_status "Orphaned frontend processes" "ok" "Killed"
         else
             echo -e "\n  ${YELLOW}Run with --force to kill orphaned frontend processes${NC}"
@@ -317,62 +372,12 @@ stop_frontend() {
     fi
 }
 
-stop_docker_services() {
-    echo -e "\n${CYAN}Stopping Docker services...${NC}\n"
-
-    cd "$COMPOSE_DIR"
-
-    # Try to stop with both compose files
-    local stopped=false
-
-    # First try with native worker override
-    if docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml ps -q 2>/dev/null | grep -q .; then
-        print_status "Docker Compose" "info" "Using native worker configuration"
-        docker-compose -f docker-compose.yml -f docker-compose.native-worker.yml down
-        stopped=true
-    fi
-
-    # Then try standard compose
-    if ! $stopped && docker-compose ps -q 2>/dev/null | grep -q .; then
-        print_status "Docker Compose" "info" "Using standard configuration"
-        docker-compose down
-        stopped=true
-    fi
-
-    if ! $stopped; then
-        print_status "Docker services" "info" "No running containers found"
-    else
-        print_status "Docker services" "ok" "Stopped"
-    fi
-
-    cd "$PROJECT_ROOT"
-
-    # Verify containers are stopped
-    echo ""
-    local running_containers=$(docker ps --filter "name=docusearch" --format "{{.Names}}" || true)
-
-    if [ -n "$running_containers" ]; then
-        print_status "Containers" "warn" "Some containers still running:"
-        echo "$running_containers" | while read -r container; do
-            echo -e "    ${YELLOW}→${NC} $container"
-        done
-
-        if [ "$FORCE_MODE" = "--force" ]; then
-            echo -e "\n  ${YELLOW}Force stopping containers...${NC}"
-            docker stop $(docker ps --filter "name=docusearch" -q) 2>/dev/null || true
-            docker rm $(docker ps --filter "name=docusearch" -aq) 2>/dev/null || true
-            print_status "Containers" "ok" "Force stopped"
-        fi
-    else
-        print_status "Containers" "ok" "All stopped"
-    fi
-}
 
 check_ports() {
     echo -e "\n${CYAN}Checking ports...${NC}\n"
 
-    local ports=("8000" "8001" "8002" "8004" "3000")
-    local port_names=("Copyparty" "ChromaDB" "Worker" "Research API" "Frontend")
+    local ports=("8002" "$FRONTEND_PORT")
+    local port_names=("Worker" "Frontend")
     local ports_in_use=false
 
     for i in "${!ports[@]}"; do
@@ -441,14 +446,6 @@ cleanup_logs() {
         print_status "Ngrok log" "info" "Saved (${log_size}): logs/ngrok.log"
     fi
 
-    # Show recent Docker logs
-    cd "$COMPOSE_DIR"
-    local compose_logs=$(docker-compose logs --tail=0 2>/dev/null || echo "")
-    cd "$PROJECT_ROOT"
-
-    if [ -n "$compose_logs" ]; then
-        print_status "Docker logs" "info" "Available via: docker-compose -f docker/docker-compose.yml logs"
-    fi
 }
 
 show_summary() {
@@ -463,7 +460,7 @@ show_summary() {
     if [ "$FORCE_MODE" != "--force" ]; then
         echo -e "\n${CYAN}Troubleshooting:${NC}"
         echo -e "  ${GREEN}→${NC} Force stop: ${YELLOW}./scripts/stop-all.sh --force${NC}"
-        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :3000,8000,8001,8002,8004${NC}"
+        echo -e "  ${GREEN}→${NC} Check ports: ${YELLOW}lsof -i :$FRONTEND_PORT,8002${NC}"
     fi
 
     echo ""
@@ -483,11 +480,9 @@ ${YELLOW}Options:${NC}
 ${YELLOW}What gets stopped:${NC}
   1. Native worker process (if running)
   2. Research API process (if running)
-  3. Docker containers:
-     - docusearch-copyparty (Copyparty upload server)
-     - docusearch-chromadb (ChromaDB vector database)
-     - docusearch-worker (Worker, if in Docker mode)
-  4. Cleanup:
+  3. Frontend dev server (if running)
+  4. Ngrok tunnel (if running)
+  5. Cleanup:
      - PID files
      - Orphaned processes
 
@@ -500,16 +495,13 @@ ${YELLOW}Examples:${NC}
 
 ${YELLOW}Troubleshooting:${NC}
   # Check what's running on DocuSearch ports
-  lsof -i :3000,8000,8001,8002,8004
+  lsof -i :$FRONTEND_PORT,8002
 
   # Manually kill worker
   pkill -f worker_webhook.py
 
   # Manually kill research API
   pkill -f src/api/research.py
-
-  # Force remove Docker containers
-  docker rm -f \$(docker ps -aq --filter "name=docusearch")
 
 ${YELLOW}See Also:${NC}
   - Start services: ./scripts/start-all.sh
@@ -553,7 +545,7 @@ stop_native_worker
 stop_research_api
 stop_frontend
 stop_ngrok
-stop_docker_services
+stop_shikomi
 cleanup_python_cache
 check_ports
 cleanup_logs

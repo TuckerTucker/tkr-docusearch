@@ -223,9 +223,6 @@ const upload = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
-
-      // Copyparty expects "act=bput" for basic PUT uploads
-      formData.append('act', 'bput');
       formData.append('f', file);
 
       // Track upload progress
@@ -280,13 +277,6 @@ const upload = {
       // Configure and send
       // Use relative URL to work through Vite proxy in dev and direct in prod
       xhr.open('POST', '/uploads/');
-
-      // Add Basic Authentication for Copyparty uploader account
-      // Credentials are loaded from environment variables (VITE_UPLOAD_USERNAME/PASSWORD)
-      const username = import.meta.env.VITE_UPLOAD_USERNAME || 'uploader';
-      const password = import.meta.env.VITE_UPLOAD_PASSWORD || 'docusearch2024';
-      const credentials = btoa(`${username}:${password}`);
-      xhr.setRequestHeader('Authorization', `Basic ${credentials}`);
 
       xhr.timeout = REQUEST_TIMEOUT;
       xhr.send(formData);

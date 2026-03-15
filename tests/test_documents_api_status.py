@@ -18,7 +18,7 @@ Test coverage includes:
 Target: 90%+ coverage for status endpoints
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 import pytest
@@ -47,127 +47,237 @@ def client(app):
 
 
 @pytest.fixture
-def mock_chroma_client():
-    """Create mock ChromaDB client with sample data."""
-    with patch("tkr_docusearch.processing.documents_api.get_chroma_client") as mock_get:
+def mock_koji_client():
+    """Create mock KojiClient with configurable return values."""
+    with patch("tkr_docusearch.processing.documents_api.get_storage_client") as mock_get:
         mock_client = Mock()
         mock_get.return_value = mock_client
         yield mock_client
 
 
 @pytest.fixture
-def sample_visual_data() -> Dict[str, Any]:
-    """Sample visual embeddings data from ChromaDB."""
+def sample_koji_documents() -> List[Dict[str, Any]]:
+    """Sample document records from KojiClient.list_documents()."""
+    return [
+        {
+            "doc_id": "doc1",
+            "filename": "report.pdf",
+            "format": "pdf",
+            "num_pages": 2,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        },
+        {
+            "doc_id": "doc2",
+            "filename": "presentation.pptx",
+            "format": "pptx",
+            "num_pages": 1,
+            "created_at": "2025-10-25T10:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        },
+        {
+            "doc_id": "doc3",
+            "filename": "spreadsheet.xlsx",
+            "format": "xlsx",
+            "num_pages": 1,
+            "created_at": "2025-10-24T08:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        },
+        {
+            "doc_id": "doc4",
+            "filename": "audio.mp3",
+            "format": "mp3",
+            "num_pages": 1,
+            "created_at": "2025-10-23T06:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        },
+    ]
+
+
+@pytest.fixture
+def sample_koji_pages() -> Dict[str, List[Dict[str, Any]]]:
+    """Sample page records keyed by doc_id, from KojiClient.get_pages_for_document()."""
     return {
-        "ids": [
-            "doc1-page001",
-            "doc1-page002",
-            "doc2-page001",
-            "doc3-page001",
-            "doc4-page001",
+        "doc1": [
+            {
+                "id": "doc1-page001",
+                "doc_id": "doc1",
+                "page_num": 1,
+                "structure": {
+                    "image_path": "/page_images/doc1/page001.png",
+                    "thumb_path": "/page_images/doc1/page001_thumb.jpg",
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+            {
+                "id": "doc1-page002",
+                "doc_id": "doc1",
+                "page_num": 2,
+                "structure": {
+                    "image_path": "/page_images/doc1/page002.png",
+                    "thumb_path": "/page_images/doc1/page002_thumb.jpg",
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
         ],
-        "metadatas": [
+        "doc2": [
             {
-                "doc_id": "doc1",
-                "filename": "report.pdf",
-                "page": 1,
-                "timestamp": "2025-10-26T12:00:00Z",
-                "image_path": "/page_images/doc1/page001.png",
-                "thumb_path": "/page_images/doc1/page001_thumb.jpg",
-            },
-            {
-                "doc_id": "doc1",
-                "filename": "report.pdf",
-                "page": 2,
-                "timestamp": "2025-10-26T12:00:00Z",
-                "image_path": "/page_images/doc1/page002.png",
-                "thumb_path": "/page_images/doc1/page002_thumb.jpg",
-            },
-            {
+                "id": "doc2-page001",
                 "doc_id": "doc2",
-                "filename": "presentation.pptx",
-                "page": 1,
-                "timestamp": "2025-10-25T10:00:00Z",
-                "image_path": "/page_images/doc2/page001.png",
-                "thumb_path": "/page_images/doc2/page001_thumb.jpg",
+                "page_num": 1,
+                "structure": {
+                    "image_path": "/page_images/doc2/page001.png",
+                    "thumb_path": "/page_images/doc2/page001_thumb.jpg",
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
             },
+        ],
+        "doc3": [
             {
+                "id": "doc3-page001",
                 "doc_id": "doc3",
-                "filename": "spreadsheet.xlsx",
-                "page": 1,
-                "timestamp": "2025-10-24T08:00:00Z",
-                "image_path": "/page_images/doc3/page001.png",
-                "thumb_path": "/page_images/doc3/page001_thumb.jpg",
+                "page_num": 1,
+                "structure": {
+                    "image_path": "/page_images/doc3/page001.png",
+                    "thumb_path": "/page_images/doc3/page001_thumb.jpg",
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
             },
+        ],
+        "doc4": [
             {
+                "id": "doc4-page001",
                 "doc_id": "doc4",
-                "filename": "audio.mp3",
-                "page": 1,
-                "timestamp": "2025-10-23T06:00:00Z",
-                "image_path": None,
-                "thumb_path": None,
+                "page_num": 1,
+                "structure": {"image_path": None, "thumb_path": None},
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
             },
         ],
     }
 
 
 @pytest.fixture
-def sample_text_data() -> Dict[str, Any]:
-    """Sample text embeddings data from ChromaDB."""
+def sample_koji_chunks() -> Dict[str, List[Dict[str, Any]]]:
+    """Sample chunk records keyed by doc_id, from KojiClient.get_chunks_for_document()."""
     return {
-        "ids": [
-            "doc1-chunk0000",
-            "doc1-chunk0001",
-            "doc2-chunk0000",
-            "doc3-chunk0000",
-            "doc4-chunk0000",
-            "doc4-chunk0001",
+        "doc1": [
+            {
+                "id": "doc1-chunk0000",
+                "doc_id": "doc1",
+                "page_num": 1,
+                "text": "Sample text from report chunk 0",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
+            {
+                "id": "doc1-chunk0001",
+                "doc_id": "doc1",
+                "page_num": 1,
+                "text": "Sample text from report chunk 1",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
         ],
-        "metadatas": [
+        "doc2": [
             {
-                "doc_id": "doc1",
-                "filename": "report.pdf",
-                "chunk_id": 0,
-                "timestamp": "2025-10-26T12:00:00Z",
-                "full_text": "Sample text from report chunk 0",
-            },
-            {
-                "doc_id": "doc1",
-                "filename": "report.pdf",
-                "chunk_id": 1,
-                "timestamp": "2025-10-26T12:00:00Z",
-                "full_text": "Sample text from report chunk 1",
-            },
-            {
+                "id": "doc2-chunk0000",
                 "doc_id": "doc2",
-                "filename": "presentation.pptx",
-                "chunk_id": 0,
-                "timestamp": "2025-10-25T10:00:00Z",
-                "full_text": "Sample presentation text",
+                "page_num": 1,
+                "text": "Sample presentation text",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
             },
+        ],
+        "doc3": [
             {
+                "id": "doc3-chunk0000",
                 "doc_id": "doc3",
-                "filename": "spreadsheet.xlsx",
-                "chunk_id": 0,
-                "timestamp": "2025-10-24T08:00:00Z",
-                "full_text": "Sample spreadsheet text",
+                "page_num": 1,
+                "text": "Sample spreadsheet text",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
+        ],
+        "doc4": [
+            {
+                "id": "doc4-chunk0000",
+                "doc_id": "doc4",
+                "page_num": 1,
+                "text": "Audio transcript chunk 0",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
             },
             {
+                "id": "doc4-chunk0001",
                 "doc_id": "doc4",
-                "filename": "audio.mp3",
-                "chunk_id": 0,
-                "timestamp": "2025-10-23T06:00:00Z",
-                "full_text": "Audio transcript chunk 0",
-            },
-            {
-                "doc_id": "doc4",
-                "filename": "audio.mp3",
-                "chunk_id": 1,
-                "timestamp": "2025-10-23T06:00:00Z",
-                "full_text": "Audio transcript chunk 1",
+                "page_num": 1,
+                "text": "Audio transcript chunk 1",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
             },
         ],
     }
+
+
+def _configure_mock_koji(
+    mock_client: Mock,
+    documents: List[Dict[str, Any]],
+    pages: Dict[str, List[Dict[str, Any]]],
+    chunks: Dict[str, List[Dict[str, Any]]],
+) -> None:
+    """Wire up a mock KojiClient with the given data.
+
+    Args:
+        mock_client: Mock KojiClient instance.
+        documents: Return value for list_documents().
+        pages: Mapping of doc_id to page records for get_pages_for_document().
+        chunks: Mapping of doc_id to chunk records for get_chunks_for_document().
+    """
+    mock_client.list_documents.return_value = documents
+    mock_client.get_pages_for_document.side_effect = lambda doc_id: pages.get(doc_id, [])
+    mock_client.get_chunks_for_document.side_effect = lambda doc_id: chunks.get(doc_id, [])
 
 
 # ============================================================================
@@ -179,11 +289,10 @@ class TestListDocuments:
     """Test suite for GET /documents endpoint."""
 
     def test_list_documents_basic(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test basic document listing returns correct structure."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents")
 
@@ -207,11 +316,10 @@ class TestListDocuments:
         assert len(data["documents"]) == 4
 
     def test_list_documents_schema_validation(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test each document item has correct schema."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents")
         data = response.json()
@@ -236,10 +344,9 @@ class TestListDocuments:
         assert isinstance(doc["collections"], list)
         assert isinstance(doc["has_images"], bool)
 
-    def test_list_documents_empty_database(self, client, mock_chroma_client):
+    def test_list_documents_empty_database(self, client, mock_koji_client):
         """Test listing documents when database is empty."""
-        mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
+        _configure_mock_koji(mock_koji_client, [], {}, {})
 
         response = client.get("/documents")
 
@@ -254,11 +361,10 @@ class TestPagination:
     """Test suite for pagination parameters."""
 
     def test_pagination_default_values(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test default pagination values (limit=50, offset=0)."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents")
         data = response.json()
@@ -267,11 +373,10 @@ class TestPagination:
         assert data["offset"] == 0  # Default offset
 
     def test_pagination_custom_limit(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test custom limit parameter."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?limit=2")
         data = response.json()
@@ -281,11 +386,10 @@ class TestPagination:
         assert len(data["documents"]) == 2  # Only 2 results returned
 
     def test_pagination_custom_offset(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test custom offset parameter."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?offset=2")
         data = response.json()
@@ -295,11 +399,10 @@ class TestPagination:
         assert len(data["documents"]) == 2  # Remaining 2 documents
 
     def test_pagination_limit_and_offset(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test limit and offset together."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?limit=1&offset=1")
         data = response.json()
@@ -310,11 +413,10 @@ class TestPagination:
         assert len(data["documents"]) == 1
 
     def test_pagination_offset_beyond_results(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test offset beyond available results."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?offset=100")
         data = response.json()
@@ -346,11 +448,10 @@ class TestFileTypeFiltering:
     """Test suite for file type filtering."""
 
     def test_filter_all_documents(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test filtering with 'all' group (default)."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?file_type_group=all")
         data = response.json()
@@ -359,11 +460,10 @@ class TestFileTypeFiltering:
         assert data["total"] == 4  # All documents
 
     def test_filter_pdf_documents(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test filtering by PDF file type."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?file_type_group=pdf")
         data = response.json()
@@ -373,11 +473,10 @@ class TestFileTypeFiltering:
         assert data["documents"][0]["filename"] == "report.pdf"
 
     def test_filter_audio_documents(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test filtering by audio file type."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?file_type_group=audio")
         data = response.json()
@@ -387,11 +486,10 @@ class TestFileTypeFiltering:
         assert data["documents"][0]["filename"] == "audio.mp3"
 
     def test_filter_office_documents(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test filtering by office document types."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?file_type_group=office")
         data = response.json()
@@ -404,11 +502,10 @@ class TestFileTypeFiltering:
         assert any(doc["filename"].endswith(".pptx") for doc in data["documents"])
 
     def test_filter_text_documents(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test filtering by text document types."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?file_type_group=text")
         data = response.json()
@@ -419,11 +516,10 @@ class TestFileTypeFiltering:
         assert data["total"] == 0
 
     def test_filter_no_matches(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test file type filter with no matching documents."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         # Filter by images when no image documents exist
         response = client.get("/documents?file_type_group=images")
@@ -438,11 +534,10 @@ class TestSearchFiltering:
     """Test suite for filename search filtering."""
 
     def test_search_exact_match(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test search with exact filename match."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?search=report.pdf")
         data = response.json()
@@ -452,11 +547,10 @@ class TestSearchFiltering:
         assert data["documents"][0]["filename"] == "report.pdf"
 
     def test_search_partial_match(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test search with partial filename match."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?search=report")
         data = response.json()
@@ -466,11 +560,10 @@ class TestSearchFiltering:
         assert "report" in data["documents"][0]["filename"].lower()
 
     def test_search_case_insensitive(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test search is case-insensitive."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?search=REPORT")
         data = response.json()
@@ -480,11 +573,10 @@ class TestSearchFiltering:
         assert "report" in data["documents"][0]["filename"].lower()
 
     def test_search_no_matches(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test search with no matching documents."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?search=nonexistent")
         data = response.json()
@@ -494,11 +586,10 @@ class TestSearchFiltering:
         assert len(data["documents"]) == 0
 
     def test_search_multiple_matches(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test search returning multiple matches."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         # Search for extension that appears in multiple files
         response = client.get("/documents?search=.pdf")
@@ -513,11 +604,10 @@ class TestSorting:
     """Test suite for sorting options."""
 
     def test_sort_newest_first_default(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test default sort order is newest first."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents")
         data = response.json()
@@ -529,11 +619,10 @@ class TestSorting:
         assert data["documents"][-1]["doc_id"] == "doc4"
 
     def test_sort_newest_first_explicit(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test explicit newest_first sorting."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?sort_by=newest_first")
         data = response.json()
@@ -543,11 +632,10 @@ class TestSorting:
         assert data["documents"][-1]["doc_id"] == "doc4"
 
     def test_sort_oldest_first(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test oldest_first sorting."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?sort_by=oldest_first")
         data = response.json()
@@ -559,11 +647,10 @@ class TestSorting:
         assert data["documents"][-1]["doc_id"] == "doc1"
 
     def test_sort_name_ascending(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test alphabetical sorting (A-Z)."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?sort_by=name_asc")
         data = response.json()
@@ -573,11 +660,10 @@ class TestSorting:
         assert filenames == sorted(filenames, key=str.lower)
 
     def test_sort_name_descending(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test reverse alphabetical sorting (Z-A)."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?sort_by=name_desc")
         data = response.json()
@@ -591,11 +677,10 @@ class TestCombinedFilters:
     """Test suite for combined filter scenarios."""
 
     def test_search_and_file_type(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test combining search and file type filters."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get("/documents?search=report&file_type_group=pdf")
         data = response.json()
@@ -605,11 +690,10 @@ class TestCombinedFilters:
         assert data["documents"][0]["filename"] == "report.pdf"
 
     def test_all_filters_combined(
-        self, client, mock_chroma_client, sample_visual_data, sample_text_data
+        self, client, mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks
     ):
         """Test all filters combined (search, file_type, sort, pagination)."""
-        mock_chroma_client._visual_collection.get.return_value = sample_visual_data
-        mock_chroma_client._text_collection.get.return_value = sample_text_data
+        _configure_mock_koji(mock_koji_client, sample_koji_documents, sample_koji_pages, sample_koji_chunks)
 
         response = client.get(
             "/documents?search=.&file_type_group=all&sort_by=name_asc&limit=2&offset=0"
@@ -632,44 +716,62 @@ class TestCombinedFilters:
 class TestGetDocument:
     """Test suite for GET /documents/{doc_id} endpoint."""
 
-    def test_get_document_success(self, client, mock_chroma_client):
+    def test_get_document_success(self, client, mock_koji_client):
         """Test successful document retrieval."""
         doc_id = "valid-doc-id-12345678"
 
-        mock_chroma_client._visual_collection.get.return_value = {
-            "ids": [f"{doc_id}-page001", f"{doc_id}-page002"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 1,
-                    "timestamp": "2025-10-26T12:00:00Z",
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "test.pdf",
+            "format": "pdf",
+            "num_pages": 2,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        }
+        mock_koji_client.get_pages_for_document.return_value = [
+            {
+                "id": f"{doc_id}-page001",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "structure": {
                     "image_path": f"/page_images/{doc_id}/page001.png",
                     "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
                 },
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 2,
-                    "timestamp": "2025-10-26T12:00:00Z",
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+            {
+                "id": f"{doc_id}-page002",
+                "doc_id": doc_id,
+                "page_num": 2,
+                "structure": {
                     "image_path": f"/page_images/{doc_id}/page002.png",
                     "thumb_path": f"/page_images/{doc_id}/page002_thumb.jpg",
                 },
-            ],
-        }
-
-        mock_chroma_client._text_collection.get.return_value = {
-            "ids": [f"{doc_id}-chunk0000"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "chunk_id": 0,
-                    "full_text": "Sample text content",
-                    "timestamp": "2025-10-26T12:00:00Z",
-                }
-            ],
-        }
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+        ]
+        mock_koji_client.get_chunks_for_document.return_value = [
+            {
+                "id": f"{doc_id}-chunk0000",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "text": "Sample text content",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
+        ]
 
         response = client.get(f"/documents/{doc_id}")
 
@@ -684,36 +786,48 @@ class TestGetDocument:
         assert len(data["chunks"]) == 1
         assert "metadata" in data
 
-    def test_get_document_schema_validation(self, client, mock_chroma_client):
+    def test_get_document_schema_validation(self, client, mock_koji_client):
         """Test response schema for document detail."""
         doc_id = "valid-doc-id-12345678"
 
-        mock_chroma_client._visual_collection.get.return_value = {
-            "ids": [f"{doc_id}-page001"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 1,
-                    "timestamp": "2025-10-26T12:00:00Z",
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "test.pdf",
+            "format": "pdf",
+            "num_pages": 1,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        }
+        mock_koji_client.get_pages_for_document.return_value = [
+            {
+                "id": f"{doc_id}-page001",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "structure": {
                     "image_path": f"/page_images/{doc_id}/page001.png",
                     "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
-                }
-            ],
-        }
-
-        mock_chroma_client._text_collection.get.return_value = {
-            "ids": [f"{doc_id}-chunk0000"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "chunk_id": 0,
-                    "full_text": "Sample text",
-                    "timestamp": "2025-10-26T12:00:00Z",
-                }
-            ],
-        }
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+        ]
+        mock_koji_client.get_chunks_for_document.return_value = [
+            {
+                "id": f"{doc_id}-chunk0000",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "text": "Sample text",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
+        ]
 
         response = client.get(f"/documents/{doc_id}")
         data = response.json()
@@ -749,12 +863,11 @@ class TestGetDocument:
             assert "end_time" in chunk or chunk["end_time"] is None
             assert "has_timestamps" in chunk
 
-    def test_get_document_not_found(self, client, mock_chroma_client):
+    def test_get_document_not_found(self, client, mock_koji_client):
         """Test 404 error for non-existent document."""
         doc_id = "nonexistent-doc-id-12345"
 
-        mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
+        mock_koji_client.get_document.return_value = None
 
         response = client.get(f"/documents/{doc_id}")
 
@@ -764,12 +877,8 @@ class TestGetDocument:
         assert data["detail"]["code"] == "DOCUMENT_NOT_FOUND"
         assert doc_id in data["detail"]["details"]["doc_id"]
 
-    def test_get_document_invalid_id_format(self, client, mock_chroma_client):
+    def test_get_document_invalid_id_format(self, client, mock_koji_client):
         """Test 400 error for invalid doc_id format."""
-        # Mock empty response for all queries
-        mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
-
         # Invalid IDs that will trigger validation errors
         # Pattern: ^[a-zA-Z0-9\-]{8,64}$
         invalid_ids = [
@@ -790,25 +899,36 @@ class TestGetDocument:
             data = response.json()
             assert data["detail"]["code"] == "INVALID_DOC_ID", f"Wrong error code for {invalid_id}"
 
-    def test_get_document_visual_only(self, client, mock_chroma_client):
-        """Test document with only visual embeddings."""
+    def test_get_document_visual_only(self, client, mock_koji_client):
+        """Test document with only visual embeddings (pages but no chunks)."""
         doc_id = "visual-only-doc-12345678"
 
-        mock_chroma_client._visual_collection.get.return_value = {
-            "ids": [f"{doc_id}-page001"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "image.png",
-                    "page": 1,
-                    "timestamp": "2025-10-26T12:00:00Z",
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "image.png",
+            "format": "png",
+            "num_pages": 1,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
+        }
+        mock_koji_client.get_pages_for_document.return_value = [
+            {
+                "id": f"{doc_id}-page001",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "structure": {
                     "image_path": f"/page_images/{doc_id}/page001.png",
                     "thumb_path": f"/page_images/{doc_id}/page001_thumb.jpg",
-                }
-            ],
-        }
-
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+        ]
+        mock_koji_client.get_chunks_for_document.return_value = []
 
         response = client.get(f"/documents/{doc_id}")
 
@@ -818,24 +938,33 @@ class TestGetDocument:
         assert len(data["chunks"]) == 0
         assert "visual" in data["metadata"]["collections"]
 
-    def test_get_document_text_only(self, client, mock_chroma_client):
-        """Test document with only text embeddings."""
+    def test_get_document_text_only(self, client, mock_koji_client):
+        """Test document with only text embeddings (chunks but no pages)."""
         doc_id = "text-only-doc-12345678"
 
-        mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
-
-        mock_chroma_client._text_collection.get.return_value = {
-            "ids": [f"{doc_id}-chunk0000"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "text.txt",
-                    "chunk_id": 0,
-                    "full_text": "Text content",
-                    "timestamp": "2025-10-26T12:00:00Z",
-                }
-            ],
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "text.txt",
+            "format": "txt",
+            "num_pages": 0,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
         }
+        mock_koji_client.get_pages_for_document.return_value = []
+        mock_koji_client.get_chunks_for_document.return_value = [
+            {
+                "id": f"{doc_id}-chunk0000",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "text": "Text content",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            },
+        ]
 
         response = client.get(f"/documents/{doc_id}")
 
@@ -845,14 +974,12 @@ class TestGetDocument:
         assert len(data["chunks"]) == 1
         assert "text" in data["metadata"]["collections"]
 
-    def test_get_document_database_error(self, client, mock_chroma_client):
+    def test_get_document_database_error(self, client, mock_koji_client):
         """Test 500 error on database failure."""
         doc_id = "valid-doc-id-12345678"
 
         # Simulate database error
-        mock_chroma_client._visual_collection.get.side_effect = Exception(
-            "Database connection failed"
-        )
+        mock_koji_client.get_document.side_effect = Exception("Database connection failed")
 
         response = client.get(f"/documents/{doc_id}")
 
@@ -869,9 +996,9 @@ class TestGetDocument:
 class TestEdgeCases:
     """Test suite for edge cases and error conditions."""
 
-    def test_list_documents_database_error(self, client, mock_chroma_client):
+    def test_list_documents_database_error(self, client, mock_koji_client):
         """Test 500 error when database fails during list operation."""
-        mock_chroma_client._visual_collection.get.side_effect = Exception("Database error")
+        mock_koji_client.list_documents.side_effect = Exception("Database error")
 
         response = client.get("/documents")
 
@@ -879,38 +1006,52 @@ class TestEdgeCases:
         data = response.json()
         assert data["detail"]["code"] == "DATABASE_ERROR"
 
-    def test_document_counts_accuracy(self, client, mock_chroma_client):
+    def test_document_counts_accuracy(self, client, mock_koji_client):
         """Test that page_count and chunk_count are accurate."""
         doc_id = "count-test-doc-12345678"
 
-        # Create 3 pages and 5 chunks
-        mock_chroma_client._visual_collection.get.return_value = {
-            "ids": [f"{doc_id}-page{i:03d}" for i in range(1, 4)],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": i,
-                    "timestamp": "2025-10-26T12:00:00Z",
-                    "image_path": f"/page_images/{doc_id}/page{i:03d}.png",
-                }
-                for i in range(1, 4)
-            ],
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "test.pdf",
+            "format": "pdf",
+            "num_pages": 3,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
         }
 
-        mock_chroma_client._text_collection.get.return_value = {
-            "ids": [f"{doc_id}-chunk{i:04d}" for i in range(5)],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "chunk_id": i,
-                    "full_text": f"Chunk {i}",
-                    "timestamp": "2025-10-26T12:00:00Z",
-                }
-                for i in range(5)
-            ],
-        }
+        # Create 3 pages and 5 chunks
+        mock_koji_client.get_pages_for_document.return_value = [
+            {
+                "id": f"{doc_id}-page{i:03d}",
+                "doc_id": doc_id,
+                "page_num": i,
+                "structure": {
+                    "image_path": f"/page_images/{doc_id}/page{i:03d}.png",
+                },
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            }
+            for i in range(1, 4)
+        ]
+
+        mock_koji_client.get_chunks_for_document.return_value = [
+            {
+                "id": f"{doc_id}-chunk{i:04d}",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "text": f"Chunk {i}",
+                "embedding": None,
+                "context": None,
+                "word_count": None,
+                "start_time": None,
+                "end_time": None,
+            }
+            for i in range(5)
+        ]
 
         response = client.get(f"/documents/{doc_id}")
         data = response.json()
@@ -920,36 +1061,58 @@ class TestEdgeCases:
         assert len(data["pages"]) == 3
         assert len(data["chunks"]) == 5
 
-    def test_pages_sorted_by_number(self, client, mock_chroma_client):
+    def test_pages_sorted_by_number(self, client, mock_koji_client):
         """Test that pages are sorted by page number."""
         doc_id = "sort-test-doc-12345678"
 
-        # Return pages in random order
-        mock_chroma_client._visual_collection.get.return_value = {
-            "ids": [f"{doc_id}-page003", f"{doc_id}-page001", f"{doc_id}-page002"],
-            "metadatas": [
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 3,
-                    "timestamp": "2025-10-26T12:00:00Z",
-                },
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 1,
-                    "timestamp": "2025-10-26T12:00:00Z",
-                },
-                {
-                    "doc_id": doc_id,
-                    "filename": "test.pdf",
-                    "page": 2,
-                    "timestamp": "2025-10-26T12:00:00Z",
-                },
-            ],
+        mock_koji_client.get_document.return_value = {
+            "doc_id": doc_id,
+            "filename": "test.pdf",
+            "format": "pdf",
+            "num_pages": 3,
+            "created_at": "2025-10-26T12:00:00Z",
+            "metadata": None,
+            "markdown": None,
         }
 
-        mock_chroma_client._text_collection.get.return_value = {"ids": [], "metadatas": []}
+        # Return pages in random order
+        mock_koji_client.get_pages_for_document.return_value = [
+            {
+                "id": f"{doc_id}-page003",
+                "doc_id": doc_id,
+                "page_num": 3,
+                "structure": {},
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+            {
+                "id": f"{doc_id}-page001",
+                "doc_id": doc_id,
+                "page_num": 1,
+                "structure": {},
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+            {
+                "id": f"{doc_id}-page002",
+                "doc_id": doc_id,
+                "page_num": 2,
+                "structure": {},
+                "embedding": None,
+                "image": None,
+                "thumb": None,
+                "width": None,
+                "height": None,
+            },
+        ]
+
+        mock_koji_client.get_chunks_for_document.return_value = []
 
         response = client.get(f"/documents/{doc_id}")
         data = response.json()

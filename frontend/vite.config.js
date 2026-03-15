@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => {
   // See frontend/src/config/urls.js for centralized configuration
   const workerUrl = env.VITE_WORKER_URL || 'http://localhost:8002'
   const researchUrl = env.VITE_RESEARCH_API_URL || 'http://localhost:8004'
-  const copypartyUrl = env.VITE_COPYPARTY_URL || 'http://localhost:8000'
   const workerWsUrl = workerUrl.replace(/^http/, 'ws')
 
   return {
@@ -35,7 +34,7 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     host: '0.0.0.0', // Listen on all network interfaces
-    port: parseInt(env.VITE_FRONTEND_PORT) || 42007,
+    port: parseInt(env.VITE_FRONTEND_PORT) || 3333,
     allowedHosts, // Read from VITE_ALLOWED_HOSTS in .env
     proxy: {
       // Research API endpoints (separate service on port 8004)
@@ -90,9 +89,9 @@ export default defineConfig(({ mode }) => {
         ws: true,
         changeOrigin: true,
       },
-      // Copyparty uploads
+      // File uploads (served by worker)
       '/uploads': {
-        target: copypartyUrl,
+        target: workerUrl,
         changeOrigin: true,
       },
     },

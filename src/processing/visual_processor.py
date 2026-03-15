@@ -109,13 +109,31 @@ class VisualProcessor:
             logger.debug(f"Generated embeddings for {len(images)} pages " f"in {elapsed_ms:.0f}ms")
 
             # Create results
+            # batch_output is list[bytes] from ShikomiClient or
+            # BatchEmbeddingOutput from MockColPaliModel
+            embeddings = (
+                batch_output.embeddings
+                if hasattr(batch_output, "embeddings")
+                else batch_output
+            )
             for idx, page in enumerate(batch_pages):
+                embedding = embeddings[idx]
+                cls_token = (
+                    batch_output.cls_tokens[idx]
+                    if hasattr(batch_output, "cls_tokens")
+                    else None
+                )
+                seq_length = (
+                    batch_output.seq_lengths[idx]
+                    if hasattr(batch_output, "seq_lengths")
+                    else 0
+                )
                 result = VisualEmbeddingResult(
                     doc_id=doc_id,
                     page_num=page.page_num,
-                    embedding=batch_output["embeddings"][idx],
-                    cls_token=batch_output["cls_tokens"][idx],
-                    seq_length=batch_output["seq_lengths"][idx],
+                    embedding=embedding,
+                    cls_token=cls_token,
+                    seq_length=seq_length,
                     processing_time_ms=elapsed_ms / len(images),
                 )
                 all_results.append(result)

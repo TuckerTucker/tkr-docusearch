@@ -58,7 +58,7 @@ describe('useChunkNavigation', () => {
     // Mock window.location
     delete (window as any).location;
     (window as any).location = {
-      href: 'http://localhost:3000/documents/123',
+      href: 'http://localhost:3333/documents/123',
       search: '',
       pathname: '/documents/123',
     };

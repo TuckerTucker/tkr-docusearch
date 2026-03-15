@@ -3,16 +3,12 @@ Document processing pipeline.
 
 This module provides the complete document processing pipeline including:
 - Document parsing (Docling)
-- Visual embedding generation
-- Text embedding generation
-- Storage coordination
-
-For Wave 2, this uses mock implementations of embedding and storage agents.
-Wave 3 will integrate real implementations.
+- Visual embedding generation (Shikomi)
+- Text embedding generation (Shikomi)
+- Storage coordination (Koji)
 """
 
 from .docling_parser import DoclingParser, Page, ParsedDocument, ParsingError, TextChunk
-from .mocks import BatchEmbeddingOutput, MockEmbeddingEngine, MockStorageClient
 from .preview_generator import PreviewGenerator, PreviewResponse
 from .processor import (
     DocumentProcessor,
@@ -45,11 +41,7 @@ __all__ = [
     # Text processing
     "TextProcessor",
     "TextEmbeddingResult",
-    # Mocks (Wave 2)
-    "MockEmbeddingEngine",
-    "MockStorageClient",
-    "BatchEmbeddingOutput",
-    # Preview generation (Wave 2, Agent 3)
+    # Preview generation
     "PreviewGenerator",
     "PreviewResponse",
 ]

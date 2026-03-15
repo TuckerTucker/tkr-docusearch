@@ -668,7 +668,8 @@ def test_upload_creates_directory_if_not_exists(client, sample_pdf_content, tmp_
     assert not new_upload_dir.exists()
 
     monkeypatch.setattr(
-        "src.api.server.Path", lambda x: new_upload_dir if x == "data/uploads" else Path(x)
+        "tkr_docusearch.api.server.Path",
+        lambda x: new_upload_dir if x == "data/uploads" else Path(x),
     )
 
     files = {"file": ("test.pdf", io.BytesIO(sample_pdf_content), "application/pdf")}

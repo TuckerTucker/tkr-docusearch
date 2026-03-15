@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from tkr_docusearch.storage.chroma_client import ChromaClient
+from tkr_docusearch.storage.koji_client import KojiClient
 
 logger = logging.getLogger(__name__)
 
@@ -60,63 +60,40 @@ class ChunkMetadata:
 # ============================================================================
 
 
-def get_chunks_for_document(doc_id: str, chroma_client: ChromaClient) -> List[ChunkMetadata]:
-    """Query ChromaDB for all text chunks of a document.
+def get_chunks_for_document(doc_id: str, storage_client: KojiClient) -> List[ChunkMetadata]:
+    """Query Koji for all text chunks of a document.
 
     Args:
-        doc_id: Document identifier
-        chroma_client: ChromaDB client instance
+        doc_id: Document identifier.
+        storage_client: KojiClient instance.
 
     Returns:
-        List of ChunkMetadata sorted by page and position
+        List of ChunkMetadata sorted by page and position.
 
     Raises:
-        ChunkMarkupError: If query fails
-
-    Example:
-        >>> client = ChromaClient(host='localhost', port=8001)
-        >>> chunks = get_chunks_for_document('abc123', client)
-        >>> print(f"Found {len(chunks)} chunks")
+        ChunkMarkupError: If query fails.
     """
     try:
-        # Query text collection for all chunks of this document
-        text_data = chroma_client._text_collection.get(where={"doc_id": doc_id})
+        chunk_records = storage_client.get_chunks_for_document(doc_id)
 
-        if not text_data or not text_data.get("ids"):
+        if not chunk_records:
             logger.warning(f"No text chunks found for document: {doc_id}")
             return []
 
-        # Extract chunk metadata
         chunks = []
-        ids = text_data["ids"]
-        metadatas = text_data.get("metadatas", [])
-
-        for idx, embedding_id in enumerate(ids):
-            metadata = metadatas[idx] if idx < len(metadatas) else {}
-
-            # Parse chunk_id from embedding_id (format: "doc_id-chunk0000")
-            chunk_id = embedding_id
-
-            # Extract metadata fields
-            page = metadata.get("page", 1)
-            section_path = metadata.get("section_path", "")
-            text_content = metadata.get("full_text") or metadata.get("text_preview", "")
-            parent_heading = metadata.get("parent_heading")
-
+        for rec in chunk_records:
+            context = rec.get("context") or {}
             chunk = ChunkMetadata(
-                chunk_id=chunk_id,
-                embedding_id=embedding_id,
-                page=page,
-                section_path=section_path,
-                text_content=text_content,
-                parent_heading=parent_heading,
+                chunk_id=rec.get("id", ""),
+                embedding_id=rec.get("id", ""),
+                page=rec.get("page_num", 1),
+                section_path=context.get("section_path", "") if isinstance(context, dict) else "",
+                text_content=rec.get("text", ""),
+                parent_heading=context.get("parent_heading") if isinstance(context, dict) else None,
             )
             chunks.append(chunk)
 
-        # Sort by page number, then by text length (proxy for position)
-        # Note: ChromaDB doesn't store character offsets, so we estimate
         chunks.sort(key=lambda c: (c.page, len(c.text_content)))
-
         logger.info(f"Retrieved {len(chunks)} chunks for document {doc_id}")
         return chunks
 

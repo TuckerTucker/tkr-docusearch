@@ -13,7 +13,7 @@
 ./scripts/stop-all.sh
 ```
 
-**Primary Interface**: **http://localhost:3000** (React UI)
+**Primary Interface**: **http://localhost:3333** (React UI)
 **File Uploads**: **http://localhost:8000** (Copyparty)
 
 ---
@@ -84,13 +84,13 @@
 
 | Service | URL | Purpose | Notes |
 |---------|-----|---------|-------|
-| **React Frontend** | http://localhost:3000 | **Primary user interface** | Search, browse, research |
+| **React Frontend** | http://localhost:3333 | **Primary user interface** | Search, browse, research |
 | **Copyparty** | http://localhost:8000 | File upload server | Login: admin/admin |
 | **ChromaDB** | http://localhost:8001 | Vector database (backend) | API only |
 | **Worker API** | http://localhost:8002 | Processing API (backend) | API only |
 | **Research API** | http://localhost:8004 | LLM research (backend) | API only |
 
-**Primary Interface**: Use the React frontend at **http://localhost:3000** for all user interactions (search, document viewing, research).
+**Primary Interface**: Use the React frontend at **http://localhost:3333** for all user interactions (search, document viewing, research).
 
 **File Uploads**: The Copyparty server at port 8000 handles file uploads and requires authentication (admin/admin).
 

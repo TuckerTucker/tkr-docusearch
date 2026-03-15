@@ -8,6 +8,7 @@ Tests GET /documents/{doc_id}/pages/{page}/structure endpoint for:
 - 400 errors for invalid parameters
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tkr_docusearch.processing.api.structure_endpoints import router
-from tkr_docusearch.storage.compression import compress_structure_metadata
 from tkr_docusearch.storage.metadata_schema import (
     DocumentStructure,
     HeadingInfo,
@@ -32,9 +32,9 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def mock_chroma_client():
-    """Create mock ChromaDB client."""
-    with patch("tkr_docusearch.processing.api.structure_endpoints.get_chroma_client") as mock_get:
+def mock_koji_client():
+    """Create mock Koji client."""
+    with patch("tkr_docusearch.processing.api.structure_endpoints.get_storage_client") as mock_get:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         yield mock_client
@@ -96,32 +96,31 @@ def sample_structure():
     return structure
 
 
-def test_get_page_structure_success(mock_chroma_client, sample_structure):
+def _make_page_data(doc_id, page, structure=None, has_structure=True):
+    """Build a mock page dict as returned by KojiClient.get_page()."""
+    data = {
+        "id": f"{doc_id}-page{page:03d}",
+        "doc_id": doc_id,
+        "page_num": page,
+    }
+    if has_structure and structure is not None:
+        data["structure"] = structure.to_dict()
+    else:
+        data["structure"] = None
+    return data
+
+
+def test_get_page_structure_success(mock_koji_client, sample_structure):
     """Test successful retrieval of page structure."""
     doc_id = "test-doc-id-123456"
     page = 1
 
-    # Compress structure metadata
-    compressed = compress_structure_metadata(sample_structure.to_dict())
+    mock_koji_client.get_page.return_value = _make_page_data(
+        doc_id, page, sample_structure
+    )
 
-    # Mock ChromaDB response
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": [f"{doc_id}-page001"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "page": page,
-                "has_structure": True,
-                "structure": compressed,
-                "filename": "test.pdf",
-            }
-        ],
-    }
-
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
 
@@ -154,28 +153,17 @@ def test_get_page_structure_success(mock_chroma_client, sample_structure):
     assert data["coordinate_system"]["units"] == "points"
 
 
-def test_get_page_structure_empty(mock_chroma_client):
+def test_get_page_structure_empty(mock_koji_client):
     """Test page with no structure metadata."""
     doc_id = "test-doc-id-123456"
     page = 1
 
-    # Mock ChromaDB response (no structure)
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": [f"{doc_id}-page001"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "page": page,
-                "has_structure": False,
-                "filename": "test.pdf",
-            }
-        ],
-    }
+    mock_koji_client.get_page.return_value = _make_page_data(
+        doc_id, page, has_structure=False
+    )
 
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
 
@@ -188,18 +176,15 @@ def test_get_page_structure_empty(mock_chroma_client):
     assert data["summary"] is None
 
 
-def test_get_page_structure_page_not_found(mock_chroma_client):
+def test_get_page_structure_page_not_found(mock_koji_client):
     """Test 404 error for non-existent page."""
     doc_id = "test-doc-id-123456"
     page = 999
 
-    # Mock ChromaDB response (no results)
-    mock_chroma_client._visual_collection.get.return_value = {"ids": [], "metadatas": []}
+    mock_koji_client.get_page.return_value = None
 
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 404
     data = response.json()
     assert data["detail"]["code"] == "PAGE_NOT_FOUND"
@@ -207,61 +192,41 @@ def test_get_page_structure_page_not_found(mock_chroma_client):
     assert data["detail"]["details"]["page"] == page
 
 
-def test_get_page_structure_invalid_doc_id(mock_chroma_client):
+def test_get_page_structure_invalid_doc_id(mock_koji_client):
     """Test 400 error for invalid doc_id."""
-    # Use a doc_id that clearly doesn't match the pattern
     invalid_doc_id = "invalid_id_with_underscores_and_@special"
     page = 1
 
-    # Make request
     response = client.get(f"/api/documents/{invalid_doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 400
     data = response.json()
     assert data["detail"]["code"] == "INVALID_DOC_ID"
 
 
-def test_get_page_structure_invalid_page_number(mock_chroma_client):
+def test_get_page_structure_invalid_page_number(mock_koji_client):
     """Test 400 error for invalid page number."""
     doc_id = "test-doc-id-123456"
-    page = 0  # Invalid (must be >= 1)
+    page = 0
 
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 400
     data = response.json()
     assert data["detail"]["code"] == "INVALID_PAGE_NUMBER"
 
 
-def test_get_page_structure_multiple_pages(mock_chroma_client, sample_structure):
+def test_get_page_structure_multiple_pages(mock_koji_client, sample_structure):
     """Test filtering structure elements by page."""
     doc_id = "test-doc-id-123456"
     page = 2
 
-    # Compress structure metadata
-    compressed = compress_structure_metadata(sample_structure.to_dict())
+    mock_koji_client.get_page.return_value = _make_page_data(
+        doc_id, page, sample_structure
+    )
 
-    # Mock ChromaDB response
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": [f"{doc_id}-page002"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "page": page,
-                "has_structure": True,
-                "structure": compressed,
-                "filename": "test.pdf",
-            }
-        ],
-    }
-
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
 
@@ -279,7 +244,7 @@ def test_get_page_structure_multiple_pages(mock_chroma_client, sample_structure)
     assert len(data["pictures"]) == 0
 
 
-def test_get_page_structure_bbox_validation(mock_chroma_client):
+def test_get_page_structure_bbox_validation(mock_koji_client):
     """Test bounding box format in response."""
     doc_id = "test-doc-id-123456"
     page = 1
@@ -294,26 +259,12 @@ def test_get_page_structure_bbox_validation(mock_chroma_client):
         )
     ]
 
-    compressed = compress_structure_metadata(structure.to_dict())
+    mock_koji_client.get_page.return_value = _make_page_data(
+        doc_id, page, structure
+    )
 
-    # Mock ChromaDB response
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": [f"{doc_id}-page001"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "page": page,
-                "has_structure": True,
-                "structure": compressed,
-                "filename": "test.pdf",
-            }
-        ],
-    }
-
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
 
@@ -324,49 +275,36 @@ def test_get_page_structure_bbox_validation(mock_chroma_client):
     assert bbox["top"] == 50.9
 
 
-def test_get_page_structure_database_error(mock_chroma_client):
+def test_get_page_structure_database_error(mock_koji_client):
     """Test 500 error on database failure."""
     doc_id = "test-doc-id-123456"
     page = 1
 
-    # Mock database error
-    mock_chroma_client._visual_collection.get.side_effect = Exception("Database connection failed")
+    mock_koji_client.get_page.side_effect = Exception("Database connection failed")
 
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 500
     data = response.json()
     assert data["detail"]["code"] == "DATABASE_ERROR"
 
 
-def test_get_page_structure_missing_structure_data(mock_chroma_client):
-    """Test handling of has_structure=True but no structure data."""
+def test_get_page_structure_missing_structure_data(mock_koji_client):
+    """Test handling of structure field being None."""
     doc_id = "test-doc-id-123456"
     page = 1
 
-    # Mock ChromaDB response (has_structure=True but no structure field)
-    mock_chroma_client._visual_collection.get.return_value = {
-        "ids": [f"{doc_id}-page001"],
-        "metadatas": [
-            {
-                "doc_id": doc_id,
-                "page": page,
-                "has_structure": True,
-                # Missing "structure" field
-                "filename": "test.pdf",
-            }
-        ],
+    mock_koji_client.get_page.return_value = {
+        "id": f"{doc_id}-page001",
+        "doc_id": doc_id,
+        "page_num": page,
+        "structure": None,
     }
 
-    # Make request
     response = client.get(f"/api/documents/{doc_id}/pages/{page}/structure")
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
 
-    # Should return empty structure gracefully
     assert data["has_structure"] is False
     assert data["headings"] == []

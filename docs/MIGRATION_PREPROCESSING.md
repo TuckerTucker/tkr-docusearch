@@ -279,7 +279,7 @@ curl -X POST http://localhost:8004/api/research/ask \
 
 **Test in UI:**
 
-1. Open http://localhost:3000/research
+1. Open http://localhost:3333/research
 2. Submit a query: "Summarize the key findings"
 3. Look for the preprocessing badge below the answer:
    - "⚡ Preprocessed with compress"

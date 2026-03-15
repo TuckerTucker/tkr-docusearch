@@ -197,10 +197,7 @@ def validate_all(strict: bool = True) -> Dict[str, str]:
     logger.info("Validating environment configuration...")
 
     # Core required variables
-    required = [
-        "CHROMA_HOST",
-        "CHROMA_PORT",
-    ]
+    required = []
 
     # Optional variables with defaults
     optional = {
@@ -246,7 +243,6 @@ def print_env_summary() -> None:
     print("=" * 70)
     print(f"LLM Provider: {os.getenv('LLM_PROVIDER', 'openai')}")
     print(f"LLM Model: {os.getenv('LLM_MODEL', 'gpt-4')}")
-    print(f"ChromaDB: {os.getenv('CHROMA_HOST', 'localhost')}:{os.getenv('CHROMA_PORT', '8001')}")
     print(f"Worker Port: {os.getenv('WORKER_PORT', '8002')}")
     print(f"Research API Port: {os.getenv('RESEARCH_API_PORT', '8004')}")
     print(f"Device: {os.getenv('DEVICE', 'cpu')}")

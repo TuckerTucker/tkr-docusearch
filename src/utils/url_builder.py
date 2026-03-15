@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 logger = logging.getLogger(__name__)
 
 # Configuration
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3333")
 
 
 def build_details_url(
@@ -43,19 +43,19 @@ def build_details_url(
     Examples:
         >>> # Absolute URL for external tools (MCP, emails, webhooks)
         >>> build_details_url("abc123", absolute=True)
-        'http://localhost:3000/details/abc123'
+        'http://localhost:3333/details/abc123'
 
         >>> # With page navigation (visual documents)
         >>> build_details_url("abc123", page=5, absolute=True)
-        'http://localhost:3000/details/abc123?page=5'
+        'http://localhost:3333/details/abc123?page=5'
 
         >>> # With chunk navigation (text documents)
         >>> build_details_url("abc123", chunk_id="abc123-chunk0042", absolute=True)
-        'http://localhost:3000/details/abc123?chunk=abc123-chunk0042'
+        'http://localhost:3333/details/abc123?chunk=abc123-chunk0042'
 
         >>> # With both page and chunk (visual documents with chunk highlighting)
         >>> build_details_url("abc123", page=5, chunk_id="abc123-page5", absolute=True)
-        'http://localhost:3000/details/abc123?page=5&chunk=abc123-page5'
+        'http://localhost:3333/details/abc123?page=5&chunk=abc123-page5'
 
         >>> # Relative URL for API responses (frontend resolves to current origin)
         >>> build_details_url("abc123", page=5, absolute=False)
@@ -116,7 +116,7 @@ def add_details_url_to_source(source_dict: dict, absolute: bool = True) -> dict:
             "doc_id": "abc123",
             "page": 5,
             "chunk_id": "abc123-chunk0042",
-            "details_url": "http://localhost:3000/details/abc123?page=5&chunk=abc123-chunk0042"
+            "details_url": "http://localhost:3333/details/abc123?page=5&chunk=abc123-chunk0042"
         }
 
     Note:
