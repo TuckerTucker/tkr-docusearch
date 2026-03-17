@@ -86,7 +86,13 @@ class ShikomiClient:
             return
 
         target = self._config.grpc_target
-        self._channel = grpc.insecure_channel(target)
+        # 100MB to handle large multi-page PDFs with embedded images
+        max_msg = 100 * 1024 * 1024
+        options = [
+            ("grpc.max_send_message_length", max_msg),
+            ("grpc.max_receive_message_length", max_msg),
+        ]
+        self._channel = grpc.insecure_channel(target, options=options)
         self._stub = embedding_pb2_grpc.EmbeddingServiceStub(self._channel)
 
         logger.info(
@@ -164,7 +170,7 @@ class ShikomiClient:
     # -- embedding methods ---------------------------------------------------
 
     def embed_images(
-        self, images: list[Image.Image], batch_size: int = 4
+        self, images: list[Image.Image], batch_size: int = 1
     ) -> list[bytes]:
         """Embed page images via Shikomi workers.
 
@@ -172,10 +178,12 @@ class ShikomiClient:
         Returns packed multi-vector blobs for direct storage in Koji
         binary columns.
 
+        Images are sent one at a time to stay within gRPC message size
+        limits (large page images can exceed 4MB per image).
+
         Args:
             images: List of PIL Image objects.
-            batch_size: Number of images per batch (unused, batching is
-                handled server-side).
+            batch_size: Number of images per gRPC call.
 
         Returns:
             List of packed binary blobs (one per image).
@@ -185,19 +193,24 @@ class ShikomiClient:
 
         self._require_connected()
 
-        image_inputs = [
-            embedding_pb2.ImageInput(data=self._pil_to_bytes(img))
-            for img in images
-        ]
-        request = embedding_pb2.ImageEncodeRequest(images=image_inputs)
-        response = self._stub.EncodeImages(request)
+        results: list[bytes] = []
+        for i in range(0, len(images), batch_size):
+            batch = images[i : i + batch_size]
+            image_inputs = [
+                embedding_pb2.ImageInput(data=self._pil_to_bytes(img))
+                for img in batch
+            ]
+            request = embedding_pb2.ImageEncodeRequest(images=image_inputs)
+            response = self._stub.EncodeImages(request)
+            results.extend(_multivec_to_blob(emb) for emb in response.embeddings)
 
         logger.debug(
             "shikomi_client.images_embedded",
             count=len(images),
+            batches=(len(images) + batch_size - 1) // batch_size,
         )
 
-        return [_multivec_to_blob(emb) for emb in response.embeddings]
+        return results
 
     def embed_texts(
         self, texts: list[str], batch_size: int = 8

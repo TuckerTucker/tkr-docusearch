@@ -135,7 +135,7 @@ start_shikomi() {
     # Check if binary exists
     if [ ! -x "$SHIKOMI_BINARY" ]; then
         print_status "Shikomi" "warn" "Binary not found at $SHIKOMI_BINARY"
-        echo -e "    ${BLUE}→${NC} Build: cd tkr-koji && cargo build --release --features server -p shikomi"
+        echo -e "    ${BLUE}→${NC} Build: cd tkr-koji && cargo build --release --features server,python -p shikomi"
         echo -e "    ${BLUE}→${NC} Copy:  cp target/release/shikomi-worker ${SHIKOMI_BINARY}"
         return
     fi
@@ -151,18 +151,19 @@ start_shikomi() {
         fi
     fi
 
-    # Determine mode: use --mock unless SHIKOMI_USE_MOCK=false
-    local mock_flag="--mock"
-    if [ "${SHIKOMI_USE_MOCK:-true}" = "false" ]; then
-        mock_flag=""
-    fi
-
     # Start shikomi
     # shikomi-worker expects IP address, not hostname
     local listen_addr="$shikomi_host"
     if [ "$listen_addr" = "localhost" ]; then
         listen_addr="127.0.0.1"
     fi
+
+    # Use --mock only if explicitly requested
+    local mock_flag=""
+    if [ "${SHIKOMI_USE_MOCK:-false}" = "true" ]; then
+        mock_flag="--mock"
+    fi
+
     nohup "$SHIKOMI_BINARY" --listen "$listen_addr:$shikomi_port" $mock_flag > logs/shikomi.log 2>&1 &
     local shikomi_pid=$!
     echo $shikomi_pid > "$SHIKOMI_PID_FILE"
@@ -608,6 +609,11 @@ echo ""
 
 # Start services
 start_shikomi
+
+# Warm up Shikomi in background (triggers model loading)
+echo -e "\n${CYAN}Warming up Shikomi model (background)...${NC}\n"
+nohup python3 "${PROJECT_ROOT}/scripts/warmup-shikomi.py" >> logs/shikomi.log 2>&1 &
+
 start_native_worker
 
     # Wait for worker to be fully ready before starting ngrok

@@ -2,7 +2,8 @@
   "mcpServers": {
     "tkr-kit": {
       "type": "stdio",
-      "command": "./.claude/mcp_runner.sh"
+      "command": "/Users/tucker/@tucker/tkr-product-surface-2/tkr-kit/.claude/mcp_runner.sh",
+      "args": ["--project", "tkr-docusearch"]
     }
   }
 }

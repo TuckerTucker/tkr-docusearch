@@ -301,3 +301,8 @@ test_outputs/
 !README.md
 !LICENSE
 bin/
+
+# tkr-kit (local/machine-specific)
+.koji/
+.mcp.json
+.claude/settings.local.json

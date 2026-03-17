@@ -1,0 +1,126 @@
+{
+  "env": {
+    "MCP_TIMEOUT": "30000",
+    "DISABLE_PROMPT_CACHING": "0",
+    "NODE_ENV": "development",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Task",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "NotebookEdit",
+      "Create",
+      "Delete",
+      "Replace",
+      "LS",
+      "TaskOutput",
+      "KillTask",
+      "GitCommit",
+      "GitPush",
+      "MultiEdit",
+      "TodoRead",
+      "KillBash",
+      "EnterPlanMode",
+      "ExitPlanMode",
+      "AskUserQuestion",
+      "Bash(comm:*)",
+      "mcp__product-surface__backlog",
+      "mcp__product-surface__product_task",
+      "mcp__product-surface__session",
+      "mcp__product-surface__planning",
+      "mcp__product-surface__context",
+      "mcp__tkr-kit__planning"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo rm:*)",
+      "Bash(format:*)",
+      "Bash(dd:*)",
+      "Bash(sudo:*)",
+      "Bash(chmod 777:*)",
+      "Edit(/etc/**)",
+      "Edit(/usr/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(*.db)",
+      "Edit(*.db-journal)",
+      "Read(*.sqlite)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-docusearch/.claude/hook_runner.sh capture-events"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__product-surface",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-product-surface-2/tkr-kit/.claude/hooks/mcp-stale-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-docusearch/.claude/hook_runner.sh capture-events"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-docusearch/.claude/hook_runner.sh capture-events"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-docusearch/.claude/hook_runner.sh capture-events"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tucker/@tucker/tkr-docusearch/.claude/hook_runner.sh capture-events"
+          }
+        ]
+      }
+    ]
+  },
+  "spinnerTipsEnabled": false,
+  "prefersReducedMotion": true,
+  "defaultMode": "acceptEdits"
+}
