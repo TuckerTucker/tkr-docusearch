@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from tkr_docusearch.config.filter_groups import resolve_filter_group
@@ -444,23 +444,33 @@ def _sort_documents(doc_list: List[Dict], sort_by: str) -> None:
 def _resolve_document_thumbnail(doc: Dict) -> Optional[str]:
     """Resolve thumbnail URL for document.
 
+    Checks, in order:
+    1. First page ``thumb`` binary (Koji DB) — most common path
+    2. First page ``image`` binary (Koji DB) — fallback for pages without thumbs
+    3. First page ``thumb_path`` on filesystem (legacy)
+    4. Album art cover file on disk (audio files)
+
     Args:
         doc: Document dictionary
 
     Returns:
         Thumbnail URL or None
     """
-    # Check for page thumbnail (PDF, DOCX, PPTX)
     if doc["pages"] and doc["has_images"]:
         first_page = doc["pages"][0]
+
+        # Prefer thumb, fall back to full image (both stored as binary in Koji)
+        if first_page.get("thumb") or first_page.get("image"):
+            page_num = first_page.get("page_num", 1)
+            return f"/images/{doc['doc_id']}/page{page_num:03d}.png"
+
+        # Legacy filesystem path
         if first_page.get("thumb_path"):
             thumb_path = first_page["thumb_path"]
             if "/" in thumb_path:
                 parts = thumb_path.split("/")
                 if len(parts) >= 2:
-                    doc_id_part = parts[-2]
-                    filename_part = parts[-1]
-                    return f"/images/{doc_id_part}/{filename_part}"
+                    return f"/images/{parts[-2]}/{parts[-1]}"
 
     # Check for album art (audio files)
     images_dir = Path("data/images") / doc["doc_id"]
@@ -1237,6 +1247,33 @@ def _find_image_in_directories(doc_id: str, filename: str) -> Optional[Path]:
     return None
 
 
+def _get_page_image_from_db(doc_id: str, page_num: int) -> Optional[bytes]:
+    """Retrieve a page image from the Koji database.
+
+    Prefers the ``thumb`` column; falls back to ``image``.
+
+    Args:
+        doc_id: Document identifier.
+        page_num: 1-based page number.
+
+    Returns:
+        Raw image bytes or None if not found.
+    """
+    try:
+        client = get_storage_client()
+        result = client.query(
+            "SELECT thumb, image FROM pages WHERE doc_id = ? AND page_num = ? LIMIT 1",
+            [doc_id, page_num],
+        )
+        if result.num_rows == 0:
+            return None
+        row = result.to_pydict()
+        return row["thumb"][0] or row["image"][0]
+    except Exception as exc:
+        logger.debug(f"DB image lookup failed for {doc_id} page {page_num}: {exc}")
+        return None
+
+
 def _get_image_content_type(filename: str) -> str:
     """Determine content type from filename extension.
 
@@ -1272,41 +1309,52 @@ def _get_image_content_type(filename: str) -> str:
 async def get_image(doc_id: str, filename: str):
     """Serve page image, thumbnail, or cover art files.
 
+    Checks the filesystem first (legacy path), then falls back to
+    serving the ``image`` or ``thumb`` column from the Koji pages table.
+
     Args:
         doc_id: Document identifier
         filename: Image filename (e.g., page001.png, page001_thumb.jpg, cover.svg)
 
     Returns:
-        FileResponse with image data
+        Image response (FileResponse from disk, or Response from DB)
 
     Raises:
-        HTTPException: 403 for invalid paths, 404 if file not found
+        HTTPException: 403 for invalid paths, 404 if image not found
     """
     # Validate request parameters
     _validate_image_request(doc_id, filename)
 
-    # Find image in directories
+    # 1. Try filesystem first (legacy page_images / cover art)
     image_path = _find_image_in_directories(doc_id, filename)
-
-    if not image_path:
-        logger.info(f"Image not found in any directory: {filename} for doc_id {doc_id}")
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "Image file not found",
-                "code": "IMAGE_NOT_FOUND",
-                "details": {"doc_id": doc_id, "filename": filename},
-            },
+    if image_path:
+        media_type = _get_image_content_type(filename)
+        return FileResponse(
+            path=image_path,
+            media_type=media_type,
+            headers={"Cache-Control": "max-age=86400"},
         )
 
-    # Determine content type and return file
-    media_type = _get_image_content_type(filename)
+    # 2. Fall back to Koji DB: extract page number from filename (e.g. page001.png → 1)
+    page_match = re.match(r"page(\d+)", filename)
+    if page_match:
+        page_num = int(page_match.group(1))
+        image_data = _get_page_image_from_db(doc_id, page_num)
+        if image_data:
+            media_type = _get_image_content_type(filename)
+            return Response(
+                content=image_data,
+                media_type=media_type,
+                headers={"Cache-Control": "max-age=86400"},
+            )
 
-    return FileResponse(
-        path=image_path,
-        media_type=media_type,
-        headers={
-            "Cache-Control": "max-age=86400",  # 24 hours
+    logger.info(f"Image not found: {filename} for doc_id {doc_id}")
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "error": "Image file not found",
+            "code": "IMAGE_NOT_FOUND",
+            "details": {"doc_id": doc_id, "filename": filename},
         },
     )
 
