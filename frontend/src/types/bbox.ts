@@ -18,7 +18,7 @@
  * Bounding box coordinates in pixel space.
  *
  * Represents a rectangular region with top-left origin coordinates.
- * This is the base format received from the API and stored in ChromaDB.
+ * This is the base format received from the API and stored in Koji.
  *
  * @example
  * const bbox: BBox = {

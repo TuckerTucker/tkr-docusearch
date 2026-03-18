@@ -71,7 +71,7 @@ test_navigation_from_research_to_details()
 
 # Test markdown markers
 test_markdown_chunk_marker_format()
-test_chunk_markers_match_chromadb()
+test_chunk_markers_match_storage()
 ```
 
 ### 3. test_bidirectional_highlighting.py (12 tests)
@@ -122,7 +122,7 @@ Verify services are running:
 ```
 
 Required services:
-- ChromaDB (port 8001)
+- Koji (port 8001)
 - Worker API (port 8002)
 
 ### Run All E2E Tests
@@ -182,7 +182,7 @@ pytest tests/e2e/ -v -m "integration and not slow"
 ### Service Dependencies
 
 All tests require running services:
-- **ChromaDB** - Document storage and retrieval
+- **Koji** - Document storage and retrieval
 - **Worker API** - Document processing and status
 
 Tests will automatically skip if services are unavailable:
@@ -195,15 +195,11 @@ SKIPPED - Required services not running. Run ./scripts/start-all.sh first.
 Configure via environment variables:
 
 ```bash
-# ChromaDB configuration
-export CHROMA_HOST=localhost
-export CHROMA_PORT=8001
+# Koji configuration
+export KOJI_DB_PATH=data/koji.db
 
 # Worker API configuration
 export WORKER_API_URL=http://localhost:8002
-
-# Copyparty configuration
-export COPYPARTY_URL=http://localhost:8000
 ```
 
 ## Test Fixtures
@@ -212,7 +208,7 @@ export COPYPARTY_URL=http://localhost:8000
 
 See `fixtures/conftest.py` for all available fixtures:
 
-- **Service clients:** `chromadb_client`, `worker_api_client`, `research_api_client`
+- **Service clients:** `koji_client`, `worker_api_client`, `research_api_client`
 - **Service checks:** `services_available`, `skip_if_services_unavailable`
 - **Test data:** `test_doc_ids`, `cleanup_test_documents`
 - **Helpers:** `wait_for_processing_helper`
@@ -222,7 +218,7 @@ See `fixtures/conftest.py` for all available fixtures:
 Tests automatically clean up data after execution:
 
 ```python
-def test_something(chromadb_client, test_doc_ids):
+def test_something(koji_client, test_doc_ids):
     doc_id = "test-doc-123"
     test_doc_ids.append(doc_id)  # Add to cleanup list
 
@@ -324,7 +320,7 @@ pytest tests/e2e/ -v --tb=long
 # Check all services
 ./scripts/status.sh
 
-# Check ChromaDB
+# Check Koji
 curl http://localhost:8001/api/v1/heartbeat
 
 # Check Worker API
@@ -386,12 +382,6 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
 
-    services:
-      chromadb:
-        image: chromadb/chroma:latest
-        ports:
-          - 8001:8001
-
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -430,7 +420,7 @@ jobs:
 - **Cleanup:** Use `test_doc_ids` fixture for auto-cleanup
 - **Markers:** Use appropriate markers (`integration`, `slow`)
 - **Documentation:** Clear docstrings explaining data flow
-- **Real Data:** Use real ChromaDB, no mocks
+- **Real Data:** Use real Koji, no mocks
 - **Reproducibility:** Tests should be deterministic
 
 ## Support

@@ -56,8 +56,8 @@ class SourceDocument:
     related_pictures: List[str] = field(default_factory=list)  # Picture IDs from ChunkContext
     related_tables: List[str] = field(default_factory=list)  # Table IDs from ChunkContext
 
-    # Raw ChromaDB metadata (for preprocessing analysis)
-    raw_metadata: Dict[str, Any] = field(default_factory=dict)  # Complete metadata from ChromaDB
+    # Raw Koji metadata (for preprocessing analysis)
+    raw_metadata: Dict[str, Any] = field(default_factory=dict)  # Complete metadata from Koji
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict for API response"""
@@ -192,7 +192,7 @@ class ContextBuilder:
         Process:
             1. Execute semantic search via SearchEngine
             2. Deduplicate by (doc_id, page) keeping highest scores
-            3. Retrieve full markdown via ChromaClient.get_document_markdown()
+            3. Retrieve full markdown via KojiClient.get_document_markdown()
             4. Format as numbered citations [1], [2], etc.
             5. Truncate if exceeds max_tokens
         """
@@ -465,7 +465,7 @@ class ContextBuilder:
             relevance_score=score,
             chunk_id=chunk_id,
             is_visual=is_visual,
-            raw_metadata=metadata,  # Pass through full ChromaDB metadata for preprocessing
+            raw_metadata=metadata,  # Pass through full Koji metadata for preprocessing
         )
 
     def format_source_citation(self, source: SourceDocument, citation_num: int) -> str:

@@ -8,14 +8,12 @@ and provides convenient properties and methods for building service-specific URL
 Environment Variables:
     WORKER_URL: Processing worker base URL (default: http://localhost:8002)
     RESEARCH_API_URL: Research API base URL (default: http://localhost:8004)
-    COPYPARTY_URL: Copyparty file server URL (default: http://localhost:8000)
     FRONTEND_URL: Frontend application URL (default: http://localhost:3333)
 
 Usage:
     >>> from src.config.urls import get_service_urls
     >>> urls = get_service_urls()
     >>> search_url = urls.worker_search
-    >>> image_url = urls.document_image_url("abc123", "page-5.png")
 
 Thread Safety:
     This module uses a singleton pattern with thread-local storage to ensure
@@ -40,7 +38,6 @@ class ServiceURLs:
     Attributes:
         worker: Processing worker base URL
         research_api: Research API base URL
-        copyparty: Copyparty file server base URL
         frontend: Frontend application base URL
     """
 
@@ -49,14 +46,12 @@ class ServiceURLs:
         # Service base URLs
         self.worker = os.getenv("WORKER_URL", "http://localhost:8002")
         self.research_api = os.getenv("RESEARCH_API_URL", "http://localhost:8004")
-        self.copyparty = os.getenv("COPYPARTY_URL", "http://localhost:8000")
         self.frontend = os.getenv("FRONTEND_URL", "http://localhost:3333")
 
         # Log configuration on initialization
         logger.debug(
             f"Initialized ServiceURLs: worker={self.worker}, "
-            f"research_api={self.research_api}, "
-            f"copyparty={self.copyparty}, frontend={self.frontend}"
+            f"research_api={self.research_api}, frontend={self.frontend}"
         )
 
     # =========================================================================
@@ -106,96 +101,6 @@ class ServiceURLs:
     def research_status(self) -> str:
         """Research API status endpoint URL."""
         return urljoin(self.research_api, "/api/status")
-
-    # =========================================================================
-    # Copyparty File Server Methods
-    # =========================================================================
-
-    def document_image_url(self, doc_id: str, image_filename: str, absolute: bool = True) -> str:
-        """
-        Build URL for a document image (page/chunk image).
-
-        Args:
-            doc_id: Document ID (SHA-256 hash)
-            image_filename: Image filename (e.g., "page-5.png", "chunk-42.png")
-            absolute: If True, return absolute URL; if False, return relative path
-
-        Returns:
-            URL to document image on Copyparty file server
-
-        Example:
-            >>> urls = ServiceURLs()
-            >>> urls.document_image_url("abc123", "page-5.png")
-            'http://localhost:8000/uploads/abc123/images/page-5.png'
-        """
-        path = f"/uploads/{doc_id}/images/{image_filename}"
-        if absolute:
-            return urljoin(self.copyparty, path)
-        return path
-
-    def document_thumbnail_url(self, doc_id: str, absolute: bool = True) -> str:
-        """
-        Build URL for a document thumbnail (cover/first page).
-
-        Args:
-            doc_id: Document ID (SHA-256 hash)
-            absolute: If True, return absolute URL; if False, return relative path
-
-        Returns:
-            URL to document thumbnail on Copyparty file server
-
-        Example:
-            >>> urls = ServiceURLs()
-            >>> urls.document_thumbnail_url("abc123")
-            'http://localhost:8000/uploads/abc123/thumbnail.png'
-        """
-        path = f"/uploads/{doc_id}/thumbnail.png"
-        if absolute:
-            return urljoin(self.copyparty, path)
-        return path
-
-    def cover_art_url(self, doc_id: str, absolute: bool = True) -> str:
-        """
-        Build URL for audio cover art.
-
-        Args:
-            doc_id: Document ID (SHA-256 hash)
-            absolute: If True, return absolute URL; if False, return relative path
-
-        Returns:
-            URL to cover art on Copyparty file server
-
-        Example:
-            >>> urls = ServiceURLs()
-            >>> urls.cover_art_url("abc123")
-            'http://localhost:8000/uploads/abc123/cover-art.png'
-        """
-        path = f"/uploads/{doc_id}/cover-art.png"
-        if absolute:
-            return urljoin(self.copyparty, path)
-        return path
-
-    def original_file_url(self, doc_id: str, filename: str, absolute: bool = True) -> str:
-        """
-        Build URL for original uploaded file.
-
-        Args:
-            doc_id: Document ID (SHA-256 hash)
-            filename: Original filename
-            absolute: If True, return absolute URL; if False, return relative path
-
-        Returns:
-            URL to original file on Copyparty file server
-
-        Example:
-            >>> urls = ServiceURLs()
-            >>> urls.original_file_url("abc123", "document.pdf")
-            'http://localhost:8000/uploads/abc123/document.pdf'
-        """
-        path = f"/uploads/{doc_id}/{filename}"
-        if absolute:
-            return urljoin(self.copyparty, path)
-        return path
 
     # =========================================================================
     # Frontend URLs

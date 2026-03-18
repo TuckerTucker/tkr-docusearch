@@ -62,11 +62,11 @@ class BatchEmbeddingOutput:
 # ============================================================================
 
 
-class MockColPaliModel:
-    """Mock ColPali embedding model for testing.
+class MockEmbeddingModel:
+    """Mock multimodal embedding model for testing.
 
-    Simulates the ColPali embedding engine defined in embedding-interface.md.
-    Generates deterministic random embeddings with realistic shapes and timing.
+    Simulates the Shikomi embedding service with deterministic random embeddings,
+    realistic shapes, and timing.
 
     This mock supports both visual (image) and text embeddings with configurable
     dimensions and latency simulation.
@@ -380,8 +380,9 @@ class MockColPaliModel:
         logger.debug("Cache clear requested (mock - no-op)")
 
 
-# Legacy alias for backwards compatibility
-MockEmbeddingEngine = MockColPaliModel
+# Aliases for backwards compatibility
+MockEmbeddingEngine = MockEmbeddingModel
+MockColPaliModel = MockEmbeddingModel
 
 
 # ============================================================================

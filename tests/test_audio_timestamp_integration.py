@@ -6,7 +6,7 @@ This test verifies that audio files are processed with timestamps correctly:
 2. Timestamps are extracted from provenance
 3. VTT file is generated
 4. Markdown file contains transcript
-5. ChromaDB stores timestamp metadata
+5. Koji stores timestamp metadata
 
 This is a regression test for the Oct 2025 timestamp extraction issue.
 """
@@ -66,14 +66,14 @@ def test_audio_timestamp_extraction(audio_file, processor, tmp_path):
     logger.info(f"  Doc ID: {result.doc_id}")
     logger.info(f"  Text IDs: {len(result.text_ids)} chunks")
 
-    # Retrieve document from ChromaDB
+    # Retrieve document from Koji
     storage = processor.storage_client
     text_data = storage.client.get_collection("text").get(where={"filename": Path(audio_file).name})
 
-    assert text_data, "Document should be in ChromaDB"
+    assert text_data, "Document should be in Koji"
     assert text_data["metadatas"], "Document should have metadata"
 
-    logger.info(f"\n✓ Retrieved from ChromaDB")
+    logger.info(f"\n✓ Retrieved from Koji")
     logger.info(f"  Chunks: {len(text_data['metadatas'])}")
 
     # Check timestamp extraction

@@ -7,7 +7,7 @@ This module provides centralized test infrastructure including:
 - Helper functions for common test operations
 
 Usage:
-    >>> from src.core.testing.mocks import MockColPaliModel, MockKojiClient
+    >>> from src.core.testing.mocks import MockEmbeddingModel, MockKojiClient
     >>> from src.core.testing.mocks import MockEmbeddingEngine, MockStorageClient
 
 Example:
@@ -23,12 +23,14 @@ Example:
 from tkr_docusearch.core.testing.mocks import (
     MockColPaliModel,
     MockEmbeddingEngine,
+    MockEmbeddingModel,
     MockKojiClient,
     MockSearchEngine,
     MockStorageClient,
 )
 
 __all__ = [
+    "MockEmbeddingModel",
     "MockColPaliModel",
     "MockKojiClient",
     "MockSearchEngine",

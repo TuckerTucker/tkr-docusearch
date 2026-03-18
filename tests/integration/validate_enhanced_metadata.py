@@ -3,7 +3,7 @@
 Validation script for enhanced metadata storage.
 
 This script demonstrates that enhanced metadata is correctly stored
-and can be queried from ChromaDB.
+and can be queried from Koji.
 
 Usage:
     python tests/integration/validate_enhanced_metadata.py
@@ -106,7 +106,7 @@ def validate_visual_metadata():
     compressed_size = len(enhanced["structure"])
     print(f"\n✓ Compression efficient")
     print(f"  Compressed structure size: {compressed_size} bytes")
-    print(f"  Well within ChromaDB limit: 50 KB")
+    print(f"  Well within Koji limit: 50 KB")
 
     return True
 
@@ -266,7 +266,7 @@ def main():
     print("ENHANCED METADATA STORAGE VALIDATION")
     print("=" * 80)
     print("\nThis script validates that enhanced metadata can be prepared,")
-    print("stored, and queried according to the ChromaDB schema v1.0.")
+    print("stored, and queried according to the Koji schema v1.0.")
 
     try:
         # Run validations
@@ -289,7 +289,7 @@ def main():
             print("\nEnhanced metadata storage is working correctly!")
             print("\nNext steps:")
             print("  1. Process a test document with enhanced mode enabled")
-            print("  2. Query ChromaDB to confirm metadata is stored")
+            print("  2. Query Koji to confirm metadata is stored")
             print("  3. Test bidirectional highlighting in frontend")
             return 0
         else:

@@ -241,7 +241,7 @@ class TestIntegration:
         """Create test client."""
         return TestClient(worker_app)
 
-    @pytest.mark.skip(reason="Requires full processing pipeline and ChromaDB")
+    @pytest.mark.skip(reason="Requires full processing pipeline and Koji")
     def test_full_pipeline_with_art(self, client):
         """Test complete album art pipeline from upload to display.
 
@@ -254,7 +254,7 @@ class TestIntegration:
         """
         # TODO: Implement once full processing pipeline is integrated
 
-    @pytest.mark.skip(reason="Requires full processing pipeline and ChromaDB")
+    @pytest.mark.skip(reason="Requires full processing pipeline and Koji")
     def test_full_pipeline_without_art(self, client):
         """Test album art pipeline with audio file without embedded art.
 

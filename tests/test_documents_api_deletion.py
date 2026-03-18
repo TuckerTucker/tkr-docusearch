@@ -1,14 +1,13 @@
 """
 Unit tests for Document Deletion API endpoint.
 
-Tests comprehensive 7-stage deletion process:
+Tests comprehensive 6-stage deletion process:
 1. Koji database records (documents, pages, chunks) - CRITICAL
 2. Page images and thumbnails - HIGH
 3. Cover art (audio files) - MEDIUM
 4. VTT caption files (audio files) - MEDIUM
 5. Markdown files - MEDIUM
 6. Temporary directories - LOW
-7. Original file from copyparty - MEDIUM
 
 Target Coverage: 90%+
 """
@@ -94,7 +93,7 @@ def temp_data_dirs():
 
 
 # ============================================================================
-# Tests: Successful Deletion (All 7 Stages)
+# Tests: Successful Deletion (All 6 Stages)
 # ============================================================================
 
 
@@ -104,9 +103,7 @@ def temp_data_dirs():
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_success_all_stages(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -116,7 +113,7 @@ def test_delete_document_success_all_stages(
     client,
     mock_existing_document,
 ):
-    """Test successful deletion with all 7 stages completed."""
+    """Test successful deletion with all 6 stages completed."""
     # Setup mocks
     mock_get_client.return_value = mock_existing_document
     mock_delete_images.return_value = (10, 10)  # 10 pages, 10 thumbnails
@@ -124,7 +121,6 @@ def test_delete_document_success_all_stages(
     mock_delete_vtt.return_value = True
     mock_delete_markdown.return_value = True
     mock_cleanup_temp.return_value = 2
-    mock_copyparty.return_value = True
 
     # Execute deletion
     response = client.delete("/documents/test-doc-12345678")
@@ -169,11 +165,6 @@ def test_delete_document_success_all_stages(
     assert data["deleted"]["temp_directories"]["cleaned"] == 2
     assert data["deleted"]["temp_directories"]["status"] == "cleaned"
 
-    # Verify Stage 7: Copyparty
-    assert "copyparty" in data["deleted"]
-    assert data["deleted"]["copyparty"]["deleted"] is True
-    assert data["deleted"]["copyparty"]["status"] == "deleted"
-
     # Verify all cleanup functions were called
     mock_existing_document.delete_document.assert_called_once_with("test-doc-12345678")
     mock_delete_images.assert_called_once_with("test-doc-12345678")
@@ -181,7 +172,6 @@ def test_delete_document_success_all_stages(
     mock_delete_vtt.assert_called_once_with("test-doc-12345678")
     mock_delete_markdown.assert_called_once_with("test-doc-12345678")
     mock_cleanup_temp.assert_called_once_with("test-doc-12345678")
-    mock_copyparty.assert_called_once_with("test.pdf")
 
 
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
@@ -190,9 +180,7 @@ def test_delete_document_success_all_stages(
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_minimal_cleanup(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -210,7 +198,6 @@ def test_delete_document_minimal_cleanup(
     mock_delete_vtt.return_value = False  # No VTT
     mock_delete_markdown.return_value = False  # No markdown
     mock_cleanup_temp.return_value = 0  # No temp dirs
-    mock_copyparty.return_value = True
 
     # Execute deletion
     response = client.delete("/documents/test-doc-12345678")
@@ -303,9 +290,7 @@ def test_delete_document_koji_delete_failure(client):
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_non_critical_errors(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -328,7 +313,6 @@ def test_delete_document_non_critical_errors(
     mock_delete_vtt.side_effect = Exception("File locked")
     mock_delete_markdown.side_effect = Exception("Network error")
     mock_cleanup_temp.side_effect = Exception("Directory not empty")
-    mock_copyparty.side_effect = Exception("HTTP 500")
 
     # Execute deletion
     response = client.delete("/documents/test-doc-12345678")
@@ -349,10 +333,9 @@ def test_delete_document_non_critical_errors(
     assert data["deleted"]["vtt_captions"]["status"] == "error"
     assert data["deleted"]["markdown"]["status"] == "error"
     assert data["deleted"]["temp_directories"]["status"] == "error"
-    assert data["deleted"]["copyparty"]["status"] == "error"
 
     # Should have error messages
-    assert len(data["errors"]) == 6
+    assert len(data["errors"]) == 5
     assert any("Disk I/O error" in err for err in data["errors"])
     assert any("Permission denied" in err for err in data["errors"])
 
@@ -390,9 +373,7 @@ def test_delete_document_database_connection_error(client):
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_no_filename_in_metadata(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -427,50 +408,6 @@ def test_delete_document_no_filename_in_metadata(
 
     assert data["success"] is True
     assert data["filename"] is None  # No filename available
-
-    # Copyparty deletion should be skipped
-    assert data["deleted"]["copyparty"]["status"] == "skipped"
-    mock_copyparty.assert_not_called()
-
-
-@patch("tkr_docusearch.processing.documents_api.get_storage_client")
-@patch("tkr_docusearch.processing.documents_api.delete_document_images")
-@patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
-@patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
-@patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
-def test_delete_document_copyparty_failure_non_critical(
-    mock_copyparty,
-    mock_cleanup_temp,
-    mock_delete_markdown,
-    mock_delete_vtt,
-    mock_delete_cover_art,
-    mock_delete_images,
-    mock_get_client,
-    client,
-    mock_existing_document,
-):
-    """Test that copyparty deletion failure doesn't fail the entire request."""
-    # Setup mocks
-    mock_get_client.return_value = mock_existing_document
-    mock_delete_images.return_value = (3, 3)
-    mock_delete_cover_art.return_value = 0
-    mock_delete_vtt.return_value = False
-    mock_delete_markdown.return_value = True
-    mock_cleanup_temp.return_value = 0
-    mock_copyparty.return_value = False  # Copyparty deletion fails
-
-    # Execute deletion
-    response = client.delete("/documents/test-doc-12345678")
-
-    # Should succeed with warning
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["success"] is True
-    assert data["deleted"]["koji"]["status"] == "deleted"
-    assert data["deleted"]["copyparty"]["status"] == "failed"
 
 
 # ============================================================================
@@ -520,9 +457,7 @@ def test_delete_document_validates_doc_id_characters(client):
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_response_format(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -540,7 +475,6 @@ def test_delete_document_response_format(
     mock_delete_vtt.return_value = False
     mock_delete_markdown.return_value = True
     mock_cleanup_temp.return_value = 1
-    mock_copyparty.return_value = True
 
     # Execute deletion
     response = client.delete("/documents/test-doc-12345678")
@@ -569,7 +503,6 @@ def test_delete_document_response_format(
         "vtt_captions",
         "markdown",
         "temp_directories",
-        "copyparty",
     ]
     for stage in expected_stages:
         assert stage in data["deleted"], f"Stage '{stage}' missing from response"
@@ -586,9 +519,7 @@ def test_delete_document_response_format(
 @patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
-@patch("tkr_docusearch.processing.documents_api.delete_from_copyparty")
 def test_delete_document_cascade_order(
-    mock_copyparty,
     mock_cleanup_temp,
     mock_delete_markdown,
     mock_delete_vtt,
@@ -626,17 +557,12 @@ def test_delete_document_cascade_order(
         call_order.append("temp")
         return 1
 
-    def track_copyparty(*args, **kwargs):
-        call_order.append("copyparty")
-        return True
-
     mock_existing_document.delete_document.side_effect = track_koji
     mock_delete_images.side_effect = track_images
     mock_delete_cover_art.side_effect = track_cover_art
     mock_delete_vtt.side_effect = track_vtt
     mock_delete_markdown.side_effect = track_markdown
     mock_cleanup_temp.side_effect = track_temp
-    mock_copyparty.side_effect = track_copyparty
 
     mock_get_client.return_value = mock_existing_document
 
@@ -652,7 +578,6 @@ def test_delete_document_cascade_order(
     assert "vtt" in call_order
     assert "markdown" in call_order
     assert "temp" in call_order
-    assert "copyparty" in call_order
 
 
 def test_delete_document_stops_on_koji_failure(client):

@@ -1,15 +1,10 @@
-# DocuSearch MVP Requirements - Wave 3
+# DocuSearch Requirements
 # Python 3.10+
 
 # Core ML/AI dependencies
 torch>=2.8.0  # CVE patch: updated from 2.0.0
 torchvision>=0.15.0
 transformers>=4.30.0
-sentence-transformers>=2.2.0
-
-# ColPali - Multimodal embedding model
-# Install from GitHub: pip install git+https://github.com/illuin-tech/colpali.git
-colpali-engine>=0.2.0
 
 # Image processing
 Pillow>=10.0.0
@@ -20,8 +15,12 @@ Pillow>=10.0.0
 docling[asr]>=2.55.0
 pypdf>=3.0.0  # PDF metadata repair for Docling compatibility
 
-# Vector database
-chromadb>=0.4.0
+# Koji hybrid database
+pyarrow>=14.0.0
+
+# Shikomi embedding service (gRPC)
+grpcio>=1.60.0
+protobuf>=4.25.0
 
 # Data and utilities
 numpy>=1.24.0

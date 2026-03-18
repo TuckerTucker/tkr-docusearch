@@ -127,7 +127,7 @@ export function formatFilename(filename) {
     // Remove timestamp suffixes (e.g., " 1750130928" or "-1750130928")
     name = name.replace(/[\s-]+\d{10,}$/, '');
 
-    // Remove copyparty suffixes (e.g., "-1760832421.322159-jwX_TZK1")
+    // Remove upload ID suffixes (e.g., "-1760832421.322159-jwX_TZK1")
     name = name.replace(/[\s-]+\d+\.\d+-[a-zA-Z0-9_-]+$/, '');
 
     // Clean up multiple spaces

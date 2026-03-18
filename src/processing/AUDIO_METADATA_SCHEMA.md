@@ -3,7 +3,7 @@
 ## Overview
 Extension to the document metadata schema to support ID3 tags and audio properties from MP3/WAV files.
 
-## ChromaDB Metadata Fields
+## Koji Metadata Fields
 
 ### Core Document Fields (Existing)
 ```python
@@ -85,7 +85,7 @@ data/images/{doc_id}/
 
 3. **Metadata reference**:
    - Store path relative to project root: `data/images/{doc_id}/cover.jpg`
-   - Store in ChromaDB `album_art_path` field
+   - Store in Koji `album_art_path` field
 
 4. **Cleanup**:
    - Delete image when document is deleted
@@ -97,17 +97,17 @@ data/images/{doc_id}/
 - **Clarity**: Distinguishes audio metadata from document metadata
 - **Consistency**: Matches existing pattern (`visual_embeddings`, `text_embeddings`)
 - **Namespace**: Prevents collisions with future features
-- **Searchability**: Easy to filter in ChromaDB queries
+- **Searchability**: Easy to filter in Koji queries
 
 ### Alternative considered: `id3_` prefix
 - ❌ Too specific (excludes WAV properties)
 - ❌ Technical jargon (ID3 is MP3-specific)
 - ✅ `audio_` is format-agnostic
 
-## ChromaDB Size Constraints
+## Koji Size Constraints
 
 ### Metadata Size Limits
-- ChromaDB has no hard limit, but recommend < 100KB per document
+- Koji has no hard limit, but recommend < 100KB per document
 - Our schema: ~20 fields × ~100 bytes avg = ~2KB ✅
 - Album art stored separately (not in metadata) ✅
 
@@ -192,5 +192,5 @@ results = search_engine.search(
 - [ ] Implement album art filesystem storage
 - [ ] Add fields to metadata merging logic
 - [ ] Test with files that have: full tags, partial tags, no tags
-- [ ] Verify ChromaDB indexing of new fields
+- [ ] Verify Koji indexing of new fields
 - [ ] Update documents API to return new fields

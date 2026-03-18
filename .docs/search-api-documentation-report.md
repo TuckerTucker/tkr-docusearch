@@ -51,7 +51,7 @@ Added comprehensive description explaining:
 1. **engine_not_initialized**: Search engine not initialized on startup
 
 ##### 💥 500 Internal Server Error - Execution Failure (1 example)
-1. **search_execution_error**: ChromaDB timeout or other runtime error
+1. **search_execution_error**: Koji timeout or other runtime error
 
 #### 3. Enhanced Function Docstring (2,289 characters)
 

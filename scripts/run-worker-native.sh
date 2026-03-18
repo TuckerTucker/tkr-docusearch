@@ -42,15 +42,8 @@ export BATCH_SIZE_TEXT="${BATCH_SIZE_TEXT:-8}"
 # File paths
 export UPLOADS_DIR="${UPLOADS_DIR:-${PROJECT_ROOT}/data/uploads}"
 
-# Load SUPPORTED_FORMATS from docker/.env if available
-if [ -f "${PROJECT_ROOT}/docker/.env" ]; then
-    # Extract SUPPORTED_FORMATS from .env file
-    SUPPORTED_FORMATS_FROM_ENV=$(grep "^SUPPORTED_FORMATS=" "${PROJECT_ROOT}/docker/.env" | cut -d '=' -f2)
-    export SUPPORTED_FORMATS="${SUPPORTED_FORMATS:-${SUPPORTED_FORMATS_FROM_ENV}}"
-else
-    # Fallback to comprehensive list
-    export SUPPORTED_FORMATS="${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json}"
-fi
+# Supported formats
+export SUPPORTED_FORMATS="${SUPPORTED_FORMATS:-pdf,docx,pptx,xlsx,md,html,htm,xhtml,asciidoc,csv,png,jpg,jpeg,tiff,bmp,webp,vtt,wav,mp3,xml,json}"
 export MAX_FILE_SIZE_MB="${MAX_FILE_SIZE_MB:-100}"
 
 # ASR (Whisper) configuration for audio transcription

@@ -23,7 +23,7 @@ def generate_markdown_with_frontmatter(
 
     Args:
         chunks: List of chunk dictionaries with text_content
-        doc_metadata: Document metadata from ChromaDB
+        doc_metadata: Document metadata from Koji
         filename: Original filename
         doc_id: Document identifier
 

@@ -28,7 +28,7 @@ Successfully implemented chunk_id field in research API responses to enable bidi
 New module with two primary functions:
 
 **`extract_chunk_id(metadata: Dict[str, Any], doc_id: str) -> Optional[str]`**
-- Extracts chunk_id from ChromaDB metadata
+- Extracts chunk_id from Koji metadata
 - Handles both text results (with chunk_id) and visual results (without)
 - Transforms integer chunk_id to formatted string: `"{doc_id}-chunk{NNNN}"`
 - Robust error handling for invalid types and formats
@@ -127,7 +127,7 @@ Coverage:
   - Example: `"abc123-chunk0045"`
   - Zero-padded 4 digits (0000-9999)
 
-- **ChromaDB Metadata**: Integer field `chunk_id`
+- **Koji Metadata**: Integer field `chunk_id`
   - Example: `{"chunk_id": 45}`
   - Only present in text collection
 
@@ -199,7 +199,7 @@ Coverage:
 ## Dependencies
 
 - **Wave 1 Agent 3**: API contracts defined ✅
-- **Storage Layer**: chunk_id already stored in ChromaDB metadata ✅
+- **Storage Layer**: chunk_id already stored in Koji metadata ✅
 - **Search Engine**: Returns metadata with chunk_id field ✅
 
 ## Usage for Frontend

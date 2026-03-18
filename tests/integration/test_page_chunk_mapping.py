@@ -20,7 +20,7 @@ class TestPageChunkMapping:
 
     @pytest.fixture
     def mock_storage_client(self):
-        """Create a mock ChromaDB storage client."""
+        """Create a mock Koji storage client."""
         client = Mock()
         client.text_collection = Mock()
 
@@ -145,8 +145,8 @@ class TestPageChunkMapping:
 
     def test_query_chunks_by_page(self, mock_storage_client):
         """Test that chunks can be queried by page number."""
-        # This test demonstrates the ChromaDB query pattern
-        # In actual usage, this would be done via ChromaDB's where clause
+        # This test demonstrates the Koji query pattern
+        # In actual usage, this would be done via Koji's where clause
 
         # Create handler
         handler = TextEmbeddingHandler(
@@ -185,15 +185,15 @@ class TestPageChunkMapping:
             safe_doc_metadata={"format": "pdf"},
         )
 
-        # Simulate ChromaDB query for page 1
+        # Simulate Koji query for page 1
         page_1_chunks = [meta for meta in self.stored_metadata if meta["page"] == 1]
         assert len(page_1_chunks) == 2
 
-        # Simulate ChromaDB query for page 2
+        # Simulate Koji query for page 2
         page_2_chunks = [meta for meta in self.stored_metadata if meta["page"] == 2]
         assert len(page_2_chunks) == 2
 
-        # Simulate ChromaDB query for page 3
+        # Simulate Koji query for page 3
         page_3_chunks = [meta for meta in self.stored_metadata if meta["page"] == 3]
         assert len(page_3_chunks) == 1
 
@@ -259,7 +259,7 @@ class TestPageChunkMapping:
         )
 
         # Query: Find all chunks that include page 2
-        # This would use page_nums field in ChromaDB
+        # This would use page_nums field in Koji
         chunks_with_page_2 = []
         for meta in self.stored_metadata:
             page_nums = json.loads(meta["page_nums"])

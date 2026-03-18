@@ -30,7 +30,7 @@ class AudioMetadataExtractor:
 
             logger.info(f"Extracting ID3 metadata from {file_path}")
             audio_id3_metadata = extract_audio_metadata(file_path)
-            logger.debug(f"ID3 extraction complete: {audio_id3_metadata.to_chromadb_metadata()}")
+            logger.debug(f"ID3 extraction complete: {audio_id3_metadata.to_metadata_dict()}")
             return audio_id3_metadata
         except Exception as e:
             logger.warning(f"Failed to extract ID3 metadata from {file_path}: {e}")
@@ -69,7 +69,7 @@ class AudioMetadataExtractor:
 
         # Merge ID3 metadata (tags, audio properties) if extracted
         if audio_id3_metadata:
-            id3_fields = audio_id3_metadata.to_chromadb_metadata()
+            id3_fields = audio_id3_metadata.to_metadata_dict()
             metadata.update(id3_fields)
             logger.debug(f"Merged {len(id3_fields)} ID3 fields into metadata")
 

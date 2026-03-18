@@ -2,7 +2,7 @@
 Structure and chunk metadata API endpoints.
 
 Provides REST API endpoints for retrieving document structure metadata and
-text chunk context information from ChromaDB storage.
+text chunk context information from Koji storage.
 
 Provider: api-agent (Wave 7: Structure API Builder)
 Consumers: ui-agent
@@ -260,7 +260,7 @@ def get_storage_client() -> KojiClient:
         client.open()
         return client
     except Exception as e:
-        logger.error(f"Failed to initialize ChromaDB client: {e}")
+        logger.error(f"Failed to initialize Koji client: {e}")
         raise HTTPException(
             status_code=500,
             detail={
@@ -272,9 +272,9 @@ def get_storage_client() -> KojiClient:
 
 
 def parse_json_field(field_value: Any) -> Any:
-    """Parse JSON string field from ChromaDB metadata.
+    """Parse JSON string field from Koji metadata.
 
-    ChromaDB stores lists/dicts as JSON strings. This helper parses them back.
+    Koji stores lists/dicts as JSON strings. This helper parses them back.
 
     Args:
         field_value: Field value (may be JSON string or primitive)
@@ -584,7 +584,7 @@ async def get_chunk_context(doc_id: str, chunk_id: str):
         element_type = context.get("element_type", "text") if isinstance(context, dict) else "text"
         is_page_boundary = context.get("is_page_boundary", False) if isinstance(context, dict) else False
 
-        # Parse JSON array fields (ChromaDB stores lists as JSON strings)
+        # Parse JSON array fields (Koji stores lists as JSON strings)
         related_tables = parse_json_field(metadata.get("related_tables", []))
         if not isinstance(related_tables, list):
             related_tables = []

@@ -86,7 +86,7 @@ scripts/
 
 **Key Features Tested:**
 - DocumentStructure compression with gzip
-- Enhanced metadata storage in ChromaDB
+- Enhanced metadata storage in Koji
 - Page-to-chunk mapping queries
 - Multi-page chunk handling
 - JSON array serialization (related_tables, related_pictures)
@@ -122,7 +122,7 @@ scripts/
 | Test | Validates | Status |
 |------|-----------|--------|
 | `test_markdown_chunk_marker_format` | Chunk marker format in markdown | ✅ |
-| `test_chunk_markers_match_chromadb` | Markers match ChromaDB chunk_ids | ✅ |
+| `test_chunk_markers_match_storage` | Markers match Koji chunk_ids | ✅ |
 | `test_chunk_marker_extraction_and_navigation` | Marker extraction for navigation | ✅ |
 
 #### TestEdgeCases (4 tests)
@@ -173,13 +173,13 @@ scripts/
 ### Pytest Fixtures (conftest.py)
 
 **Service Health Fixtures:**
-- `chromadb_host`, `chromadb_port`, `chromadb_url`
-- `worker_api_url`, `copyparty_url`
+- `koji_host`, `koji_port`, `koji_url`
+- `worker_api_url`
 - `services_available` - Auto-check if services running
 - `skip_if_services_unavailable` - Skip decorator
 
 **API Client Fixtures:**
-- `chromadb_client` - Real ChromaDB client
+- `koji_client` - Real Koji client
 - `worker_api_client` - HTTP client for Worker API
 - `research_api_client` - FastAPI test client
 
@@ -201,7 +201,7 @@ scripts/
 - `generate_doc_id()` - Match production doc ID generation
 
 **Service Verification:**
-- `verify_chromadb_connection()` - Check ChromaDB health
+- `verify_koji_connection()` - Check Koji health
 - `verify_worker_api_connection()` - Check Worker API health
 
 **Processing Monitoring:**
@@ -287,7 +287,7 @@ E2E Test Suite for Bidirectional Highlighting
 ========================================
 
 Step 1: Checking required services...
-✓ ChromaDB is running (port 8001)
+✓ Koji is running (port 8001)
 ✓ Worker API is running (port 8002)
 All required services are running
 
@@ -409,7 +409,7 @@ All production code from Wave 1-3 agents appears to be working correctly based o
 ### For CI/CD Integration
 
 1. **GitHub Actions Workflow:**
-   - Add E2E test job with ChromaDB service
+   - Add E2E test job with Koji service
    - Run on pull requests to main
    - Require passing tests for merge
    - Upload coverage to Codecov
@@ -475,7 +475,7 @@ Successfully created a comprehensive E2E test suite with:
 ### Test Quality
 
 - ✅ **Complete coverage** of enhanced mode pipeline
-- ✅ **Real integration** with ChromaDB and APIs
+- ✅ **Real integration** with Koji and APIs
 - ✅ **Edge cases** thoroughly tested
 - ✅ **Auto-cleanup** prevents test pollution
 - ✅ **Clear documentation** for maintainability

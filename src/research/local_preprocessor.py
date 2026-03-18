@@ -49,10 +49,10 @@ class LocalLLMPreprocessor:
     @staticmethod
     def _parse_chunk_context(metadata: Dict[str, Any]) -> Optional[ChunkContext]:
         """
-        Parse chunk_context_json from ChromaDB metadata.
+        Parse chunk_context_json from Koji metadata.
 
         Args:
-            metadata: Raw metadata dict from ChromaDB search result
+            metadata: Raw metadata dict from Koji search result
 
         Returns:
             ChunkContext object if chunk_context_json exists, None otherwise

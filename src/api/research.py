@@ -302,8 +302,6 @@ _frontend_port = os.getenv("VITE_FRONTEND_PORT", "3333")
 _allowed_origins = [
     _urls.frontend,
     f"http://127.0.0.1:{_frontend_port}",  # React Frontend localhost (dynamic)
-    _urls.copyparty,
-    "http://127.0.0.1:8000",  # Copyparty localhost
     _urls.worker,
     "http://127.0.0.1:8002",  # Worker API localhost
 ]
@@ -968,7 +966,7 @@ async def health_check():
     Health check endpoint for monitoring
 
     Returns the health status of all research API components:
-    - ChromaDB connection
+    - Koji connection
     - Search engine
     - LLM client
 
@@ -976,7 +974,7 @@ async def health_check():
         {
             "status": "healthy",
             "components": {
-                "chromadb": "healthy",
+                "koji": "healthy",
                 "llm_client": "healthy",
                 "search_engine": "healthy"
             },

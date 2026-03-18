@@ -1,5 +1,5 @@
 """
-Unit tests for chunk_id extraction from ChromaDB metadata.
+Unit tests for chunk_id extraction from Koji metadata.
 
 Tests the chunk_extractor module's ability to extract and transform
 chunk_id from search results for bidirectional highlighting.

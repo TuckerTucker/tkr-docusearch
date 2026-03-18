@@ -2,8 +2,8 @@
 Koji database client for DocuSearch.
 
 This module provides the primary interface between DocuSearch and the Koji
-hybrid database (SQL + vector + graph). It replaces ChromaDB for vector
-storage and Copyparty for file storage.
+hybrid database (SQL + vector + graph). It handles document, page, and chunk
+persistence with multi-vector embedding support.
 
 All persistence operations flow through this client. It handles:
 - Connection lifecycle (open, close, sync)

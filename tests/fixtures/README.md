@@ -22,7 +22,7 @@ This directory contains test fixtures for backend API testing. All files are min
 - Extracts multiple text chunks (depending on chunk size)
 - Processing mode: VISUAL (full visual + text processing)
 
-**Test Keywords:** "document processing pipeline", "vector embeddings", "similarity search", "ChromaDB integration"
+**Test Keywords:** "document processing pipeline", "vector embeddings", "similarity search", "Koji integration"
 
 ---
 
@@ -143,7 +143,7 @@ def test_upload_pdf(api_client):
 ### Processing Validation Test
 
 ```python
-def test_processing_complete(api_client, chromadb_client):
+def test_processing_complete(api_client, koji_client):
     """Test document processing completion."""
     pdf_path = FIXTURES_DIR / "sample.pdf"
 
@@ -158,11 +158,11 @@ def test_processing_complete(api_client, chromadb_client):
 
     assert result["status"] == "completed"
 
-    # Verify embeddings in ChromaDB
-    visual_results = chromadb_client._visual_collection.get(
+    # Verify embeddings in Koji
+    visual_results = koji_client._visual_collection.get(
         where={"doc_id": doc_id}
     )
-    text_results = chromadb_client._text_collection.get(
+    text_results = koji_client._text_collection.get(
         where={"doc_id": doc_id}
     )
 

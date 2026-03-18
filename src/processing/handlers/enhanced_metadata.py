@@ -2,8 +2,8 @@
 Enhanced metadata preparation for document processing.
 
 This module provides helper functions to prepare enhanced metadata for storage
-in ChromaDB collections. It handles structure compression, validation, and
-chunk context formatting according to the ChromaDB metadata schema v1.0.
+in Koji. It handles structure compression, validation, and chunk context
+formatting according to the metadata schema.
 """
 
 import json
@@ -11,11 +11,6 @@ import logging
 from typing import Any, Dict, Optional
 
 import json
-
-
-def sanitize_metadata_for_chroma(metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """Pass-through — ChromaDB sanitization no longer needed with Koji."""
-    return metadata
 
 
 def compress_structure_metadata(structure: Dict[str, Any]) -> str:
@@ -39,10 +34,10 @@ def prepare_enhanced_visual_metadata(
     image_height: Optional[int],
 ) -> Dict[str, Any]:
     """
-    Prepare enhanced visual metadata for ChromaDB storage.
+    Prepare enhanced visual metadata for Koji storage.
 
     Adds document structure information to base metadata according to
-    ChromaDB metadata schema v1.0. Structure is compressed using gzip+base64
+    Koji metadata schema v1.0. Structure is compressed using gzip+base64
     for efficient storage.
 
     Args:
@@ -52,7 +47,7 @@ def prepare_enhanced_visual_metadata(
         image_height: Original image height in pixels (for bbox coordinate system)
 
     Returns:
-        Enhanced metadata dictionary ready for ChromaDB storage
+        Enhanced metadata dictionary ready for Koji storage
 
     Raises:
         ValueError: If structure is invalid or metadata exceeds size limits
@@ -70,7 +65,7 @@ def prepare_enhanced_visual_metadata(
     # If no structure provided, set has_structure=False and return
     if structure is None:
         enhanced["has_structure"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
     # Validate structure before compression
     try:
@@ -78,7 +73,7 @@ def prepare_enhanced_visual_metadata(
     except AssertionError as e:
         logger.warning(f"Invalid document structure: {e}")
         enhanced["has_structure"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
     # Add structure availability flag
     enhanced["has_structure"] = True
@@ -111,7 +106,7 @@ def prepare_enhanced_visual_metadata(
         logger.error(f"Failed to compress structure: {e}")
         # Fall back to non-enhanced mode
         enhanced["has_structure"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
     # Validate metadata size (should be <50KB)
     try:
@@ -122,8 +117,8 @@ def prepare_enhanced_visual_metadata(
         del enhanced["structure"]
         logger.info("Removed compressed structure, keeping summary fields only")
 
-    # Sanitize for ChromaDB (convert lists/dicts to JSON strings)
-    return sanitize_metadata_for_chroma(enhanced)
+    # Sanitize for Koji (convert lists/dicts to JSON strings)
+    return enhanced
 
 
 def prepare_enhanced_text_metadata(
@@ -131,10 +126,10 @@ def prepare_enhanced_text_metadata(
     chunk_context: Optional[ChunkContext],
 ) -> Dict[str, Any]:
     """
-    Prepare enhanced text metadata for ChromaDB storage.
+    Prepare enhanced text metadata for Koji storage.
 
     Adds chunk context information to base metadata according to
-    ChromaDB metadata schema v1.0. Context includes parent heading,
+    Koji metadata schema v1.0. Context includes parent heading,
     section path, element type, and related elements.
 
     Args:
@@ -142,7 +137,7 @@ def prepare_enhanced_text_metadata(
         chunk_context: ChunkContext object from smart chunking
 
     Returns:
-        Enhanced metadata dictionary ready for ChromaDB storage
+        Enhanced metadata dictionary ready for Koji storage
 
     Raises:
         ValueError: If chunk context is invalid
@@ -165,7 +160,7 @@ def prepare_enhanced_text_metadata(
     # If no context provided, set has_context=False and return
     if chunk_context is None:
         enhanced["has_context"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
     # Validate chunk context
     try:
@@ -173,12 +168,12 @@ def prepare_enhanced_text_metadata(
     except AssertionError as e:
         logger.warning(f"Invalid chunk context: {e}")
         enhanced["has_context"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
     # Add context availability flag
     enhanced["has_context"] = True
 
-    # Add structural context (flat fields for ChromaDB filtering)
+    # Add structural context (flat fields for Koji filtering)
     enhanced["parent_heading"] = chunk_context.parent_heading
     enhanced["parent_heading_level"] = chunk_context.parent_heading_level
     enhanced["section_path"] = chunk_context.section_path
@@ -188,7 +183,7 @@ def prepare_enhanced_text_metadata(
     # Store full context as JSON string for visual necessity and multi-modal decisions
     enhanced["chunk_context_json"] = json.dumps(chunk_context.to_dict())
 
-    # Add related elements (stored as JSON strings - ChromaDB limitation)
+    # Add related elements (stored as JSON strings - Koji limitation)
     enhanced["related_tables"] = json.dumps(chunk_context.related_tables)
     enhanced["related_pictures"] = json.dumps(chunk_context.related_pictures)
 
@@ -213,10 +208,10 @@ def prepare_enhanced_text_metadata(
         logger.warning(f"Enhanced text metadata too large: {e}")
         # This should never happen for text chunks, but handle gracefully
         enhanced["has_context"] = False
-        return sanitize_metadata_for_chroma(enhanced)
+        return enhanced
 
-    # Sanitize for ChromaDB (convert any remaining lists/dicts to JSON strings)
-    return sanitize_metadata_for_chroma(enhanced)
+    # Sanitize for Koji (convert any remaining lists/dicts to JSON strings)
+    return enhanced
 
 
 def build_chunk_context_from_chunking_results(

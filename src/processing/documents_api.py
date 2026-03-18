@@ -9,16 +9,12 @@ Consumers: ui-agent (Wave 4)
 Contract: integration-contracts/03-documents-api.contract.md
 """
 
-import base64
 import logging
 import os
 import re
 import unicodedata
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
@@ -190,7 +186,7 @@ class DeleteDocumentResponse(BaseModel):
     filename: Optional[str] = Field(None, description="Original filename")
     deleted: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Details of what was deleted (chromadb, images, markdown, etc.)",
+        description="Details of what was deleted (koji, images, markdown, etc.)",
     )
     errors: List[str] = Field(
         default_factory=list, description="Non-critical errors during cleanup"
@@ -224,59 +220,6 @@ def validate_filename(filename: str) -> bool:
         True if valid, False otherwise
     """
     return bool(FILENAME_PATTERN.match(filename))
-
-
-def delete_from_copyparty(filename: str) -> bool:
-    """Delete file from copyparty file server.
-
-    This is STAGE 6 of document deletion - removes the original uploaded file from copyparty.
-
-    Args:
-        filename: Original filename in uploads directory
-
-    Returns:
-        True if deleted successfully, False otherwise
-    """
-    # Get copyparty configuration from environment
-    copyparty_host = os.getenv("COPYPARTY_HOST", "localhost")
-    copyparty_port = os.getenv("COPYPARTY_PORT", "8000")
-    copyparty_user = os.getenv("COPYPARTY_USER", "admin")
-    copyparty_password = os.getenv("COPYPARTY_PASSWORD", "admin")
-
-    # Build DELETE request URL
-    # URL format: http://localhost:8000/uploads/{filename}
-    url = f"http://{copyparty_host}:{copyparty_port}/uploads/{quote(filename)}"
-
-    try:
-        # Create request with Basic Authentication
-        credentials = f"{copyparty_user}:{copyparty_password}"
-        encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-        req = urllib.request.Request(
-            url,
-            method="DELETE",
-            headers={"Authorization": f"Basic {encoded_credentials}"},
-        )
-
-        # Send DELETE request
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response_text = response.read().decode("utf-8")
-            logger.info(f"Copyparty DELETE response: {response_text}")
-            return True
-
-    except urllib.error.HTTPError as e:
-        # Log but don't fail - file might already be deleted
-        error_body = e.read().decode("utf-8") if e.fp else ""
-        logger.warning(
-            f"Copyparty DELETE failed for {filename}: {e.code} {e.reason} - {error_body}"
-        )
-        return False
-    except urllib.error.URLError as e:
-        logger.warning(f"Copyparty DELETE network error for {filename}: {e.reason}")
-        return False
-    except Exception as e:
-        logger.warning(f"Copyparty DELETE unexpected error for {filename}: {e}")
-        return False
 
 
 def get_storage_client() -> KojiClient:
@@ -869,7 +812,7 @@ async def get_markdown(doc_id: str, include_markers: bool = True):
             with open(markdown_path, "r", encoding="utf-8") as f:
                 original_markdown = f.read()
 
-            # Get chunks from ChromaDB
+            # Get chunks from Koji
             chunks = get_chunks_for_document(doc_id, client)
 
             # Insert markers
@@ -1368,14 +1311,13 @@ async def get_image(doc_id: str, filename: str):
 async def delete_document(doc_id: str):  # noqa: C901
     """Delete a document and all associated data.
 
-    This performs a comprehensive 7-stage deletion:
-    1. ChromaDB embeddings (visual and text) - CRITICAL
+    This performs a comprehensive 6-stage deletion:
+    1. Koji embeddings (visual and text) - CRITICAL
     2. Page images and thumbnails - HIGH
     3. Cover art (audio files) - MEDIUM
     4. VTT caption files (audio files) - MEDIUM
     5. Markdown files - MEDIUM
     6. Temporary directories - LOW
-    7. Original file from copyparty - MEDIUM
 
     Args:
         doc_id: Document identifier (SHA-256 hash)
@@ -1512,26 +1454,6 @@ async def delete_document(doc_id: str):  # noqa: C901
             logger.warning(error_msg)
             errors.append(error_msg)
             deleted["temp_directories"] = {"status": "error", "message": str(e)}
-
-        # STAGE 7: Delete file from copyparty (MEDIUM priority)
-        if filename:
-            try:
-                copyparty_deleted = delete_from_copyparty(filename)
-                deleted["copyparty"] = {
-                    "deleted": copyparty_deleted,
-                    "status": "deleted" if copyparty_deleted else "failed",
-                }
-                if copyparty_deleted:
-                    logger.info(f"Deleted file from copyparty: {filename}")
-                else:
-                    logger.warning(f"Failed to delete file from copyparty: {filename}")
-            except Exception as e:
-                error_msg = f"Failed to delete from copyparty: {str(e)}"
-                logger.warning(error_msg)
-                errors.append(error_msg)
-                deleted["copyparty"] = {"status": "error", "message": str(e)}
-        else:
-            deleted["copyparty"] = {"status": "skipped", "message": "No filename available"}
 
         # Log summary
         logger.info(f"Document deletion complete for {doc_id}: {len(errors)} non-critical errors")

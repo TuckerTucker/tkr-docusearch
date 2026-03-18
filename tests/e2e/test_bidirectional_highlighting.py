@@ -1,9 +1,9 @@
 """
 End-to-end tests for bidirectional highlighting data flow.
 
-These tests validated the ChromaDB-based structure metadata pipeline which has
-been replaced by the Koji storage backend. The tests are retained as skipped
-placeholders until equivalent Koji-based E2E tests are written.
+These tests validated the structure metadata pipeline which has been migrated
+to the Koji storage backend. The tests are retained as skipped placeholders
+until equivalent Koji-based E2E tests are written.
 """
 
 from dataclasses import asdict

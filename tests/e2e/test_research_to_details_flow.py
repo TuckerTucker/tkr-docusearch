@@ -4,7 +4,7 @@ End-to-end tests for research to details flow.
 Tests the complete user journey from submitting a research query through
 receiving citations to navigating to document details with chunk highlighting.
 
-Storage-independent tests are preserved; ChromaDB-dependent tests are skipped
+Storage-independent tests are preserved; storage-dependent tests are skipped
 pending Koji migration.
 """
 

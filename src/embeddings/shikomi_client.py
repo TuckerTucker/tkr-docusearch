@@ -1,8 +1,8 @@
 """Shikomi embedding client for DocuSearch.
 
 This module provides the interface between DocuSearch and Shikomi's
-distributed embedding workers via gRPC. It replaces the ColPali wrapper
-with ColNomic multi-vector embeddings.
+distributed embedding workers via gRPC, generating ColNomic multi-vector
+embeddings for documents, text chunks, and search queries.
 
 Key design decisions:
 - ``embed_images``/``embed_texts`` return ``list[bytes]`` (packed blobs for
@@ -179,7 +179,7 @@ class ShikomiClient:
     ) -> list[bytes]:
         """Embed page images via Shikomi workers.
 
-        Accepts PIL Images (matching the existing ColPaliEngine interface).
+        Accepts PIL Images and returns packed multi-vector blobs.
         Returns packed multi-vector blobs for direct storage in Koji
         binary columns.
 

@@ -20,17 +20,16 @@ fixtures/
 
 ### Service Health Fixtures
 
-- **`chromadb_host`** - ChromaDB host from environment
-- **`chromadb_port`** - ChromaDB port from environment
+- **`koji_host`** - Koji host from environment
+- **`koji_port`** - Koji port from environment
 - **`worker_api_url`** - Worker API base URL
-- **`copyparty_url`** - Copyparty UI base URL
-- **`chromadb_url`** - ChromaDB full URL
+- **`koji_url`** - Koji full URL
 - **`services_available`** - Check if required services are running
 - **`skip_if_services_unavailable`** - Skip test if services not running
 
 ### API Client Fixtures
 
-- **`chromadb_client`** - Real ChromaDB client for E2E tests
+- **`koji_client`** - Real Koji client for E2E tests
 - **`worker_api_client`** - HTTP client for Worker API
 - **`research_api_client`** - FastAPI test client for Research API
 
@@ -69,10 +68,10 @@ structured_pdf = create_test_pdf_with_structure(
 ### Service Verification
 
 ```python
-from tests.e2e.fixtures.helpers import verify_chromadb_connection, verify_worker_api_connection
+from tests.e2e.fixtures.helpers import verify_worker_api_connection
 
-if verify_chromadb_connection():
-    print("ChromaDB is accessible")
+if verify_worker_api_connection():
+    print("Worker API is accessible")
 
 if verify_worker_api_connection():
     print("Worker API is accessible")
@@ -96,20 +95,8 @@ if result["status"] == "completed":
 ### Cleanup
 
 ```python
-from tests.e2e.fixtures.helpers import cleanup_test_documents, get_document_stats
-
-# Get document stats
-stats = get_document_stats(chromadb_client, "test-doc-123")
-print(f"Visual embeddings: {stats['visual_embeddings']}")
-print(f"Text embeddings: {stats['text_embeddings']}")
-
-# Cleanup
-cleanup_stats = cleanup_test_documents(
-    chromadb_client,
-    doc_ids=["test-doc-123", "test-doc-456"],
-    verbose=True
-)
-print(f"Deleted {cleanup_stats['visual_deleted']} visual, {cleanup_stats['text_deleted']} text")
+# Cleanup is handled by Koji client directly
+# See KojiClient.delete_document() for cleanup API
 ```
 
 ## Usage in Tests
@@ -118,7 +105,7 @@ print(f"Deleted {cleanup_stats['visual_deleted']} visual, {cleanup_stats['text_d
 
 ```python
 @pytest.mark.integration
-def test_something(chromadb_client, test_doc_ids):
+def test_something(koji_client, test_doc_ids):
     """Test with automatic cleanup."""
     doc_id = "test-doc-auto-cleanup"
 
@@ -136,7 +123,7 @@ def test_something(chromadb_client, test_doc_ids):
 ```python
 @pytest.mark.integration
 def test_requires_services(
-    chromadb_client,
+    koji_client,
     worker_api_client,
     skip_if_services_unavailable
 ):
@@ -152,7 +139,7 @@ def test_requires_services(
 @pytest.mark.slow
 def test_document_processing(
     worker_api_client,
-    chromadb_client,
+    koji_client,
     wait_for_processing_helper,
     test_doc_ids
 ):
@@ -166,10 +153,6 @@ def test_document_processing(
     # Wait for completion
     result = wait_for_processing_helper(doc_id, timeout=60)
     assert result["status"] == "completed"
-
-    # Verify results
-    stats = get_document_stats(chromadb_client, doc_id)
-    assert stats["visual_embeddings"] > 0
 ```
 
 ## Sample Documents
@@ -200,10 +183,8 @@ create_test_pdf_with_structure(
 
 Configure services via environment:
 
-- `CHROMA_HOST` - ChromaDB host (default: localhost)
-- `CHROMA_PORT` - ChromaDB port (default: 8001)
+- `KOJI_DB_PATH` - Koji database path
 - `WORKER_API_URL` - Worker API URL (default: http://localhost:8002)
-- `COPYPARTY_URL` - Copyparty URL (default: http://localhost:8000)
 
 ## Running E2E Tests
 
@@ -229,7 +210,7 @@ pytest tests/e2e/ -v -m "not slow"
 
 ## Notes
 
-- E2E tests require running services (ChromaDB, Worker API)
+- E2E tests require running services (Koji, Worker API)
 - Tests will skip automatically if services unavailable
 - Auto-cleanup removes test data after each test
 - Use `test_doc_ids` list to track documents for cleanup

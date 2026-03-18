@@ -3,7 +3,6 @@ Tests for processing/parsers helper modules.
 
 Tests cover:
 - FormatOptionsBuilder: PDF, DOCX, Image, Audio option building
-- SlideRenderer: PPTX slide rendering logic
 - AudioMetadataExtractor: ID3 metadata extraction and merging
 - SymlinkHelper: Symlink creation and cleanup for audio files
 
@@ -215,90 +214,6 @@ class TestFormatOptionsBuilder:
 
 
 # =============================================================================
-# SlideRenderer Tests
-# =============================================================================
-
-
-class TestSlideRenderer:
-    """Test PPTX slide rendering helper."""
-
-    def test_init_default_dpi(self):
-        """Test initialization with default DPI."""
-        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
-
-        renderer = SlideRenderer()
-        assert renderer.render_dpi == 150
-
-    def test_init_custom_dpi(self):
-        """Test initialization with custom DPI."""
-        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
-
-        renderer = SlideRenderer(render_dpi=300)
-        assert renderer.render_dpi == 300
-
-    def test_render_pptx_slides_success(self):
-        """Test successful PPTX slide rendering (mocked)."""
-        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
-
-        renderer = SlideRenderer(render_dpi=150)
-
-        # This is a complex integration test that requires mocking many internal imports
-        # For now, we'll test basic initialization and error handling more thoroughly
-        # The actual rendering logic is tested in integration tests
-        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
-            mock_slide_client = Mock()
-            mock_slide_client.render_slides.return_value = ["/page_images/slide_1.png"]
-            mock_get_client.return_value = mock_slide_client
-
-            # The complex mocking of PIL and file I/O is difficult to get right
-            # Test basic error handling instead
-            with patch("PIL.Image.open") as mock_open:
-                mock_img = Mock()
-                mock_img.mode = "RGB"
-                mock_img.copy.return_value = mock_img
-                mock_open.return_value = mock_img
-
-                # Test will fail gracefully due to Path mocking complexity
-                # This is acceptable for unit tests - integration tests cover this
-                renderer.render_pptx_slides("test.pptx")
-                # Result may be None due to mocking limitations
-
-    def test_render_pptx_slides_error(self):
-        """Test PPTX slide rendering with error."""
-        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
-
-        renderer = SlideRenderer()
-
-        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
-            # Simulate error
-            mock_get_client.side_effect = Exception("Renderer error")
-
-            result = renderer.render_pptx_slides("test.pptx")
-
-            # Should return None on error
-            assert result is None
-
-    def test_render_pptx_slides_cleanup_on_error(self):
-        """Test that temp directory is cleaned up even on error."""
-        from tkr_docusearch.processing.parsers.slide_renderer import SlideRenderer
-
-        renderer = SlideRenderer()
-
-        # Test error handling with simplified mocking
-        with patch("tkr_docusearch.processing.legacy_office_client.get_legacy_office_client") as mock_get_client:
-            mock_slide_client = Mock()
-            mock_slide_client.render_slides.side_effect = Exception("Render error")
-            mock_get_client.return_value = mock_slide_client
-
-            # Mocking the internal shutil and Path is complex
-            # The important part is that errors are caught and None is returned
-            result = renderer.render_pptx_slides("test.pptx")
-
-            # Should return None on error
-            assert result is None
-
-
-# =============================================================================
 # AudioMetadataExtractor Tests
 # =============================================================================
 
@@ -311,7 +226,7 @@ class TestAudioMetadataExtractor:
         from tkr_docusearch.processing.parsers.audio_metadata_extractor import AudioMetadataExtractor
 
         mock_metadata = Mock()
-        mock_metadata.to_chromadb_metadata.return_value = {
+        mock_metadata.to_metadata_dict.return_value = {
             "title": "Test Song",
             "artist": "Test Artist",
         }
@@ -374,7 +289,7 @@ class TestAudioMetadataExtractor:
         mock_id3_metadata.has_album_art = True
         mock_id3_metadata.album_art_data = b"image_data"
         mock_id3_metadata.album_art_mime = "image/jpeg"
-        mock_id3_metadata.to_chromadb_metadata.return_value = {
+        mock_id3_metadata.to_metadata_dict.return_value = {
             "title": "Test Song",
             "artist": "Test Artist",
             "album": "Test Album",

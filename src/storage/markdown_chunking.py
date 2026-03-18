@@ -34,11 +34,11 @@ class ChunkMarkupError(Exception):
 
 @dataclass
 class ChunkMetadata:
-    """Metadata for a text chunk from ChromaDB.
+    """Metadata for a text chunk from Koji.
 
     Attributes:
         chunk_id: Unique chunk identifier (e.g., "doc123-chunk0000")
-        embedding_id: ChromaDB embedding ID
+        embedding_id: Koji embedding ID
         page: Page number where chunk appears
         section_path: Hierarchical section path (e.g., "Introduction > Methods")
         text_content: Full text content of the chunk

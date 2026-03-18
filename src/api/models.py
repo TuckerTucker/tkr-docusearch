@@ -161,7 +161,7 @@ class ComponentHealth(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "chromadb",
+                "name": "koji",
                 "status": "healthy",
                 "message": "Connected and responsive",
                 "latency_ms": 5.2,

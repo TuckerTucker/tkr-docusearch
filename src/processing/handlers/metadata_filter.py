@@ -1,5 +1,5 @@
 """
-Metadata filter for ChromaDB storage.
+Metadata filter for Koji storage.
 
 This module filters document metadata to remove large/problematic fields,
 extracted from DocumentProcessor for reduced complexity.
@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class MetadataFilter:
-    """Filter for preparing metadata for ChromaDB storage."""
+    """Filter for preparing metadata for Koji storage."""
 
-    # Fields to exclude from ChromaDB metadata
+    # Fields to exclude from Koji metadata
     EXCLUDED_FIELDS = {
         "full_markdown",  # Too large (hundreds of KB)
         "structure",  # Complex nested structure
@@ -32,13 +32,13 @@ class MetadataFilter:
         """
         Filter metadata to remove large/problematic fields.
 
-        ChromaDB metadata values must be simple types and not too large.
+        Koji metadata values must be simple types and not too large.
 
         Args:
             doc_metadata: Original document metadata
 
         Returns:
-            Filtered metadata safe for ChromaDB storage
+            Filtered metadata safe for Koji storage
         """
         filtered_keys = []
         safe_doc_metadata = {}

@@ -8,7 +8,7 @@ be defined here to avoid circular dependencies and provide a single source of tr
 Future Exception Categories:
     - Configuration exceptions (missing env vars, invalid config)
     - Processing exceptions (document processing failures)
-    - Storage exceptions (ChromaDB, file system errors)
+    - Storage exceptions (Koji, file system errors)
     - Search exceptions (query failures, embedding errors)
     - Research exceptions (LLM API errors, citation failures)
 

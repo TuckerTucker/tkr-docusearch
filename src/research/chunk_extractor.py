@@ -1,7 +1,7 @@
 """
 Chunk ID extraction utilities for research context.
 
-Handles extraction and transformation of chunk_id from ChromaDB metadata
+Handles extraction and transformation of chunk_id from Koji metadata
 for bidirectional highlighting in the research interface.
 """
 
@@ -18,7 +18,7 @@ def extract_chunk_id(metadata: Dict[str, Any], doc_id: str) -> Optional[str]:
     Extract and transform chunk_id from search result metadata.
 
     Args:
-        metadata: ChromaDB metadata from search result
+        metadata: Koji metadata from search result
         doc_id: Document identifier
 
     Returns:
@@ -33,7 +33,7 @@ def extract_chunk_id(metadata: Dict[str, Any], doc_id: str) -> Optional[str]:
           Return: None
 
     Note:
-        ChromaDB stores chunk_id as integer. We transform to string format
+        Koji stores chunk_id as integer. We transform to string format
         matching the embedding ID format used in storage layer.
     """
     # Check if chunk_id exists in metadata

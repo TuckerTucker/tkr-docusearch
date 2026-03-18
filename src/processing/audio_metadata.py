@@ -52,9 +52,8 @@ class AudioMetadata:
     album_art_description: Optional[str] = None
     album_art_data: Optional[bytes] = None  # Raw image data (for saving)
 
-    def to_chromadb_metadata(self) -> Dict[str, Any]:
-        """
-        Convert to ChromaDB metadata dict with audio_ prefix.
+    def to_metadata_dict(self) -> Dict[str, Any]:
+        """Convert to metadata dict with audio_ prefix.
 
         Returns dict with only non-None values to keep metadata lean.
         """

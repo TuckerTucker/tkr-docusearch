@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-DocuSearch - Copyparty Delete Event Hook
+DocuSearch - Delete Event Hook
 Triggers Koji deletion via HTTP webhook when files are deleted.
-
-Simplified version for --xad flag which only provides file path.
 """
 
 import json
@@ -22,16 +20,9 @@ _formats_str = os.environ.get("SUPPORTED_FORMATS", "pdf,docx,pptx")
 SUPPORTED_EXTENSIONS = {f".{fmt.strip().lower()}" for fmt in _formats_str.split(",")}
 
 # Worker endpoint
-WORKER_HOST = os.environ.get("WORKER_HOST", "host.docker.internal")
+WORKER_HOST = os.environ.get("WORKER_HOST", "127.0.0.1")
 WORKER_PORT = os.environ.get("WORKER_PORT", "8002")
 
-# Path translation: container path -> host path
-# Container sees: /uploads/file.pdf
-# Host sees: /Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads/file.pdf
-CONTAINER_UPLOADS_PATH = "/uploads"
-HOST_UPLOADS_PATH = os.environ.get(
-    "HOST_UPLOADS_PATH", "/Volumes/tkr-riffic/@tkr-projects/tkr-docusearch/data/uploads"
-)
 
 # ============================================================================
 # Main

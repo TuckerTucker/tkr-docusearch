@@ -143,7 +143,6 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 The scope specifies the area of the codebase affected:
 
 - **deps**: Dependencies
-- **docker**: Docker configuration
 - **embeddings**: Embedding layer
 - **storage**: Storage layer
 - **processing**: Document processing
@@ -339,7 +338,6 @@ We use Dependabot to automatically update dependencies:
 
 - **Python packages**: Weekly updates on Mondays
 - **GitHub Actions**: Weekly updates on Mondays
-- **Docker images**: Weekly updates on Mondays
 
 Dependabot PRs are automatically labeled and grouped by update type (minor/patch vs major).
 

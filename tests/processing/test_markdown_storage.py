@@ -89,7 +89,7 @@ class TestWave1Integration:
         Validates:
         - Markdown file exists
         - Metadata populated correctly
-        - ChromaDB metadata includes markdown fields
+        - Koji metadata includes markdown fields
         - File path is absolute
         - Content is valid markdown
         """
@@ -125,7 +125,7 @@ class TestWave1Integration:
         #     assert len(content) > 0
         #     assert "#" in content or "*" in content  # Has markdown syntax
         #
-        #     # VALIDATE: ChromaDB metadata includes markdown fields
+        #     # VALIDATE: Koji metadata includes markdown fields
         #     visual_results = storage_client.search_visual(
         #         query_embedding=np.zeros(128),
         #         n_results=1,
@@ -133,9 +133,9 @@ class TestWave1Integration:
         #     )
         #
         #     if visual_results:
-        #         chroma_metadata = visual_results[0]["metadata"]
-        #         assert chroma_metadata["markdown_path"] == markdown_path
-        #         assert chroma_metadata["has_markdown"] == True
+        #         koji_metadata = visual_results[0]["metadata"]
+        #         assert koji_metadata["markdown_path"] == markdown_path
+        #         assert koji_metadata["has_markdown"] == True
 
         # For now, test passes to avoid blocking
         # TODO: Enable after Agent 1 completes integration

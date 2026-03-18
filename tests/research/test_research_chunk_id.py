@@ -74,15 +74,15 @@ class TestContextBuilderIntegration:
     @pytest.mark.asyncio
     async def test_get_source_metadata_text_result(self):
         """Test get_source_metadata extracts chunk_id from text result"""
-        # This would require a real ChromaDB instance with text embeddings
+        # This would require a real Koji instance with text embeddings
         # For now, we test the logic path is correct
-        pass  # TODO: Add integration test with real ChromaDB
+        pass  # TODO: Add integration test with real Koji
 
     @pytest.mark.asyncio
     async def test_get_source_metadata_visual_result(self):
         """Test get_source_metadata returns None for visual result"""
-        # This would require a real ChromaDB instance with visual embeddings
-        pass  # TODO: Add integration test with real ChromaDB
+        # This would require a real Koji instance with visual embeddings
+        pass  # TODO: Add integration test with real Koji
 
 
 class TestResearchAPIResponse:
@@ -145,7 +145,7 @@ class TestResearchAPIResponse:
     @pytest.mark.asyncio
     async def test_research_endpoint_returns_chunk_id(self):
         """Test research API endpoint includes chunk_id in sources"""
-        # This would require a running research API with ChromaDB
+        # This would require a running research API with Koji
         # For now, we verify the code path is correct
         pass  # TODO: Add integration test with real API
 
@@ -154,11 +154,11 @@ class TestChunkIdFormat:
     """Test chunk_id format matches storage layer"""
 
     def test_format_matches_storage_embedding_id(self):
-        """Chunk ID format matches ChromaDB embedding ID format"""
+        """Chunk ID format matches Koji embedding ID format"""
         from tkr_docusearch.research.chunk_extractor import extract_chunk_id
 
         # Storage layer creates IDs like: "{doc_id}-chunk{chunk_id:04d}"
-        # See: src/storage/chroma_client.py line 370
+        # See: src/storage/koji_client.py
 
         metadata = {"doc_id": "abc123", "chunk_id": 45}
         doc_id = "abc123"
@@ -171,7 +171,7 @@ class TestChunkIdFormat:
 
     def test_format_consistency_across_layers(self):
         """Verify format consistency between storage and research layers"""
-        # Storage layer format (from chroma_client.py)
+        # Storage layer format (from koji_client.py)
         storage_format = f"{'test-doc'}-chunk{42:04d}"
 
         # Research layer format (from chunk_extractor.py)

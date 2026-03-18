@@ -24,7 +24,7 @@ class TextEmbeddingHandler:
         Initialize handler.
 
         Args:
-            storage_client: Storage client for ChromaDB
+            storage_client: Storage client for Koji
             enhanced_mode_config: Optional enhanced mode configuration
         """
         self.storage_client = storage_client
@@ -39,7 +39,7 @@ class TextEmbeddingHandler:
         safe_doc_metadata: Dict[str, Any],
     ) -> tuple:
         """
-        Store text embeddings in ChromaDB.
+        Store text embeddings in Koji.
 
         Args:
             text_results: List of TextEmbeddingResult
@@ -121,7 +121,7 @@ class TextEmbeddingHandler:
         }
 
         # Add timestamp fields if chunk has timestamps
-        # Only add if not None - ChromaDB doesn't accept None values
+        # Only add if not None - Koji doesn't accept None values
         if chunk:
             if hasattr(chunk, "start_time") and chunk.start_time is not None:
                 base_metadata["start_time"] = chunk.start_time

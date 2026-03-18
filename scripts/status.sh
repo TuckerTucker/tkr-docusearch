@@ -129,7 +129,7 @@ show_status_text() {
             echo -e "    ${BLUE}→${NC} PID:     $(cat $WORKER_PID_FILE)"
             echo -e "    ${BLUE}→${NC} Logs:    logs/worker-native.log"
         else
-            echo -e "  ${GREEN}✓${NC} Worker:    Running (Docker - CPU only)"
+            echo -e "  ${GREEN}✓${NC} Worker:    Running"
         fi
 
         echo -e "    ${BLUE}→${NC} URL:     http://localhost:8002"
@@ -347,7 +347,7 @@ show_status_json() {
     "worker": {
       "status": "$worker_status",
       "url": "http://localhost:8002",
-      "mode": "$([ $native_worker = true ] && echo 'native' || echo 'docker')",
+      "mode": "native",
       "pid": "$worker_pid"
     },
     "research_api": {

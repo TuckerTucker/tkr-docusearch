@@ -1,5 +1,5 @@
 """
-Audio metadata builder for ChromaDB storage.
+Audio metadata builder for Koji storage.
 
 This module builds complete metadata dictionaries from whisper transcription
 results and ID3 tags, implementing Integration Contract IC-002 metadata format
@@ -27,7 +27,7 @@ def build_audio_metadata(
     Build audio metadata dict following IC-002.
 
     This function creates a complete metadata dictionary with ALL required fields
-    for ChromaDB storage and downstream processing. It merges whisper transcription
+    for Koji storage and downstream processing. It merges whisper transcription
     data with ID3 metadata (if available) and file properties.
 
     Args:

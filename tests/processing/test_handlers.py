@@ -3,7 +3,7 @@ Tests for processing/handlers modules.
 
 Tests cover:
 - AlbumArtHandler: Album art saving for audio files
-- MetadataFilter: ChromaDB metadata filtering
+- MetadataFilter: Koji metadata filtering
 - VisualEmbeddingHandler: Visual embedding storage
 - TextEmbeddingHandler: Text embedding storage
 
@@ -143,7 +143,7 @@ class TestAlbumArtHandler:
 
 
 class TestMetadataFilter:
-    """Test metadata filter for ChromaDB."""
+    """Test metadata filter for Koji."""
 
     def test_filter_metadata_primitives(self):
         """Test that primitives pass through unchanged."""

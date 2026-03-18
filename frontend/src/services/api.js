@@ -213,7 +213,7 @@ const documents = {
 
 const upload = {
   /**
-   * Upload a single file to Copyparty
+   * Upload a single file
    *
    * @param {File} file - File object from input
    * @param {Function} [onProgress] - Progress callback (0-100)

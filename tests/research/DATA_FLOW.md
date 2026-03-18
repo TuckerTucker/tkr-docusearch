@@ -1,7 +1,7 @@
 # Chunk ID Data Flow Diagram
 
 ## Overview
-This diagram shows how chunk_id flows from ChromaDB storage through the research API to the frontend.
+This diagram shows how chunk_id flows from Koji storage through the research API to the frontend.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -13,9 +13,9 @@ This diagram shows how chunk_id flows from ChromaDB storage through the research
                               │ chunk_id: int (0, 1, 2, ...)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                        CHROMADB                                  │
+│                          KOJI                                    │
 │                                                                  │
-│  Visual Collection              Text Collection                 │
+│  Visual Table                    Text Table                     │
 │  ┌─────────────────┐           ┌─────────────────┐             │
 │  │ doc123-page001  │           │ doc123-chunk0000│             │
 │  │ metadata: {     │           │ metadata: {     │             │
@@ -52,7 +52,7 @@ This diagram shows how chunk_id flows from ChromaDB storage through the research
 │            (src/research/context_builder.py)                     │
 │                                                                  │
 │  get_source_metadata():                                          │
-│  1. Query ChromaDB for page metadata  ────────────────────────┐ │
+│  1. Query Koji for page metadata  ────────────────────────┐ │
 │  2. Extract chunk_id from metadata                            │ │
 │  3. Transform: extract_chunk_id(metadata, doc_id)             │ │
 │     ┌────────────────────────────────┐                        │ │
@@ -150,14 +150,14 @@ This diagram shows how chunk_id flows from ChromaDB storage through the research
 ```
 Format: Integer
 Example: 0, 1, 2, 45, 9999
-Storage: ChromaDB metadata["chunk_id"]
+Storage: Koji metadata["chunk_id"]
 ```
 
-### Stage 2: ChromaDB → Search
+### Stage 2: Koji → Search
 ```
 Format: Integer
 Example: {"chunk_id": 45}
-Transport: Metadata dict from ChromaDB query
+Transport: Metadata dict from Koji query
 ```
 
 ### Stage 3: Search → Context Builder
@@ -189,13 +189,13 @@ Transport: JSON response
 
 ### Text Search Result
 ```
-ChromaDB → Search → Context → API → Frontend
+Koji → Search → Context → API → Frontend
 chunk_id: 0 → 0 → "doc-chunk0000" → "doc-chunk0000" → "doc-chunk0000"
 ```
 
 ### Visual Search Result
 ```
-ChromaDB → Search → Context → API → Frontend
+Koji → Search → Context → API → Frontend
 (no field) → (no field) → None → null → null
 ```
 

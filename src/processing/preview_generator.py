@@ -54,7 +54,7 @@ class PreviewGenerator:
         Initialize preview generator.
 
         Args:
-            storage_client: ChromaDB client for metadata lookup
+            storage_client: Koji client for metadata lookup
             parser: DoclingParser for document rendering
         """
         self.storage_client = storage_client
@@ -77,7 +77,7 @@ class PreviewGenerator:
             ValueError: If page_num invalid
         """
         try:
-            # Get file_path from ChromaDB metadata
+            # Get file_path from Koji metadata
             file_path, doc_metadata = self._get_file_path_from_metadata(doc_id, page_num)
 
             if not file_path:
@@ -152,7 +152,7 @@ class PreviewGenerator:
         self, doc_id: str, page_num: int
     ) -> tuple[Optional[str], Dict[str, Any]]:
         """
-        Get file_path from ChromaDB metadata.
+        Get file_path from Koji metadata.
 
         Args:
             doc_id: Document identifier

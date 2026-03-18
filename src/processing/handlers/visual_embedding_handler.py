@@ -21,7 +21,7 @@ class VisualEmbeddingHandler:
         Initialize handler.
 
         Args:
-            storage_client: Storage client for ChromaDB
+            storage_client: Storage client for Koji
             enhanced_mode_config: Optional enhanced mode configuration
         """
         self.storage_client = storage_client
@@ -37,7 +37,7 @@ class VisualEmbeddingHandler:
         pages: Optional[List] = None,
     ) -> tuple:
         """
-        Store visual embeddings in ChromaDB.
+        Store visual embeddings in Koji.
 
         Args:
             visual_results: List of VisualEmbeddingResult

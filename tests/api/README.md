@@ -45,7 +45,7 @@ pytest tests/api/test_markdown_endpoint.py --cov=src/api/routes/markdown --cov-r
 ## Test Structure
 
 ### Fixtures
-- `mock_storage_client`: Mock ChromaDB client with test data
+- `mock_storage_client`: Mock Koji client with test data
 - `markdown_dir`: Temporary directory with test markdown files
 - `mock_app`: FastAPI test app with mocked dependencies
 - `client`: FastAPI TestClient for making requests

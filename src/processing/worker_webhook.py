@@ -1,7 +1,7 @@
 """
 Document Processing Worker for DocuSearch MVP - Webhook Version.
 
-HTTP server that processes documents when triggered by copyparty webhook.
+HTTP server that processes documents when triggered by upload webhook.
 Extracts text, generates embeddings, and stores in Koji.
 """
 
@@ -468,9 +468,9 @@ async def process_document(request: ProcessRequest, background_tasks: Background
     doc_id = None
 
     # Try to match filename with pending uploads
-    # Copyparty may add timestamp suffix, so strip it for matching
+    # Upload filename may have a timestamp suffix, so strip it for matching
     base_filename = request.filename
-    # Remove Copyparty timestamp pattern: filename.ext-timestamp-random.ext
+    # Remove timestamp pattern: filename.ext-timestamp-random.ext
     # Pattern: original.ext-1234567890.123456-AbCdEf.ext
     # We want to extract: original.ext
     import re
@@ -483,7 +483,7 @@ async def process_document(request: ProcessRequest, background_tasks: Background
         # The base filename is just group 1 (which already includes the original extension)
         base_filename = match.group(1)
         logger.info(
-            f"Detected Copyparty filename modification: {request.filename} → {base_filename}"
+            f"Detected upload filename modification: {request.filename} → {base_filename}"
         )
 
     # Look for matching pre-registration
@@ -542,7 +542,7 @@ async def delete_document(request: DeleteRequest):
     4. Deletes extracted markdown files
     5. Cleans up temporary directories
 
-    Called by copyparty webhook when a file is deleted.
+    Called by worker webhook when a file is deleted.
     """
     logger.info(f"Received deletion request for: {request.filename}")
 
@@ -768,7 +768,7 @@ async def handle_upload_registration(websocket: WebSocket, message: Dict[str, An
             "filename": filename,
             "size": size,
             "registered_at": datetime.now().isoformat(),
-            "base_filename": filename,  # Store base filename for matching against Copyparty-modified names
+            "base_filename": filename,  # Store base filename for matching against upload-modified names
         }
 
         logger.info(

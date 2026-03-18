@@ -144,7 +144,6 @@ import { DEFAULT_ALBUM_ART_SVG } from '@/utils/assets'
 import {
   API_BASE_URL,
   WS_URL,
-  COPYPARTY_URL,
   DEFAULT_PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
   RECONNECT_MAX_ATTEMPTS,
@@ -161,7 +160,6 @@ import {
 // API endpoints
 API_BASE_URL        // '/api' or VITE_API_URL
 WS_URL              // 'ws://localhost:8002/ws' or VITE_WS_URL
-COPYPARTY_URL       // 'http://localhost:8000' or VITE_COPYPARTY_URL
 
 // Pagination & timing
 DEFAULT_PAGE_SIZE          // 50

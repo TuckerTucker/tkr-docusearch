@@ -1,9 +1,9 @@
 """
 End-to-end tests for enhanced mode document processing.
 
-These tests validated the ChromaDB-based enhanced metadata pipeline which has
-been replaced by the Koji storage backend. The tests are retained as skipped
-placeholders until equivalent Koji-based E2E tests are written.
+These tests validated the enhanced metadata pipeline which has been migrated
+to the Koji storage backend. The tests are retained as skipped placeholders
+until equivalent Koji-based E2E tests are written.
 """
 
 import pytest

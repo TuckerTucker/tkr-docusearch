@@ -2,7 +2,7 @@
 """
 Cleanup orphaned documents.
 
-Removes documents from ChromaDB and filesystem that no longer have
+Removes documents from Koji and filesystem that no longer have
 source files in the uploads directory.
 
 Usage:
@@ -20,7 +20,7 @@ UPLOADS_DIR = Path("data/uploads")
 
 
 def get_all_documents():
-    """Get all documents from ChromaDB via API."""
+    """Get all documents from Koji via API."""
     response = requests.get(f"{WORKER_URL}/documents")
     response.raise_for_status()
     data = response.json()
@@ -53,11 +53,11 @@ def main():
     print("=" * 70)
     print()
 
-    # Get all documents from ChromaDB
-    print("Fetching documents from ChromaDB...")
+    # Get all documents from Koji
+    print("Fetching documents from Koji...")
     try:
         documents = get_all_documents()
-        print(f"Found {len(documents)} documents in ChromaDB")
+        print(f"Found {len(documents)} documents in Koji")
     except Exception as e:
         print(f"Error fetching documents: {e}")
         return 1
@@ -107,7 +107,7 @@ def main():
         try:
             result = delete_document(filename, file_path)
             print(
-                f"  ✓ ChromaDB: {result['visual_deleted']} visual + {result['text_deleted']} text embeddings"
+                f"  ✓ Koji: {result['visual_deleted']} visual + {result['text_deleted']} text embeddings"
             )
             print(
                 f"  ✓ Filesystem: {result['page_images_deleted']} images, "

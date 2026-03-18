@@ -12,7 +12,7 @@ Tests GET /api/documents/{doc_id}/pages/{page}/structure endpoint for:
 import pytest
 
 pytestmark = pytest.mark.skip(
-    reason="Structure API requires mocking refactor - set_chroma_client not exported"
+    reason="Structure API requires mocking refactor"
 )
 
 from unittest.mock import MagicMock

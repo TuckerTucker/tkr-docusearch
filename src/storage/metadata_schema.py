@@ -2,7 +2,7 @@
 Metadata schema definitions for enhanced document processing.
 
 This module defines data structures and validation functions for storing
-rich document structure and chunk context in ChromaDB metadata.
+rich document structure and chunk context in Koji metadata.
 """
 
 import json

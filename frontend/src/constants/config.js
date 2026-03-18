@@ -23,15 +23,6 @@ export const WS_URL = import.meta.env.VITE_WS_URL ||
   `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 /**
- * Copyparty file server URL
- * Uses centralized configuration from @/config/urls
- * Override with VITE_COPYPARTY_URL environment variable
- *
- * @deprecated - Use serviceURLs from '@/config/urls' instead
- */
-export const COPYPARTY_URL = import.meta.env.VITE_COPYPARTY_URL || 'http://localhost:8000';
-
-/**
  * Default page size for pagination
  */
 export const DEFAULT_PAGE_SIZE = 50;

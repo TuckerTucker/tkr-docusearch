@@ -2,7 +2,7 @@
 Koji database configuration.
 
 This module defines configuration for the Koji hybrid database
-(SQL + vector + graph) that replaces ChromaDB + Copyparty.
+(SQL + vector + graph).
 """
 
 import os
