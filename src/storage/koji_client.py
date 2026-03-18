@@ -38,6 +38,64 @@ logger = structlog.get_logger(__name__)
 _SAFE_IDENTIFIER = __import__("re").compile(r"^[a-zA-Z0-9_\-]{1,128}$")
 
 
+class _SafeEncoder(json.JSONEncoder):
+    """JSON encoder that coerces non-serializable values instead of raising.
+
+    Handles common types found in document metadata:
+    ``bytes``/``bytearray`` are dropped, ``Path`` and ``datetime`` are
+    stringified, and anything else falls back to ``str()``.
+    """
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, (bytes, bytearray)):
+            return None  # drop binary blobs
+        if isinstance(o, Path):
+            return str(o)
+        # datetime, date, time
+        if hasattr(o, "isoformat"):
+            return o.isoformat()
+        # sets → lists
+        if isinstance(o, (set, frozenset)):
+            return list(o)
+        return str(o)
+
+
+def _safe_json(obj: Any) -> str | None:
+    """Serialize an arbitrary object to JSON, tolerating non-standard types.
+
+    Args:
+        obj: Value to serialize (dict, list, or scalar).
+
+    Returns:
+        JSON string, or ``None`` if *obj* is falsy.
+    """
+    if not obj:
+        return None
+    return json.dumps(obj, cls=_SafeEncoder)
+
+
+def _serialize_metadata(metadata: dict | None) -> str | None:
+    """Serialize a metadata dict to JSON for storage.
+
+    Strips ``bytes``/``bytearray`` values entirely (transient binary
+    data like album art) and coerces other non-standard types via
+    :class:`_SafeEncoder`.
+
+    Args:
+        metadata: Arbitrary metadata dict.
+
+    Returns:
+        JSON string or ``None``.
+    """
+    if not metadata:
+        return None
+    clean = {
+        k: v for k, v in metadata.items()
+        if not isinstance(v, (bytes, bytearray))
+    }
+    return json.dumps(clean, cls=_SafeEncoder)
+
+
 def _sanitize_sql_value(value: str) -> str:
     """Sanitize a value for safe interpolation into SQL WHERE clauses.
 
@@ -390,7 +448,7 @@ class KojiClient:
                 "format": [format],
                 "num_pages": [num_pages],
                 "markdown": [markdown],
-                "metadata": [json.dumps(metadata) if metadata else None],
+                "metadata": [_serialize_metadata(metadata)],
                 "created_at": [now],
             },
             schema=schema,
@@ -569,8 +627,7 @@ class KojiClient:
                 "thumb": [p.get("thumb") for p in pages],
                 "embedding": [p.get("embedding") for p in pages],
                 "structure": [
-                    json.dumps(p["structure"]) if p.get("structure") else None
-                    for p in pages
+                    _safe_json(p.get("structure")) for p in pages
                 ],
                 "width": [p.get("width") for p in pages],
                 "height": [p.get("height") for p in pages],
@@ -619,8 +676,7 @@ class KojiClient:
                 "text": [c["text"] for c in chunks],
                 "embedding": [c.get("embedding") for c in chunks],
                 "context": [
-                    json.dumps(c["context"]) if c.get("context") else None
-                    for c in chunks
+                    _safe_json(c.get("context")) for c in chunks
                 ],
                 "word_count": [c.get("word_count") for c in chunks],
                 "start_time": [c.get("start_time") for c in chunks],
@@ -749,7 +805,7 @@ class KojiClient:
                 "src_doc_id": [src_doc_id],
                 "dst_doc_id": [dst_doc_id],
                 "relation_type": [relation_type],
-                "metadata": [json.dumps(metadata) if metadata else None],
+                "metadata": [_serialize_metadata(metadata)],
             },
             schema=schema,
         )
