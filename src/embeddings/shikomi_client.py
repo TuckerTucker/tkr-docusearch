@@ -30,8 +30,8 @@ logger = structlog.get_logger(__name__)
 def _multivec_to_blob(emb: embedding_pb2.MultiVectorEmbedding) -> bytes:
     """Convert a gRPC MultiVectorEmbedding to packed binary blob.
 
-    Format: 8-byte header (num_tokens u32 LE + dim u32 LE) followed by
-    packed f32 row-major LE data.
+    The gRPC ``data`` field already contains the full Koji blob format
+    (8-byte header + packed f32 data), so this is a pass-through.
 
     Args:
         emb: gRPC MultiVectorEmbedding message.
@@ -39,12 +39,15 @@ def _multivec_to_blob(emb: embedding_pb2.MultiVectorEmbedding) -> bytes:
     Returns:
         Packed binary blob.
     """
-    header = struct.pack("<II", emb.num_tokens, emb.dim)
-    return header + emb.data
+    return emb.data
 
 
 def _multivec_to_list(emb: embedding_pb2.MultiVectorEmbedding) -> list[list[float]]:
     """Convert a gRPC MultiVectorEmbedding to nested list of floats.
+
+    The gRPC ``data`` field contains the full Koji blob: an 8-byte header
+    (num_tokens u32 LE + dim u32 LE) followed by packed f32 row-major data.
+    We skip the header and unpack the float payload.
 
     Args:
         emb: gRPC MultiVectorEmbedding message.
@@ -52,8 +55,10 @@ def _multivec_to_list(emb: embedding_pb2.MultiVectorEmbedding) -> list[list[floa
     Returns:
         List of token vectors, each a list of floats.
     """
+    header_size = 8  # 2 × u32 LE
+    float_data = emb.data[header_size:]
     n_floats = emb.num_tokens * emb.dim
-    floats = struct.unpack(f"<{n_floats}f", emb.data)
+    floats = struct.unpack(f"<{n_floats}f", float_data)
     return [
         list(floats[i * emb.dim : (i + 1) * emb.dim])
         for i in range(emb.num_tokens)

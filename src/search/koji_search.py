@@ -107,8 +107,8 @@ class KojiSearch:
                       d.filename, d.format, _distance
                FROM chunks c
                JOIN documents d ON c.doc_id = d.doc_id
-               WHERE c.embedding <~> ?
-               LIMIT ?""",
+               WHERE c.embedding <~> $1
+               LIMIT $2""",
             [query_emb, n_results],
         )
 
@@ -137,8 +137,8 @@ class KojiSearch:
                       d.filename, d.format, _distance
                FROM pages p
                JOIN documents d ON p.doc_id = d.doc_id
-               WHERE p.embedding <~> ?
-               LIMIT ?""",
+               WHERE p.embedding <~> $1
+               LIMIT $2""",
             [query_emb, n_results],
         )
 
@@ -151,6 +151,10 @@ class KojiSearch:
     def hybrid_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
         """Search across both pages and chunks, merging results.
 
+        Runs two separate vector searches (Koji ``<~>`` doesn't support CTEs)
+        and merges results in Python, keeping the best score per
+        ``(doc_id, page_num)`` pair.
+
         Args:
             query: Search query.
             n_results: Maximum results.
@@ -161,32 +165,69 @@ class KojiSearch:
         start = time.perf_counter()
 
         query_emb = self._shikomi.embed_query(query)
-        candidates = n_results * 5  # fetch more for merging
+        candidates = n_results * 5
 
-        result = self._koji.query(
-            """WITH page_hits AS (
-                   SELECT doc_id, page_num, _distance AS dist, 'visual' AS source
-                   FROM pages WHERE embedding <~> ? LIMIT ?
-               ),
-               chunk_hits AS (
-                   SELECT doc_id, page_num, _distance AS dist, 'text' AS source
-                   FROM chunks WHERE embedding <~> ? LIMIT ?
-               ),
-               merged AS (
-                   SELECT * FROM page_hits UNION ALL SELECT * FROM chunk_hits
-               )
-               SELECT m.doc_id, m.page_num, MIN(m.dist) AS dist, m.source,
-                      d.filename, d.format
-               FROM merged m
-               JOIN documents d ON m.doc_id = d.doc_id
-               GROUP BY m.doc_id, m.page_num, m.source, d.filename, d.format
-               ORDER BY dist ASC
-               LIMIT ?""",
-            [query_emb, candidates, query_emb, candidates, n_results],
+        page_hits = self._koji.query(
+            """SELECT doc_id, page_num, _distance
+               FROM pages WHERE embedding <~> $1 LIMIT $2""",
+            [query_emb, candidates],
         )
 
+        chunk_hits = self._koji.query(
+            """SELECT doc_id, page_num, _distance
+               FROM chunks WHERE embedding <~> $1 LIMIT $2""",
+            [query_emb, candidates],
+        )
+
+        # Merge in Python: best score per (doc_id, page_num), track source
+        merged: dict[tuple[str, int], tuple[float, str]] = {}
+
+        for rows, source in [(page_hits, "visual"), (chunk_hits, "text")]:
+            d = rows.to_pydict()
+            for i in range(rows.num_rows):
+                key = (d["doc_id"][i], d["page_num"][i])
+                dist = d["_distance"][i]
+                if key not in merged or dist < merged[key][0]:
+                    merged[key] = (dist, source)
+
+        # Sort by distance, take top n_results
+        ranked = sorted(merged.items(), key=lambda item: item[1][0])[:n_results]
+
+        # Fetch document metadata for the result doc_ids
+        result_doc_ids = list({doc_id for (doc_id, _), _ in ranked})
+        doc_meta: dict[str, dict[str, str]] = {}
+        if result_doc_ids:
+            placeholders = ", ".join(f"${i+1}" for i in range(len(result_doc_ids)))
+            docs = self._koji.query(
+                f"SELECT doc_id, filename, format FROM documents "
+                f"WHERE doc_id IN ({placeholders})",
+                result_doc_ids,
+            )
+            d = docs.to_pydict()
+            for i in range(docs.num_rows):
+                doc_meta[d["doc_id"][i]] = {
+                    "filename": d["filename"][i],
+                    "format": d["format"][i],
+                }
+
+        # Build result dicts
+        results = []
+        for (doc_id, page_num), (dist, source) in ranked:
+            meta = doc_meta.get(doc_id, {})
+            results.append({
+                "doc_id": doc_id,
+                "chunk_id": None,
+                "page_num": page_num,
+                "score": self._distance_to_score(dist),
+                "text": "",
+                "metadata": {
+                    "filename": meta.get("filename", ""),
+                    "format": meta.get("format", ""),
+                    "source": source,
+                },
+            })
+
         elapsed_ms = (time.perf_counter() - start) * 1000
-        results = self._format_hybrid_results(result)
         self._record_query(elapsed_ms)
 
         return self._build_response(results, query, "hybrid", elapsed_ms)
