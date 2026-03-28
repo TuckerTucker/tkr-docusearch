@@ -477,6 +477,39 @@ class TestRelations:
         relations = client.get_relations("doc-test-0001", direction="outgoing")
         assert relations[0]["metadata"] == {"page": 5, "context": "see also"}
 
+    def test_get_related_documents_recursive(self, client):
+        """Verify recursive graph traversal via get_related_documents."""
+        client.create_document(doc_id="doc-test-A", filename="a.pdf", format="pdf")
+        client.create_document(doc_id="doc-test-B", filename="b.pdf", format="pdf")
+        client.create_document(doc_id="doc-test-C", filename="c.pdf", format="pdf")
+
+        client.create_relation(
+            src_doc_id="doc-test-A",
+            dst_doc_id="doc-test-B",
+            relation_type="references",
+        )
+        client.create_relation(
+            src_doc_id="doc-test-B",
+            dst_doc_id="doc-test-C",
+            relation_type="related",
+        )
+
+        # Full depth: both B and C reachable
+        related = client.get_related_documents("doc-test-A", max_depth=3)
+        doc_ids = [r["doc_id"] for r in related]
+        assert "doc-test-B" in doc_ids
+        assert "doc-test-C" in doc_ids
+
+        depths = {r["doc_id"]: r["depth"] for r in related}
+        assert depths["doc-test-B"] == 1
+        assert depths["doc-test-C"] == 2
+
+        # Depth 1: only B reachable
+        shallow = client.get_related_documents("doc-test-A", max_depth=1)
+        shallow_ids = [r["doc_id"] for r in shallow]
+        assert "doc-test-B" in shallow_ids
+        assert "doc-test-C" not in shallow_ids
+
 
 class TestMultivec:
     """Test multi-vector packing/unpacking."""

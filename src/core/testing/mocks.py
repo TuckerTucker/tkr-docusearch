@@ -618,6 +618,152 @@ class MockKojiClient:
         return next((c for c in self._chunks if c.get("id") == chunk_id), None)
 
     # ------------------------------------------------------------------
+    # Relation operations
+    # ------------------------------------------------------------------
+
+    def create_relation(
+        self,
+        src_doc_id: str,
+        dst_doc_id: str,
+        relation_type: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Create a relationship between two documents.
+
+        Args:
+            src_doc_id: Source document identifier.
+            dst_doc_id: Destination document identifier.
+            relation_type: Relationship type (e.g. ``references``, ``version_of``).
+            metadata: Optional metadata dict.
+
+        Raises:
+            ValueError: If either document does not exist.
+            KojiDuplicateError: If the relation already exists.
+        """
+        from src.storage.koji_client import KojiDuplicateError
+
+        if src_doc_id not in self._documents:
+            raise ValueError(f"Source document {src_doc_id} not found")
+        if dst_doc_id not in self._documents:
+            raise ValueError(f"Destination document {dst_doc_id} not found")
+
+        for r in self._relations:
+            if (
+                r["src_doc_id"] == src_doc_id
+                and r["dst_doc_id"] == dst_doc_id
+                and r["relation_type"] == relation_type
+            ):
+                raise KojiDuplicateError(
+                    f"Relation {src_doc_id} -{relation_type}-> {dst_doc_id} already exists"
+                )
+
+        self._relations.append({
+            "src_doc_id": src_doc_id,
+            "dst_doc_id": dst_doc_id,
+            "relation_type": relation_type,
+            "metadata": metadata,
+        })
+
+    def get_relations(
+        self,
+        doc_id: str,
+        relation_type: Optional[str] = None,
+        direction: str = "both",
+    ) -> List[Dict[str, Any]]:
+        """Get relations for a document.
+
+        Args:
+            doc_id: Document identifier.
+            relation_type: Optional filter by relation type.
+            direction: ``"outgoing"``, ``"incoming"``, or ``"both"``.
+
+        Returns:
+            List of matching relation dicts.
+        """
+        results: List[Dict[str, Any]] = []
+
+        for r in self._relations:
+            if direction in ("outgoing", "both") and r["src_doc_id"] == doc_id:
+                results.append(r)
+            elif direction in ("incoming", "both") and r["dst_doc_id"] == doc_id:
+                if r not in results:
+                    results.append(r)
+
+        if relation_type is not None:
+            results = [r for r in results if r["relation_type"] == relation_type]
+
+        return results
+
+    def delete_relation(
+        self,
+        src_doc_id: str,
+        dst_doc_id: str,
+        relation_type: str,
+    ) -> None:
+        """Delete a specific relationship. Idempotent.
+
+        Args:
+            src_doc_id: Source document identifier.
+            dst_doc_id: Destination document identifier.
+            relation_type: Relationship type.
+        """
+        self._relations = [
+            r
+            for r in self._relations
+            if not (
+                r["src_doc_id"] == src_doc_id
+                and r["dst_doc_id"] == dst_doc_id
+                and r["relation_type"] == relation_type
+            )
+        ]
+
+    def get_related_documents(
+        self,
+        root_doc_id: str,
+        max_depth: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Find all documents related to a root document via graph traversal.
+
+        BFS over outgoing edges in ``_relations``, up to ``max_depth`` hops.
+
+        Args:
+            root_doc_id: Starting document identifier.
+            max_depth: Maximum traversal depth.
+
+        Returns:
+            List of related document dicts with ``depth`` and ``relation_type``.
+        """
+        from collections import deque
+
+        visited: set[str] = {root_doc_id}
+        queue: deque[tuple[str, int, str]] = deque()
+
+        # Seed with direct outgoing neighbors
+        for r in self._relations:
+            if r["src_doc_id"] == root_doc_id and r["dst_doc_id"] not in visited:
+                queue.append((r["dst_doc_id"], 1, r["relation_type"]))
+                visited.add(r["dst_doc_id"])
+
+        results: List[Dict[str, Any]] = []
+        while queue:
+            doc_id, depth, rel_type = queue.popleft()
+            doc = self._documents.get(doc_id)
+            if doc is not None:
+                result = dict(doc)
+                result["depth"] = depth
+                result["relation_type"] = rel_type
+                results.append(result)
+
+            if depth < max_depth:
+                for r in self._relations:
+                    if r["src_doc_id"] == doc_id and r["dst_doc_id"] not in visited:
+                        queue.append((r["dst_doc_id"], depth + 1, r["relation_type"]))
+                        visited.add(r["dst_doc_id"])
+
+        results.sort(key=lambda r: r["depth"])
+        return results
+
+    # ------------------------------------------------------------------
     # Raw operations (not supported in mock)
     # ------------------------------------------------------------------
 

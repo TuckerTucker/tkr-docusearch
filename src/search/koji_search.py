@@ -112,11 +112,15 @@ class KojiSearch:
             [query_emb, n_results],
         )
 
-        elapsed_ms = (time.perf_counter() - start) * 1000
         results = self._format_chunk_results(result)
+        results = self._boost_related_results(results)
+        relationships = self._collect_result_relationships(results)
+        elapsed_ms = (time.perf_counter() - start) * 1000
         self._record_query(elapsed_ms)
 
-        return self._build_response(results, query, "text_only", elapsed_ms)
+        return self._build_response(
+            results, query, "text_only", elapsed_ms, relationships=relationships,
+        )
 
     def visual_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
         """Search page images by visual similarity.
@@ -142,11 +146,15 @@ class KojiSearch:
             [query_emb, n_results],
         )
 
-        elapsed_ms = (time.perf_counter() - start) * 1000
         results = self._format_page_results(result)
+        results = self._boost_related_results(results)
+        relationships = self._collect_result_relationships(results)
+        elapsed_ms = (time.perf_counter() - start) * 1000
         self._record_query(elapsed_ms)
 
-        return self._build_response(results, query, "visual_only", elapsed_ms)
+        return self._build_response(
+            results, query, "visual_only", elapsed_ms, relationships=relationships,
+        )
 
     def hybrid_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
         """Search across both pages and chunks, merging results.
@@ -227,10 +235,14 @@ class KojiSearch:
                 },
             })
 
+        results = self._boost_related_results(results)
+        relationships = self._collect_result_relationships(results)
         elapsed_ms = (time.perf_counter() - start) * 1000
         self._record_query(elapsed_ms)
 
-        return self._build_response(results, query, "hybrid", elapsed_ms)
+        return self._build_response(
+            results, query, "hybrid", elapsed_ms, relationships=relationships,
+        )
 
     def get_search_stats(self) -> dict[str, Any]:
         """Get search performance statistics.
@@ -359,9 +371,22 @@ class KojiSearch:
         query: str,
         search_mode: str,
         total_time_ms: float,
+        relationships: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Build the standardized search response dict."""
-        return {
+        """Build the standardized search response dict.
+
+        Args:
+            results: Formatted search result dicts.
+            query: Original search query.
+            search_mode: The search mode used.
+            total_time_ms: Total elapsed time in milliseconds.
+            relationships: Optional list of relationship edges between
+                result documents. Omitted from response when ``None``.
+
+        Returns:
+            Standardized response dict.
+        """
+        response: dict[str, Any] = {
             "results": results,
             "total_results": len(results),
             "query": query,
@@ -372,6 +397,156 @@ class KojiSearch:
             "candidates_retrieved": len(results),
             "reranked_count": 0,
         }
+        if relationships is not None:
+            response["relationships"] = relationships
+        return response
+
+    def _boost_related_results(
+        self,
+        results: list[dict[str, Any]],
+        boost_factor: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Boost scores for documents related to other results in the set.
+
+        For each result, fetches 1-hop relations. If any neighbor is also
+        in the result set, adds a small score boost. Re-sorts by boosted score.
+
+        Args:
+            results: Search result dicts (must have ``doc_id`` and ``score``).
+            boost_factor: Score increment per related neighbor in results.
+
+        Returns:
+            Results re-sorted by boosted score.
+        """
+        if not results:
+            return results
+
+        result_doc_ids: set[str] = {r["doc_id"] for r in results}
+
+        # Build a map of doc_id -> set of neighbor doc_ids within the result set
+        neighbor_counts: dict[str, int] = {}
+        for doc_id in result_doc_ids:
+            try:
+                relations = self._koji.get_relations(doc_id, direction="both")
+            except Exception:
+                logger.debug(
+                    "koji_search.boost_relations_failed",
+                    doc_id=doc_id,
+                )
+                relations = []
+
+            neighbor_ids = set()
+            for rel in relations:
+                if rel["src_doc_id"] == doc_id:
+                    neighbor_ids.add(rel["dst_doc_id"])
+                else:
+                    neighbor_ids.add(rel["src_doc_id"])
+
+            count = len(neighbor_ids & result_doc_ids)
+            neighbor_counts[doc_id] = count
+
+        # Apply boost
+        for result in results:
+            count = neighbor_counts.get(result["doc_id"], 0)
+            boost = boost_factor * count
+            result["score"] = min(1.0, result["score"] + boost)
+            result.setdefault("metadata", {})["graph_boost"] = boost
+
+        # Re-sort by score descending
+        results.sort(key=lambda r: r["score"], reverse=True)
+
+        boosted_count = sum(1 for c in neighbor_counts.values() if c > 0)
+        if boosted_count:
+            logger.info(
+                "koji_search.graph_boost_applied",
+                boosted_results=boosted_count,
+                total_results=len(results),
+                boost_factor=boost_factor,
+            )
+
+        return results
+
+    def _collect_result_relationships(
+        self,
+        results: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Collect relationship edges between documents in the result set.
+
+        Only includes edges where both endpoints appear in *results*.
+
+        Args:
+            results: Search result dicts (must have ``doc_id``).
+
+        Returns:
+            List of edge dicts with ``src_doc_id``, ``dst_doc_id``, and
+            ``relation_type``.
+        """
+        if not results:
+            return []
+
+        result_doc_ids: set[str] = {r["doc_id"] for r in results}
+        seen_edges: set[tuple[str, str, str]] = set()
+        edges: list[dict[str, Any]] = []
+
+        for doc_id in result_doc_ids:
+            try:
+                relations = self._koji.get_relations(doc_id, direction="both")
+            except Exception:
+                continue
+
+            for rel in relations:
+                src = rel["src_doc_id"]
+                dst = rel["dst_doc_id"]
+                rtype = rel["relation_type"]
+
+                if src in result_doc_ids and dst in result_doc_ids:
+                    edge_key = (src, dst, rtype)
+                    if edge_key not in seen_edges:
+                        seen_edges.add(edge_key)
+                        edges.append({
+                            "src_doc_id": src,
+                            "dst_doc_id": dst,
+                            "relation_type": rtype,
+                        })
+
+        return edges
+
+    def _apply_pagerank_boost(
+        self,
+        results: list[dict[str, Any]],
+        pagerank_scores: dict[str, float],
+        weight: float = 0.1,
+    ) -> list[dict[str, Any]]:
+        """Blend PageRank importance into search scores.
+
+        Normalizes PageRank scores to [0, 1] and blends with the original
+        search score using a weighted average.
+
+        Args:
+            results: Search result dicts (must have ``doc_id`` and ``score``).
+            pagerank_scores: Dict mapping doc_id to PageRank score.
+            weight: Blending weight for PageRank (0-1). Higher values
+                give more influence to global document importance.
+
+        Returns:
+            Results with blended scores, re-sorted descending.
+        """
+        if not results or not pagerank_scores:
+            return results
+
+        max_pr = max(pagerank_scores.values()) if pagerank_scores else 1.0
+        if max_pr <= 0:
+            return results
+
+        for result in results:
+            pr = pagerank_scores.get(result["doc_id"], 0.0)
+            normalized_pr = pr / max_pr
+            original_score = result["score"]
+            result["score"] = (1 - weight) * original_score + weight * normalized_pr
+            result.setdefault("metadata", {})["pagerank"] = pr
+
+        results.sort(key=lambda r: r["score"], reverse=True)
+        return results
 
     def _record_query(self, elapsed_ms: float) -> None:
         """Record query timing for stats."""

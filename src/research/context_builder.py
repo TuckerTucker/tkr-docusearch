@@ -59,6 +59,11 @@ class SourceDocument:
     # Raw Koji metadata (for preprocessing analysis)
     raw_metadata: Dict[str, Any] = field(default_factory=dict)  # Complete metadata from Koji
 
+    # Graph relationships
+    related_doc_ids: List[str] = field(default_factory=list)
+    relationship_types: List[str] = field(default_factory=list)
+    cluster_id: Optional[int] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dict for API response"""
         return {
@@ -73,6 +78,9 @@ class SourceDocument:
             "parent_heading": self.parent_heading,
             "relevance_score": self.relevance_score,
             "chunk_id": self.chunk_id,
+            "related_doc_ids": self.related_doc_ids,
+            "relationship_types": self.relationship_types,
+            "cluster_id": self.cluster_id,
         }
 
 
@@ -169,6 +177,179 @@ class ContextBuilder:
         self.max_tokens = max_tokens
 
         logger.info("Context builder initialized", max_sources=max_sources, max_tokens=max_tokens)
+
+    def _enrich_with_relations(
+        self,
+        sources: List[SourceDocument],
+        max_supplementary: int = 3,
+    ) -> List[SourceDocument]:
+        """Enrich source documents with graph relationship data.
+
+        For the top-5 sources by relevance score, fetches related documents
+        from the storage client's relation graph. Populates ``related_doc_ids``
+        and ``relationship_types`` on each source. If a neighbor document is
+        not already in the source list, it may be added as a supplementary
+        source with a penalized relevance score.
+
+        Args:
+            sources: Source documents to enrich.
+            max_supplementary: Maximum number of supplementary sources to add
+                from graph neighbors not already present (default: 3).
+
+        Returns:
+            The augmented list of source documents, with graph fields populated
+            and any supplementary sources appended.
+        """
+        existing_doc_ids = {s.doc_id for s in sources}
+        supplementary_candidates: List[tuple] = []  # (doc_id, parent_score)
+
+        # Enrich top-5 sources by relevance score
+        sorted_sources = sorted(sources, key=lambda s: s.relevance_score, reverse=True)
+        top_sources = sorted_sources[:5]
+
+        for source in top_sources:
+            try:
+                relations = self.storage_client.get_relations(
+                    source.doc_id, direction="both"
+                )
+            except Exception as exc:
+                logger.debug(
+                    "context_builder.get_relations_failed",
+                    doc_id=source.doc_id,
+                    error=str(exc),
+                )
+                continue
+
+            neighbor_ids: List[str] = []
+            relation_types: List[str] = []
+
+            for rel in relations:
+                # Determine the neighbor doc_id (the other end of the relation)
+                if rel.get("src_doc_id") == source.doc_id:
+                    neighbor_id = rel.get("dst_doc_id")
+                else:
+                    neighbor_id = rel.get("src_doc_id")
+
+                if neighbor_id and neighbor_id not in neighbor_ids:
+                    neighbor_ids.append(neighbor_id)
+                    rel_type = rel.get("relation_type", "related")
+                    if rel_type not in relation_types:
+                        relation_types.append(rel_type)
+
+                # Track supplementary candidates (neighbors not in source list)
+                if neighbor_id and neighbor_id not in existing_doc_ids:
+                    supplementary_candidates.append(
+                        (neighbor_id, source.relevance_score)
+                    )
+
+            source.related_doc_ids = neighbor_ids
+            source.relationship_types = relation_types
+
+        # Deduplicate supplementary candidates, keeping the highest parent score
+        seen_supplementary: Dict[str, float] = {}
+        for doc_id, parent_score in supplementary_candidates:
+            if doc_id not in seen_supplementary or parent_score > seen_supplementary[doc_id]:
+                seen_supplementary[doc_id] = parent_score
+
+        # Sort by parent score descending and limit
+        sorted_supplementary = sorted(
+            seen_supplementary.items(), key=lambda item: item[1], reverse=True
+        )[:max_supplementary]
+
+        # Fetch and create supplementary sources
+        for doc_id, parent_score in sorted_supplementary:
+            try:
+                doc_data = self.storage_client.get_document(doc_id)
+            except Exception as exc:
+                logger.debug(
+                    "context_builder.supplementary_fetch_failed",
+                    doc_id=doc_id,
+                    error=str(exc),
+                )
+                continue
+
+            if doc_data is None:
+                continue
+
+            supplementary_source = SourceDocument(
+                doc_id=doc_id,
+                filename=doc_data.get("filename", "unknown"),
+                page=1,
+                extension=doc_data.get("format", ""),
+                relevance_score=0.3 * parent_score,
+            )
+            sources.append(supplementary_source)
+            existing_doc_ids.add(doc_id)
+
+            logger.debug(
+                "context_builder.supplementary_source_added",
+                doc_id=doc_id,
+                penalized_score=supplementary_source.relevance_score,
+            )
+
+        return sources
+
+    def _cluster_sources(self, sources: List[SourceDocument]) -> List[SourceDocument]:
+        """Cluster sources using union-find based on graph relationships.
+
+        Groups sources that share graph edges into clusters, then reorders
+        the source list so that clusters are contiguous and sorted by the
+        maximum relevance score within each cluster.
+
+        Args:
+            sources: Source documents with ``related_doc_ids`` populated.
+
+        Returns:
+            Reordered list of source documents with ``cluster_id`` assigned.
+        """
+        # Build union-find keyed by doc_id
+        parent: Dict[str, str] = {}
+
+        def find(x: str) -> str:
+            while parent.get(x, x) != x:
+                parent[x] = parent.get(parent[x], parent[x])
+                x = parent[x]
+            return x
+
+        def union(a: str, b: str) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        # Initialize each source as its own parent
+        source_doc_ids = {s.doc_id for s in sources}
+        for doc_id in source_doc_ids:
+            parent[doc_id] = doc_id
+
+        # Union sources with their related_doc_ids that are also in the source list
+        for source in sources:
+            for related_id in source.related_doc_ids:
+                if related_id in source_doc_ids:
+                    union(source.doc_id, related_id)
+
+        # Assign cluster_id based on root, using integer labels
+        root_to_cluster: Dict[str, int] = {}
+        cluster_counter = 0
+        for source in sources:
+            root = find(source.doc_id)
+            if root not in root_to_cluster:
+                root_to_cluster[root] = cluster_counter
+                cluster_counter += 1
+            source.cluster_id = root_to_cluster[root]
+
+        # Sort: clusters by max relevance_score (descending),
+        # sources within cluster by relevance_score (descending)
+        cluster_max_score: Dict[int, float] = {}
+        for source in sources:
+            cid = source.cluster_id
+            if cid not in cluster_max_score or source.relevance_score > cluster_max_score[cid]:
+                cluster_max_score[cid] = source.relevance_score
+
+        sources.sort(
+            key=lambda s: (-cluster_max_score.get(s.cluster_id, 0.0), -s.relevance_score)
+        )
+
+        return sources
 
     async def build_context(
         self,
@@ -282,6 +463,13 @@ class ContextBuilder:
                 total_tokens=0,
                 truncated=False,
             )
+
+        # Enrich sources with graph relationships and clustering
+        try:
+            sources = self._enrich_with_relations(sources)
+            sources = self._cluster_sources(sources)
+        except Exception as exc:
+            logger.warning("context_builder.graph_enrichment_failed", error=str(exc))
 
         # Format context
         formatted_text = self._format_context(sources)

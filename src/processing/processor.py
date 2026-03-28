@@ -658,6 +658,30 @@ class DocumentProcessor:
 
             self.storage_client.insert_chunks(chunk_records)
 
+        # Detect and create document relations (non-blocking)
+        try:
+            from src.processing.relation_builder import RelationBuilder
+
+            builder = RelationBuilder(storage_client=self.storage_client)
+            created_relations = builder.build_relations(
+                doc_id=doc_id,
+                filename=filename,
+                chunks=chunk_records,
+            )
+            if created_relations:
+                logger.info(
+                    "relations_created",
+                    doc_id=doc_id,
+                    count=len(created_relations),
+                    types=[r["relation_type"] for r in created_relations],
+                )
+        except Exception as exc:
+            logger.warning(
+                "relation_building_failed",
+                doc_id=doc_id,
+                error=str(exc),
+            )
+
         return StorageConfirmation(
             doc_id=doc_id,
             visual_ids=visual_ids,

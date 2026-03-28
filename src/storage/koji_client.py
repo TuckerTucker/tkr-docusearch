@@ -899,7 +899,9 @@ class KojiClient:
     ) -> list[dict[str, Any]]:
         """Find all documents related to a root document via graph traversal.
 
-        Uses Koji's ``WITH RECURSIVE`` for transitive closure.
+        Uses iterative BFS queries — one hop per iteration — because
+        Koji's recursive CTE support does not allow arithmetic
+        expressions (``depth + 1``) in the recursive term.
 
         Args:
             root_doc_id: Starting document identifier.
@@ -908,23 +910,205 @@ class KojiClient:
         Returns:
             List of related document dicts with ``depth`` and ``relation_type``.
         """
-        result = self.query(
-            """WITH RECURSIVE related AS (
-                   SELECT dst_doc_id AS doc_id, relation_type, 1 AS depth
-                   FROM doc_relations WHERE src_doc_id = ?
-                   UNION
-                   SELECT r.dst_doc_id, r.relation_type, rel.depth + 1
-                   FROM related rel
-                   JOIN doc_relations r ON rel.doc_id = r.src_doc_id
-                   WHERE rel.depth < ?
-               )
-               SELECT DISTINCT d.*, related.depth, related.relation_type
-               FROM related
-               JOIN documents d ON related.doc_id = d.doc_id
-               ORDER BY related.depth""",
-            [root_doc_id, max_depth],
+        visited: set[str] = {root_doc_id}
+        # (doc_id, relation_type, depth)
+        found: list[tuple[str, str, int]] = []
+        frontier = [root_doc_id]
+
+        for depth in range(1, max_depth + 1):
+            if not frontier:
+                break
+
+            placeholders = ", ".join("?" for _ in frontier)
+            rows = self.query(
+                f"SELECT dst_doc_id, relation_type FROM doc_relations "
+                f"WHERE src_doc_id IN ({placeholders})",
+                frontier,
+            )
+            d = rows.to_pydict()
+            next_frontier: list[str] = []
+            for i in range(rows.num_rows):
+                dst = d["dst_doc_id"][i]
+                rel_type = d["relation_type"][i]
+                if dst not in visited:
+                    visited.add(dst)
+                    found.append((dst, rel_type, depth))
+                    next_frontier.append(dst)
+            frontier = next_frontier
+
+        if not found:
+            return []
+
+        # Fetch full document records for discovered doc_ids
+        doc_ids = [f[0] for f in found]
+        placeholders = ", ".join("?" for _ in doc_ids)
+        docs_result = self.query(
+            f"SELECT * FROM documents WHERE doc_id IN ({placeholders})",
+            doc_ids,
         )
-        return self._arrow_to_dicts(result, json_fields=["metadata"])
+        docs_by_id = {
+            doc["doc_id"]: doc
+            for doc in self._arrow_to_dicts(docs_result, json_fields=["metadata"])
+        }
+
+        results: list[dict[str, Any]] = []
+        for doc_id, rel_type, depth in found:
+            doc = docs_by_id.get(doc_id)
+            if doc is not None:
+                doc["depth"] = depth
+                doc["relation_type"] = rel_type
+                results.append(doc)
+
+        results.sort(key=lambda r: r["depth"])
+        return results
+
+    # -- graph algorithms ----------------------------------------------------
+
+    _GRAPH_EDGE_QUERY = (
+        "WITH doc_map AS ("
+        "  SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id"
+        "  FROM documents"
+        ") "
+        "SELECT CAST(sm.node_id AS BIGINT) AS src, "
+        "       CAST(dm.node_id AS BIGINT) AS dst "
+        "FROM doc_relations r "
+        "JOIN doc_map sm ON r.src_doc_id = sm.doc_id "
+        "JOIN doc_map dm ON r.dst_doc_id = dm.doc_id"
+    )
+
+    def _doc_id_int_mapping(self) -> dict[int, str]:
+        """Build a reverse mapping from integer node IDs to text doc_ids.
+
+        Uses ``ROW_NUMBER() OVER (ORDER BY doc_id)`` to assign stable integers
+        matching the edge query used by graph algorithms.
+
+        Returns:
+            Dict mapping integer node_id to text doc_id.
+        """
+        self._require_open()
+        result = self.query(
+            "SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id "
+            "FROM documents",
+        )
+        d = result.to_pydict()
+        return {
+            d["node_id"][i]: d["doc_id"][i]
+            for i in range(result.num_rows)
+        }
+
+    def _run_graph_algorithm(
+        self,
+        algorithm: str,
+        **kwargs: Any,
+    ) -> Any:
+        """Run a Koji graph algorithm via the async Database API.
+
+        The sync ``Database`` wrapper does not yet expose ``graph()``,
+        so this calls through to the underlying async database.
+
+        Args:
+            algorithm: Algorithm name (e.g. ``"pagerank"``).
+            **kwargs: Algorithm-specific parameters forwarded to
+                ``AsyncDatabase.graph()``.
+
+        Returns:
+            PyArrow Table with algorithm-specific result columns.
+
+        Raises:
+            KojiQueryError: If the algorithm execution fails or the
+                ``graph()`` method is not available in the installed
+                koji-python build.
+        """
+        self._require_open()
+
+        if not hasattr(self._db, "graph"):
+            raise KojiQueryError(
+                f"Graph algorithm '{algorithm}' unavailable: "
+                "installed koji-python does not expose graph(). "
+                "Rebuild koji-python from source."
+            )
+
+        try:
+            return self._db.graph(
+                self._GRAPH_EDGE_QUERY,
+                algorithm,
+                **kwargs,
+            )
+        except Exception as exc:
+            raise KojiQueryError(
+                f"Graph algorithm '{algorithm}' failed: {exc}"
+            ) from exc
+
+    def graph_pagerank(
+        self,
+        damping: float = 0.85,
+        max_iterations: int = 100,
+        tolerance: float = 1e-6,
+    ) -> dict[str, float]:
+        """Compute PageRank scores for all documents in the graph.
+
+        Uses the ``doc_relations`` table as the edge set and maps
+        integer node IDs back to text ``doc_id`` values.
+
+        Args:
+            damping: Damping factor (0-1). Higher values follow links more.
+            max_iterations: Maximum PageRank iterations.
+            tolerance: Convergence threshold.
+
+        Returns:
+            Dict mapping ``doc_id`` to PageRank score (scores sum to ~1.0).
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return {}
+
+        result = self._run_graph_algorithm(
+            "pagerank",
+            damping=damping,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+        )
+
+        d = result.to_pydict()
+        scores: dict[str, float] = {}
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            score = d["score"][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None:
+                scores[doc_id] = float(score)
+
+        return scores
+
+    def graph_communities(self) -> dict[str, int]:
+        """Detect document communities using connected components.
+
+        Treats the document relation graph as undirected and assigns
+        each document to the connected component it belongs to.
+
+        Returns:
+            Dict mapping ``doc_id`` to integer component label.
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return {}
+
+        result = self._run_graph_algorithm("connected_components")
+
+        d = result.to_pydict()
+        label_col = next(
+            (c for c in ("component", "community", "label") if c in d),
+            "component",
+        )
+        communities: dict[str, int] = {}
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            label = d[label_col][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None:
+                communities[doc_id] = int(label)
+
+        return communities
 
     # -- internal helpers ----------------------------------------------------
 

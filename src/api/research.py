@@ -94,6 +94,18 @@ class SourceInfo(BaseModel):
     relevance_score: float
     chunk_id: Optional[str] = None  # Format: "{doc_id}-chunk{NNNN}" for text, None for visual
     details_url: Optional[str] = None  # Frontend URL to document detail view
+    # Graph relationships
+    related_doc_ids: List[str] = []
+    relationship_types: List[str] = []
+    cluster_id: Optional[int] = None
+
+
+class RelationshipEdge(BaseModel):
+    """Edge between two source documents in the result graph."""
+
+    src_doc_id: str
+    dst_doc_id: str
+    relation_type: str
 
 
 class ResearchMetadata(BaseModel):
@@ -125,6 +137,9 @@ class ResearchMetadata(BaseModel):
     llm_request_params: Optional[Dict] = None
     llm_raw_response: Optional[str] = None
     llm_usage_details: Optional[Dict] = None
+    # Graph metadata
+    relationships: List[RelationshipEdge] = []
+    graph_clusters: int = 0
     # Debug: Preprocessing flow
     preprocessing_original_context: Optional[str] = None
     preprocessing_compressed_context: Optional[str] = None
@@ -603,6 +618,30 @@ async def ask_research_question(request: ResearchRequest):
             num_citations=len(parsed_answer.citations),
         )
 
+        # Collect graph metadata from context sources
+        _source_doc_ids = {s.doc_id for s in context.sources}
+        _relationship_edges: List[RelationshipEdge] = []
+        _seen_edges: set[tuple[str, str, str]] = set()
+        for _src in context.sources:
+            for _rel_id in getattr(_src, "related_doc_ids", []):
+                if _rel_id in _source_doc_ids:
+                    for _rt in getattr(_src, "relationship_types", []):
+                        _edge_key = tuple(sorted([_src.doc_id, _rel_id])) + (_rt,)
+                        if _edge_key not in _seen_edges:
+                            _seen_edges.add(_edge_key)
+                            _relationship_edges.append(
+                                RelationshipEdge(
+                                    src_doc_id=_src.doc_id,
+                                    dst_doc_id=_rel_id,
+                                    relation_type=_rt,
+                                )
+                            )
+        _cluster_ids = {
+            getattr(s, "cluster_id", None)
+            for s in context.sources
+            if getattr(s, "cluster_id", None) is not None
+        }
+
         return ResearchResponse(
             answer=parsed_answer.original_text,
             citations=[CitationInfo(**c) for c in frontend_data["citations"]],
@@ -627,6 +666,9 @@ async def ask_research_question(request: ResearchRequest):
                         chunk_id=source.chunk_id,
                         absolute=False,  # Relative URLs for web frontend
                     ),
+                    related_doc_ids=getattr(source, "related_doc_ids", []),
+                    relationship_types=getattr(source, "relationship_types", []),
+                    cluster_id=getattr(source, "cluster_id", None),
                 )
                 for i, source in enumerate(context.sources)
             ],
@@ -647,6 +689,9 @@ async def ask_research_question(request: ResearchRequest):
                 preprocessing_latency_ms=preprocessing_latency_ms,
                 original_sources_count=original_sources_count,
                 token_reduction_percent=round(token_reduction_percent, 2),
+                # Graph metadata
+                relationships=_relationship_edges,
+                graph_clusters=len(_cluster_ids),
                 # Debug fields
                 system_prompt=RESEARCH_SYSTEM_PROMPT,
                 user_prompt=full_user_prompt,
