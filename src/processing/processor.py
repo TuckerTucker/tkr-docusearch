@@ -122,6 +122,7 @@ class DocumentProcessor:
         chunk_size_words: int = 250,
         chunk_overlap_words: int = 50,
         status_callback=None,
+        project_id: str = "default",
     ) -> StorageConfirmation:
         """Process a document through the complete pipeline.
 
@@ -415,6 +416,7 @@ class DocumentProcessor:
                 file_path=file_path,
                 pages=parsed_doc.pages,  # Wave 1: Pass pages for image paths
                 structure=parsed_doc.structure,  # Pass structure object
+                project_id=project_id,
             )
 
             # Stage 5: Completed
@@ -493,6 +495,7 @@ class DocumentProcessor:
         file_path: str,
         pages: Optional[List] = None,
         structure: Optional[Any] = None,
+        project_id: str = "default",
     ) -> StorageConfirmation:
         """Store embeddings via the injected KojiClient.
 
@@ -506,6 +509,7 @@ class DocumentProcessor:
             file_path: Source file path.
             pages: Optional page objects (for image data).
             structure: Optional DocumentStructure.
+            project_id: Project to assign the document to.
 
         Returns:
             StorageConfirmation with storage details.
@@ -517,6 +521,7 @@ class DocumentProcessor:
             return self._store_koji(
                 doc_id, visual_results, text_results, text_chunks,
                 doc_metadata, filename, file_path, pages, structure,
+                project_id=project_id,
             )
         except Exception as e:
             logger.error(f"Storage failed: {e}")
@@ -533,6 +538,7 @@ class DocumentProcessor:
         file_path: str,
         pages: Optional[List] = None,
         structure: Optional[Any] = None,
+        project_id: str = "default",
     ) -> StorageConfirmation:
         """Store embeddings in Koji database.
 
@@ -560,6 +566,7 @@ class DocumentProcessor:
             num_pages=num_pages,
             markdown=markdown_content,
             metadata=doc_metadata,
+            project_id=project_id,
         )
 
         # Insert pages from visual results
@@ -668,6 +675,7 @@ class DocumentProcessor:
                 filename=filename,
                 chunks=chunk_records,
                 doc_metadata=doc_metadata,
+                project_id=project_id,
             )
             if created_relations:
                 logger.info(

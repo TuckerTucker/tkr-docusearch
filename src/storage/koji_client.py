@@ -140,9 +140,19 @@ class KojiDuplicateError(KojiClientError):
 # ---------------------------------------------------------------------------
 
 DOCUSEARCH_SCHEMA: dict = {
+    "projects": {
+        "columns": {
+            "project_id": {"type": "text", "primary_key": True},
+            "name": {"type": "text"},
+            "description": {"type": "text"},
+            "created_at": {"type": "text"},
+            "metadata": {"type": "text"},
+        },
+    },
     "documents": {
         "columns": {
             "doc_id": {"type": "text", "primary_key": True},
+            "project_id": {"type": "text"},
             "filename": {"type": "text"},
             "format": {"type": "text"},
             "num_pages": {"type": "integer"},
@@ -188,6 +198,13 @@ DOCUSEARCH_SCHEMA: dict = {
 }
 
 DOCUSEARCH_FOREIGN_KEYS = [
+    ForeignKey(
+        table="documents",
+        columns=["project_id"],
+        references_table="projects",
+        references_columns=["project_id"],
+        on_delete="cascade",
+    ),
     ForeignKey(
         table="pages",
         columns=["doc_id"],
@@ -408,6 +425,7 @@ class KojiClient:
         num_pages: int | None = None,
         markdown: str | None = None,
         metadata: dict[str, Any] | None = None,
+        project_id: str = "default",
     ) -> None:
         """Create a new document record.
 
@@ -418,6 +436,7 @@ class KojiClient:
             num_pages: Number of pages (optional).
             markdown: Full document markdown (optional).
             metadata: Arbitrary metadata dict, stored as JSON (optional).
+            project_id: Project to assign the document to.
 
         Raises:
             KojiDuplicateError: If ``doc_id`` already exists.
@@ -430,6 +449,7 @@ class KojiClient:
         # PKs are non-nullable in Koji; use explicit PA schema to match
         schema = pa.schema([
             pa.field("doc_id", pa.string(), nullable=False),
+            pa.field("project_id", pa.string()),
             pa.field("filename", pa.string()),
             pa.field("format", pa.string()),
             pa.field("num_pages", pa.int64()),
@@ -440,6 +460,7 @@ class KojiClient:
         table = pa.table(
             {
                 "doc_id": [doc_id],
+                "project_id": [project_id],
                 "filename": [filename],
                 "format": [format],
                 "num_pages": [num_pages],
@@ -454,6 +475,7 @@ class KojiClient:
         logger.info(
             "koji_client.document_created",
             doc_id=doc_id,
+            project_id=project_id,
             filename=filename,
             format=format,
         )
@@ -494,30 +516,36 @@ class KojiClient:
     def list_documents(
         self,
         format: str | None = None,
+        project_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """List documents with optional format filter.
+        """List documents with optional format and project filters.
 
         Args:
             format: Filter by file format (optional).
+            project_id: Filter by project (optional). ``None`` returns all.
             limit: Maximum results to return.
             offset: Number of results to skip.
 
         Returns:
             List of document dictionaries ordered by ``created_at`` descending.
         """
+        clauses: list[str] = []
+        params: list[Any] = []
+
         if format:
-            result = self.query(
-                "SELECT * FROM documents WHERE format = ? "
-                "ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                [format, limit, offset],
-            )
-        else:
-            result = self.query(
-                "SELECT * FROM documents ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                [limit, offset],
-            )
+            clauses.append("format = ?")
+            params.append(format)
+        if project_id is not None:
+            clauses.append("project_id = ?")
+            params.append(project_id)
+
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        sql = f"SELECT * FROM documents{where} ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        result = self.query(sql, params)
         return self._arrow_to_dicts(result, json_fields=["metadata"])
 
     def update_document(self, doc_id: str, **fields: Any) -> None:
@@ -533,7 +561,7 @@ class KojiClient:
         if not fields:
             raise ValueError("No fields to update")
 
-        valid_columns = {"filename", "format", "num_pages", "markdown", "metadata"}
+        valid_columns = {"filename", "format", "num_pages", "markdown", "metadata", "project_id"}
         invalid = set(fields.keys()) - valid_columns
         if invalid:
             raise ValueError(f"Invalid document fields: {invalid}")
@@ -574,6 +602,194 @@ class KojiClient:
                 self._delete_where(table, condition)
         self._after_write()
         logger.info("koji_client.document_deleted", doc_id=doc_id)
+
+    # -- project CRUD --------------------------------------------------------
+
+    def create_project(
+        self,
+        project_id: str,
+        name: str,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a new project.
+
+        Args:
+            project_id: Unique project slug (alphanumeric, hyphens, underscores).
+            name: Human-readable project name.
+            description: Optional project description.
+            metadata: Arbitrary metadata dict, stored as JSON.
+
+        Returns:
+            The created project as a dictionary.
+
+        Raises:
+            ValueError: If ``project_id`` is invalid.
+            KojiDuplicateError: If ``project_id`` already exists.
+        """
+        _sanitize_sql_value(project_id)
+
+        existing = self.get_project(project_id)
+        if existing is not None:
+            raise KojiDuplicateError(f"Project {project_id!r} already exists")
+
+        now = datetime.now(timezone.utc).isoformat()
+        schema = pa.schema([
+            pa.field("project_id", pa.string(), nullable=False),
+            pa.field("name", pa.string()),
+            pa.field("description", pa.string()),
+            pa.field("created_at", pa.string()),
+            pa.field("metadata", pa.string()),
+        ])
+        table = pa.table(
+            {
+                "project_id": [project_id],
+                "name": [name],
+                "description": [description],
+                "created_at": [now],
+                "metadata": [_serialize_metadata(metadata)],
+            },
+            schema=schema,
+        )
+        self.insert("projects", table)
+
+        logger.info(
+            "koji_client.project_created",
+            project_id=project_id,
+            name=name,
+        )
+        return {
+            "project_id": project_id,
+            "name": name,
+            "description": description,
+            "created_at": now,
+            "metadata": metadata,
+        }
+
+    def get_project(self, project_id: str) -> dict[str, Any] | None:
+        """Retrieve a project by ID.
+
+        Args:
+            project_id: Project identifier.
+
+        Returns:
+            Project as a dictionary, or ``None`` if not found.
+        """
+        self._require_open()
+        try:
+            result = self.query(
+                "SELECT * FROM projects WHERE project_id = ?", [project_id]
+            )
+            if result.num_rows == 0:
+                return None
+            rows = self._arrow_to_dicts(result, json_fields=["metadata"])
+            return rows[0]
+        except Exception:
+            return None
+
+    def list_projects(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List all projects.
+
+        Args:
+            limit: Maximum results to return.
+            offset: Number of results to skip.
+
+        Returns:
+            List of project dictionaries ordered by ``created_at`` descending.
+        """
+        result = self.query(
+            "SELECT * FROM projects ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            [limit, offset],
+        )
+        return self._arrow_to_dicts(result, json_fields=["metadata"])
+
+    def update_project(self, project_id: str, **fields: Any) -> None:
+        """Update fields on an existing project.
+
+        Args:
+            project_id: Project identifier.
+            **fields: Fields to update (``name``, ``description``, ``metadata``).
+
+        Raises:
+            ValueError: If no fields provided or invalid field name.
+        """
+        if not fields:
+            raise ValueError("No fields to update")
+
+        valid_columns = {"name", "description", "metadata"}
+        invalid = set(fields.keys()) - valid_columns
+        if invalid:
+            raise ValueError(f"Invalid project fields: {invalid}")
+
+        self._require_open()
+
+        if "metadata" in fields and fields["metadata"] is not None:
+            if not isinstance(fields["metadata"], str):
+                fields["metadata"] = json.dumps(fields["metadata"], cls=_SafeEncoder)
+
+        safe_id = _sanitize_sql_value(project_id)
+        result = self._db.update("projects", fields, f"project_id = '{safe_id}'")
+        if result.rows_updated > 0:
+            self._after_write()
+
+    def delete_project(self, project_id: str) -> int:
+        """Delete a project and all its documents (cascade).
+
+        The ``"default"`` project cannot be deleted.
+
+        Args:
+            project_id: Project identifier to delete.
+
+        Returns:
+            Number of documents that were deleted with the project.
+
+        Raises:
+            ValueError: If attempting to delete the ``"default"`` project.
+        """
+        if project_id == "default":
+            raise ValueError("The 'default' project cannot be deleted")
+
+        self._require_open()
+        doc_count = self.count_documents_in_project(project_id)
+
+        safe_id = _sanitize_sql_value(project_id)
+
+        # Delete documents first (cascades to pages, chunks, relations)
+        if doc_count > 0:
+            docs = self.list_documents(project_id=project_id, limit=100000)
+            for doc in docs:
+                self.delete_document(doc["doc_id"])
+
+        # Delete the project row
+        self._delete_where("projects", f"project_id = '{safe_id}'")
+        self._after_write()
+
+        logger.info(
+            "koji_client.project_deleted",
+            project_id=project_id,
+            documents_deleted=doc_count,
+        )
+        return doc_count
+
+    def count_documents_in_project(self, project_id: str) -> int:
+        """Count documents in a project.
+
+        Args:
+            project_id: Project identifier.
+
+        Returns:
+            Number of documents assigned to the project.
+        """
+        result = self.query(
+            "SELECT COUNT(*) AS n FROM documents WHERE project_id = ?",
+            [project_id],
+        )
+        d = result.to_pydict()
+        return int(d["n"][0]) if d["n"] else 0
 
     # -- page operations -----------------------------------------------------
 
@@ -975,20 +1191,57 @@ class KojiClient:
         "JOIN doc_map dm ON r.dst_doc_id = dm.doc_id"
     )
 
-    def _doc_id_int_mapping(self) -> dict[int, str]:
+    def _project_graph_edge_query(self, project_id: str) -> str:
+        """Build a project-scoped graph edge query.
+
+        Args:
+            project_id: Project identifier to scope the graph to.
+
+        Returns:
+            SQL edge query string scoped to the given project.
+        """
+        safe_pid = _sanitize_sql_value(project_id)
+        return (
+            "WITH doc_map AS ("
+            "  SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id"
+            f"  FROM documents WHERE project_id = '{safe_pid}'"
+            ") "
+            "SELECT CAST(sm.node_id AS BIGINT) AS src, "
+            "       CAST(dm.node_id AS BIGINT) AS dst "
+            "FROM doc_relations r "
+            "JOIN doc_map sm ON r.src_doc_id = sm.doc_id "
+            "JOIN doc_map dm ON r.dst_doc_id = dm.doc_id"
+        )
+
+    def _doc_id_int_mapping(
+        self,
+        project_id: str | None = None,
+    ) -> dict[int, str]:
         """Build a reverse mapping from integer node IDs to text doc_ids.
 
         Uses ``ROW_NUMBER() OVER (ORDER BY doc_id)`` to assign stable integers
         matching the edge query used by graph algorithms.
 
+        Args:
+            project_id: Optional project scope. ``None`` includes all documents.
+
         Returns:
             Dict mapping integer node_id to text doc_id.
         """
         self._require_open()
-        result = self.query(
-            "SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id "
-            "FROM documents",
-        )
+
+        if project_id is not None:
+            safe_pid = _sanitize_sql_value(project_id)
+            sql = (
+                "SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id "
+                f"FROM documents WHERE project_id = '{safe_pid}'"
+            )
+        else:
+            sql = (
+                "SELECT doc_id, ROW_NUMBER() OVER (ORDER BY doc_id) AS node_id "
+                "FROM documents"
+            )
+        result = self.query(sql)
         d = result.to_pydict()
         return {
             d["node_id"][i]: d["doc_id"][i]
@@ -998,12 +1251,14 @@ class KojiClient:
     def _run_graph_algorithm(
         self,
         algorithm: str,
+        project_id: str | None = None,
         **kwargs: Any,
     ) -> Any:
         """Run a Koji graph algorithm.
 
         Args:
             algorithm: Algorithm name (e.g. ``"pagerank"``).
+            project_id: Optional project scope. ``None`` runs cross-project.
             **kwargs: Algorithm-specific parameters forwarded to
                 ``Database.graph()``.
 
@@ -1014,9 +1269,14 @@ class KojiClient:
             KojiQueryError: If the algorithm execution fails.
         """
         self._require_open()
+        edge_query = (
+            self._project_graph_edge_query(project_id)
+            if project_id is not None
+            else self._GRAPH_EDGE_QUERY
+        )
         try:
             return self._db.graph(
-                self._GRAPH_EDGE_QUERY,
+                edge_query,
                 algorithm,
                 **kwargs,
             )
@@ -1030,8 +1290,9 @@ class KojiClient:
         damping: float = 0.85,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
+        project_id: str | None = None,
     ) -> dict[str, float]:
-        """Compute PageRank scores for all documents in the graph.
+        """Compute PageRank scores for documents in the graph.
 
         Uses the ``doc_relations`` table as the edge set and maps
         integer node IDs back to text ``doc_id`` values.
@@ -1040,16 +1301,18 @@ class KojiClient:
             damping: Damping factor (0-1). Higher values follow links more.
             max_iterations: Maximum PageRank iterations.
             tolerance: Convergence threshold.
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             Dict mapping ``doc_id`` to PageRank score (scores sum to ~1.0).
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return {}
 
         result = self._run_graph_algorithm(
             "pagerank",
+            project_id=project_id,
             damping=damping,
             max_iterations=max_iterations,
             tolerance=tolerance,
@@ -1066,20 +1329,28 @@ class KojiClient:
 
         return scores
 
-    def graph_communities(self) -> dict[str, int]:
+    def graph_communities(
+        self,
+        project_id: str | None = None,
+    ) -> dict[str, int]:
         """Detect document communities using connected components.
 
         Treats the document relation graph as undirected and assigns
         each document to the connected component it belongs to.
 
+        Args:
+            project_id: Optional project scope. ``None`` runs cross-project.
+
         Returns:
             Dict mapping ``doc_id`` to integer component label.
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return {}
 
-        result = self._run_graph_algorithm("connected_components")
+        result = self._run_graph_algorithm(
+            "connected_components", project_id=project_id,
+        )
 
         d = result.to_pydict()
         label_col = next(
@@ -1099,6 +1370,7 @@ class KojiClient:
     def graph_label_propagation(
         self,
         max_iterations: int = 100,
+        project_id: str | None = None,
     ) -> dict[str, int]:
         """Detect document communities via label propagation.
 
@@ -1107,16 +1379,18 @@ class KojiClient:
 
         Args:
             max_iterations: Maximum propagation iterations.
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             Dict mapping ``doc_id`` to community label (int).
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return {}
 
         result = self._run_graph_algorithm(
             "label_propagation",
+            project_id=project_id,
             max_iterations=max_iterations,
         )
 
@@ -1138,6 +1412,7 @@ class KojiClient:
     def graph_shortest_paths(
         self,
         source_doc_id: str,
+        project_id: str | None = None,
     ) -> dict[str, float]:
         """Shortest path distances from a source document to all others.
 
@@ -1145,11 +1420,12 @@ class KojiClient:
 
         Args:
             source_doc_id: Starting document identifier.
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             Dict mapping ``doc_id`` to distance (float).
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return {}
 
@@ -1161,6 +1437,7 @@ class KojiClient:
 
         result = self._run_graph_algorithm(
             "shortest_paths",
+            project_id=project_id,
             source_id=int(source_node),
         )
 
@@ -1175,19 +1452,23 @@ class KojiClient:
 
         return distances
 
-    def graph_scc(self) -> dict[str, int]:
+    def graph_scc(
+        self,
+        project_id: str | None = None,
+    ) -> dict[str, int]:
         """Detect strongly connected components (directed cycles).
 
-        Args: None.
+        Args:
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             Dict mapping ``doc_id`` to SCC component label (int).
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return {}
 
-        result = self._run_graph_algorithm("scc")
+        result = self._run_graph_algorithm("scc", project_id=project_id)
 
         d = result.to_pydict()
         label_col = next(
@@ -1204,8 +1485,14 @@ class KojiClient:
 
         return components
 
-    def graph_topological_sort(self) -> list[str]:
+    def graph_topological_sort(
+        self,
+        project_id: str | None = None,
+    ) -> list[str]:
         """Topological ordering of documents (requires DAG).
+
+        Args:
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             List of ``doc_id`` in topological order.
@@ -1213,11 +1500,13 @@ class KojiClient:
         Raises:
             KojiQueryError: If the graph contains cycles.
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return []
 
-        result = self._run_graph_algorithm("topological_sort")
+        result = self._run_graph_algorithm(
+            "topological_sort", project_id=project_id,
+        )
 
         d = result.to_pydict()
         order_col = next(
@@ -1237,17 +1526,23 @@ class KojiClient:
         ordered.sort(key=lambda x: x[0])
         return [doc_id for _, doc_id in ordered]
 
-    def graph_has_cycle(self) -> bool:
+    def graph_has_cycle(
+        self,
+        project_id: str | None = None,
+    ) -> bool:
         """Check if the document relation graph contains a cycle.
+
+        Args:
+            project_id: Optional project scope. ``None`` runs cross-project.
 
         Returns:
             True if a cycle exists, False otherwise.
         """
-        id_map = self._doc_id_int_mapping()
+        id_map = self._doc_id_int_mapping(project_id=project_id)
         if not id_map:
             return False
 
-        result = self._run_graph_algorithm("has_cycle")
+        result = self._run_graph_algorithm("has_cycle", project_id=project_id)
 
         # Koji returns a plain bool for has_cycle, not a PyArrow Table
         if isinstance(result, bool):
@@ -1312,10 +1607,40 @@ class KojiClient:
         for fk in DOCUSEARCH_FOREIGN_KEYS:
             self._db.register_foreign_key(fk)
 
+        self._ensure_default_project()
+
         logger.debug(
             "koji_client.schema_synced",
             tables=self._db.list_tables(),
         )
+
+    def _ensure_default_project(self) -> None:
+        """Seed the 'default' project if it does not exist."""
+        result = self._db.query(
+            "SELECT project_id FROM projects WHERE project_id = ?",
+            ["default"],
+        )
+        if result.num_rows == 0:
+            now = datetime.now(timezone.utc).isoformat()
+            schema = pa.schema([
+                pa.field("project_id", pa.string(), nullable=False),
+                pa.field("name", pa.string()),
+                pa.field("description", pa.string()),
+                pa.field("created_at", pa.string()),
+                pa.field("metadata", pa.string()),
+            ])
+            table = pa.table(
+                {
+                    "project_id": ["default"],
+                    "name": ["Default"],
+                    "description": ["Default project"],
+                    "created_at": [now],
+                    "metadata": [None],
+                },
+                schema=schema,
+            )
+            self._db.insert("projects", table)
+            logger.info("koji_client.default_project_created")
 
     def _after_write(self) -> None:
         """Post-write hook: sync and compact as configured."""

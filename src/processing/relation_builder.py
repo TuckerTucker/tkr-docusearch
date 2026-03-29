@@ -47,6 +47,7 @@ class RelationBuilder:
         filename: str,
         chunks: list[dict[str, Any]],
         doc_metadata: dict[str, Any] | None = None,
+        project_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Detect and create relations for a newly ingested document.
 
@@ -55,12 +56,15 @@ class RelationBuilder:
             filename: Original filename of the new document.
             chunks: List of chunk record dicts (must have ``text`` key).
             doc_metadata: Metadata dict for the new document.
+            project_id: Scope relation detection to this project.
 
         Returns:
             List of dicts describing created relations, each with
             ``src_doc_id``, ``dst_doc_id``, ``relation_type``.
         """
-        existing_docs = self._storage.list_documents(limit=10000)
+        existing_docs = self._storage.list_documents(
+            limit=10000, project_id=project_id,
+        )
 
         created: list[dict[str, Any]] = []
         created.extend(self._detect_version_of(doc_id, filename, existing_docs))

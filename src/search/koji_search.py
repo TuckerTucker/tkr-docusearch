@@ -61,6 +61,7 @@ class KojiSearch:
         filters: dict[str, Any] | None = None,
         enable_reranking: bool = True,
         rerank_candidates: int | None = None,
+        project_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute semantic search.
 
@@ -75,6 +76,7 @@ class KojiSearch:
             filters: Metadata filters (reserved for future use).
             enable_reranking: Ignored — no two-stage pipeline.
             rerank_candidates: Ignored — no two-stage pipeline.
+            project_id: Optional project scope. ``None`` searches all projects.
 
         Returns:
             Search response dict matching the existing contract.
@@ -98,14 +100,20 @@ class KojiSearch:
             "visual_only": self.visual_search,
             "text_only": self.text_search,
         }
-        return dispatch[search_mode](query, n_results)
+        return dispatch[search_mode](query, n_results, project_id=project_id)
 
-    def text_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
+    def text_search(
+        self,
+        query: str,
+        n_results: int = 10,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
         """Search text chunks by semantic similarity.
 
         Args:
             query: Search query.
             n_results: Maximum results.
+            project_id: Optional project scope. ``None`` searches all projects.
 
         Returns:
             Search response dict.
@@ -114,15 +122,26 @@ class KojiSearch:
 
         query_emb = self._shikomi.embed_query(query)
 
-        result = self._koji.query(
-            """SELECT c.id, c.doc_id, c.page_num, c.text, c.context,
-                      d.filename, d.format, _distance
-               FROM chunks c
-               JOIN documents d ON c.doc_id = d.doc_id
-               WHERE c.embedding <~> $1
-               LIMIT $2""",
-            [query_emb, n_results],
-        )
+        if project_id is not None:
+            result = self._koji.query(
+                """SELECT c.id, c.doc_id, c.page_num, c.text, c.context,
+                          d.filename, d.format, _distance
+                   FROM chunks c
+                   JOIN documents d ON c.doc_id = d.doc_id
+                   WHERE c.embedding <~> $1 AND d.project_id = $2
+                   LIMIT $3""",
+                [query_emb, project_id, n_results],
+            )
+        else:
+            result = self._koji.query(
+                """SELECT c.id, c.doc_id, c.page_num, c.text, c.context,
+                          d.filename, d.format, _distance
+                   FROM chunks c
+                   JOIN documents d ON c.doc_id = d.doc_id
+                   WHERE c.embedding <~> $1
+                   LIMIT $2""",
+                [query_emb, n_results],
+            )
 
         results = self._format_chunk_results(result)
         results = self._boost_related_results(results)
@@ -134,12 +153,18 @@ class KojiSearch:
             results, query, "text_only", elapsed_ms, relationships=relationships,
         )
 
-    def visual_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
+    def visual_search(
+        self,
+        query: str,
+        n_results: int = 10,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
         """Search page images by visual similarity.
 
         Args:
             query: Search query.
             n_results: Maximum results.
+            project_id: Optional project scope. ``None`` searches all projects.
 
         Returns:
             Search response dict.
@@ -148,15 +173,26 @@ class KojiSearch:
 
         query_emb = self._shikomi.embed_query(query)
 
-        result = self._koji.query(
-            """SELECT p.id, p.doc_id, p.page_num, p.structure,
-                      d.filename, d.format, _distance
-               FROM pages p
-               JOIN documents d ON p.doc_id = d.doc_id
-               WHERE p.embedding <~> $1
-               LIMIT $2""",
-            [query_emb, n_results],
-        )
+        if project_id is not None:
+            result = self._koji.query(
+                """SELECT p.id, p.doc_id, p.page_num, p.structure,
+                          d.filename, d.format, _distance
+                   FROM pages p
+                   JOIN documents d ON p.doc_id = d.doc_id
+                   WHERE p.embedding <~> $1 AND d.project_id = $2
+                   LIMIT $3""",
+                [query_emb, project_id, n_results],
+            )
+        else:
+            result = self._koji.query(
+                """SELECT p.id, p.doc_id, p.page_num, p.structure,
+                          d.filename, d.format, _distance
+                   FROM pages p
+                   JOIN documents d ON p.doc_id = d.doc_id
+                   WHERE p.embedding <~> $1
+                   LIMIT $2""",
+                [query_emb, n_results],
+            )
 
         results = self._format_page_results(result)
         results = self._boost_related_results(results)
@@ -168,7 +204,12 @@ class KojiSearch:
             results, query, "visual_only", elapsed_ms, relationships=relationships,
         )
 
-    def hybrid_search(self, query: str, n_results: int = 10) -> dict[str, Any]:
+    def hybrid_search(
+        self,
+        query: str,
+        n_results: int = 10,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
         """Search across both pages and chunks, merging results.
 
         Runs two separate vector searches (Koji ``<~>`` doesn't support CTEs)
@@ -178,6 +219,7 @@ class KojiSearch:
         Args:
             query: Search query.
             n_results: Maximum results.
+            project_id: Optional project scope. ``None`` searches all projects.
 
         Returns:
             Search response dict.
@@ -187,17 +229,34 @@ class KojiSearch:
         query_emb = self._shikomi.embed_query(query)
         candidates = n_results * 5
 
-        page_hits = self._koji.query(
-            """SELECT doc_id, page_num, _distance
-               FROM pages WHERE embedding <~> $1 LIMIT $2""",
-            [query_emb, candidates],
-        )
-
-        chunk_hits = self._koji.query(
-            """SELECT doc_id, page_num, _distance
-               FROM chunks WHERE embedding <~> $1 LIMIT $2""",
-            [query_emb, candidates],
-        )
+        if project_id is not None:
+            page_hits = self._koji.query(
+                """SELECT p.doc_id, p.page_num, _distance
+                   FROM pages p
+                   JOIN documents d ON p.doc_id = d.doc_id
+                   WHERE p.embedding <~> $1 AND d.project_id = $2
+                   LIMIT $3""",
+                [query_emb, project_id, candidates],
+            )
+            chunk_hits = self._koji.query(
+                """SELECT c.doc_id, c.page_num, _distance
+                   FROM chunks c
+                   JOIN documents d ON c.doc_id = d.doc_id
+                   WHERE c.embedding <~> $1 AND d.project_id = $2
+                   LIMIT $3""",
+                [query_emb, project_id, candidates],
+            )
+        else:
+            page_hits = self._koji.query(
+                """SELECT doc_id, page_num, _distance
+                   FROM pages WHERE embedding <~> $1 LIMIT $2""",
+                [query_emb, candidates],
+            )
+            chunk_hits = self._koji.query(
+                """SELECT doc_id, page_num, _distance
+                   FROM chunks WHERE embedding <~> $1 LIMIT $2""",
+                [query_emb, candidates],
+            )
 
         # Merge in Python: best score per (doc_id, page_num), track source
         merged: dict[tuple[str, int], tuple[float, str]] = {}

@@ -82,6 +82,7 @@ class DocumentListItem(BaseModel):
     """Document list item schema."""
 
     doc_id: str = Field(..., description="Document identifier (SHA-256 hash)")
+    project_id: str = Field("default", description="Project this document belongs to")
     filename: str = Field(..., description="Original filename")
     page_count: int = Field(..., description="Number of pages")
     chunk_count: int = Field(..., description="Number of text chunks")
@@ -442,6 +443,7 @@ def _convert_to_response_items(doc_list: List[Dict]) -> List[DocumentListItem]:
         response_docs.append(
             DocumentListItem(
                 doc_id=doc["doc_id"],
+                project_id=doc.get("project_id", "default"),
                 filename=doc["filename"],
                 page_count=len(doc["pages"]),
                 chunk_count=len(doc["chunks"]),
@@ -474,6 +476,9 @@ async def list_documents(
         "all",
         description="Filter by file type group: all, pdf, audio, office, text, images",
     ),
+    project_id: Optional[str] = Query(  # noqa: B008
+        None, description="Filter by project (omit for all projects)"
+    ),
 ):
     """List all stored documents with metadata.
 
@@ -493,8 +498,8 @@ async def list_documents(
     try:
         client = get_storage_client()
 
-        # Get all documents from Koji
-        doc_list_raw = client.list_documents(limit=10000)
+        # Get documents from Koji (scoped to project if specified)
+        doc_list_raw = client.list_documents(limit=10000, project_id=project_id)
 
         # Build document aggregation matching legacy format
         documents = {}
@@ -504,6 +509,7 @@ async def list_documents(
             chunks = client.get_chunks_for_document(doc_id)
             documents[doc_id] = {
                 "doc_id": doc_id,
+                "project_id": doc.get("project_id", "default"),
                 "filename": doc.get("filename", "unknown"),
                 "date_added": doc.get("created_at", ""),
                 "pages": pages,

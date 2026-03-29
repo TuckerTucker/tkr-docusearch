@@ -38,6 +38,7 @@ from .models import (
 from .routes import markdown_router
 from .routes.graph import router as graph_router, set_storage_client as set_graph_storage
 from .routes.markdown import set_storage_client
+from .routes.projects import router as projects_router, set_storage_client as set_projects_storage
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ def create_app(
     # Include routers
     app.include_router(markdown_router)
     app.include_router(graph_router)
+    app.include_router(projects_router)
     app.include_router(structure_router)
 
     # Initialize components on startup
@@ -144,6 +146,7 @@ def create_app(
             # Set storage client for routers
             set_storage_client(_app_state["storage_client"])
             set_graph_storage(_app_state["storage_client"])
+            set_projects_storage(_app_state["storage_client"])
 
             # Initialize search engine
             _app_state["search_engine"] = KojiSearch(

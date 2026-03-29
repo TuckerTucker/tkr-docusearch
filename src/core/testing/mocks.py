@@ -440,6 +440,7 @@ class MockKojiClient:
         num_pages: Optional[int] = None,
         markdown: Optional[str] = None,
         metadata: Optional[str] = None,
+        project_id: str = "default",
     ) -> None:
         """Create a document record.
 
@@ -450,11 +451,13 @@ class MockKojiClient:
             num_pages: Number of pages (optional).
             markdown: Extracted markdown content (optional).
             metadata: JSON-encoded metadata string (optional).
+            project_id: Project to assign the document to.
         """
         from datetime import datetime, timezone
 
         self._documents[doc_id] = {
             "doc_id": doc_id,
+            "project_id": project_id,
             "filename": filename,
             "format": format,
             "num_pages": num_pages,
@@ -477,13 +480,15 @@ class MockKojiClient:
     def list_documents(
         self,
         format: Optional[str] = None,
+        project_id: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        """List documents with optional format filter.
+        """List documents with optional format and project filters.
 
         Args:
             format: Filter by file format (optional).
+            project_id: Filter by project (optional).
             limit: Maximum number of results.
             offset: Number of results to skip.
 
@@ -493,6 +498,8 @@ class MockKojiClient:
         docs = list(self._documents.values())
         if format:
             docs = [d for d in docs if d["format"] == format]
+        if project_id is not None:
+            docs = [d for d in docs if d.get("project_id") == project_id]
         return docs[offset : offset + limit]
 
     def update_document(self, doc_id: str, **fields: Any) -> None:
@@ -749,6 +756,7 @@ class MockKojiClient:
         damping: float = 0.85,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
+        project_id: Optional[str] = None,
     ) -> dict[str, float]:
         """Compute PageRank scores for all documents in the graph.
 
@@ -797,7 +805,11 @@ class MockKojiClient:
 
         return scores
 
-    def graph_label_propagation(self, max_iterations: int = 100) -> dict[str, int]:
+    def graph_label_propagation(
+        self,
+        max_iterations: int = 100,
+        project_id: Optional[str] = None,
+    ) -> dict[str, int]:
         """Assign community labels to documents via union-find on relations.
 
         Groups connected doc_ids into communities by treating all relations
@@ -842,7 +854,11 @@ class MockKojiClient:
 
         return result
 
-    def graph_shortest_paths(self, source_doc_id: str) -> dict[str, float]:
+    def graph_shortest_paths(
+        self,
+        source_doc_id: str,
+        project_id: Optional[str] = None,
+    ) -> dict[str, float]:
         """Compute shortest-path distances from a source document via BFS.
 
         Traverses outgoing edges in ``_relations``.  Each hop counts as
@@ -876,7 +892,7 @@ class MockKojiClient:
 
         return distances
 
-    def graph_scc(self) -> dict[str, int]:
+    def graph_scc(self, project_id: Optional[str] = None) -> dict[str, int]:
         """Return strongly-connected-component labels for all documents.
 
         This mock treats every document as its own SCC (component label
@@ -891,7 +907,7 @@ class MockKojiClient:
             for idx, doc_id in enumerate(sorted(self._documents))
         }
 
-    def graph_topological_sort(self) -> list[str]:
+    def graph_topological_sort(self, project_id: Optional[str] = None) -> list[str]:
         """Return a topological ordering of document IDs.
 
         This mock returns doc_ids sorted alphabetically.  A real
@@ -903,7 +919,7 @@ class MockKojiClient:
         """
         return sorted(self._documents)
 
-    def graph_has_cycle(self) -> bool:
+    def graph_has_cycle(self, project_id: Optional[str] = None) -> bool:
         """Detect whether the directed relation graph contains a cycle.
 
         Performs iterative DFS with three-color marking (white/gray/black)

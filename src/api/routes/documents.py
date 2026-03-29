@@ -56,6 +56,7 @@ class DocumentAPIResponse(BaseModel):
     title: str
     status: str  # 'uploading' | 'processing' | 'completed' | 'error'
     file_type: str
+    project_id: Optional[str] = None
     thumbnail_url: Optional[str] = None
     metadata: Optional[dict] = None
     embeddings: Optional[dict] = None

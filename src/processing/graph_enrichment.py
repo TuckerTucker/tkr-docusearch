@@ -47,11 +47,17 @@ class GraphEnrichmentService:
     # public API
     # ------------------------------------------------------------------
 
-    def run_full_enrichment(self) -> dict[str, Any]:
+    def run_full_enrichment(
+        self,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
         """Run all enrichment steps, collecting per-step results.
 
         Each step is executed independently — a failure in one step does
         not prevent the others from running.
+
+        Args:
+            project_id: Optional project scope. ``None`` enriches all.
 
         Returns:
             Summary dict with keys ``similar_to``, ``same_topic``,
@@ -69,10 +75,10 @@ class GraphEnrichmentService:
         }
 
         steps: list[tuple[str, Any]] = [
-            ("similar_to", self.compute_similar_to),
-            ("same_topic", self.compute_same_topic),
-            ("overlaps_topic", self.compute_overlaps_topic),
-            ("node_properties", self.compute_node_properties),
+            ("similar_to", lambda: self.compute_similar_to(project_id=project_id)),
+            ("same_topic", lambda: self.compute_same_topic(project_id=project_id)),
+            ("overlaps_topic", lambda: self.compute_overlaps_topic(project_id=project_id)),
+            ("node_properties", lambda: self.compute_node_properties(project_id=project_id)),
         ]
 
         for name, fn in steps:
@@ -109,7 +115,7 @@ class GraphEnrichmentService:
     # Step 1 — similar_to (embedding similarity)
     # ------------------------------------------------------------------
 
-    def compute_similar_to(self) -> int:
+    def compute_similar_to(self, project_id: str | None = None) -> int:
         """Compute ``similar_to`` edges via MaxSim embedding search.
 
         For every document, selects the longest chunk as a representative,
@@ -118,10 +124,13 @@ class GraphEnrichmentService:
         document is converted to a similarity score.  Bidirectional edges
         are created for pairs exceeding the configured threshold.
 
+        Args:
+            project_id: Optional project scope.
+
         Returns:
             Number of edges created.
         """
-        doc_ids = self._fetch_all_doc_ids()
+        doc_ids = self._fetch_all_doc_ids(project_id=project_id)
         if not doc_ids:
             return 0
 
@@ -190,7 +199,7 @@ class GraphEnrichmentService:
     # Step 2 — same_topic (heading Jaccard similarity)
     # ------------------------------------------------------------------
 
-    def compute_same_topic(self) -> int:
+    def compute_same_topic(self, project_id: str | None = None) -> int:
         """Compute ``same_topic`` edges from shared section headings.
 
         Extracts ``parent_heading`` and ``section_path`` from chunk
@@ -198,10 +207,13 @@ class GraphEnrichmentService:
         creates bidirectional edges for document pairs whose Jaccard
         similarity exceeds the configured threshold.
 
+        Args:
+            project_id: Optional project scope.
+
         Returns:
             Number of edges created.
         """
-        doc_headings = self._build_doc_heading_sets()
+        doc_headings = self._build_doc_heading_sets(project_id=project_id)
         if len(doc_headings) < 2:
             return 0
 
@@ -243,18 +255,23 @@ class GraphEnrichmentService:
     # Step 3 — overlaps_topic (community detection)
     # ------------------------------------------------------------------
 
-    def compute_overlaps_topic(self) -> int:
+    def compute_overlaps_topic(self, project_id: str | None = None) -> int:
         """Compute ``overlaps_topic`` edges from label propagation communities.
 
         Runs label propagation on the existing graph, groups documents
         by community, and connects all pairs within communities that
         are small enough (at or below ``max_community_full_connect``).
 
+        Args:
+            project_id: Optional project scope.
+
         Returns:
             Number of edges created.
         """
         try:
-            communities = self._storage.graph_label_propagation()
+            communities = self._storage.graph_label_propagation(
+                project_id=project_id,
+            )
         except Exception as exc:
             logger.warning(
                 "graph_enrichment.overlaps_topic.label_propagation_failed",
@@ -306,19 +323,24 @@ class GraphEnrichmentService:
     # Step 4 — node properties (PageRank, community, hub score)
     # ------------------------------------------------------------------
 
-    def compute_node_properties(self) -> int:
+    def compute_node_properties(self, project_id: str | None = None) -> int:
         """Compute and store graph analytics as document metadata.
 
         Runs PageRank and label propagation, counts hub scores
         (total incoming + outgoing edges), and writes results into
         each document's ``metadata["graph"]`` key.
 
+        Args:
+            project_id: Optional project scope.
+
         Returns:
             Number of documents updated.
         """
         # PageRank
         try:
-            pagerank_scores = self._storage.graph_pagerank()
+            pagerank_scores = self._storage.graph_pagerank(
+                project_id=project_id,
+            )
         except Exception as exc:
             logger.warning(
                 "graph_enrichment.node_properties.pagerank_failed",
@@ -328,7 +350,9 @@ class GraphEnrichmentService:
 
         # Community labels
         try:
-            community_labels = self._storage.graph_label_propagation()
+            community_labels = self._storage.graph_label_propagation(
+                project_id=project_id,
+            )
         except Exception as exc:
             logger.warning(
                 "graph_enrichment.node_properties.label_propagation_failed",
@@ -388,14 +412,26 @@ class GraphEnrichmentService:
     # private helpers
     # ------------------------------------------------------------------
 
-    def _fetch_all_doc_ids(self) -> list[str]:
+    def _fetch_all_doc_ids(
+        self,
+        project_id: str | None = None,
+    ) -> list[str]:
         """Fetch all document IDs from the documents table.
+
+        Args:
+            project_id: Optional project scope.
 
         Returns:
             Sorted list of doc_id strings.
         """
         try:
-            result = self._storage.query("SELECT doc_id FROM documents")
+            if project_id is not None:
+                result = self._storage.query(
+                    "SELECT doc_id FROM documents WHERE project_id = ?",
+                    [project_id],
+                )
+            else:
+                result = self._storage.query("SELECT doc_id FROM documents")
             d = result.to_pydict()
             return sorted(d.get("doc_id", []))
         except KojiQueryError:
@@ -535,19 +571,33 @@ class GraphEnrichmentService:
         ranked = sorted(best.items(), key=lambda x: x[1])
         return ranked[:top_k]
 
-    def _build_doc_heading_sets(self) -> dict[str, set[str]]:
+    def _build_doc_heading_sets(
+        self,
+        project_id: str | None = None,
+    ) -> dict[str, set[str]]:
         """Extract heading sets from chunk context for all documents.
 
         Parses ``parent_heading`` and ``section_path`` from each chunk's
         ``context`` JSON and aggregates unique headings per document.
 
+        Args:
+            project_id: Optional project scope.
+
         Returns:
             Dict mapping ``doc_id`` to a set of heading strings.
         """
         try:
-            result = self._storage.query(
-                "SELECT doc_id, context FROM chunks WHERE context IS NOT NULL"
-            )
+            if project_id is not None:
+                result = self._storage.query(
+                    "SELECT c.doc_id, c.context FROM chunks c "
+                    "JOIN documents d ON c.doc_id = d.doc_id "
+                    "WHERE c.context IS NOT NULL AND d.project_id = ?",
+                    [project_id],
+                )
+            else:
+                result = self._storage.query(
+                    "SELECT doc_id, context FROM chunks WHERE context IS NOT NULL"
+                )
         except KojiQueryError:
             return {}
 

@@ -41,7 +41,9 @@ def _require_storage():
 
 
 @router.get("/overview")
-async def graph_overview():
+async def graph_overview(
+    project_id: Optional[str] = Query(None, description="Scope to project"),
+):
     """Full graph summary: nodes with properties, edge counts by type.
 
     Returns the data needed to render a library-level graph view with
@@ -50,11 +52,18 @@ async def graph_overview():
     storage = _require_storage()
 
     try:
-        # Fetch all documents with graph properties
-        docs_result = storage.query(
-            "SELECT doc_id, filename, format, num_pages, metadata "
-            "FROM documents ORDER BY doc_id"
-        )
+        # Fetch documents with graph properties
+        if project_id:
+            docs_result = storage.query(
+                "SELECT doc_id, filename, format, num_pages, metadata "
+                "FROM documents WHERE project_id = ? ORDER BY doc_id",
+                [project_id],
+            )
+        else:
+            docs_result = storage.query(
+                "SELECT doc_id, filename, format, num_pages, metadata "
+                "FROM documents ORDER BY doc_id"
+            )
         d = docs_result.to_pydict()
 
         nodes = []
@@ -72,10 +81,20 @@ async def graph_overview():
             })
 
         # Edge counts by type
-        edge_result = storage.query(
-            "SELECT relation_type, COUNT(*) AS cnt "
-            "FROM doc_relations GROUP BY relation_type"
-        )
+        if project_id:
+            edge_result = storage.query(
+                "SELECT r.relation_type, COUNT(*) AS cnt "
+                "FROM doc_relations r "
+                "JOIN documents d ON r.src_doc_id = d.doc_id "
+                "WHERE d.project_id = ? "
+                "GROUP BY r.relation_type",
+                [project_id],
+            )
+        else:
+            edge_result = storage.query(
+                "SELECT relation_type, COUNT(*) AS cnt "
+                "FROM doc_relations GROUP BY relation_type"
+            )
         ed = edge_result.to_pydict()
         edge_counts = {
             ed["relation_type"][i]: ed["cnt"][i]
@@ -215,7 +234,9 @@ async def graph_path(
 
 
 @router.get("/communities")
-async def graph_communities():
+async def graph_communities(
+    project_id: Optional[str] = Query(None, description="Scope to project"),
+):
     """List all topic communities with their members.
 
     Returns community clusters from label propagation, each with
@@ -224,7 +245,7 @@ async def graph_communities():
     storage = _require_storage()
 
     try:
-        labels = storage.graph_label_propagation()
+        labels = storage.graph_label_propagation(project_id=project_id)
     except Exception as exc:
         logger.error(f"graph_communities failed: {exc}", exc_info=True)
         raise HTTPException(500, f"Community detection failed: {exc}")
@@ -269,6 +290,7 @@ async def graph_communities():
 @router.get("/importance")
 async def graph_importance(
     limit: int = Query(20, ge=1, le=100),
+    project_id: Optional[str] = Query(None, description="Scope to project"),
 ):
     """Documents ranked by PageRank importance.
 
@@ -278,7 +300,7 @@ async def graph_importance(
     storage = _require_storage()
 
     try:
-        scores = storage.graph_pagerank()
+        scores = storage.graph_pagerank(project_id=project_id)
     except Exception as exc:
         logger.error(f"graph_importance failed: {exc}", exc_info=True)
         raise HTTPException(500, f"PageRank computation failed: {exc}")
@@ -386,6 +408,7 @@ async def graph_similar(
 async def graph_edges(
     doc_id: Optional[str] = Query(None, description="Filter by document"),
     edge_type: Optional[str] = Query(None, description="Filter by type"),
+    project_id: Optional[str] = Query(None, description="Scope to project"),
     limit: int = Query(100, ge=1, le=1000),
 ):
     """Query graph edges with optional filters.
@@ -402,13 +425,32 @@ async def graph_edges(
                 direction="both",
             )
         else:
-            # All edges (with optional type filter)
-            sql = "SELECT src_doc_id, dst_doc_id, relation_type, metadata FROM doc_relations"
-            params = []
+            # All edges (with optional type and project filters)
+            clauses: list[str] = []
+            params: list = []
             if edge_type:
-                sql += " WHERE relation_type = ?"
-                params = [edge_type]
-            sql += f" LIMIT {limit}"
+                clauses.append("r.relation_type = ?")
+                params.append(edge_type)
+
+            if project_id:
+                sql = (
+                    "SELECT r.src_doc_id, r.dst_doc_id, r.relation_type, r.metadata "
+                    "FROM doc_relations r "
+                    "JOIN documents d ON r.src_doc_id = d.doc_id "
+                    "WHERE d.project_id = ?"
+                )
+                params_list = [project_id]
+                if edge_type:
+                    sql += " AND r.relation_type = ?"
+                    params_list.append(edge_type)
+                sql += f" LIMIT {limit}"
+                params = params_list
+            else:
+                sql = "SELECT src_doc_id, dst_doc_id, relation_type, metadata FROM doc_relations"
+                if edge_type:
+                    sql += " WHERE relation_type = ?"
+                    params = [edge_type]
+                sql += f" LIMIT {limit}"
             result = storage.query(sql, params or None)
             d = result.to_pydict()
             relations = []
@@ -445,6 +487,7 @@ async def graph_reading_order(
     community_id: Optional[int] = Query(
         None, description="Community ID to order (all docs if omitted)"
     ),
+    project_id: Optional[str] = Query(None, description="Scope to project"),
 ):
     """Suggested reading order based on graph topology.
 
@@ -455,13 +498,13 @@ async def graph_reading_order(
 
     try:
         # Try topological sort first
-        has_cycle = storage.graph_has_cycle()
+        has_cycle = storage.graph_has_cycle(project_id=project_id)
 
         if not has_cycle:
-            ordered_ids = storage.graph_topological_sort()
+            ordered_ids = storage.graph_topological_sort(project_id=project_id)
         else:
             # Fall back to PageRank ordering
-            scores = storage.graph_pagerank()
+            scores = storage.graph_pagerank(project_id=project_id)
             ordered_ids = [
                 doc_id for doc_id, _ in
                 sorted(scores.items(), key=lambda x: -x[1])
@@ -469,7 +512,7 @@ async def graph_reading_order(
 
         # Filter to community if specified
         if community_id is not None:
-            labels = storage.graph_label_propagation()
+            labels = storage.graph_label_propagation(project_id=project_id)
             community_members = {
                 did for did, label in labels.items()
                 if label == community_id

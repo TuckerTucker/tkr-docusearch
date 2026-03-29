@@ -147,6 +147,7 @@ class ProcessRequest(BaseModel):
 
     file_path: str
     filename: str
+    project_id: str = "default"
 
 
 class ProcessResponse(BaseModel):
@@ -191,7 +192,12 @@ class StatusResponse(BaseModel):
 # ============================================================================
 
 
-def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> Dict[str, Any]:
+def process_document_sync(
+    file_path: str,
+    filename: str,
+    doc_id: str = None,
+    project_id: str = "default",
+) -> Dict[str, Any]:
     """
     Process a document (runs in thread pool).
 
@@ -199,6 +205,7 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
         file_path: Absolute path to document
         filename: Original filename
         doc_id: Optional pre-generated document ID (SHA-256 hash)
+        project_id: Project to assign the document to.
 
     Returns:
         Processing result dict
@@ -253,6 +260,7 @@ def process_document_sync(file_path: str, filename: str, doc_id: str = None) -> 
         result = document_processor.process_document(
             file_path=file_path,
             status_callback=lambda status: _update_processing_status(doc_id, status),
+            project_id=project_id,
         )
 
         if not result or not result.doc_id:
@@ -408,6 +416,7 @@ def _broadcast_from_sync(coro):
 async def upload_file(
     background_tasks: BackgroundTasks,
     f: UploadFile = File(...),
+    project_id: str = "default",
 ):
     """Accept file upload, save to disk, and trigger processing."""
     # Sanitize filename: strip directory components to prevent path traversal
@@ -447,6 +456,7 @@ async def upload_file(
     request = ProcessRequest(
         file_path=str(save_path),
         filename=filename,
+        project_id=project_id,
     )
     return await process_document(request, background_tasks)
 
@@ -521,7 +531,10 @@ async def process_document(request: ProcessRequest, background_tasks: Background
         logger.warning(f"Document {doc_id} already in status tracker")
 
     # Queue for background processing (pass doc_id to ensure consistency)
-    executor.submit(process_document_sync, request.file_path, request.filename, doc_id)
+    executor.submit(
+        process_document_sync, request.file_path, request.filename,
+        doc_id, request.project_id,
+    )
 
     # Return immediately with doc_id (processing continues in background)
     return ProcessResponse(

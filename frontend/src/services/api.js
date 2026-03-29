@@ -96,6 +96,7 @@ const documents = {
       search,
       sortBy = 'newest_first',
       fileTypeGroup = 'all',
+      projectId,
       limit = 50,
       offset = 0,
     } = filters;
@@ -114,6 +115,10 @@ const documents = {
 
     if (fileTypeGroup && fileTypeGroup !== 'all') {
       params.set('file_type_group', fileTypeGroup);
+    }
+
+    if (projectId) {
+      params.set('project_id', projectId);
     }
 
     const url = `${API_BASE_URL}/documents?${params.toString()}`;
@@ -219,11 +224,14 @@ const upload = {
    * @param {Function} [onProgress] - Progress callback (0-100)
    * @returns {Promise<Object>} Upload result with temp_id
    */
-  async uploadFile(file, onProgress = null) {
+  async uploadFile(file, onProgress = null, projectId = null) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
       formData.append('f', file);
+      if (projectId) {
+        formData.append('project_id', projectId);
+      }
 
       // Track upload progress
       if (onProgress) {
@@ -366,6 +374,91 @@ const status = {
 };
 
 // ============================================================================
+// Projects API
+// ============================================================================
+
+const projects = {
+  /**
+   * Fetch list of all projects with document counts
+   *
+   * @param {number} [limit=100] - Maximum results
+   * @param {number} [offset=0] - Pagination offset
+   * @returns {Promise<Array>} List of project objects
+   */
+  async list(limit = 100, offset = 0) {
+    const params = new URLSearchParams();
+    params.set('limit', limit.toString());
+    params.set('offset', offset.toString());
+    const url = `${API_BASE_URL}/api/projects?${params.toString()}`;
+    const response = await fetchWithTimeout(url);
+    return handleResponse(response, url);
+  },
+
+  /**
+   * Get a single project by ID
+   *
+   * @param {string} projectId - Project identifier
+   * @returns {Promise<Object>} Project object with document count
+   */
+  async get(projectId) {
+    const url = `${API_BASE_URL}/api/projects/${encodeURIComponent(projectId)}`;
+    const response = await fetchWithTimeout(url);
+    return handleResponse(response, url);
+  },
+
+  /**
+   * Create a new project
+   *
+   * @param {Object} data - Project data
+   * @param {string} data.name - Project name
+   * @param {string} [data.project_id] - Custom slug (auto-generated if omitted)
+   * @param {string} [data.description] - Project description
+   * @returns {Promise<Object>} Created project
+   */
+  async create(data) {
+    const url = `${API_BASE_URL}/api/projects`;
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, url);
+  },
+
+  /**
+   * Update a project
+   *
+   * @param {string} projectId - Project identifier
+   * @param {Object} data - Fields to update (name, description, metadata)
+   * @returns {Promise<Object>} Updated project
+   */
+  async update(projectId, data) {
+    const url = `${API_BASE_URL}/api/projects/${encodeURIComponent(projectId)}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'PUT',
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, url);
+  },
+
+  /**
+   * Delete a project and all its documents
+   *
+   * @param {string} projectId - Project identifier
+   * @returns {Promise<Object>} Deletion result with documents_deleted count
+   */
+  async delete(projectId) {
+    const url = `${API_BASE_URL}/api/projects/${encodeURIComponent(projectId)}`;
+    const response = await fetchWithTimeout(url, {
+      method: 'DELETE',
+      headers: DEFAULT_HEADERS,
+    });
+    return handleResponse(response, url);
+  },
+};
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -374,4 +467,5 @@ export const api = {
   upload,
   research,
   status,
+  projects,
 };
