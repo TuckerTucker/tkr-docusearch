@@ -2,7 +2,7 @@
 
 **From:** DocuSearch (tkr-docusearch)
 **To:** Koji Team (tkr-koji)
-**Updated:** 2026-03-28 (Koji 0.2.0 retest)
+**Updated:** 2026-03-29 (added cross-DB graph/search requests)
 **Original:** 2026-03-10
 
 DocuSearch has completed its migration from ChromaDB/ColPali to Koji + Shikomi. The text embedding pipeline works end-to-end, but we're blocked or working around issues in three areas.
@@ -175,6 +175,160 @@ DocuSearch's `update_document()` has been migrated from delete+reinsert to `db.u
 
 ---
 
+## 8. Koji DB: Cross-database graph algorithms
+
+**Priority: Medium — design input requested**
+
+DocuSearch is adding **Projects** — user-defined groups of documents. Each project would ideally be its own Koji database for isolation (independent backup/restore, clean deletion, per-project compaction, future multi-tenant support). However, `db.graph()` operates on a single database, which means graph algorithms cannot see relationships that span projects.
+
+**Use case:** A user has three projects — "Q1 Financials", "Legal Contracts", "Board Decks". A document in "Q1 Financials" references a contract in "Legal Contracts", and that contract is a version of a document in "Board Decks". Today these cross-project edges would be invisible to PageRank, community detection, and shortest-path queries.
+
+**What we do today (single DB):**
+
+```python
+db = koji.open("data/koji.db")
+
+# Graph algorithms see all documents and edges in one DB
+result = db.graph(
+    "SELECT CAST(sm.node_id AS BIGINT) AS src, "
+    "       CAST(dm.node_id AS BIGINT) AS dst "
+    "FROM doc_relations r "
+    "JOIN doc_map sm ON r.src_doc_id = sm.doc_id "
+    "JOIN doc_map dm ON r.dst_doc_id = dm.doc_id",
+    "pagerank",
+    damping=0.85,
+)
+```
+
+**What breaks with per-project DBs:**
+
+```python
+db_financials = koji.open("data/projects/financials.db")
+db_legal = koji.open("data/projects/legal.db")
+
+# This edge exists: financials/doc-A → legal/doc-B (relation: "references")
+# But db_financials.graph() can't see doc-B
+# And db_legal.graph() can't see doc-A
+# PageRank is fragmented, community detection misses cross-project clusters
+```
+
+**What we need (one of):**
+
+1. **`koji.federated_graph(databases, edge_query, algorithm, **kwargs)`** — accepts multiple open `Database` handles, unions their edge sets, runs the algorithm over the combined graph. Returns results tagged with their source database.
+
+2. **`db.attach(alias, path)`** — similar to SQLite's `ATTACH DATABASE`, allowing a single `db.graph()` edge query to JOIN across attached databases:
+   ```python
+   db = koji.open("data/projects/financials.db")
+   db.attach("legal", "data/projects/legal.db")
+   # Edge query can now reference legal.doc_relations
+   ```
+
+3. **`db.graph()` accepting a PyArrow edge table directly** instead of a SQL query — we would build the unified edge table in Python from multiple databases and pass it in:
+   ```python
+   edges_a = db_a.query("SELECT src, dst FROM doc_relations")
+   edges_b = db_b.query("SELECT src, dst FROM doc_relations")
+   combined = pa.concat_tables([edges_a, edges_b])
+   result = koji.graph(combined, "pagerank", damping=0.85)
+   ```
+   This is the lightest-touch option — Koji doesn't need cross-DB awareness, just the ability to accept pre-built edge data.
+
+**Our preference:** Option 3. It keeps Koji simple and gives us full control over edge construction. Options 1 and 2 are more ergonomic but push federation complexity into Koji.
+
+---
+
+## 9. Koji DB: Cross-database similarity search
+
+**Priority: Medium — design input requested**
+
+Related to issue #8. With per-project databases, MaxSim vector search (`<~>`) is scoped to a single database. A search in Project A cannot surface relevant documents from Project B.
+
+**Use case:** A user searches "revenue forecast methodology" while viewing "Q1 Financials". The most relevant chunk is in "Board Decks". Today that result is invisible — the query only hits `financials.db`.
+
+**What we do today (single DB):**
+
+```python
+db = koji.open("data/koji.db")
+
+result = db.query(
+    """SELECT c.id, c.doc_id, c.page_num, c.text, c.context,
+              d.filename, d.format, _distance
+       FROM chunks c
+       JOIN documents d ON c.doc_id = d.doc_id
+       WHERE c.embedding <~> $1
+       LIMIT $2""",
+    [query_embedding, 10],
+)
+```
+
+**What breaks with per-project DBs:**
+
+```python
+db_financials = koji.open("data/projects/financials.db")
+db_board = koji.open("data/projects/board.db")
+
+# Only searches financials — misses the best match in board.db
+result = db_financials.query(
+    "SELECT ... FROM chunks c WHERE c.embedding <~> $1 LIMIT $2",
+    [query_embedding, 10],
+)
+
+# Workaround: fan-out in Python
+results = []
+for db in [db_financials, db_board, db_legal]:
+    r = db.query("SELECT ... WHERE c.embedding <~> $1 LIMIT $2", [emb, 10])
+    results.append(r)
+merged = merge_and_rerank(results)  # approximate, loses global ranking
+```
+
+The fan-out workaround has real problems:
+- **Ranking is approximate.** MaxSim distances from different databases are not directly comparable if index structures differ (different IVF centroids, different data distributions).
+- **Cost scales linearly** with project count. 20 projects = 20 separate vector scans.
+- **No global LIMIT pushdown.** Each DB returns its full LIMIT, then we discard most results. Over-fetching wastes I/O.
+
+**What we need (one of):**
+
+1. **`koji.federated_search(databases, query, params)`** — accepts multiple open `Database` handles, runs the MaxSim query against each, and returns a single merged result set with globally-consistent distance scores. Koji controls the merge so distance comparability is guaranteed.
+
+2. **`db.attach()`** (same as issue #8) — if the attached database's tables are queryable, then `<~>` over a UNION of chunk tables across attached DBs would work:
+   ```sql
+   SELECT c.id, c.doc_id, c.text, _distance
+   FROM (
+       SELECT * FROM chunks
+       UNION ALL
+       SELECT * FROM legal.chunks
+   ) c
+   WHERE c.embedding <~> $1
+   LIMIT 10
+   ```
+   (This depends on whether MaxSim can operate over a UNION — it may require index awareness.)
+
+3. **Distance score normalization guarantee** — if Koji can document that MaxSim `_distance` values are globally comparable across databases with the same embedding dimensionality (i.e., distance depends only on the vectors, not on index structure), then our Python fan-out workaround becomes correct and we just need that guarantee in writing.
+
+**Our preference:** Option 3 is the minimum viable answer — just confirm distance comparability. Option 1 is the ideal. Option 2 depends on MaxSim's internals.
+
+---
+
+## 10. Design context: why per-project databases
+
+For context on why we're exploring per-project isolation rather than a single DB with a `project_id` column:
+
+| Concern | Single DB + project_id | Per-project DB |
+|---------|----------------------|----------------|
+| Cross-project graph | Works natively | Needs Koji support (issue #8) |
+| Cross-project search | Works natively | Needs Koji support (issue #9) |
+| Project deletion | `DELETE WHERE project_id = ?` across 4 tables | `rm -rf project.db` |
+| Project export/backup | Query + dump per project | Copy the file |
+| Index size / search speed | Grows with total corpus | Scales per project |
+| Compaction | Global, affects all projects | Per-project, isolated |
+| Data corruption blast radius | All projects | Single project |
+| Schema migration | One migration | N migrations |
+
+A single DB with `project_id` is the simpler path and what we'll ship first. But the operational advantages of per-project DBs are compelling, and we'd move to that model if Koji can support cross-DB graph and search — even with the lightweight options (issue #8 option 3, issue #9 option 3).
+
+**We'd appreciate the Koji team's perspective on which direction is most aligned with Koji's roadmap.**
+
+---
+
 ## Summary
 
 | # | Component | Issue | Priority | Status |
@@ -186,3 +340,6 @@ DocuSearch's `update_document()` has been migrated from delete+reinsert to `db.u
 | 5 | Koji DB | Recursive CTE arithmetic unsupported | Low | Open — workaround adequate |
 | 6 | Koji DB | `db.update()` unavailable | — | **Resolved in 0.2.0** |
 | 7 | Koji DB | `db.graph()` missing from sync API | — | **Resolved in 0.2.0** |
+| 8 | Koji DB | Cross-database graph algorithms | Medium | Open — design input requested |
+| 9 | Koji DB | Cross-database similarity search | Medium | Open — design input requested |
+| 10 | — | Design context: per-project DB tradeoffs | — | Context for #8 and #9 |

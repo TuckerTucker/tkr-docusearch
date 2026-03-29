@@ -609,8 +609,8 @@ class DocumentProcessor:
         # Insert chunks from text results
         text_ids = []
         text_size = 0
+        chunk_records: list = []
         if text_results:
-            chunk_records = []
             for tr in text_results:
                 chunk_id = tr.chunk_id
                 text_ids.append(chunk_id)
@@ -671,16 +671,13 @@ class DocumentProcessor:
             )
             if created_relations:
                 logger.info(
-                    "relations_created",
-                    doc_id=doc_id,
-                    count=len(created_relations),
-                    types=[r["relation_type"] for r in created_relations],
+                    f"relations_created: doc_id={doc_id} "
+                    f"count={len(created_relations)} "
+                    f"types={[r['relation_type'] for r in created_relations]}"
                 )
         except Exception as exc:
             logger.warning(
-                "relation_building_failed",
-                doc_id=doc_id,
-                error=str(exc),
+                f"relation_building_failed: doc_id={doc_id} error={exc}"
             )
 
         return StorageConfirmation(
