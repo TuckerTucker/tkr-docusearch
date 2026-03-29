@@ -8,10 +8,34 @@ duplicate the logic.
 from __future__ import annotations
 
 import structlog
+import torch
 
 from ..config.koji_config import ShikomiConfig
 
 logger = structlog.get_logger(__name__)
+
+
+def _resolve_device(device: str) -> str:
+    """Resolve ``"auto"`` to an actual PyTorch device string.
+
+    Args:
+        device: Device string from config (``auto``, ``mps``, ``cuda``, ``cpu``).
+
+    Returns:
+        A valid PyTorch device string.
+    """
+    if device != "auto":
+        return device
+
+    if torch.backends.mps.is_available():
+        resolved = "mps"
+    elif torch.cuda.is_available():
+        resolved = "cuda"
+    else:
+        resolved = "cpu"
+
+    logger.info("embedding_factory.device_resolved", requested=device, resolved=resolved)
+    return resolved
 
 
 def create_embedding_engine(config: ShikomiConfig):
@@ -42,15 +66,16 @@ def create_embedding_engine(config: ShikomiConfig):
     if config.mode == "in_process":
         from .in_process_engine import InProcessEmbeddingEngine
 
+        resolved_device = _resolve_device(config.device)
         engine = InProcessEmbeddingEngine(
-            device=config.device,
+            device=resolved_device,
             quantization=config.quantization,
         )
         engine.connect()
         logger.info(
             "embedding_factory.created",
             mode="in_process",
-            device=config.device,
+            device=resolved_device,
             quantization=config.quantization,
         )
         return engine

@@ -178,6 +178,9 @@ start_shikomi() {
             else
                 print_status "Shikomi" "ok" "Running at $shikomi_target (PID: $shikomi_pid)"
             fi
+            # Worker should use gRPC to talk to the running Shikomi instead of loading the model in-process
+            export SHIKOMI_MODE="grpc"
+            export SHIKOMI_GRPC_TARGET="$shikomi_target"
             return
         fi
         sleep 1
@@ -186,6 +189,9 @@ start_shikomi() {
 
     if ps -p "$shikomi_pid" > /dev/null 2>&1; then
         print_status "Shikomi" "warn" "Started but not yet reachable (check logs/shikomi.log)"
+        # Still use gRPC mode — Shikomi should be ready by the time the worker needs it
+        export SHIKOMI_MODE="grpc"
+        export SHIKOMI_GRPC_TARGET="$shikomi_target"
     else
         print_status "Shikomi" "error" "Failed to start (check logs/shikomi.log)"
         rm -f "$SHIKOMI_PID_FILE"
