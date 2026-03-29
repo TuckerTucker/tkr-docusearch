@@ -8,12 +8,11 @@ test_status_*, and test_multi_document_* test files.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from src.config.koji_config import KojiConfig
-from src.core.testing.mocks import MockEmbeddingModel, MockKojiClient
+from src.core.testing.mocks import MockKojiClient, MockShikomiIngester
 from src.processing.processor import DocumentProcessor, ProcessingStatus
 from src.storage.koji_client import KojiClient
 
@@ -79,9 +78,11 @@ def sample_png() -> Path:
 
 
 @pytest.fixture
-def mock_engine() -> MockEmbeddingModel:
-    """Mock embedding engine with no latency simulation."""
-    return MockEmbeddingModel(simulate_latency=False)
+def mock_engine() -> MockShikomiIngester:
+    """Mock ingester with no model loading."""
+    ingester = MockShikomiIngester()
+    ingester.connect()
+    return ingester
 
 
 @pytest.fixture
@@ -120,30 +121,16 @@ def make_processor():
 
         processor = make_processor()                    # all mocks
         processor = make_processor(storage=koji_client) # real Koji
-        processor = make_processor(enhanced=True)       # enhanced mode
     """
 
-    def _make(
-        engine: Any = None,
-        storage: Any = None,
-        enhanced: bool = False,
-    ) -> DocumentProcessor:
-        if engine is None:
-            engine = MockEmbeddingModel(simulate_latency=False)
+    def _make(ingester=None, storage=None):
+        if ingester is None:
+            ingester = MockShikomiIngester()
+            ingester.connect()
         if storage is None:
             storage = MockKojiClient()
             storage.open()
-
-        config = None
-        if enhanced:
-            from src.config.processing_config import EnhancedModeConfig
-            config = EnhancedModeConfig()
-
-        return DocumentProcessor(
-            embedding_engine=engine,
-            storage_client=storage,
-            enhanced_mode_config=config,
-        )
+        return DocumentProcessor(ingester=ingester, storage_client=storage)
 
     return _make
 

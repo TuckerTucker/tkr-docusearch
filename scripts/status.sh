@@ -96,16 +96,6 @@ show_status_text() {
         echo -e "  ${YELLOW}○${NC} Koji DB:   Not found at $KOJI_DB_PATH (will create on first use)"
     fi
 
-    # Shikomi embedding service
-    local shikomi_target="${SHIKOMI_GRPC_TARGET:-localhost:50051}"
-    local shikomi_host="${shikomi_target%%:*}"
-    local shikomi_port="${shikomi_target##*:}"
-    if python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('$shikomi_host', $shikomi_port)); s.close()" 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} Shikomi:   Connected at $shikomi_target"
-    else
-        echo -e "  ${YELLOW}○${NC} Shikomi:   Not reachable at $shikomi_target"
-    fi
-
     # Worker
     echo -e "\n${CYAN}Processing Worker:${NC}"
 

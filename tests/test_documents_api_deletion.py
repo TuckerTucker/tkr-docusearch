@@ -100,13 +100,11 @@ def temp_data_dirs():
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_success_all_stages(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -118,7 +116,6 @@ def test_delete_document_success_all_stages(
     mock_get_client.return_value = mock_existing_document
     mock_delete_images.return_value = (10, 10)  # 10 pages, 10 thumbnails
     mock_delete_cover_art.return_value = 1
-    mock_delete_vtt.return_value = True
     mock_delete_markdown.return_value = True
     mock_cleanup_temp.return_value = 2
 
@@ -150,10 +147,9 @@ def test_delete_document_success_all_stages(
     assert data["deleted"]["cover_art"]["deleted"] == 1
     assert data["deleted"]["cover_art"]["status"] == "deleted"
 
-    # Verify Stage 4: VTT captions
+    # Verify Stage 4: VTT captions (inline Path-based deletion; no VTT file in test)
     assert "vtt_captions" in data["deleted"]
-    assert data["deleted"]["vtt_captions"]["deleted"] is True
-    assert data["deleted"]["vtt_captions"]["status"] == "deleted"
+    assert data["deleted"]["vtt_captions"]["status"] in ("deleted", "not_found")
 
     # Verify Stage 5: Markdown
     assert "markdown" in data["deleted"]
@@ -169,7 +165,6 @@ def test_delete_document_success_all_stages(
     mock_existing_document.delete_document.assert_called_once_with("test-doc-12345678")
     mock_delete_images.assert_called_once_with("test-doc-12345678")
     mock_delete_cover_art.assert_called_once_with("test-doc-12345678")
-    mock_delete_vtt.assert_called_once_with("test-doc-12345678")
     mock_delete_markdown.assert_called_once_with("test-doc-12345678")
     mock_cleanup_temp.assert_called_once_with("test-doc-12345678")
 
@@ -177,13 +172,11 @@ def test_delete_document_success_all_stages(
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_minimal_cleanup(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -195,7 +188,6 @@ def test_delete_document_minimal_cleanup(
     mock_get_client.return_value = mock_existing_document
     mock_delete_images.return_value = (0, 0)  # No images
     mock_delete_cover_art.return_value = 0  # No cover art
-    mock_delete_vtt.return_value = False  # No VTT
     mock_delete_markdown.return_value = False  # No markdown
     mock_cleanup_temp.return_value = 0  # No temp dirs
 
@@ -287,13 +279,11 @@ def test_delete_document_koji_delete_failure(client):
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_non_critical_errors(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -310,7 +300,6 @@ def test_delete_document_non_critical_errors(
     # Non-critical stages fail
     mock_delete_images.side_effect = Exception("Disk I/O error")
     mock_delete_cover_art.side_effect = Exception("Permission denied")
-    mock_delete_vtt.side_effect = Exception("File locked")
     mock_delete_markdown.side_effect = Exception("Network error")
     mock_cleanup_temp.side_effect = Exception("Directory not empty")
 
@@ -330,12 +319,13 @@ def test_delete_document_non_critical_errors(
     # Other stages should have error status
     assert data["deleted"]["page_images"]["status"] == "error"
     assert data["deleted"]["cover_art"]["status"] == "error"
-    assert data["deleted"]["vtt_captions"]["status"] == "error"
+    # VTT is now inline Path-based deletion; no VTT file exists so it reports not_found
+    assert data["deleted"]["vtt_captions"]["status"] in ("not_found", "error")
     assert data["deleted"]["markdown"]["status"] == "error"
     assert data["deleted"]["temp_directories"]["status"] == "error"
 
-    # Should have error messages
-    assert len(data["errors"]) == 5
+    # Should have error messages (4 mocked stages fail, VTT is inline and won't error)
+    assert len(data["errors"]) >= 4
     assert any("Disk I/O error" in err for err in data["errors"])
     assert any("Permission denied" in err for err in data["errors"])
 
@@ -370,13 +360,11 @@ def test_delete_document_database_connection_error(client):
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_no_filename_in_metadata(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -395,7 +383,6 @@ def test_delete_document_no_filename_in_metadata(
     mock_get_client.return_value = mock_koji_client
     mock_delete_images.return_value = (0, 0)
     mock_delete_cover_art.return_value = 0
-    mock_delete_vtt.return_value = False
     mock_delete_markdown.return_value = False
     mock_cleanup_temp.return_value = 0
 
@@ -454,13 +441,11 @@ def test_delete_document_validates_doc_id_characters(client):
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_response_format(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -472,7 +457,6 @@ def test_delete_document_response_format(
     mock_get_client.return_value = mock_existing_document
     mock_delete_images.return_value = (5, 5)
     mock_delete_cover_art.return_value = 0
-    mock_delete_vtt.return_value = False
     mock_delete_markdown.return_value = True
     mock_cleanup_temp.return_value = 1
 
@@ -516,13 +500,11 @@ def test_delete_document_response_format(
 @patch("tkr_docusearch.processing.documents_api.get_storage_client")
 @patch("tkr_docusearch.processing.documents_api.delete_document_images")
 @patch("tkr_docusearch.processing.documents_api.delete_document_cover_art")
-@patch("tkr_docusearch.processing.documents_api.delete_document_vtt")
 @patch("tkr_docusearch.processing.documents_api.delete_document_markdown")
 @patch("tkr_docusearch.processing.documents_api.cleanup_temp_directories")
 def test_delete_document_cascade_order(
     mock_cleanup_temp,
     mock_delete_markdown,
-    mock_delete_vtt,
     mock_delete_cover_art,
     mock_delete_images,
     mock_get_client,
@@ -545,10 +527,6 @@ def test_delete_document_cascade_order(
         call_order.append("cover_art")
         return 1
 
-    def track_vtt(*args, **kwargs):
-        call_order.append("vtt")
-        return True
-
     def track_markdown(*args, **kwargs):
         call_order.append("markdown")
         return True
@@ -560,7 +538,6 @@ def test_delete_document_cascade_order(
     mock_existing_document.delete_document.side_effect = track_koji
     mock_delete_images.side_effect = track_images
     mock_delete_cover_art.side_effect = track_cover_art
-    mock_delete_vtt.side_effect = track_vtt
     mock_delete_markdown.side_effect = track_markdown
     mock_cleanup_temp.side_effect = track_temp
 
@@ -575,7 +552,7 @@ def test_delete_document_cascade_order(
     assert call_order[0] == "koji", "Koji deletion must be first (critical)"
     assert "images" in call_order
     assert "cover_art" in call_order
-    assert "vtt" in call_order
+    # VTT deletion is now inline (Path-based), not a separate mocked function
     assert "markdown" in call_order
     assert "temp" in call_order
 

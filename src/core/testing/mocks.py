@@ -1130,3 +1130,144 @@ class MockSearchEngine:
 
         # Return top-n
         return candidates[:limit]
+
+
+# ============================================================================
+# Mock Shikomi Ingester & ColNomic Engine
+# ============================================================================
+
+
+class MockColNomicEngine:
+    """Mock ColNomicEngine for testing.
+
+    Provides encode_queries, encode_documents, and encode_images
+    methods that return deterministic MultiVectorEmbedding objects.
+
+    Args:
+        embedding_dim: Dimension of generated embeddings.
+    """
+
+    def __init__(self, embedding_dim: int = 128):
+        self.embedding_dim = embedding_dim
+
+    async def encode_queries(self, texts):
+        return self._make_embeddings(texts, num_tokens=32)
+
+    async def encode_documents(self, texts):
+        return self._make_embeddings(texts, num_tokens=64)
+
+    async def encode_images(self, images):
+        return self._make_embeddings(images, num_tokens=48)
+
+    def _make_embeddings(self, items, num_tokens=64):
+        from shikomi.types import MultiVectorEmbedding
+        results = []
+        for _ in items:
+            data = np.random.randn(num_tokens, self.embedding_dim).astype(np.float32)
+            data = data / np.linalg.norm(data, axis=1, keepdims=True)
+            results.append(MultiVectorEmbedding(
+                num_tokens=num_tokens,
+                dim=self.embedding_dim,
+                data=data,
+            ))
+        return results
+
+
+class MockShikomiIngester:
+    """Mock ShikomiIngester for testing without GPU/model loading.
+
+    Returns deterministic IngestResult objects with controllable
+    chunk counts and embedding dimensions.
+
+    Args:
+        mock_result: Optional pre-built IngestResult to return.
+        num_chunks: Number of chunks to generate (default 3).
+        embedding_dim: Embedding dimension (default 128).
+    """
+
+    def __init__(
+        self,
+        mock_result=None,
+        num_chunks: int = 3,
+        embedding_dim: int = 128,
+    ):
+        self._result = mock_result
+        self._num_chunks = num_chunks
+        self._embedding_dim = embedding_dim
+        self.engine = MockColNomicEngine(embedding_dim=embedding_dim)
+        self._connected = False
+
+    def connect(self):
+        self._connected = True
+
+    def close(self):
+        self._connected = False
+
+    def health_check(self):
+        return {"connected": self._connected, "device": "mock", "quantization": "mock", "mode": "mock"}
+
+    def process(self, file_path: str) -> "IngestResult":
+        if self._result is not None:
+            return self._result
+        return _make_default_ingest_result(
+            file_path, self._num_chunks, self._embedding_dim,
+        )
+
+    def _run_async(self, coro):
+        """Sync stub -- mock doesn't need async bridging."""
+        import asyncio
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+
+def _make_default_ingest_result(
+    file_path: str,
+    num_chunks: int = 3,
+    embedding_dim: int = 128,
+) -> "IngestResult":
+    """Build a deterministic IngestResult for testing."""
+    import hashlib
+    import os
+    from shikomi import IngestResult
+    from shikomi.types import MultiVectorEmbedding, TextChunk, ChunkContext
+
+    filename = os.path.basename(file_path)
+    content_hash = hashlib.sha256(file_path.encode()).hexdigest()
+
+    chunks = []
+    text_embeddings = []
+    for i in range(num_chunks):
+        chunk_id = f"{content_hash[:16]}-chunk{i:03d}"
+        chunks.append(TextChunk(
+            id=chunk_id,
+            content=f"Mock chunk {i} content from {filename}.",
+            source_path=file_path,
+            start_char=i * 100,
+            end_char=(i + 1) * 100,
+            page=1,
+            context=ChunkContext(
+                parent_heading=f"Section {i}",
+                section_path=f"Doc > Section {i}",
+                element_type="text",
+            ),
+        ))
+
+        data = np.random.randn(64, embedding_dim).astype(np.float32)
+        data = data / np.linalg.norm(data, axis=1, keepdims=True)
+        text_embeddings.append(MultiVectorEmbedding(
+            num_tokens=64, dim=embedding_dim, data=data,
+        ))
+
+    return IngestResult(
+        chunks=chunks,
+        text_embeddings=text_embeddings,
+        metadata={"filename": filename, "format_type": "document"},
+        source_path=file_path,
+        source_type="document",
+        content_hash=content_hash,
+        chunk_count=num_chunks,
+        processing_time_ms=100.0,
+    )

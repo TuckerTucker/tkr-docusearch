@@ -15,7 +15,7 @@ import pytest
 
 from src.config.graph_config import GraphEnrichmentConfig
 from src.config.koji_config import KojiConfig
-from src.core.testing.mocks import MockEmbeddingModel
+from src.core.testing.mocks import MockShikomiIngester
 from src.processing.graph_enrichment import GraphEnrichmentService
 from src.processing.processor import DocumentProcessor
 from src.storage.koji_client import KojiClient
@@ -58,10 +58,11 @@ def enrichment_service(koji_storage) -> GraphEnrichmentService:
 
 @pytest.fixture
 def processor(koji_storage) -> DocumentProcessor:
-    """DocumentProcessor with mock embeddings writing to real Koji."""
-    engine = MockEmbeddingModel(simulate_latency=False)
+    """DocumentProcessor with mock ingester writing to real Koji."""
+    ingester = MockShikomiIngester()
+    ingester.connect()
     return DocumentProcessor(
-        embedding_engine=engine,
+        ingester=ingester,
         storage_client=koji_storage,
     )
 
@@ -77,12 +78,12 @@ class TestIngestEnrichPipeline:
     def test_ingest_then_enrich(
         self, processor, koji_storage, enrichment_service
     ):
-        """Process two docs sharing a base name, then run full enrichment.
+        """Process two docs, add a relation, then run full enrichment.
 
-        sample.pdf and sample.docx share the stem 'sample', so the
-        RelationBuilder should create at least one ``version_of`` edge
-        during ingest.  After ``run_full_enrichment()``, at least one
-        relation should exist and node properties should be written.
+        Relation detection (version_of) now happens inside shikomi's
+        real Ingester, so the MockShikomiIngester returns no relations.
+        We manually create a version_of relation after ingest to exercise
+        the enrichment pipeline.
         """
         sample_pdf = FIXTURES_DIR / "sample.pdf"
         sample_docx = FIXTURES_DIR / "sample.docx"
@@ -90,14 +91,19 @@ class TestIngestEnrichPipeline:
         conf_pdf = processor.process_document(str(sample_pdf))
         conf_docx = processor.process_document(str(sample_docx))
 
-        # Ingest should have created at least one version_of relation
+        # Manually create a version_of relation (mock ingester doesn't produce them)
+        koji_storage.create_relation(
+            src_doc_id=conf_pdf.doc_id,
+            dst_doc_id=conf_docx.doc_id,
+            relation_type="version_of",
+        )
+
         relations_before = (
             koji_storage.get_relations(conf_pdf.doc_id)
             + koji_storage.get_relations(conf_docx.doc_id)
         )
         assert len(relations_before) >= 1, (
-            "Ingest should produce at least one version_of relation "
-            "between documents sharing the 'sample' stem"
+            "Should have at least one version_of relation after manual creation"
         )
 
         summary = enrichment_service.run_full_enrichment()
@@ -138,8 +144,14 @@ class TestIngestEnrichPipeline:
         conf_pdf = processor.process_document(str(sample_pdf))
         conf_docx = processor.process_document(str(sample_docx))
 
-        # Ensure at least one relation exists so graph algorithms have
-        # edges to work with (version_of from ingest should suffice).
+        # Manually create a relation so graph algorithms have edges to
+        # work with (mock ingester doesn't produce relations).
+        koji_storage.create_relation(
+            src_doc_id=conf_pdf.doc_id,
+            dst_doc_id=conf_docx.doc_id,
+            relation_type="version_of",
+        )
+
         updated_count = enrichment_service.compute_node_properties()
         assert updated_count >= 1, (
             "compute_node_properties should update at least one document"
@@ -231,8 +243,15 @@ class TestIngestEnrichPipeline:
         sample_pdf = FIXTURES_DIR / "sample.pdf"
         sample_docx = FIXTURES_DIR / "sample.docx"
 
-        processor.process_document(str(sample_pdf))
-        processor.process_document(str(sample_docx))
+        conf_pdf = processor.process_document(str(sample_pdf))
+        conf_docx = processor.process_document(str(sample_docx))
+
+        # Create a seed relation so enrichment has edges to work with
+        koji_storage.create_relation(
+            src_doc_id=conf_pdf.doc_id,
+            dst_doc_id=conf_docx.doc_id,
+            relation_type="version_of",
+        )
 
         enrichment_service.run_full_enrichment()
 

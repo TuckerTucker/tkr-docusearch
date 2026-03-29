@@ -9,7 +9,7 @@ import struct
 import numpy as np
 import pytest
 
-from shikomi_ingest.types import MultiVectorEmbedding
+from shikomi.types import MultiVectorEmbedding
 from src.storage.koji_client import pack_multivec, unpack_multivec
 
 

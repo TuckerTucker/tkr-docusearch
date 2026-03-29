@@ -7,8 +7,8 @@ all running locally on Apple Silicon.
 
 Main Components:
     - storage: Koji hybrid database (SQL + vector + graph)
-    - embeddings: Shikomi gRPC client for ColNomic embeddings
-    - search: Hybrid search over Koji + Shikomi
+    - embeddings: QueryEngine for semantic search over multi-vector embeddings
+    - search: Hybrid search over Koji embeddings
     - research: AI-powered research with LiteLLM and inline citations
     - processing: Document parsing (PDF, DOCX, PPTX, MP3, WAV)
     - api: FastAPI REST endpoints
@@ -24,15 +24,13 @@ from .storage import (
     KojiConnectionError,
     KojiDuplicateError,
     KojiQueryError,
-    pack_multivec,
-    unpack_multivec,
 )
 
 # Search
 from .search import KojiSearch
 
 # Embeddings
-from .embeddings import ShikomiClient
+from .embeddings import QueryEngine
 
 # AI research capabilities
 from .research import (
@@ -57,12 +55,10 @@ __all__ = [
     "KojiConnectionError",
     "KojiQueryError",
     "KojiDuplicateError",
-    "pack_multivec",
-    "unpack_multivec",
     # Search
     "KojiSearch",
     # Embeddings
-    "ShikomiClient",
+    "QueryEngine",
     # Research
     "LiteLLMClient",
     "ModelConfig",

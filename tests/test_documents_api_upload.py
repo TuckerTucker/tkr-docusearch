@@ -305,16 +305,20 @@ def test_upload_invalid_extension_sh(client):
     assert ".sh" in data["detail"]
 
 
-def test_upload_invalid_extension_txt(client):
-    """Test rejection of .txt file."""
+def test_upload_valid_extension_txt(client, uploads_dir, monkeypatch):
+    """Test that .txt files are now accepted (shikomi supports TXT format)."""
+    monkeypatch.setattr(
+        "src.api.server.Path", lambda x: uploads_dir if x == "data/uploads" else Path(x)
+    )
+
     content = b"Plain text content"
     files = {"file": ("document.txt", io.BytesIO(content), "text/plain")}
     response = client.post("/upload", files=files)
 
-    assert response.status_code == 400
+    assert response.status_code == 200
     data = response.json()
-    assert "detail" in data
-    assert ".txt" in data["detail"]
+    assert data["success"] is True
+    assert data["filename"] == "document.txt"
 
 
 def test_upload_invalid_extension_zip(client):
@@ -594,9 +598,13 @@ def test_upload_file_read_error(client, monkeypatch):
 
 
 def test_upload_allowed_extensions_list(client):
-    """Test that the endpoint correctly validates against allowed extensions."""
-    # The endpoint should reject files not in [.pdf, .docx, .pptx]
-    invalid_extensions = [".doc", ".xls", ".xlsx", ".csv", ".json", ".xml"]
+    """Test that the endpoint correctly validates against unsupported extensions.
+
+    Shikomi's FileFormat now supports more formats than the original validator.
+    Extensions like .xlsx, .csv, and .txt are now accepted.  Only truly
+    unsupported formats should be rejected.
+    """
+    invalid_extensions = [".doc", ".xls", ".json", ".xml"]
 
     for ext in invalid_extensions:
         content = b"test content"

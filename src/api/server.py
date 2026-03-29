@@ -17,9 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from tkr_docusearch.processing.api import structure_router
 
 # Import core components — Koji pipeline (new)
-from ..config.koji_config import KojiConfig, ShikomiConfig
-from ..embeddings.factory import create_embedding_engine
-from ..processing import DocumentProcessor
+from ..config.koji_config import KojiConfig
+from ..embeddings import QueryEngine
+from ..processing import DocumentProcessor, ShikomiIngester
 from ..search.koji_search import KojiSearch
 from ..storage.koji_client import KojiClient
 from .models import (
@@ -137,11 +137,22 @@ def create_app(
             _app_state["storage_client"] = koji_client
             logger.info(f"Koji database opened at {koji_db_path}")
 
-            # Initialize embedding engine via factory
-            shikomi_config = ShikomiConfig(device=device, quantization=precision)
-            shikomi_client = create_embedding_engine(shikomi_config)
-            _app_state["embedding_engine"] = shikomi_client
-            logger.info(f"Embedding engine ready (mode={shikomi_config.mode})")
+            # Initialize shikomi ingester (in-process library)
+            ingester = ShikomiIngester(
+                device=device,
+                quantization=precision,
+                generate_vtt=True,
+                generate_markdown=True,
+                db=koji_client,
+            )
+            ingester.connect()
+            _app_state["ingester"] = ingester
+
+            # Initialize query engine for search (shares loaded model)
+            query_engine = QueryEngine(engine=ingester.engine)
+            query_engine.connect()
+            _app_state["query_engine"] = query_engine
+            logger.info("Shikomi ingester and query engine ready")
 
             # Set storage client for routers
             set_storage_client(_app_state["storage_client"])
@@ -151,13 +162,13 @@ def create_app(
             # Initialize search engine
             _app_state["search_engine"] = KojiSearch(
                 koji_client=koji_client,
-                shikomi_client=shikomi_client,
+                shikomi_client=query_engine,
             )
             logger.info("Search engine initialized")
 
             # Initialize document processor
             _app_state["document_processor"] = DocumentProcessor(
-                embedding_engine=shikomi_client,
+                ingester=ingester,
                 storage_client=koji_client,
             )
             logger.info("Document processor initialized")
@@ -651,16 +662,16 @@ async def upload_document(file: UploadFile = File(..., description="Document fil
     queue the document for background processing.
     """
     try:
-        # Validate file type using shared validator
-        from ..processing.file_validator import get_supported_extensions
+        # Validate file type using shikomi's format registry
+        from shikomi.types import FileFormat
 
-        allowed_extensions = get_supported_extensions()
         file_ext = Path(file.filename).suffix.lower()
+        fmt = FileFormat.from_extension(file_ext.lstrip("."))
 
-        if file_ext not in allowed_extensions:
+        if fmt is None:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file type: {file_ext}. Allowed: {sorted(allowed_extensions)}",
+                detail=f"Unsupported file type: {file_ext}.",
             )
 
         # Read file content

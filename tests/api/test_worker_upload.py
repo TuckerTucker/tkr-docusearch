@@ -43,7 +43,7 @@ def test_client(uploads_dir, tmp_path):
     """
     # Save originals
     orig_processor = ww.document_processor
-    orig_parser = ww.parser
+    orig_ingester = ww.ingester
     orig_status_manager = ww.status_manager
     orig_uploads_dir = ww.UPLOADS_DIR
     orig_loop = ww._loop
@@ -60,7 +60,7 @@ def test_client(uploads_dir, tmp_path):
         total_size_bytes=0,
         timestamp="2025-01-01T00:00:00Z",
     )
-    ww.parser = MagicMock()
+    ww.ingester = MagicMock()
     ww.status_manager = MagicMock()
     ww.status_manager.create_status.return_value = None
     ww.UPLOADS_DIR = uploads_dir
@@ -77,7 +77,7 @@ def test_client(uploads_dir, tmp_path):
 
     # Restore originals
     ww.document_processor = orig_processor
-    ww.parser = orig_parser
+    ww.ingester = orig_ingester
     ww.status_manager = orig_status_manager
     ww.UPLOADS_DIR = orig_uploads_dir
     ww._loop = orig_loop

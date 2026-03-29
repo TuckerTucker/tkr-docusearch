@@ -18,9 +18,8 @@ pypdf>=3.0.0  # PDF metadata repair for Docling compatibility
 # Koji hybrid database
 pyarrow>=14.0.0
 
-# Shikomi embedding service (gRPC)
-grpcio>=1.60.0
-protobuf>=4.25.0
+# Shikomi embedding service
+shikomi
 
 # Data and utilities
 numpy>=1.24.0

@@ -18,8 +18,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from tkr_docusearch.config.urls import get_service_urls
-from tkr_docusearch.config.koji_config import KojiConfig, ShikomiConfig
-from tkr_docusearch.embeddings.factory import create_embedding_engine
+from tkr_docusearch.config.koji_config import KojiConfig
+from tkr_docusearch.embeddings import QueryEngine
 from tkr_docusearch.research.citation_parser import CitationParser
 from tkr_docusearch.research.context_builder import ContextBuilder
 from tkr_docusearch.research.litellm_client import (
@@ -219,14 +219,14 @@ async def lifespan(app: FastAPI):
     koji_client.open()
     app.state.koji_client = koji_client
 
-    # Initialize embedding engine via factory
-    shikomi_config = ShikomiConfig.from_env()
-    shikomi_client = create_embedding_engine(shikomi_config)
-    app.state.embedding_engine = shikomi_client
+    # Initialize query engine for search
+    query_engine = QueryEngine()
+    query_engine.connect()
+    app.state.query_engine = query_engine
 
     # Initialize search engine
     app.state.search_engine = KojiSearch(
-        koji_client=koji_client, shikomi_client=shikomi_client
+        koji_client=koji_client, shikomi_client=query_engine
     )
 
     # Initialize context builder

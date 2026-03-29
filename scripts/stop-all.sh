@@ -43,7 +43,6 @@ WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
-SHIKOMI_PID_FILE="${PROJECT_ROOT}/.shikomi.pid"
 
 # ============================================================================
 # Functions
@@ -262,52 +261,6 @@ stop_ngrok() {
         else
             echo -e "\n  ${YELLOW}Run with --force to kill orphaned ngrok processes${NC}"
         fi
-    fi
-}
-
-stop_shikomi() {
-    echo -e "\n${CYAN}Stopping Shikomi embedding service...${NC}\n"
-
-    if [ -f "$SHIKOMI_PID_FILE" ]; then
-        local shikomi_pid=$(cat "$SHIKOMI_PID_FILE")
-
-        if ps -p "$shikomi_pid" > /dev/null 2>&1; then
-            print_status "Shikomi PID" "info" "Found: $shikomi_pid"
-            kill "$shikomi_pid" 2>/dev/null || true
-
-            local count=0
-            while ps -p "$shikomi_pid" > /dev/null 2>&1 && [ $count -lt 5 ]; do
-                sleep 1
-                count=$((count + 1))
-            done
-
-            if ps -p "$shikomi_pid" > /dev/null 2>&1; then
-                kill -9 "$shikomi_pid" 2>/dev/null || true
-            fi
-
-            print_status "Shikomi" "ok" "Stopped"
-        else
-            print_status "Shikomi" "info" "Not running (stale PID file)"
-        fi
-
-        rm -f "$SHIKOMI_PID_FILE"
-        print_status "Shikomi PID file" "ok" "Cleaned up"
-    else
-        print_status "Shikomi" "info" "No PID file found (may not be running)"
-    fi
-
-    # Kill orphaned shikomi-worker processes
-    local orphaned=$(pgrep -f "shikomi-worker" || true)
-    if [ -n "$orphaned" ]; then
-        print_status "Orphaned shikomi" "warn" "Found: $orphaned"
-        echo "$orphaned" | xargs kill 2>/dev/null || true
-        sleep 1
-        for pid in $orphaned; do
-            if ps -p "$pid" > /dev/null 2>&1; then
-                kill -9 "$pid" 2>/dev/null || true
-            fi
-        done
-        print_status "Orphaned shikomi" "ok" "Stopped"
     fi
 }
 
@@ -545,7 +498,6 @@ stop_native_worker
 stop_research_api
 stop_frontend
 stop_ngrok
-stop_shikomi
 cleanup_python_cache
 check_ports
 cleanup_logs

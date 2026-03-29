@@ -1,16 +1,11 @@
 """
-Document parsing strategies.
+Document parsing utilities.
 
-This module contains strategy pattern implementations for different
-document types, reducing complexity in DoclingParser.
+This module contains helper utilities for document parsing operations.
 """
 
-from .audio_metadata_extractor import AudioMetadataExtractor
-from .format_options_builder import FormatOptionsBuilder
 from .symlink_helper import SymlinkHelper
 
 __all__ = [
-    "FormatOptionsBuilder",
-    "AudioMetadataExtractor",
     "SymlinkHelper",
 ]

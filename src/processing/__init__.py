@@ -1,15 +1,10 @@
-"""
-Document processing pipeline.
+"""Document processing pipeline.
 
-This module provides the complete document processing pipeline including:
-- Document parsing (Docling)
-- Visual embedding generation (Shikomi)
-- Text embedding generation (Shikomi)
-- Storage coordination (Koji)
+Delegates parsing, chunking, and text embedding to ``shikomi.Ingester``.
+Page rendering, visual embedding, and Koji storage are coordinated by
+``DocumentProcessor``.
 """
 
-from .docling_parser import DoclingParser, Page, ParsedDocument, ParsingError, TextChunk
-from .preview_generator import PreviewGenerator, PreviewResponse
 from .processor import (
     DocumentProcessor,
     EmbeddingError,
@@ -18,8 +13,7 @@ from .processor import (
     StorageConfirmation,
     StorageError,
 )
-from .text_processor import TextEmbeddingResult, TextProcessor
-from .visual_processor import VisualEmbeddingResult, VisualProcessor
+from .shikomi_ingester import ShikomiIngester
 
 __all__ = [
     # Main processor
@@ -29,19 +23,6 @@ __all__ = [
     "ProcessingError",
     "EmbeddingError",
     "StorageError",
-    # Parser
-    "DoclingParser",
-    "ParsedDocument",
-    "Page",
-    "TextChunk",
-    "ParsingError",
-    # Visual processing
-    "VisualProcessor",
-    "VisualEmbeddingResult",
-    # Text processing
-    "TextProcessor",
-    "TextEmbeddingResult",
-    # Preview generation
-    "PreviewGenerator",
-    "PreviewResponse",
+    # Ingester
+    "ShikomiIngester",
 ]

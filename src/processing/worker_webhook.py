@@ -20,16 +20,17 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, W
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
+from ..config.processing_config import ProcessingConfig
 
 # Import core components
 from . import DocumentProcessor
 from .cover_art_utils import delete_document_cover_art
-from .docling_parser import DoclingParser
+from .shikomi_ingester import ShikomiIngester
+from ..embeddings.query_engine import QueryEngine
 
 # Import documents API router (Wave 3)
 from .documents_api import router as documents_router
-from .file_validator import validate_file_type
+from shikomi.types import FileFormat
 
 # Import cleanup utilities
 from .image_utils import cleanup_temp_directories, delete_document_images
@@ -77,7 +78,8 @@ pending_uploads: Dict[str, Dict[str, Any]] = {}
 
 # Global components (initialized at startup)
 document_processor: Optional[DocumentProcessor] = None
-parser: Optional[DoclingParser] = None
+ingester: Optional[ShikomiIngester] = None
+query_engine: Optional[QueryEngine] = None
 status_manager: Optional[StatusManager] = None
 processing_config: Optional[ProcessingConfig] = None
 
@@ -216,10 +218,11 @@ def process_document_sync(
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Check extension using file_validator
-        valid, error = validate_file_type(str(path))
-        if not valid:
-            return {"status": "skipped", "error": error}
+        # Check extension against shikomi's supported formats
+        ext = path.suffix.lstrip(".").lower()
+        fmt = FileFormat.from_extension(ext)
+        if fmt is None:
+            return {"status": "skipped", "error": f"Unsupported format: .{ext}"}
 
         # Generate doc ID from file hash (SHA-256) if not provided
         if doc_id is None:
@@ -894,7 +897,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.on_event("startup")
 async def startup_event():
     """Initialize components on startup."""
-    global document_processor, parser, status_manager, processing_config, _loop
+    global document_processor, ingester, query_engine, status_manager, processing_config, _loop
 
     # Capture event loop for async broadcasts from sync context
     _loop = asyncio.get_event_loop()
@@ -929,13 +932,6 @@ async def startup_event():
     logger.info("Initializing components...")
 
     try:
-        # Initialize embedding engine via factory
-        from ..config.koji_config import ShikomiConfig
-        shikomi_config = ShikomiConfig.from_env()
-        from ..embeddings.factory import create_embedding_engine
-        embedding_engine = create_embedding_engine(shikomi_config)
-        logger.info(f"Embedding engine ready (mode={shikomi_config.mode})")
-
         # Initialize storage client
         from ..config.koji_config import KojiConfig
         koji_config = KojiConfig.from_env()
@@ -944,34 +940,29 @@ async def startup_event():
         storage_client.open()
         logger.info("Koji database opened")
 
-        # Load enhanced mode configuration
-        print("Loading enhanced mode configuration...")
-        logger.info("Loading enhanced mode configuration...")
-        enhanced_config = EnhancedModeConfig.from_env()
-        print(
-            f"✓ Enhanced mode enabled: "
-            f"table_structure={enhanced_config.enable_table_structure}, "
-            f"picture_classification={enhanced_config.enable_picture_classification}, "
-            f"chunking={enhanced_config.chunking_strategy.value}"
+        # Initialize ShikomiIngester (parser + embeddings in one)
+        ingester = ShikomiIngester(
+            device=os.getenv("DEVICE", "mps"),
+            quantization=os.getenv("MODEL_PRECISION", "fp16"),
+            generate_vtt=True,
+            generate_markdown=True,
+            db=storage_client,
         )
-        logger.info(
-            f"✓ Enhanced mode enabled: "
-            f"table_structure={enhanced_config.enable_table_structure}, "
-            f"picture_classification={enhanced_config.enable_picture_classification}, "
-            f"chunking={enhanced_config.chunking_strategy.value}"
-        )
+        ingester.connect()
+        logger.info("✓ ShikomiIngester connected")
 
-        # Initialize document processor with enhanced mode
+        # Initialize QueryEngine sharing the ingester's ColNomicEngine
+        query_engine = QueryEngine(engine=ingester.engine)
+        query_engine.connect()
+        app.state.query_engine = query_engine
+        logger.info("✓ QueryEngine connected (shared engine)")
+
+        # Initialize document processor
         document_processor = DocumentProcessor(
-            embedding_engine=embedding_engine,
+            ingester=ingester,
             storage_client=storage_client,
-            enhanced_mode_config=enhanced_config,
         )
-        logger.info("✓ Document processor initialized (enhanced mode)")
-
-        # Initialize document parser
-        parser = DoclingParser()
-        logger.info("✓ Document parser initialized")
+        logger.info("✓ Document processor initialized")
 
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}", exc_info=True)
@@ -1106,6 +1097,12 @@ async def graph_stats():
 async def shutdown_event():
     """Cleanup on shutdown."""
     logger.info("Worker shutting down...")
+    if query_engine is not None:
+        query_engine.close()
+        logger.info("QueryEngine closed")
+    if ingester is not None:
+        ingester.close()
+        logger.info("ShikomiIngester closed")
     executor.shutdown(wait=True)
     logger.info("Worker stopped")
 

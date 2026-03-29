@@ -69,8 +69,6 @@ All scripts respect these environment variables:
 ```bash
 export DEVICE=mps                    # mps | cpu | cuda
 export KOJI_DB_PATH=data/koji.db     # Koji database path
-export SHIKOMI_HOST=localhost         # Shikomi embedding service
-export SHIKOMI_PORT=50051
 ```
 
 **Service ports:**

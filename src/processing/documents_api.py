@@ -24,9 +24,8 @@ from tkr_docusearch.config.filter_groups import resolve_filter_group
 from tkr_docusearch.config.image_config import PAGE_IMAGE_DIR
 from tkr_docusearch.processing.api import structure_router
 from tkr_docusearch.processing.cover_art_utils import delete_document_cover_art
-from tkr_docusearch.processing.file_validator import get_supported_extensions
 from tkr_docusearch.processing.image_utils import cleanup_temp_directories, delete_document_images
-from tkr_docusearch.processing.vtt_utils import delete_document_vtt
+from shikomi.types import FileFormat
 from tkr_docusearch.storage import KojiClient
 from tkr_docusearch.storage.markdown_utils import delete_document_markdown
 from tkr_docusearch.utils.paths import convert_path_to_url
@@ -274,8 +273,8 @@ async def get_supported_formats():
         This endpoint serves as the single source of truth for supported formats.
         Frontend should fetch this on initialization to stay in sync with backend.
     """
-    # Get extensions from file_validator.py (respects SUPPORTED_FORMATS env var)
-    extensions = sorted(get_supported_extensions())
+    # Get extensions from shikomi's FileFormat enum
+    extensions = sorted(f".{fmt.value}" for fmt in FileFormat)
 
     # Define format groups for filtering
     # Extensions without dots for matching against file extensions
@@ -1418,7 +1417,10 @@ async def delete_document(doc_id: str):  # noqa: C901
 
         # STAGE 4: Delete VTT caption files (MEDIUM priority - audio files only)
         try:
-            vtt_deleted = delete_document_vtt(doc_id)
+            vtt_path = Path("data/vtt") / f"{doc_id}.vtt"
+            vtt_deleted = vtt_path.exists()
+            if vtt_deleted:
+                vtt_path.unlink()
             deleted["vtt_captions"] = {
                 "deleted": vtt_deleted,
                 "status": "deleted" if vtt_deleted else "not_found",
