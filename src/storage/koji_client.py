@@ -140,10 +140,6 @@ class KojiDuplicateError(KojiClientError):
 # ---------------------------------------------------------------------------
 
 DOCUSEARCH_SCHEMA: dict = {
-    # NOTE: nullable is left as default (True) because Lance file-based
-    # storage has a bug where delete operations silently fail on columns
-    # marked nullable=False. Nullability is enforced at the application
-    # layer in create_document/insert_pages/insert_chunks instead.
     "documents": {
         "columns": {
             "doc_id": {"type": "text", "primary_key": True},
@@ -542,45 +538,40 @@ class KojiClient:
         if invalid:
             raise ValueError(f"Invalid document fields: {invalid}")
 
-        # Koji doesn't have UPDATE — use delete + re-insert pattern
-        existing = self.get_document(doc_id)
-        if existing is None:
-            return
+        self._require_open()
 
-        # Merge fields
-        for key, value in fields.items():
-            existing[key] = value
+        # Serialize metadata to JSON if present
+        if "metadata" in fields and fields["metadata"] is not None:
+            if not isinstance(fields["metadata"], str):
+                fields["metadata"] = json.dumps(fields["metadata"], cls=_SafeEncoder)
 
-        self.delete_document(doc_id)
-        self.create_document(
-            doc_id=existing["doc_id"],
-            filename=existing["filename"],
-            format=existing["format"],
-            num_pages=existing.get("num_pages"),
-            markdown=existing.get("markdown"),
-            metadata=existing.get("metadata"),
-        )
+        safe_id = _sanitize_sql_value(doc_id)
+        result = self._db.update("documents", fields, f"doc_id = '{safe_id}'")
+        if result.rows_updated > 0:
+            self._after_write()
 
     def delete_document(self, doc_id: str) -> None:
         """Delete a document and all associated pages, chunks, and relations.
 
-        Uses Koji cascade delete. Idempotent — no error if document does not exist.
+        Uses Koji cascade delete via registered foreign keys.
+        Idempotent — no error if document does not exist.
 
         Args:
             doc_id: Document identifier to delete.
         """
         self._require_open()
         safe_id = _sanitize_sql_value(doc_id)
-        # Manual cascade: delete children first, then parent.
-        # Uses _delete_where (filter-truncate-reinsert) to work around
-        # the Lance bug where db.delete() fails on non-nullable columns.
-        for table, condition in [
-            ("doc_relations", f"src_doc_id = '{safe_id}' OR dst_doc_id = '{safe_id}'"),
-            ("chunks", f"doc_id = '{safe_id}'"),
-            ("pages", f"doc_id = '{safe_id}'"),
-            ("documents", f"doc_id = '{safe_id}'"),
-        ]:
-            self._delete_where(table, condition)
+        try:
+            self._db.delete_cascade("documents", f"doc_id = '{safe_id}'")
+        except Exception:
+            # Fallback: manual cascade (handles empty/non-materialized tables)
+            for table, condition in [
+                ("doc_relations", f"src_doc_id = '{safe_id}' OR dst_doc_id = '{safe_id}'"),
+                ("chunks", f"doc_id = '{safe_id}'"),
+                ("pages", f"doc_id = '{safe_id}'"),
+                ("documents", f"doc_id = '{safe_id}'"),
+            ]:
+                self._delete_where(table, condition)
         self._after_write()
         logger.info("koji_client.document_deleted", doc_id=doc_id)
 
@@ -881,15 +872,23 @@ class KojiClient:
             dst_doc_id: Destination document identifier.
             relation_type: Relationship type.
         """
+        self._require_open()
         safe_src = _sanitize_sql_value(src_doc_id)
         safe_dst = _sanitize_sql_value(dst_doc_id)
         safe_type = _sanitize_sql_value(relation_type)
-        self._delete_where(
-            "doc_relations",
-            f"src_doc_id = '{safe_src}' "
-            f"AND dst_doc_id = '{safe_dst}' "
-            f"AND relation_type = '{safe_type}'",
-        )
+        try:
+            self._db.delete(
+                "doc_relations",
+                f"src_doc_id = '{safe_src}' "
+                f"AND dst_doc_id = '{safe_dst}' "
+                f"AND relation_type = '{safe_type}'",
+            )
+        except Exception as exc:
+            logger.warning(
+                "koji_client.delete_relation_error",
+                src=src_doc_id, dst=dst_doc_id, rel=relation_type,
+                error=str(exc),
+            )
         self._after_write()
 
     def get_related_documents(
@@ -900,8 +899,8 @@ class KojiClient:
         """Find all documents related to a root document via graph traversal.
 
         Uses iterative BFS queries — one hop per iteration — because
-        Koji's recursive CTE support does not allow arithmetic
-        expressions (``depth + 1``) in the recursive term.
+        Koji's recursive CTEs do not support arithmetic expressions
+        in the recursive term (verified in Koji 0.2.0).
 
         Args:
             root_doc_id: Starting document identifier.
@@ -1001,33 +1000,20 @@ class KojiClient:
         algorithm: str,
         **kwargs: Any,
     ) -> Any:
-        """Run a Koji graph algorithm via the async Database API.
-
-        The sync ``Database`` wrapper does not yet expose ``graph()``,
-        so this calls through to the underlying async database.
+        """Run a Koji graph algorithm.
 
         Args:
             algorithm: Algorithm name (e.g. ``"pagerank"``).
             **kwargs: Algorithm-specific parameters forwarded to
-                ``AsyncDatabase.graph()``.
+                ``Database.graph()``.
 
         Returns:
             PyArrow Table with algorithm-specific result columns.
 
         Raises:
-            KojiQueryError: If the algorithm execution fails or the
-                ``graph()`` method is not available in the installed
-                koji-python build.
+            KojiQueryError: If the algorithm execution fails.
         """
         self._require_open()
-
-        if not hasattr(self._db, "graph"):
-            raise KojiQueryError(
-                f"Graph algorithm '{algorithm}' unavailable: "
-                "installed koji-python does not expose graph(). "
-                "Rebuild koji-python from source."
-            )
-
         try:
             return self._db.graph(
                 self._GRAPH_EDGE_QUERY,
@@ -1110,17 +1096,190 @@ class KojiClient:
 
         return communities
 
+    def graph_label_propagation(
+        self,
+        max_iterations: int = 100,
+    ) -> dict[str, int]:
+        """Detect document communities via label propagation.
+
+        More granular than connected components — discovers densely
+        connected sub-communities within connected components.
+
+        Args:
+            max_iterations: Maximum propagation iterations.
+
+        Returns:
+            Dict mapping ``doc_id`` to community label (int).
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return {}
+
+        result = self._run_graph_algorithm(
+            "label_propagation",
+            max_iterations=max_iterations,
+        )
+
+        d = result.to_pydict()
+        label_col = next(
+            (c for c in ("community", "label", "component") if c in d),
+            "community",
+        )
+        communities: dict[str, int] = {}
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            label = d[label_col][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None:
+                communities[doc_id] = int(label)
+
+        return communities
+
+    def graph_shortest_paths(
+        self,
+        source_doc_id: str,
+    ) -> dict[str, float]:
+        """Shortest path distances from a source document to all others.
+
+        Uses weighted Dijkstra. Unreachable nodes are omitted.
+
+        Args:
+            source_doc_id: Starting document identifier.
+
+        Returns:
+            Dict mapping ``doc_id`` to distance (float).
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return {}
+
+        # Reverse lookup: doc_id -> node_id
+        doc_to_node = {v: k for k, v in id_map.items()}
+        source_node = doc_to_node.get(source_doc_id)
+        if source_node is None:
+            return {}
+
+        result = self._run_graph_algorithm(
+            "shortest_paths",
+            source_id=int(source_node),
+        )
+
+        d = result.to_pydict()
+        distances: dict[str, float] = {}
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            score = d["score"][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None and doc_id != source_doc_id:
+                distances[doc_id] = float(score)
+
+        return distances
+
+    def graph_scc(self) -> dict[str, int]:
+        """Detect strongly connected components (directed cycles).
+
+        Args: None.
+
+        Returns:
+            Dict mapping ``doc_id`` to SCC component label (int).
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return {}
+
+        result = self._run_graph_algorithm("scc")
+
+        d = result.to_pydict()
+        label_col = next(
+            (c for c in ("component", "community", "label") if c in d),
+            "component",
+        )
+        components: dict[str, int] = {}
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            label = d[label_col][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None:
+                components[doc_id] = int(label)
+
+        return components
+
+    def graph_topological_sort(self) -> list[str]:
+        """Topological ordering of documents (requires DAG).
+
+        Returns:
+            List of ``doc_id`` in topological order.
+
+        Raises:
+            KojiQueryError: If the graph contains cycles.
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return []
+
+        result = self._run_graph_algorithm("topological_sort")
+
+        d = result.to_pydict()
+        order_col = next(
+            (c for c in ("component", "order", "label") if c in d),
+            "component",
+        )
+
+        # Build (order, doc_id) pairs and sort by order
+        ordered: list[tuple[int, str]] = []
+        for i in range(result.num_rows):
+            node_id = d["node_id"][i]
+            order_val = d[order_col][i]
+            doc_id = id_map.get(node_id)
+            if doc_id is not None:
+                ordered.append((int(order_val), doc_id))
+
+        ordered.sort(key=lambda x: x[0])
+        return [doc_id for _, doc_id in ordered]
+
+    def graph_has_cycle(self) -> bool:
+        """Check if the document relation graph contains a cycle.
+
+        Returns:
+            True if a cycle exists, False otherwise.
+        """
+        id_map = self._doc_id_int_mapping()
+        if not id_map:
+            return False
+
+        result = self._run_graph_algorithm("has_cycle")
+
+        # Koji returns a plain bool for has_cycle, not a PyArrow Table
+        if isinstance(result, bool):
+            return result
+
+        d = result.to_pydict()
+        if "has_cycle" in d and result.num_rows > 0:
+            return bool(d["has_cycle"][0])
+        return False
+
+    def delete_relations_by_type(self, relation_type: str) -> int:
+        """Delete all relations of a given type.
+
+        Used by graph enrichment to purge computed edges before
+        recomputation (idempotency).
+
+        Args:
+            relation_type: The relation type to delete.
+
+        Returns:
+            Number of rows deleted.
+        """
+        safe_type = _sanitize_sql_value(relation_type)
+        return self._delete_where(
+            "doc_relations",
+            f"relation_type = '{safe_type}'",
+        )
+
     # -- internal helpers ----------------------------------------------------
 
     def _delete_where(self, table: str, condition: str) -> int:
-        """Delete rows matching a SQL condition using filter-truncate-reinsert.
-
-        Lance file-based storage has a bug where ``db.delete()`` silently
-        fails (returns ``rows_deleted=0``) when any column is non-nullable.
-        Since Koji marks primary key columns as non-nullable, this affects
-        every table. This method works around the bug by querying rows that
-        do NOT match the condition, truncating the table, and re-inserting
-        the kept rows.
+        """Delete rows matching a SQL condition.
 
         Args:
             table: Table name.
@@ -1131,16 +1290,8 @@ class KojiClient:
         """
         self._require_open()
         try:
-            before = self._db.query(f"SELECT COUNT(*) AS n FROM {table}")
-            total = before.column("n")[0].as_py()
-            if total == 0:
-                return 0
-
-            keep = self._db.query(f"SELECT * FROM {table} WHERE NOT ({condition})")
-            self._db.truncate(table)
-            if keep.num_rows > 0:
-                self._db.insert(table, keep)
-            return total - keep.num_rows
+            result = self._db.delete(table, condition)
+            return result.rows_deleted
         except Exception as exc:
             logger.warning(
                 "koji_client._delete_where_error",

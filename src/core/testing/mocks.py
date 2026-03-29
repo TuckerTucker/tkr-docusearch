@@ -764,20 +764,245 @@ class MockKojiClient:
         return results
 
     # ------------------------------------------------------------------
+    # Graph operations
+    # ------------------------------------------------------------------
+
+    def graph_pagerank(
+        self,
+        damping: float = 0.85,
+        max_iterations: int = 100,
+        tolerance: float = 1e-6,
+    ) -> dict[str, float]:
+        """Compute PageRank scores for all documents in the graph.
+
+        Simple iterative PageRank over ``_relations`` treated as directed
+        edges.  Scores sum to approximately 1.0.
+
+        Args:
+            damping: Damping factor (0-1). Higher values follow links more.
+            max_iterations: Maximum PageRank iterations.
+            tolerance: Convergence threshold.
+
+        Returns:
+            Mapping of doc_id to PageRank score (float).
+        """
+        if not self._documents:
+            return {}
+
+        n = len(self._documents)
+        doc_ids = sorted(self._documents)
+        scores: dict[str, float] = {d: 1.0 / n for d in doc_ids}
+
+        # Build adjacency: outgoing edges per doc
+        out_edges: dict[str, list[str]] = {d: [] for d in doc_ids}
+        for r in self._relations:
+            src, dst = r["src_doc_id"], r["dst_doc_id"]
+            if src in out_edges:
+                out_edges[src].append(dst)
+
+        for _ in range(max_iterations):
+            new_scores: dict[str, float] = {}
+            for doc_id in doc_ids:
+                rank_sum = 0.0
+                for r in self._relations:
+                    if r["dst_doc_id"] == doc_id:
+                        src = r["src_doc_id"]
+                        out_count = len(out_edges.get(src, []))
+                        if out_count > 0:
+                            rank_sum += scores.get(src, 0.0) / out_count
+                new_scores[doc_id] = (1 - damping) / n + damping * rank_sum
+
+            # Check convergence
+            diff = sum(abs(new_scores[d] - scores[d]) for d in doc_ids)
+            scores = new_scores
+            if diff < tolerance:
+                break
+
+        return scores
+
+    def graph_label_propagation(self, max_iterations: int = 100) -> dict[str, int]:
+        """Assign community labels to documents via union-find on relations.
+
+        Groups connected doc_ids into communities by treating all relations
+        as undirected edges.  Each connected component receives a sequential
+        integer label starting at 0.
+
+        Args:
+            max_iterations: Maximum iterations (unused in mock — included
+                for API compatibility with the real client).
+
+        Returns:
+            Mapping of doc_id to community label (int).
+        """
+        parent: dict[str, str] = {doc_id: doc_id for doc_id in self._documents}
+
+        def _find(x: str) -> str:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def _union(a: str, b: str) -> None:
+            ra, rb = _find(a), _find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        for r in self._relations:
+            src, dst = r["src_doc_id"], r["dst_doc_id"]
+            if src in parent and dst in parent:
+                _union(src, dst)
+
+        # Map each root to a sequential label
+        root_to_label: dict[str, int] = {}
+        label_counter = 0
+        result: dict[str, int] = {}
+        for doc_id in sorted(self._documents):
+            root = _find(doc_id)
+            if root not in root_to_label:
+                root_to_label[root] = label_counter
+                label_counter += 1
+            result[doc_id] = root_to_label[root]
+
+        return result
+
+    def graph_shortest_paths(self, source_doc_id: str) -> dict[str, float]:
+        """Compute shortest-path distances from a source document via BFS.
+
+        Traverses outgoing edges in ``_relations``.  Each hop counts as
+        distance 1.  Documents unreachable from the source are omitted.
+
+        Args:
+            source_doc_id: Starting document identifier.
+
+        Returns:
+            Mapping of reachable doc_id to hop-count distance (float).
+            The source itself is included with distance 0.0.
+
+        Raises:
+            ValueError: If source_doc_id does not exist.
+        """
+        from collections import deque
+
+        if source_doc_id not in self._documents:
+            raise ValueError(f"Source document {source_doc_id} not found")
+
+        distances: dict[str, float] = {source_doc_id: 0.0}
+        queue: deque[str] = deque([source_doc_id])
+
+        while queue:
+            current = queue.popleft()
+            current_dist = distances[current]
+            for r in self._relations:
+                if r["src_doc_id"] == current and r["dst_doc_id"] not in distances:
+                    distances[r["dst_doc_id"]] = current_dist + 1.0
+                    queue.append(r["dst_doc_id"])
+
+        return distances
+
+    def graph_scc(self) -> dict[str, int]:
+        """Return strongly-connected-component labels for all documents.
+
+        This mock treats every document as its own SCC (component label
+        equals the document's sorted index).  A real implementation would
+        use Tarjan's algorithm.
+
+        Returns:
+            Mapping of doc_id to SCC label (int).
+        """
+        return {
+            doc_id: idx
+            for idx, doc_id in enumerate(sorted(self._documents))
+        }
+
+    def graph_topological_sort(self) -> list[str]:
+        """Return a topological ordering of document IDs.
+
+        This mock returns doc_ids sorted alphabetically.  A real
+        implementation would perform a depth-first topological sort
+        on the directed relation graph.
+
+        Returns:
+            List of doc_ids in sorted order.
+        """
+        return sorted(self._documents)
+
+    def graph_has_cycle(self) -> bool:
+        """Detect whether the directed relation graph contains a cycle.
+
+        Performs iterative DFS with three-color marking (white/gray/black)
+        over outgoing edges in ``_relations``.
+
+        Returns:
+            ``True`` if a cycle exists, ``False`` otherwise.
+        """
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: dict[str, int] = {doc_id: WHITE for doc_id in self._documents}
+
+        # Build adjacency list for efficient traversal
+        adj: dict[str, list[str]] = {doc_id: [] for doc_id in self._documents}
+        for r in self._relations:
+            src, dst = r["src_doc_id"], r["dst_doc_id"]
+            if src in adj:
+                adj[src].append(dst)
+
+        for start in self._documents:
+            if color[start] != WHITE:
+                continue
+            stack: list[tuple[str, int]] = [(start, 0)]
+            color[start] = GRAY
+            while stack:
+                node, idx = stack.pop()
+                if idx < len(adj[node]):
+                    stack.append((node, idx + 1))
+                    neighbor = adj[node][idx]
+                    if neighbor not in color:
+                        continue
+                    if color[neighbor] == GRAY:
+                        return True
+                    if color[neighbor] == WHITE:
+                        color[neighbor] = GRAY
+                        stack.append((neighbor, 0))
+                else:
+                    color[node] = BLACK
+
+        return False
+
+    def delete_relations_by_type(self, relation_type: str) -> int:
+        """Delete all relations matching a given type.
+
+        Args:
+            relation_type: The relation type to remove (e.g. ``"references"``).
+
+        Returns:
+            Number of relations removed.
+        """
+        original_count = len(self._relations)
+        self._relations = [
+            r for r in self._relations if r["relation_type"] != relation_type
+        ]
+        return original_count - len(self._relations)
+
+    # ------------------------------------------------------------------
     # Raw operations (not supported in mock)
     # ------------------------------------------------------------------
 
     def query(self, sql: str, params: Optional[List[Any]] = None) -> Any:
-        """Not supported in mock — raises ``NotImplementedError``.
+        """Not supported in mock — raises ``KojiQueryError``.
+
+        Mirrors the real KojiClient contract where ``query()`` raises
+        ``KojiQueryError`` on failure, so callers that catch
+        ``KojiQueryError`` behave correctly under test.
 
         Args:
             sql: SQL query string.
             params: Optional query parameters.
 
         Raises:
-            NotImplementedError: Always.
+            KojiQueryError: Always — raw SQL is not supported in mock.
         """
-        raise NotImplementedError("MockKojiClient does not support raw SQL")
+        from src.storage.koji_client import KojiQueryError
+
+        raise KojiQueryError("MockKojiClient does not support raw SQL")
 
     def insert(self, table: str, data: Any) -> None:
         """Not supported in mock — raises ``NotImplementedError``.

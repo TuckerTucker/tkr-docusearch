@@ -667,6 +667,7 @@ class DocumentProcessor:
                 doc_id=doc_id,
                 filename=filename,
                 chunks=chunk_records,
+                doc_metadata=doc_metadata,
             )
             if created_relations:
                 logger.info(

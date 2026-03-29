@@ -19,6 +19,18 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+# Per-edge-type boost weights for graph-aware re-ranking.
+_EDGE_BOOST_WEIGHTS: dict[str, float] = {
+    "similar_to": 0.04,
+    "same_topic": 0.03,
+    "overlaps_topic": 0.02,
+    "series_member": 0.03,
+    "same_author": 0.02,
+    "same_genre": 0.01,
+    "references": 0.05,
+    "version_of": 0.05,
+}
+
 
 class KojiSearch:
     """Semantic search via Koji SQL with MaxSim operator.
@@ -409,11 +421,12 @@ class KojiSearch:
         """Boost scores for documents related to other results in the set.
 
         For each result, fetches 1-hop relations. If any neighbor is also
-        in the result set, adds a small score boost. Re-sorts by boosted score.
+        in the result set, adds a type-weighted score boost based on
+        ``_EDGE_BOOST_WEIGHTS``. Re-sorts by boosted score.
 
         Args:
             results: Search result dicts (must have ``doc_id`` and ``score``).
-            boost_factor: Score increment per related neighbor in results.
+            boost_factor: Default score increment for unknown edge types.
 
         Returns:
             Results re-sorted by boosted score.
@@ -423,8 +436,8 @@ class KojiSearch:
 
         result_doc_ids: set[str] = {r["doc_id"] for r in results}
 
-        # Build a map of doc_id -> set of neighbor doc_ids within the result set
-        neighbor_counts: dict[str, int] = {}
+        # Build a map of doc_id -> accumulated type-weighted boost
+        boost_totals: dict[str, float] = {}
         for doc_id in result_doc_ids:
             try:
                 relations = self._koji.get_relations(doc_id, direction="both")
@@ -435,27 +448,31 @@ class KojiSearch:
                 )
                 relations = []
 
-            neighbor_ids = set()
+            accumulated = 0.0
             for rel in relations:
                 if rel["src_doc_id"] == doc_id:
-                    neighbor_ids.add(rel["dst_doc_id"])
+                    other = rel["dst_doc_id"]
                 else:
-                    neighbor_ids.add(rel["src_doc_id"])
+                    other = rel["src_doc_id"]
 
-            count = len(neighbor_ids & result_doc_ids)
-            neighbor_counts[doc_id] = count
+                if other in result_doc_ids:
+                    weight = _EDGE_BOOST_WEIGHTS.get(
+                        rel["relation_type"], boost_factor,
+                    )
+                    accumulated += weight
+
+            boost_totals[doc_id] = accumulated
 
         # Apply boost
         for result in results:
-            count = neighbor_counts.get(result["doc_id"], 0)
-            boost = boost_factor * count
+            boost = boost_totals.get(result["doc_id"], 0.0)
             result["score"] = min(1.0, result["score"] + boost)
             result.setdefault("metadata", {})["graph_boost"] = boost
 
         # Re-sort by score descending
         results.sort(key=lambda r: r["score"], reverse=True)
 
-        boosted_count = sum(1 for c in neighbor_counts.values() if c > 0)
+        boosted_count = sum(1 for b in boost_totals.values() if b > 0)
         if boosted_count:
             logger.info(
                 "koji_search.graph_boost_applied",
@@ -463,6 +480,14 @@ class KojiSearch:
                 total_results=len(results),
                 boost_factor=boost_factor,
             )
+
+        # Apply cached PageRank boost if available
+        try:
+            pagerank_scores = self._get_cached_pagerank(result_doc_ids)
+            if pagerank_scores:
+                results = self._apply_pagerank_boost(results, pagerank_scores)
+        except Exception:
+            pass  # No enrichment data available
 
         return results
 
@@ -510,6 +535,25 @@ class KojiSearch:
                         })
 
         return edges
+
+    def _get_cached_pagerank(self, doc_ids: set[str]) -> dict[str, float]:
+        """Read pre-computed PageRank from document metadata.
+
+        Returns empty dict if no enrichment has run.
+        """
+        scores: dict[str, float] = {}
+        for doc_id in doc_ids:
+            try:
+                doc = self._koji.get_document(doc_id)
+                if doc:
+                    meta = doc.get("metadata") or {}
+                    graph = meta.get("graph") or {}
+                    pr = graph.get("pagerank_score")
+                    if pr is not None:
+                        scores[doc_id] = float(pr)
+            except Exception:
+                continue
+        return scores
 
     def _apply_pagerank_boost(
         self,

@@ -975,6 +975,28 @@ async def startup_event():
     # Start background cleanup task for stale registrations
     asyncio.create_task(cleanup_stale_registrations())
 
+    # Initialize graph enrichment service
+    try:
+        from ..config.graph_config import GraphEnrichmentConfig
+        from ..processing.graph_enrichment import GraphEnrichmentService
+
+        graph_config = GraphEnrichmentConfig.from_env()
+        enrichment_service = GraphEnrichmentService(
+            storage_client=storage_client,
+            config=graph_config,
+        )
+        app.state.enrichment_service = enrichment_service
+        logger.info("✓ Graph enrichment service initialized")
+
+        if graph_config.auto_enrich_on_startup:
+            asyncio.create_task(_run_enrichment_once(enrichment_service))
+
+        asyncio.create_task(
+            _periodic_enrichment(enrichment_service, graph_config)
+        )
+    except Exception as exc:
+        logger.warning(f"Graph enrichment init skipped: {exc}")
+
 
 async def cleanup_stale_registrations():
     """
@@ -1006,6 +1028,67 @@ async def cleanup_stale_registrations():
 
         except Exception as e:
             logger.error(f"Error in cleanup task: {e}", exc_info=True)
+
+
+async def _run_enrichment_once(service) -> None:
+    """Run graph enrichment once (for startup or manual trigger)."""
+    try:
+        summary = service.run_full_enrichment()
+        logger.info("graph_enrichment.completed", **summary)
+    except Exception as exc:
+        logger.error(f"graph_enrichment.failed: {exc}")
+
+
+async def _periodic_enrichment(service, config) -> None:
+    """Background task to periodically recompute graph enrichment."""
+    while True:
+        await asyncio.sleep(config.enrichment_interval_seconds)
+        await _run_enrichment_once(service)
+
+
+@app.post("/graph/enrich")
+async def trigger_enrichment():
+    """Manually trigger graph enrichment."""
+    if not hasattr(app.state, "enrichment_service"):
+        from fastapi import HTTPException
+        raise HTTPException(503, "Enrichment service not initialized")
+    from fastapi import BackgroundTasks
+    bg = BackgroundTasks()
+    bg.add_task(_run_enrichment_once, app.state.enrichment_service)
+    return {"status": "enrichment_queued"}
+
+
+@app.get("/graph/stats")
+async def graph_stats():
+    """Return graph statistics."""
+    if not hasattr(app.state, "enrichment_service"):
+        return {"error": "Enrichment service not initialized"}
+    storage = app.state.enrichment_service._storage
+    try:
+        result = storage.query(
+            "SELECT relation_type, COUNT(*) AS cnt "
+            "FROM doc_relations GROUP BY relation_type"
+        )
+        d = result.to_pydict()
+        edge_counts = {
+            d["relation_type"][i]: d["cnt"][i]
+            for i in range(result.num_rows)
+        }
+    except Exception:
+        edge_counts = {}
+
+    doc_count = 0
+    try:
+        r = storage.query("SELECT COUNT(*) AS n FROM documents")
+        doc_count = r.column("n")[0].as_py()
+    except Exception:
+        pass
+
+    return {
+        "documents": doc_count,
+        "edges_by_type": edge_counts,
+        "total_edges": sum(edge_counts.values()),
+    }
 
 
 @app.on_event("shutdown")
