@@ -23,7 +23,6 @@ from pydantic import BaseModel
 from ..config.processing_config import EnhancedModeConfig, ProcessingConfig
 
 # Import core components
-from ..embeddings import ShikomiClient
 from . import DocumentProcessor
 from .cover_art_utils import delete_document_cover_art
 from .docling_parser import DoclingParser
@@ -917,13 +916,12 @@ async def startup_event():
     logger.info("Initializing components...")
 
     try:
-        # Initialize embedding engine (Shikomi gRPC client)
+        # Initialize embedding engine via factory
         from ..config.koji_config import ShikomiConfig
         shikomi_config = ShikomiConfig.from_env()
-        logger.info(f"Connecting to Shikomi embedding service ({shikomi_config.grpc_target})...")
-        embedding_engine = ShikomiClient(config=shikomi_config)
-        embedding_engine.connect()
-        logger.info("✓ Shikomi client connected")
+        from ..embeddings.factory import create_embedding_engine
+        embedding_engine = create_embedding_engine(shikomi_config)
+        logger.info(f"Embedding engine ready (mode={shikomi_config.mode})")
 
         # Initialize storage client
         from ..config.koji_config import KojiConfig

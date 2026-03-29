@@ -219,56 +219,33 @@ class MockEmbeddingModel:
             batch_processing_time_ms=simulated_time_ms,
         )
 
-    def embed_query(self, query: str) -> Dict[str, Any]:
+    def embed_query(self, query: str) -> list[list[float]]:
         """Generate mock multi-vector embedding for search query.
 
+        Returns list[list[float]] matching the embedding engine contract.
+
         Args:
-            query: Natural language search query
+            query: Natural language search query.
 
         Returns:
-            Dictionary with:
-            - embeddings: (seq_length, 768) multi-vector
-            - cls_token: (768,) representative vector
-            - seq_length: Query token count
-            - input_type: "text"
-            - processing_time_ms: Simulated time
+            Multi-vector embedding as nested list of floats.
 
         Raises:
-            ValueError: If query is empty
+            ValueError: If query is empty.
         """
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
 
-        start_time = time.time()
-
-        # Simulate query tokenization (10-30 tokens for typical queries)
         query_words = query.strip().split()
         seq_length = min(max(len(query_words) + 5, 10), 30)
 
-        # Generate random embeddings with some structure
-        # Use query hash as seed for reproducibility
         seed = hash(query) % (2**31)
         rng = np.random.default_rng(seed)
 
         embeddings = rng.standard_normal((seq_length, self.embedding_dim)).astype(np.float32)
-        # Normalize to unit vectors
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
-        cls_token = embeddings[0].copy()
-
-        # Simulate latency (< 100ms for queries)
-        if self.simulate_latency:
-            time.sleep(0.02)  # 20ms
-
-        processing_time = (time.time() - start_time) * 1000
-
-        return {
-            "embeddings": embeddings,
-            "cls_token": cls_token,
-            "seq_length": seq_length,
-            "input_type": "text",
-            "processing_time_ms": processing_time,
-        }
+        return embeddings.tolist()
 
     def score_multi_vector(
         self,
@@ -1094,10 +1071,10 @@ class MockSearchEngine:
         if not search_visual and not search_text:
             raise ValueError("At least one of search_visual or search_text must be True")
 
-        # Embed query
-        query_output = self.embedding_engine.embed_query(query)
-        query_cls = query_output["cls_token"]
-        query_full = query_output["embeddings"]
+        # Embed query — returns list[list[float]] per engine contract
+        query_vecs = self.embedding_engine.embed_query(query)
+        query_full = np.array(query_vecs, dtype=np.float32)
+        query_cls = query_full[0]  # First token as representative vector
 
         # Stage 1: Fast retrieval
         stage1_limit = limit * 10  # Retrieve 10x for re-ranking

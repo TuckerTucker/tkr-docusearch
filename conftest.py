@@ -342,13 +342,10 @@ def embedding_engine_instance():
             "num_chunks": len(texts),
         }
 
-    # Mock embed_query method
+    # Mock embed_query method — returns list[list[float]] per engine contract
     def mock_embed_query(query, **kwargs):
         """Mock query embedding."""
-        return {
-            "embeddings": np.random.randn(128).astype(np.float32),
-            "cls_token": np.random.randn(128).astype(np.float32),
-        }
+        return np.random.randn(10, 128).astype(np.float32).tolist()
 
     engine.embed_images = mock_embed_images
     engine.embed_text = mock_embed_text

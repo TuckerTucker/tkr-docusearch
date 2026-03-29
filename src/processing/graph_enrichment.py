@@ -145,7 +145,13 @@ class GraphEnrichmentService:
                 self._config.similarity_top_k + 1,
             )
 
-            for target_id, distance in neighbors:
+            # Re-rank with exact MaxSim scoring when available.
+            # After re-ranking, scores are normalized 0-1 similarity
+            # (higher is better) rather than distances (lower is better).
+            reranked = self._rerank_with_maxsim(embedding, neighbors)
+            is_reranked = reranked is not neighbors
+
+            for target_id, value in reranked:
                 if target_id == doc_id:
                     continue
 
@@ -153,11 +159,16 @@ class GraphEnrichmentService:
                 if pair in connected:
                     continue
 
-                score = 1.0 / (1.0 + distance)
+                if is_reranked:
+                    score = value
+                else:
+                    score = 1.0 / (1.0 + value)
+
                 if score < self._config.similarity_threshold:
                     continue
 
-                metadata = {"score": round(score, 4), "method": "maxsim"}
+                method = "maxsim_reranked" if is_reranked else "maxsim"
+                metadata = {"score": round(score, 4), "method": method}
 
                 # Bidirectional edges
                 rel_fwd = self._safe_create_relation(
@@ -413,6 +424,67 @@ class GraphEnrichmentService:
             return embedding
         except KojiQueryError:
             return None
+
+    def _rerank_with_maxsim(
+        self,
+        query_blob: bytes,
+        candidates: list[tuple[str, float]],
+    ) -> list[tuple[str, float]]:
+        """Re-rank candidates using exact MaxSim scoring.
+
+        Deserializes multi-vector embeddings for both the query and each
+        candidate document, then computes a normalized MaxSim similarity
+        score.  Scores are in ``[0, 1]`` range and can be compared
+        directly against the similarity threshold.
+
+        Falls back to returning *candidates* unchanged when the required
+        ``shikomi_ingest`` scoring modules are not installed.
+
+        Args:
+            query_blob: Packed multi-vector embedding bytes for the query
+                document.
+            candidates: List of ``(doc_id, approx_distance)`` pairs from
+                the approximate search.
+
+        Returns:
+            List of ``(doc_id, score)`` pairs sorted by score descending.
+            If re-ranking is unavailable, returns *candidates* unchanged.
+        """
+        try:
+            from shikomi_ingest.types import MultiVectorEmbedding
+            from shikomi_ingest.embedding.scoring import maxsim
+        except ImportError:
+            logger.debug(
+                "graph_enrichment.rerank_with_maxsim.import_unavailable",
+                reason="shikomi_ingest scoring modules not installed",
+            )
+            return candidates
+
+        query_emb = MultiVectorEmbedding.from_blob(query_blob)
+        reranked: list[tuple[str, float]] = []
+
+        for doc_id, _approx_distance in candidates:
+            doc_blob = self._get_representative_embedding(doc_id)
+            if doc_blob is None:
+                logger.debug(
+                    "graph_enrichment.rerank_with_maxsim.no_embedding",
+                    doc_id=doc_id,
+                )
+                continue
+
+            doc_emb = MultiVectorEmbedding.from_blob(doc_blob)
+            raw_score = maxsim(query_emb, doc_emb)
+            score = raw_score / query_emb.num_tokens
+            reranked.append((doc_id, score))
+
+        reranked.sort(key=lambda x: x[1], reverse=True)
+
+        logger.debug(
+            "graph_enrichment.rerank_with_maxsim.complete",
+            input_count=len(candidates),
+            output_count=len(reranked),
+        )
+        return reranked
 
     def _maxsim_search(
         self,

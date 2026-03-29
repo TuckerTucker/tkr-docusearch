@@ -18,7 +18,7 @@ from tkr_docusearch.processing.api import structure_router
 
 # Import core components — Koji pipeline (new)
 from ..config.koji_config import KojiConfig, ShikomiConfig
-from ..embeddings.shikomi_client import ShikomiClient
+from ..embeddings.factory import create_embedding_engine
 from ..processing import DocumentProcessor
 from ..search.koji_search import KojiSearch
 from ..storage.koji_client import KojiClient
@@ -133,12 +133,11 @@ def create_app(
             _app_state["storage_client"] = koji_client
             logger.info(f"Koji database opened at {koji_db_path}")
 
-            # Initialize Shikomi embedding engine
+            # Initialize embedding engine via factory
             shikomi_config = ShikomiConfig(device=device, quantization=precision)
-            shikomi_client = ShikomiClient(shikomi_config)
-            shikomi_client.connect()
+            shikomi_client = create_embedding_engine(shikomi_config)
             _app_state["embedding_engine"] = shikomi_client
-            logger.info(f"Shikomi connected (model={shikomi_config.model})")
+            logger.info(f"Embedding engine ready (mode={shikomi_config.mode})")
 
             # Set storage client for markdown router
             set_storage_client(_app_state["storage_client"])

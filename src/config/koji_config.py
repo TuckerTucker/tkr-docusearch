@@ -81,6 +81,7 @@ class ShikomiConfig:
     device: str = os.getenv("SHIKOMI_DEVICE", "auto")
     quantization: str = os.getenv("SHIKOMI_QUANTIZATION", "fp16")
     use_mock: bool = os.getenv("SHIKOMI_USE_MOCK", "false").lower() == "true"
+    mode: str = os.getenv("SHIKOMI_MODE", "in_process")
 
     @classmethod
     def from_env(cls) -> "ShikomiConfig":
@@ -97,6 +98,7 @@ class ShikomiConfig:
             device=os.getenv("SHIKOMI_DEVICE", "auto"),
             quantization=os.getenv("SHIKOMI_QUANTIZATION", "fp16"),
             use_mock=os.getenv("SHIKOMI_USE_MOCK", "false").lower() == "true",
+            mode=os.getenv("SHIKOMI_MODE", "in_process"),
         )
 
     def to_dict(self) -> dict:
