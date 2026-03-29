@@ -570,3 +570,411 @@ class TestRawSQL:
         result = client.query("SELECT COUNT(*) AS n FROM documents")
         assert result.num_rows == 1
         assert result.column("n")[0].as_py() == 1
+
+
+class TestUpdateDocumentPreservesChildren:
+    """Verify that update_document() no longer destroys child data.
+
+    Previously, update_document used a delete-reinsert workaround that
+    would cascade-delete child rows (pages, chunks, relations). After
+    switching to Koji's native db.update(), child data must survive.
+    """
+
+    def test_update_preserves_pages(self, client):
+        """Create doc + 2 pages, update doc's num_pages, verify both pages survive."""
+        client.create_document(
+            doc_id="doc-upd-pages",
+            filename="test.pdf",
+            format="pdf",
+            num_pages=2,
+        )
+
+        client.insert_pages([
+            {"id": "doc-upd-pages-page001", "doc_id": "doc-upd-pages", "page_num": 1},
+            {"id": "doc-upd-pages-page002", "doc_id": "doc-upd-pages", "page_num": 2},
+        ])
+
+        # Verify pages exist before update
+        assert len(client.get_pages_for_document("doc-upd-pages")) == 2
+
+        # Update a field on the parent document
+        client.update_document("doc-upd-pages", num_pages=10)
+
+        # Pages must still exist
+        pages = client.get_pages_for_document("doc-upd-pages")
+        assert len(pages) == 2
+        page_nums = {p["page_num"] for p in pages}
+        assert page_nums == {1, 2}
+
+        # Verify the update itself took effect
+        doc = client.get_document("doc-upd-pages")
+        assert doc["num_pages"] == 10
+
+    def test_update_preserves_chunks(self, client):
+        """Create doc + 2 chunks, update doc's filename, verify chunks survive with correct text."""
+        client.create_document(
+            doc_id="doc-upd-chunks",
+            filename="original.pdf",
+            format="pdf",
+        )
+
+        client.insert_chunks([
+            {
+                "id": "doc-upd-chunks-chunk0001",
+                "doc_id": "doc-upd-chunks",
+                "page_num": 1,
+                "text": "First chunk of text",
+            },
+            {
+                "id": "doc-upd-chunks-chunk0002",
+                "doc_id": "doc-upd-chunks",
+                "page_num": 1,
+                "text": "Second chunk of text",
+            },
+        ])
+
+        # Verify chunks exist before update
+        assert len(client.get_chunks_for_document("doc-upd-chunks")) == 2
+
+        # Update a field on the parent document
+        client.update_document("doc-upd-chunks", filename="renamed.pdf")
+
+        # Chunks must still exist with correct text
+        chunks = client.get_chunks_for_document("doc-upd-chunks")
+        assert len(chunks) == 2
+        texts = {c["text"] for c in chunks}
+        assert texts == {"First chunk of text", "Second chunk of text"}
+
+        # Verify the update itself took effect
+        doc = client.get_document("doc-upd-chunks")
+        assert doc["filename"] == "renamed.pdf"
+
+    def test_update_preserves_relations(self, client):
+        """Create 2 docs + a relation, update doc1's markdown, verify relation survives."""
+        client.create_document(
+            doc_id="doc-upd-rel-A",
+            filename="a.pdf",
+            format="pdf",
+            markdown="# Original",
+        )
+        client.create_document(
+            doc_id="doc-upd-rel-B",
+            filename="b.pdf",
+            format="pdf",
+        )
+
+        client.create_relation(
+            src_doc_id="doc-upd-rel-A",
+            dst_doc_id="doc-upd-rel-B",
+            relation_type="references",
+        )
+
+        # Verify relation exists before update
+        assert len(client.get_relations("doc-upd-rel-A", direction="outgoing")) == 1
+
+        # Update a field on the source document
+        client.update_document("doc-upd-rel-A", markdown="# Updated")
+
+        # Relation must still exist
+        relations = client.get_relations("doc-upd-rel-A", direction="outgoing")
+        assert len(relations) == 1
+        assert relations[0]["dst_doc_id"] == "doc-upd-rel-B"
+        assert relations[0]["relation_type"] == "references"
+
+        # Verify the update itself took effect
+        md = client.get_document_markdown("doc-upd-rel-A")
+        assert md == "# Updated"
+
+    def test_update_preserves_all_children(self, client):
+        """Create doc + pages + chunks + relation, update a field, verify ALL children survive."""
+        client.create_document(
+            doc_id="doc-upd-all-A",
+            filename="full.pdf",
+            format="pdf",
+            num_pages=2,
+        )
+        client.create_document(
+            doc_id="doc-upd-all-B",
+            filename="other.pdf",
+            format="pdf",
+        )
+
+        client.insert_pages([
+            {"id": "doc-upd-all-A-page001", "doc_id": "doc-upd-all-A", "page_num": 1},
+            {"id": "doc-upd-all-A-page002", "doc_id": "doc-upd-all-A", "page_num": 2},
+        ])
+
+        client.insert_chunks([
+            {
+                "id": "doc-upd-all-A-chunk0001",
+                "doc_id": "doc-upd-all-A",
+                "page_num": 1,
+                "text": "Chunk one",
+            },
+            {
+                "id": "doc-upd-all-A-chunk0002",
+                "doc_id": "doc-upd-all-A",
+                "page_num": 2,
+                "text": "Chunk two",
+            },
+        ])
+
+        client.create_relation(
+            src_doc_id="doc-upd-all-A",
+            dst_doc_id="doc-upd-all-B",
+            relation_type="related",
+        )
+
+        # Verify all children exist before update
+        assert len(client.get_pages_for_document("doc-upd-all-A")) == 2
+        assert len(client.get_chunks_for_document("doc-upd-all-A")) == 2
+        assert len(client.get_relations("doc-upd-all-A", direction="outgoing")) == 1
+
+        # Update a field on the parent document
+        client.update_document("doc-upd-all-A", num_pages=10)
+
+        # ALL children must survive
+        pages = client.get_pages_for_document("doc-upd-all-A")
+        assert len(pages) == 2
+
+        chunks = client.get_chunks_for_document("doc-upd-all-A")
+        assert len(chunks) == 2
+        assert {c["text"] for c in chunks} == {"Chunk one", "Chunk two"}
+
+        relations = client.get_relations("doc-upd-all-A", direction="outgoing")
+        assert len(relations) == 1
+        assert relations[0]["dst_doc_id"] == "doc-upd-all-B"
+
+        # Verify the update itself took effect
+        doc = client.get_document("doc-upd-all-A")
+        assert doc["num_pages"] == 10
+
+    def test_update_metadata_as_dict(self, client):
+        """Create doc, update with metadata as a dict, verify stored correctly as JSON."""
+        client.create_document(
+            doc_id="doc-upd-meta",
+            filename="test.pdf",
+            format="pdf",
+        )
+
+        new_meta = {"author": "Alice", "tags": ["science", "review"], "year": 2025}
+        client.update_document("doc-upd-meta", metadata=new_meta)
+
+        doc = client.get_document("doc-upd-meta")
+        assert doc["metadata"] == new_meta
+        assert doc["metadata"]["author"] == "Alice"
+        assert doc["metadata"]["tags"] == ["science", "review"]
+        assert doc["metadata"]["year"] == 2025
+
+    def test_update_nonexistent_document(self, client):
+        """Call update on a non-existent doc_id, verify no error is raised."""
+        # Should be a no-op, not an error
+        client.update_document("doc-does-not-exist", filename="phantom.pdf")
+
+        # Document still should not exist
+        assert client.get_document("doc-does-not-exist") is None
+
+
+class TestDeleteCascade:
+    """Verify that delete_document cascades to all child tables correctly.
+
+    Tests confirm that foreign-key cascade (or the manual fallback) removes
+    pages, chunks, and relations for the deleted document while leaving
+    other documents' children intact.
+    """
+
+    def test_delete_cascades_to_relations(self, client):
+        """Create 3 docs with relations. Delete doc1. Verify doc1 relations gone, doc2-doc3 survive."""
+        client.create_document(doc_id="doc-del-A", filename="a.pdf", format="pdf")
+        client.create_document(doc_id="doc-del-B", filename="b.pdf", format="pdf")
+        client.create_document(doc_id="doc-del-C", filename="c.pdf", format="pdf")
+
+        # A -> B, A -> C, B -> C
+        client.create_relation(
+            src_doc_id="doc-del-A", dst_doc_id="doc-del-B", relation_type="references",
+        )
+        client.create_relation(
+            src_doc_id="doc-del-A", dst_doc_id="doc-del-C", relation_type="related",
+        )
+        client.create_relation(
+            src_doc_id="doc-del-B", dst_doc_id="doc-del-C", relation_type="cites",
+        )
+
+        # Verify all 3 relations exist
+        assert len(client.get_relations("doc-del-A", direction="outgoing")) == 2
+        assert len(client.get_relations("doc-del-B", direction="outgoing")) == 1
+
+        # Delete doc A
+        client.delete_document("doc-del-A")
+
+        # A's relations must be gone (both where A is src and dst)
+        assert client.get_document("doc-del-A") is None
+        assert len(client.get_relations("doc-del-A", direction="both")) == 0
+
+        # B -> C relation must survive
+        relations_b = client.get_relations("doc-del-B", direction="outgoing")
+        assert len(relations_b) == 1
+        assert relations_b[0]["dst_doc_id"] == "doc-del-C"
+        assert relations_b[0]["relation_type"] == "cites"
+
+    def test_delete_cascade_with_all_children(self, client):
+        """Create doc + pages + chunks + relations. Delete doc. Verify all 4 tables clean."""
+        client.create_document(doc_id="doc-del-full", filename="full.pdf", format="pdf")
+        client.create_document(doc_id="doc-del-other", filename="other.pdf", format="pdf")
+
+        client.insert_pages([
+            {"id": "doc-del-full-page001", "doc_id": "doc-del-full", "page_num": 1},
+            {"id": "doc-del-full-page002", "doc_id": "doc-del-full", "page_num": 2},
+        ])
+
+        client.insert_chunks([
+            {
+                "id": "doc-del-full-chunk0001",
+                "doc_id": "doc-del-full",
+                "page_num": 1,
+                "text": "To be deleted",
+            },
+        ])
+
+        client.create_relation(
+            src_doc_id="doc-del-full",
+            dst_doc_id="doc-del-other",
+            relation_type="references",
+        )
+
+        # Verify everything exists before delete
+        assert client.get_document("doc-del-full") is not None
+        assert len(client.get_pages_for_document("doc-del-full")) == 2
+        assert len(client.get_chunks_for_document("doc-del-full")) == 1
+        assert len(client.get_relations("doc-del-full", direction="outgoing")) == 1
+
+        # Delete the document
+        client.delete_document("doc-del-full")
+
+        # All child data must be gone
+        assert client.get_document("doc-del-full") is None
+        assert len(client.get_pages_for_document("doc-del-full")) == 0
+        assert len(client.get_chunks_for_document("doc-del-full")) == 0
+        assert len(client.get_relations("doc-del-full", direction="both")) == 0
+
+        # The other document must still exist
+        assert client.get_document("doc-del-other") is not None
+
+    def test_delete_other_documents_survive(self, client):
+        """Create doc1 + doc2, both with pages and chunks. Delete doc1. Verify doc2 intact."""
+        client.create_document(doc_id="doc-del-surv1", filename="one.pdf", format="pdf")
+        client.create_document(doc_id="doc-del-surv2", filename="two.pdf", format="pdf")
+
+        client.insert_pages([
+            {"id": "doc-del-surv1-page001", "doc_id": "doc-del-surv1", "page_num": 1},
+            {"id": "doc-del-surv2-page001", "doc_id": "doc-del-surv2", "page_num": 1},
+            {"id": "doc-del-surv2-page002", "doc_id": "doc-del-surv2", "page_num": 2},
+        ])
+
+        client.insert_chunks([
+            {
+                "id": "doc-del-surv1-chunk0001",
+                "doc_id": "doc-del-surv1",
+                "page_num": 1,
+                "text": "Doc one chunk",
+            },
+            {
+                "id": "doc-del-surv2-chunk0001",
+                "doc_id": "doc-del-surv2",
+                "page_num": 1,
+                "text": "Doc two first chunk",
+            },
+            {
+                "id": "doc-del-surv2-chunk0002",
+                "doc_id": "doc-del-surv2",
+                "page_num": 2,
+                "text": "Doc two second chunk",
+            },
+        ])
+
+        # Delete doc1
+        client.delete_document("doc-del-surv1")
+
+        # doc1 and all its children are gone
+        assert client.get_document("doc-del-surv1") is None
+        assert len(client.get_pages_for_document("doc-del-surv1")) == 0
+        assert len(client.get_chunks_for_document("doc-del-surv1")) == 0
+
+        # doc2 and all its children survive untouched
+        assert client.get_document("doc-del-surv2") is not None
+        assert client.get_document("doc-del-surv2")["filename"] == "two.pdf"
+
+        pages = client.get_pages_for_document("doc-del-surv2")
+        assert len(pages) == 2
+
+        chunks = client.get_chunks_for_document("doc-del-surv2")
+        assert len(chunks) == 2
+        assert {c["text"] for c in chunks} == {
+            "Doc two first chunk",
+            "Doc two second chunk",
+        }
+
+
+class TestDeleteRelationDirect:
+    """Verify the simplified delete_relation using db.delete() directly.
+
+    Tests confirm idempotent behavior and isolation — deleting one
+    relation must not affect others.
+    """
+
+    def test_delete_relation_idempotent(self, client):
+        """Delete a relation that does not exist. Verify no error is raised."""
+        client.create_document(doc_id="doc-delrel-A", filename="a.pdf", format="pdf")
+        client.create_document(doc_id="doc-delrel-B", filename="b.pdf", format="pdf")
+
+        # No relation exists between these two docs — should be a no-op
+        client.delete_relation(
+            src_doc_id="doc-delrel-A",
+            dst_doc_id="doc-delrel-B",
+            relation_type="references",
+        )
+
+        # Verify nothing was inadvertently created
+        assert len(client.get_relations("doc-delrel-A", direction="both")) == 0
+
+    def test_delete_relation_preserves_other_relations(self, client):
+        """Create 3 relations, delete one, verify other 2 survive."""
+        client.create_document(doc_id="doc-delrel-X", filename="x.pdf", format="pdf")
+        client.create_document(doc_id="doc-delrel-Y", filename="y.pdf", format="pdf")
+        client.create_document(doc_id="doc-delrel-Z", filename="z.pdf", format="pdf")
+
+        # X -> Y (references), X -> Z (related), Y -> Z (cites)
+        client.create_relation(
+            src_doc_id="doc-delrel-X",
+            dst_doc_id="doc-delrel-Y",
+            relation_type="references",
+        )
+        client.create_relation(
+            src_doc_id="doc-delrel-X",
+            dst_doc_id="doc-delrel-Z",
+            relation_type="related",
+        )
+        client.create_relation(
+            src_doc_id="doc-delrel-Y",
+            dst_doc_id="doc-delrel-Z",
+            relation_type="cites",
+        )
+
+        # Delete only X -> Y
+        client.delete_relation(
+            src_doc_id="doc-delrel-X",
+            dst_doc_id="doc-delrel-Y",
+            relation_type="references",
+        )
+
+        # X -> Y should be gone
+        x_outgoing = client.get_relations("doc-delrel-X", direction="outgoing")
+        assert len(x_outgoing) == 1
+        assert x_outgoing[0]["dst_doc_id"] == "doc-delrel-Z"
+        assert x_outgoing[0]["relation_type"] == "related"
+
+        # Y -> Z should survive
+        y_outgoing = client.get_relations("doc-delrel-Y", direction="outgoing")
+        assert len(y_outgoing) == 1
+        assert y_outgoing[0]["dst_doc_id"] == "doc-delrel-Z"
+        assert y_outgoing[0]["relation_type"] == "cites"
