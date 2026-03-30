@@ -81,7 +81,7 @@ class DocumentListItem(BaseModel):
     """Document list item schema."""
 
     doc_id: str = Field(..., description="Document identifier (SHA-256 hash)")
-    project_id: str = Field("default", description="Project this document belongs to")
+    project_id: Optional[str] = Field("default", description="Project this document belongs to")
     filename: str = Field(..., description="Original filename")
     page_count: int = Field(..., description="Number of pages")
     chunk_count: int = Field(..., description="Number of text chunks")

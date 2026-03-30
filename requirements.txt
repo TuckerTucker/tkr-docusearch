@@ -12,7 +12,7 @@ Pillow>=10.0.0
 # Document parsing - unified with Docling
 # Docling handles PDF, DOCX, PPTX, and other formats
 # [asr] extra includes Whisper support for MP3/WAV audio transcription
-docling[asr]>=2.55.0
+docling[asr]>=2.81.0,<3
 pypdf>=3.0.0  # PDF metadata repair for Docling compatibility
 
 # Koji hybrid database
