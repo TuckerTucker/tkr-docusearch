@@ -327,6 +327,76 @@ const research = {
     const response = await fetchWithTimeout(url);
     return handleResponse(response, url);
   },
+
+  sessions: {
+    /**
+     * Create a new research session
+     *
+     * @returns {Promise<Object>} { session_id, created_at }
+     */
+    async create() {
+      const url = `${API_BASE_URL}/api/research/sessions/create`;
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: DEFAULT_HEADERS,
+      });
+      return handleResponse(response, url);
+    },
+
+    /**
+     * Submit a question to a research session
+     *
+     * @param {Object} params
+     * @param {string} [params.session_id] - Session ID (auto-creates if omitted)
+     * @param {string} params.query - Research question (3-500 chars)
+     * @returns {Promise<Object>} Answer with citations, sources, session_id, turn
+     */
+    async ask({ session_id, query }) {
+      if (!query || query.length < 3 || query.length > 500) {
+        throw new APIError('Query must be between 3 and 500 characters', 400, 'research.sessions.ask');
+      }
+
+      const url = `${API_BASE_URL}/api/research/sessions/ask`;
+      const body = { query };
+      if (session_id) {
+        body.session_id = session_id;
+      }
+
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: DEFAULT_HEADERS,
+        body: JSON.stringify(body),
+      }, RESEARCH_TIMEOUT);
+      return handleResponse(response, url);
+    },
+
+    /**
+     * Get full conversation history for a session
+     *
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<Object>} Session with turns array
+     */
+    async getHistory(sessionId) {
+      const url = `${API_BASE_URL}/api/research/sessions/${encodeURIComponent(sessionId)}`;
+      const response = await fetchWithTimeout(url);
+      return handleResponse(response, url);
+    },
+
+    /**
+     * Delete a research session
+     *
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<Object>} { deleted: true }
+     */
+    async delete(sessionId) {
+      const url = `${API_BASE_URL}/api/research/sessions/${encodeURIComponent(sessionId)}`;
+      const response = await fetchWithTimeout(url, {
+        method: 'DELETE',
+        headers: DEFAULT_HEADERS,
+      });
+      return handleResponse(response, url);
+    },
+  },
 };
 
 // ============================================================================

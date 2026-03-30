@@ -303,11 +303,6 @@ update_ngrok_url() {
 start_research_api() {
     echo -e "\n${CYAN}Starting Research API...${NC}\n"
 
-    if [ ! -d ".venv-native" ]; then
-        echo -e "${YELLOW}Virtual environment not found. Skipping Research API.${NC}"
-        return
-    fi
-
     # Start research API
     ./scripts/start-research-api.sh
 

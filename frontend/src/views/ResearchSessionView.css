@@ -1,0 +1,356 @@
+/**
+ * ResearchSessionView Styles
+ *
+ * Multi-turn research conversation layout.
+ * Two-panel grid matching ResearchView dimensions.
+ * BEM naming convention. All colors via CSS custom properties from global.css.
+ */
+
+/* ============================================
+   Main Container
+   ============================================ */
+.research-session-view {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+/* ============================================
+   Two-Panel Layout (matches .research-view__layout)
+   ============================================ */
+.research-session-view__layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Left Panel: Conversation + Input
+   ============================================ */
+.research-session-view__main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ============================================
+   Conversation Thread
+   ============================================ */
+.conversation-thread {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Empty state */
+.conversation-thread__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  color: var(--muted-foreground);
+}
+
+.conversation-thread__empty-icon {
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.conversation-thread__empty-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0 0 var(--space-2);
+}
+
+.conversation-thread__empty-hint {
+  font-size: var(--font-size-sm);
+  color: var(--muted-foreground);
+  max-width: 400px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Error inline */
+.conversation-thread__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--destructive-light);
+  color: var(--destructive);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* ============================================
+   Conversation Turns
+   ============================================ */
+.conversation-turn {
+  display: flex;
+  animation: fade-in-up 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* User turns: aligned right */
+.conversation-turn--user {
+  justify-content: flex-end;
+}
+
+.conversation-turn--user .conversation-turn__content {
+  max-width: 80%;
+}
+
+/* Assistant turns: full width, aligned left */
+.conversation-turn--assistant {
+  justify-content: flex-start;
+}
+
+.conversation-turn--assistant .conversation-turn__content {
+  width: 100%;
+}
+
+/* Content container */
+.conversation-turn__content {
+  min-width: 0;
+}
+
+/* User message bubble */
+.conversation-turn__user-message {
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+/* Turn metadata line */
+.conversation-turn__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  font-size: var(--font-size-xs);
+  color: var(--muted-foreground);
+}
+
+.conversation-turn__meta-separator {
+  opacity: 0.5;
+}
+
+/* View Sources button (shown when multiple assistant turns) */
+.conversation-turn__sources-btn {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.conversation-turn__sources-btn:hover {
+  color: var(--foreground);
+  border-color: var(--primary);
+  background: var(--muted);
+}
+
+.conversation-turn__sources-btn--active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--accent);
+}
+
+.conversation-turn__sources-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Loading / Typing Indicator
+   ============================================ */
+.conversation-turn--loading .conversation-turn__content {
+  padding: var(--space-4);
+}
+
+.conversation-turn__typing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+
+.conversation-turn__typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.conversation-turn__typing-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.conversation-turn__typing-dot:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.conversation-turn__typing-dot:nth-child(3) {
+  animation-delay: 320ms;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   Sticky Input Dock
+   ============================================ */
+.research-session-view__input-dock {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+  background: var(--card);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* New Session button */
+.research-session-view__new-session {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.research-session-view__new-session:hover {
+  color: var(--foreground);
+  border-color: var(--primary);
+  background: var(--muted);
+}
+
+.research-session-view__new-session:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Right Panel: References (matches research-view)
+   ============================================ */
+.research-session-view__side-panel {
+  min-width: 0;
+  max-height: calc(100vh - var(--header-height) - var(--space-12));
+  overflow-y: auto;
+  position: sticky;
+  top: var(--space-6);
+}
+
+/* ============================================
+   Override AnswerDisplay title inside turns
+   (suppress the "Answer" heading in conversation)
+   ============================================ */
+.conversation-turn .answer-display__title {
+  display: none;
+}
+
+/* ============================================
+   Responsive Breakpoints
+   ============================================ */
+@media (max-width: 1024px) {
+  .research-session-view__layout {
+    grid-template-columns: 1fr 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .research-session-view__layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    height: auto;
+    min-height: calc(100vh - var(--header-height) - var(--space-8));
+  }
+
+  .research-session-view__side-panel {
+    position: static;
+    max-height: none;
+  }
+
+  .conversation-turn--user .conversation-turn__content {
+    max-width: 90%;
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .conversation-turn {
+    animation: none;
+  }
+
+  .conversation-turn__typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* ============================================
+   Print
+   ============================================ */
+@media print {
+  .research-session-view__input-dock {
+    display: none;
+  }
+
+  .research-session-view__side-panel {
+    display: none;
+  }
+
+  .research-session-view__layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .conversation-thread {
+    overflow: visible;
+  }
+
+  .conversation-turn--user .conversation-turn__user-message {
+    background: transparent;
+    border: 1px solid var(--border);
+  }
+}

@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..config.processing_config import ProcessingConfig
 
@@ -1100,6 +1100,80 @@ async def graph_stats():
         "documents": doc_count,
         "edges_by_type": edge_counts,
         "total_edges": sum(edge_counts.values()),
+    }
+
+
+# ============================================================================
+# Search Endpoint (used by Research API via HTTP)
+# ============================================================================
+
+
+class SearchRequest(BaseModel):
+    """Search request model."""
+
+    query: str = Field(..., min_length=1, max_length=1000)
+    n_results: int = Field(default=10, ge=1, le=100)
+    search_mode: str = Field(default="hybrid")
+
+
+@app.post("/search")
+async def search_documents(request: SearchRequest):
+    """Semantic search across indexed documents.
+
+    Called by the Research API over HTTP to avoid loading the
+    embedding model twice.
+    """
+    if query_engine is None:
+        raise HTTPException(status_code=503, detail="Search engine not ready")
+
+    from ..search.koji_search import KojiSearch
+
+    # Map API mode names to KojiSearch mode names
+    mode_map = {"visual": "visual_only", "text": "text_only", "hybrid": "hybrid"}
+    search_mode = mode_map.get(request.search_mode, request.search_mode)
+
+    # Get or create KojiSearch instance (reuses app.state for storage)
+    if not hasattr(app.state, "search_engine"):
+        from ..config.koji_config import KojiConfig
+        from ..storage.koji_client import KojiClient as _KC
+
+        _koji = _KC(KojiConfig.from_env())
+        _koji.open()
+        app.state.search_engine = KojiSearch(
+            koji_client=_koji, shikomi_client=query_engine
+        )
+
+    # Run in thread — KojiSearch.search() uses run_until_complete()
+    # internally, which conflicts with uvicorn's running event loop
+    import asyncio
+
+    search_response = await asyncio.to_thread(
+        app.state.search_engine.search,
+        query=request.query,
+        n_results=request.n_results,
+        search_mode=search_mode,
+    )
+
+    # Normalize results for the HTTP client
+    results = []
+    for r in search_response.get("results", []):
+        results.append({
+            "doc_id": r.get("doc_id"),
+            "chunk_id": r.get("chunk_id"),
+            "page_num": r.get("page"),
+            "score": r.get("score", 0.0),
+            "text_preview": r.get("text", "")[:200] if r.get("text") else None,
+            "metadata": r.get("metadata", {}),
+            "type": r.get("metadata", {}).get("source"),
+            "filename": r.get("metadata", {}).get("filename"),
+        })
+
+    return {
+        "query": request.query,
+        "results": results,
+        "total_results": len(results),
+        "search_time_ms": search_response.get("total_time_ms", 0),
+        "search_mode": request.search_mode,
     }
 
 

@@ -417,7 +417,9 @@ class ContextBuilder:
         for result in deduped_results:
             try:
                 source = await self.get_source_metadata(
-                    doc_id=result["doc_id"], page=result["page"], score=result.get("score", 0.0)
+                    doc_id=result["doc_id"],
+                    page=result.get("page") or 1,
+                    score=result.get("score", 0.0),
                 )
                 sources.append(source)
 
@@ -567,14 +569,14 @@ class ContextBuilder:
                 (p for p in all_pages if p.get("page_num") == page), None
             )
 
-        if page_data is None:
+        # Merge document-level fields into metadata dict
+        doc_data = self.storage_client.get_document(doc_id)
+        if page_data is None and doc_data is None:
             raise ValueError(
                 f"Document {doc_id} page {page} not found"
             )
 
-        # Merge document-level fields into metadata dict
-        doc_data = self.storage_client.get_document(doc_id)
-        metadata = {**page_data}
+        metadata = {**(page_data or {})}
         if doc_data:
             metadata["filename"] = doc_data.get("filename", "unknown")
             metadata["format"] = doc_data.get("format", "")

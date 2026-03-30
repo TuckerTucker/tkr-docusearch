@@ -7,9 +7,9 @@ import Layout from './components/layout/Layout'
 // Lazy load route components for better performance
 const LibraryView = lazy(() => import('./views/LibraryView'))
 const DetailsView = lazy(() => import('./views/DetailsView'))
-const ResearchView = lazy(() => import('./views/ResearchView'))
 const ResearchExploreView = lazy(() => import('./views/ResearchExploreView'))
 const LocalInferenceView = lazy(() => import('./views/LocalInferenceView'))
+const ResearchSessionView = lazy(() => import('./views/ResearchSessionView'))
 
 // Loading component for suspense fallback
 const PageLoader = () => (
@@ -52,7 +52,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<LibraryView />} />
               <Route path="/details/:id" element={<DetailsView />} />
-              <Route path="/research" element={<ResearchView />} />
+              <Route path="/research" element={<ResearchSessionView />} />
               <Route path="/research-explore" element={<ResearchExploreView />} />
               <Route path="/local-inference" element={<LocalInferenceView />} />
             </Route>
