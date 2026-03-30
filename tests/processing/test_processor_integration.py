@@ -208,8 +208,8 @@ class TestProcessorIntegration:
 
         status_names = [s.status for s in captured]
 
-        # The pipeline emits at least parsing, storing, and completed stages
-        assert "parsing" in status_names or "pending" in status_names
+        # The pipeline emits at least processing (prepare), storing, and completed stages
+        assert "processing" in status_names or "pending" in status_names
         assert "storing" in status_names
         assert "completed" in status_names
 

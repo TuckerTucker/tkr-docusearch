@@ -391,7 +391,8 @@ def _resolve_document_thumbnail(doc: Dict) -> Optional[str]:
     1. First page ``thumb`` binary (Koji DB) — most common path
     2. First page ``image`` binary (Koji DB) — fallback for pages without thumbs
     3. First page ``thumb_path`` on filesystem (legacy)
-    4. Album art cover file on disk (audio files)
+    4. First page thumbnail on disk (when Koji has no page records)
+    5. Album art cover file on disk (audio files)
 
     Args:
         doc: Document dictionary
@@ -399,13 +400,15 @@ def _resolve_document_thumbnail(doc: Dict) -> Optional[str]:
     Returns:
         Thumbnail URL or None
     """
+    doc_id = doc["doc_id"]
+
     if doc["pages"] and doc["has_images"]:
         first_page = doc["pages"][0]
 
         # Prefer thumb, fall back to full image (both stored as binary in Koji)
         if first_page.get("thumb") or first_page.get("image"):
             page_num = first_page.get("page_num", 1)
-            return f"/images/{doc['doc_id']}/page{page_num:03d}.png"
+            return f"/images/{doc_id}/page{page_num:03d}.png"
 
         # Legacy filesystem path
         if first_page.get("thumb_path"):
@@ -415,13 +418,18 @@ def _resolve_document_thumbnail(doc: Dict) -> Optional[str]:
                 if len(parts) >= 2:
                     return f"/images/{parts[-2]}/{parts[-1]}"
 
+    # Check for first page thumbnail on disk (Koji may lack page records)
+    thumb_on_disk = Path(PAGE_IMAGE_DIR) / doc_id / "page001_thumb.jpg"
+    if thumb_on_disk.exists():
+        return f"/images/{doc_id}/page001_thumb.jpg"
+
     # Check for album art (audio files)
-    images_dir = Path("data/images") / doc["doc_id"]
+    images_dir = Path("data/images") / doc_id
     if images_dir.exists():
         for ext in ["jpg", "jpeg", "png"]:
             cover_file = images_dir / f"cover.{ext}"
             if cover_file.exists():
-                return f"/documents/{doc['doc_id']}/cover"
+                return f"/documents/{doc_id}/cover"
 
     return None
 
@@ -588,6 +596,39 @@ def _build_page_list_from_koji(page_records: List[Dict]) -> List[PageInfo]:
     return pages
 
 
+def _build_page_list_from_disk(doc_id: str) -> List[PageInfo]:
+    """Build page list from images on disk when Koji has no page records.
+
+    Scans ``PAGE_IMAGE_DIR/{doc_id}/`` for ``pageNNN.png`` files and
+    constructs ``PageInfo`` objects with conventional URL paths.
+
+    Args:
+        doc_id: Document identifier.
+
+    Returns:
+        List of PageInfo objects sorted by page number, or empty list
+        if no images found.
+    """
+    image_dir = Path(PAGE_IMAGE_DIR) / doc_id
+    if not image_dir.is_dir():
+        return []
+
+    pages: List[PageInfo] = []
+    for path in sorted(image_dir.glob("page[0-9][0-9][0-9].png")):
+        page_num = int(path.stem.replace("page", ""))
+        page_str = f"page{page_num:03d}"
+        pages.append(
+            PageInfo(
+                page_number=page_num,
+                image_path=f"/images/{doc_id}/{page_str}.png",
+                thumb_path=f"/images/{doc_id}/{page_str}_thumb.jpg",
+                embedding_id="",
+            )
+        )
+
+    return pages
+
+
 def _build_chunk_list_from_koji(chunk_records: List[Dict]) -> List[ChunkInfo]:
     """Build list of chunk information from Koji chunk records.
 
@@ -684,6 +725,11 @@ async def get_document(doc_id: str):
 
         # Build pages and chunks from Koji records
         pages = _build_page_list_from_koji(page_records)
+
+        # Fall back to disk images when Koji has no page records
+        if not pages:
+            pages = _build_page_list_from_disk(doc_id)
+
         chunks = _build_chunk_list_from_koji(chunk_records)
 
         filename = doc_data.get("filename", "unknown")
@@ -693,7 +739,7 @@ async def get_document(doc_id: str):
         # Build collections list
         has_images = any(p.image_path or p.thumb_path for p in pages)
         collections = []
-        if page_records:
+        if page_records or pages:
             collections.append("visual")
         if chunk_records:
             collections.append("text")

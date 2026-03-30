@@ -26,12 +26,15 @@ from typing import Any, Callable, Dict, List, Optional
 import structlog
 
 from .result_mapper import map_chunk_records, map_document_record, map_page_records
-from .shikomi_ingester import ShikomiIngester
+from .shikomi_ingester import ShikomiIngester, StatusBridge
 
 logger = structlog.get_logger(__name__)
 
 # Visual formats that have renderable pages
 _VISUAL_FORMATS = {".pdf"}
+
+# Office formats converted to PDF for rendering
+_OFFICE_FORMATS = {".pptx", ".docx"}
 
 # Image formats treated as single-page visual documents
 _IMAGE_FORMATS = {".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"}
@@ -151,12 +154,17 @@ class DocumentProcessor:
         try:
             # ---- Stage 1: Ingest via shikomi --------------------------------
             self._emit_status(
-                "pending", filename, "parsing", 0.05,
-                self._parsing_message(file_ext),
+                "pending", filename, "processing", 0.02,
+                "Preparing document",
                 status_callback, start_time,
             )
 
-            result = self.ingester.process(file_path)
+            bridge = (
+                StatusBridge(filename, status_callback, start_time)
+                if status_callback is not None
+                else None
+            )
+            result = self.ingester.process(file_path, status_bridge=bridge)
             doc_id = result.content_hash
 
             logger.info(
@@ -172,9 +180,9 @@ class DocumentProcessor:
             page_images: List[Any] = []  # PIL Image objects
             page_image_bytes: List[bytes] = []
 
-            if file_ext in _VISUAL_FORMATS or file_ext in _IMAGE_FORMATS:
+            if file_ext in _VISUAL_FORMATS or file_ext in _OFFICE_FORMATS or file_ext in _IMAGE_FORMATS:
                 self._emit_status(
-                    doc_id, filename, "embedding_visual", 0.5,
+                    doc_id, filename, "embedding_visual", 0.55,
                     "Rendering page images",
                     status_callback, start_time,
                 )
@@ -190,7 +198,7 @@ class DocumentProcessor:
             visual_embeddings = None
             if page_images:
                 self._emit_status(
-                    doc_id, filename, "embedding_visual", 0.6,
+                    doc_id, filename, "embedding_visual", 0.65,
                     f"Generating visual embeddings for {len(page_images)} pages",
                     status_callback, start_time,
                 )
@@ -271,8 +279,9 @@ class DocumentProcessor:
     ) -> list:
         """Render file pages to PIL Images.
 
-        Uses pypdfium2 for PDFs and PIL for image files.  Returns an
-        empty list for formats without visual pages.
+        Uses pypdfium2 for PDFs, LibreOffice headless conversion for
+        Office formats (PPTX, DOCX), and PIL for image files.  Returns
+        an empty list for formats without visual pages.
 
         Args:
             file_path: Path to the source file.
@@ -291,24 +300,99 @@ class DocumentProcessor:
                 logger.warning("processor.image_open_failed", error=str(exc))
                 return []
 
-        if file_ext == ".pdf":
-            try:
-                import pypdfium2 as pdfium
-
-                pdf = pdfium.PdfDocument(file_path)
-                images = []
-                for page_idx in range(len(pdf)):
-                    page = pdf[page_idx]
-                    bitmap = page.render(scale=150 / 72)  # 150 DPI
-                    img = bitmap.to_pil().convert("RGB")
-                    images.append(img)
-                pdf.close()
-                return images
-            except Exception as exc:
-                logger.warning("processor.pdf_render_failed", error=str(exc))
+        # Office formats: convert to PDF via LibreOffice, then render
+        if file_ext in _OFFICE_FORMATS:
+            pdf_path = DocumentProcessor._convert_office_to_pdf(file_path)
+            if pdf_path is None:
                 return []
+            try:
+                return DocumentProcessor._render_pdf(pdf_path)
+            finally:
+                Path(pdf_path).unlink(missing_ok=True)
+
+        if file_ext == ".pdf":
+            return DocumentProcessor._render_pdf(file_path)
 
         return []
+
+    @staticmethod
+    def _render_pdf(pdf_path: str) -> list:
+        """Render a PDF to PIL Images using pypdfium2.
+
+        Args:
+            pdf_path: Path to the PDF file.
+
+        Returns:
+            List of PIL Image objects, one per page.
+        """
+        try:
+            import pypdfium2 as pdfium
+
+            pdf = pdfium.PdfDocument(pdf_path)
+            images = []
+            for page_idx in range(len(pdf)):
+                page = pdf[page_idx]
+                bitmap = page.render(scale=150 / 72)  # 150 DPI
+                img = bitmap.to_pil().convert("RGB")
+                images.append(img)
+            pdf.close()
+            return images
+        except Exception as exc:
+            logger.warning("processor.pdf_render_failed", error=str(exc))
+            return []
+
+    @staticmethod
+    def _convert_office_to_pdf(file_path: str) -> Optional[str]:
+        """Convert an Office document to PDF using LibreOffice headless.
+
+        Args:
+            file_path: Path to the PPTX/DOCX file.
+
+        Returns:
+            Path to the generated temporary PDF, or ``None`` on failure.
+            Caller is responsible for deleting the temp file.
+        """
+        import subprocess
+        import tempfile
+
+        from shikomi.parser.renderer import discover_soffice
+
+        soffice = discover_soffice()
+        if soffice is None:
+            logger.warning(
+                "processor.soffice_not_found",
+                hint="Install LibreOffice: brew install --cask libreoffice",
+            )
+            return None
+
+        tmp_dir = tempfile.mkdtemp(prefix="docusearch_office_")
+        try:
+            result = subprocess.run(
+                [soffice, "--headless", "--convert-to", "pdf", "--outdir", tmp_dir, file_path],
+                capture_output=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                logger.warning(
+                    "processor.office_convert_failed",
+                    returncode=result.returncode,
+                    stderr=result.stderr.decode(errors="replace").strip(),
+                )
+                return None
+
+            pdf_files = list(Path(tmp_dir).glob("*.pdf"))
+            if not pdf_files:
+                logger.warning("processor.office_convert_no_output")
+                return None
+
+            return str(pdf_files[0])
+
+        except subprocess.TimeoutExpired:
+            logger.warning("processor.office_convert_timeout", file_path=file_path)
+            return None
+        except Exception as exc:
+            logger.warning("processor.office_convert_error", error=str(exc))
+            return None
 
     # -- artifact persistence ------------------------------------------------
 
@@ -377,12 +461,26 @@ class DocumentProcessor:
                 logger.warning("processor.markdown_save_failed", error=str(exc))
 
         # Album art (audio files)
-        try:
-            from .handlers import AlbumArtHandler
+        if result.source_type == "audio":
+            try:
+                from shikomi.parser import extract_album_art
 
-            AlbumArtHandler.save_album_art_if_present(doc_id, result.metadata)
-        except ImportError:
-            pass
+                art = extract_album_art(result.source_path)
+                if art is not None:
+                    art_bytes, mime_type = art
+                    ext = "jpg" if "jpeg" in mime_type else mime_type.split("/")[-1]
+                    art_dir = Path("data/images") / doc_id
+                    art_dir.mkdir(parents=True, exist_ok=True)
+                    art_path = art_dir / f"cover.{ext}"
+                    art_path.write_bytes(art_bytes)
+                    result.metadata["album_art_path"] = str(art_path)
+                    logger.info(
+                        "processor.album_art_saved",
+                        path=str(art_path),
+                        size_kb=len(art_bytes) // 1024,
+                    )
+            except Exception as exc:
+                logger.warning("processor.album_art_failed", error=str(exc))
 
     # -- Koji storage --------------------------------------------------------
 
@@ -412,7 +510,11 @@ class DocumentProcessor:
             StorageError: If storage fails.
         """
         try:
-            num_pages = len(visual_embeddings) if visual_embeddings else None
+            num_pages = (
+                len(visual_embeddings) if visual_embeddings
+                else len(page_image_bytes) if page_image_bytes
+                else None
+            )
 
             # Document record
             doc_record = map_document_record(

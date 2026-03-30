@@ -20,17 +20,103 @@ Example:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Optional
+import time
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import structlog
 
 from shikomi import Ingester, IngestResult
 from shikomi.config import ChunkConfig, RelationConfig, ValidationConfig
+from shikomi.status import StatusManager as ShikomiStatusManager
+from shikomi.status import calculate_progress, get_stage_description
 
 if TYPE_CHECKING:
     from shikomi.embedding import ColNomicEngine
 
+    from .processor import ProcessingStatus
+
 logger = structlog.get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# StatusBridge — forwards Shikomi's internal stage transitions to DocuSearch
+# ---------------------------------------------------------------------------
+
+
+class StatusBridge(ShikomiStatusManager):
+    """Bridges Shikomi's internal status updates to a DocuSearch status callback.
+
+    Subclasses Shikomi's ``StatusManager`` so it can be injected into
+    ``Ingester._status_manager``.  Only the stages that Shikomi handles
+    exclusively (parsing, chunking, text embedding) are forwarded; later
+    stages (visual embedding, storing, completed, failed) are suppressed
+    because ``DocumentProcessor`` emits its own updates for those.
+
+    Args:
+        filename: Original filename for display.
+        status_callback: DocuSearch callback receiving ``ProcessingStatus``.
+        start_time: ``time.time()`` epoch when processing started.
+    """
+
+    # Stages to forward — the rest are handled by DocumentProcessor
+    _FORWARDED = frozenset({"parsing", "chunking", "embedding_text"})
+
+    def __init__(
+        self,
+        filename: str,
+        status_callback: Callable,
+        start_time: float,
+    ) -> None:
+        super().__init__()
+        self._filename = filename
+        self._callback = status_callback
+        self._start_time = start_time
+
+    def create_status(
+        self,
+        doc_id: str,
+        filename: str,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        """No-op — DocuSearch manages entry creation in the worker."""
+
+    def update_status(
+        self,
+        doc_id: str,
+        status: Any,
+        progress: Optional[float] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Forward supported stage transitions to the DocuSearch callback."""
+        status_value = status.value if hasattr(status, "value") else str(status)
+        if status_value not in self._FORWARDED:
+            return
+
+        computed_progress = progress if progress is not None else calculate_progress(status, **kwargs)
+        stage_desc = get_stage_description(status)
+
+        total_chunks = kwargs.get("total_chunks")
+        if total_chunks and status_value == "embedding_text":
+            stage_desc = f"Generating text embeddings ({total_chunks} chunks)"
+
+        from .processor import ProcessingStatus
+
+        self._callback(
+            ProcessingStatus(
+                doc_id=doc_id,
+                filename=self._filename,
+                status=status_value,
+                progress=computed_progress,
+                stage=stage_desc,
+                elapsed_seconds=int(time.time() - self._start_time),
+            )
+        )
+
+    def mark_completed(self, doc_id: str, **kwargs: Any) -> None:
+        """No-op — DocuSearch handles completion."""
+
+    def mark_failed(self, doc_id: str, error: str) -> None:
+        """No-op — DocuSearch handles failure."""
 
 
 class ShikomiIngester:
@@ -142,7 +228,11 @@ class ShikomiIngester:
         """
         return self._ingester.engine
 
-    def process(self, file_path: str) -> IngestResult:
+    def process(
+        self,
+        file_path: str,
+        status_bridge: Optional[StatusBridge] = None,
+    ) -> IngestResult:
         """Process a file through the full ingestion pipeline synchronously.
 
         Delegates to ``shikomi.Ingester.process()`` (async) and bridges
@@ -150,6 +240,8 @@ class ShikomiIngester:
 
         Args:
             file_path: Path to the file to ingest.
+            status_bridge: Optional ``StatusBridge`` for forwarding
+                Shikomi's internal stage transitions to the UI.
 
         Returns:
             ``IngestResult`` containing chunks, embeddings, metadata,
@@ -162,16 +254,21 @@ class ShikomiIngester:
         """
         self._require_connected()
 
-        logger.info("shikomi_ingester.process_start", file_path=file_path)
-        result = self._run_async(self._ingester.process(file_path))
-        logger.info(
-            "shikomi_ingester.process_complete",
-            file_path=file_path,
-            chunk_count=result.chunk_count,
-            processing_time_ms=result.processing_time_ms,
-        )
+        if status_bridge is not None:
+            self._ingester._status_manager = status_bridge
 
-        return result
+        try:
+            logger.info("shikomi_ingester.process_start", file_path=file_path)
+            result = self._run_async(self._ingester.process(file_path))
+            logger.info(
+                "shikomi_ingester.process_complete",
+                file_path=file_path,
+                chunk_count=result.chunk_count,
+                processing_time_ms=result.processing_time_ms,
+            )
+            return result
+        finally:
+            self._ingester._status_manager = None
 
     # -- internal helpers ------------------------------------------------------
 

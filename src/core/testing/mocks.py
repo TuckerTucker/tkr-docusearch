@@ -1206,7 +1206,7 @@ class MockShikomiIngester:
     def health_check(self):
         return {"connected": self._connected, "device": "mock", "quantization": "mock", "mode": "mock"}
 
-    def process(self, file_path: str) -> "IngestResult":
+    def process(self, file_path: str, status_bridge=None) -> "IngestResult":
         if self._result is not None:
             return self._result
         return _make_default_ingest_result(

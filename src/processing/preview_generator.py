@@ -157,24 +157,49 @@ class PreviewGenerator:
             except Exception:
                 return []
 
-        if ext == ".pdf":
-            try:
-                import pypdfium2 as pdfium
+        # Office formats: convert to PDF first, then render the requested page
+        if ext in {".pptx", ".docx"}:
+            from .processor import DocumentProcessor
 
-                pdf = pdfium.PdfDocument(file_path)
-                idx = page_num - 1
-                if idx < 0 or idx >= len(pdf):
-                    pdf.close()
-                    return []
-                page = pdf[idx]
-                bitmap = page.render(scale=150 / 72)
-                img = bitmap.to_pil().convert("RGB")
-                pdf.close()
-                return [img]
-            except Exception:
+            pdf_path = DocumentProcessor._convert_office_to_pdf(file_path)
+            if pdf_path is None:
                 return []
+            try:
+                return PreviewGenerator._render_pdf_page(pdf_path, page_num)
+            finally:
+                Path(pdf_path).unlink(missing_ok=True)
+
+        if ext == ".pdf":
+            return PreviewGenerator._render_pdf_page(file_path, page_num)
 
         return []
+
+    @staticmethod
+    def _render_pdf_page(pdf_path: str, page_num: int) -> list:
+        """Render a single page from a PDF.
+
+        Args:
+            pdf_path: Path to the PDF file.
+            page_num: 1-indexed page number.
+
+        Returns:
+            List containing the rendered PIL Image, or empty list.
+        """
+        try:
+            import pypdfium2 as pdfium
+
+            pdf = pdfium.PdfDocument(pdf_path)
+            idx = page_num - 1
+            if idx < 0 or idx >= len(pdf):
+                pdf.close()
+                return []
+            page = pdf[idx]
+            bitmap = page.render(scale=150 / 72)
+            img = bitmap.to_pil().convert("RGB")
+            pdf.close()
+            return [img]
+        except Exception:
+            return []
 
     def _get_file_path_from_metadata(
         self, doc_id: str, page_num: int
