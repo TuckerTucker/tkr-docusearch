@@ -645,7 +645,17 @@ async def delete_document(request: DeleteRequest):
                 logger.info(f"✓ Temp directories cleanup: {temp_dirs_count} directories deleted")
         except Exception as e:
             logger.error(f"✗ Temp directory cleanup failed: {e}", exc_info=True)
-            # Continue - temp cleanup is not critical
+
+        # 6. Delete uploaded source file
+        upload_deleted = False
+        try:
+            upload_path = UPLOADS_DIR / request.filename
+            if upload_path.exists():
+                upload_path.unlink()
+                upload_deleted = True
+                logger.info(f"✓ Upload file cleanup: {upload_path}")
+        except Exception as e:
+            logger.error(f"✗ Upload file deletion failed: {e}", exc_info=True)
 
         # Summary
         total_filesystem_items = (

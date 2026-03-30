@@ -1463,6 +1463,28 @@ async def delete_document(doc_id: str):  # noqa: C901
             errors.append(error_msg)
             deleted["temp_directories"] = {"status": "error", "message": str(e)}
 
+        # STAGE 7: Delete uploaded source file (LOW priority)
+        try:
+            uploads_dir = Path(
+                os.getenv("UPLOAD_DIR", Path(__file__).parent.parent.parent / "data" / "uploads")
+            )
+            upload_deleted = False
+            if filename:
+                upload_path = uploads_dir / filename
+                if upload_path.exists():
+                    upload_path.unlink()
+                    upload_deleted = True
+                    logger.info(f"Deleted upload file for {doc_id}: {upload_path}")
+            deleted["upload_file"] = {
+                "deleted": upload_deleted,
+                "status": "deleted" if upload_deleted else "not_found",
+            }
+        except Exception as e:
+            error_msg = f"Failed to delete upload file: {str(e)}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
+            deleted["upload_file"] = {"status": "error", "message": str(e)}
+
         # Log summary
         logger.info(f"Document deletion complete for {doc_id}: {len(errors)} non-critical errors")
 
