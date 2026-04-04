@@ -159,9 +159,7 @@ class PreviewGenerator:
 
         # Office formats: convert to PDF first, then render the requested page
         if ext in {".pptx", ".docx"}:
-            from .processor import DocumentProcessor
-
-            pdf_path = DocumentProcessor._convert_office_to_pdf(file_path)
+            pdf_path = PreviewGenerator._convert_office_to_pdf(file_path)
             if pdf_path is None:
                 return []
             try:
@@ -200,6 +198,44 @@ class PreviewGenerator:
             return [img]
         except Exception:
             return []
+
+    @staticmethod
+    def _convert_office_to_pdf(file_path: str) -> Optional[str]:
+        """Convert an Office document to PDF using LibreOffice headless.
+
+        Args:
+            file_path: Path to the PPTX/DOCX file.
+
+        Returns:
+            Path to the generated temporary PDF, or ``None`` on failure.
+            Caller is responsible for deleting the temp file.
+        """
+        import subprocess
+        import tempfile
+
+        from shikomi.parser.renderer import discover_soffice
+
+        soffice = discover_soffice()
+        if soffice is None:
+            logger.warning("preview.soffice_not_found")
+            return None
+
+        tmp_dir = tempfile.mkdtemp(prefix="docusearch_preview_")
+        try:
+            result = subprocess.run(
+                [soffice, "--headless", "--convert-to", "pdf",
+                 "--outdir", tmp_dir, file_path],
+                capture_output=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                return None
+
+            pdf_files = list(Path(tmp_dir).glob("*.pdf"))
+            return str(pdf_files[0]) if pdf_files else None
+
+        except (subprocess.TimeoutExpired, Exception):
+            return None
 
     def _get_file_path_from_metadata(
         self, doc_id: str, page_num: int

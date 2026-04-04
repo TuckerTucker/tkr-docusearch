@@ -1,16 +1,20 @@
 """Synchronous wrapper around shikomi.Ingester.
 
 Bridges the async ``shikomi.Ingester.process()`` method to a synchronous
-``process()`` call using a private event loop. Follows the same pattern
-as ``InProcessEmbeddingEngine`` in ``src/embeddings/in_process_engine.py``.
+``process()`` call using a private event loop.
 
-This allows ``DocumentProcessor`` and other sync callers to drive the
-full ingestion pipeline (parse -> chunk -> embed) without needing to
-manage async contexts themselves.
+Shikomi handles the complete ingest pipeline: parsing, chunking, text
+embedding, page rendering, visual embedding, VTT/markdown generation,
+album art extraction, and relation detection.  The ``renderer`` parameter
+controls page rendering for visual formats (PDF, DOCX, PPTX, images).
 
 Example:
+    >>> from shikomi.parser.renderer import LibreOfficeRenderer
     >>> from processing.shikomi_ingester import ShikomiIngester
-    >>> ingester = ShikomiIngester(device="mps", quantization="4bit")
+    >>> ingester = ShikomiIngester(
+    ...     device="mps", quantization="4bit",
+    ...     renderer=LibreOfficeRenderer(),
+    ... )
     >>> ingester.connect()
     >>> result = ingester.process("document.pdf")
     >>> print(f"Produced {result.chunk_count} chunks")
@@ -32,6 +36,7 @@ from shikomi.status import calculate_progress, get_stage_description
 
 if TYPE_CHECKING:
     from shikomi.embedding import ColNomicEngine
+    from shikomi.parser.renderer import PageRenderer
 
     from .processor import ProcessingStatus
 
@@ -58,8 +63,8 @@ class StatusBridge(ShikomiStatusManager):
         start_time: ``time.time()`` epoch when processing started.
     """
 
-    # Stages to forward — the rest are handled by DocumentProcessor
-    _FORWARDED = frozenset({"parsing", "chunking", "embedding_text"})
+    # Stages to forward — storing/completed/failed handled by DocumentProcessor
+    _FORWARDED = frozenset({"parsing", "chunking", "embedding_text", "embedding_visual"})
 
     def __init__(
         self,
@@ -140,6 +145,8 @@ class ShikomiIngester:
         db: Storage backend for relation building (KojiClient).
         generate_vtt: Whether to generate WebVTT for audio files.
         generate_markdown: Whether to generate markdown export.
+        enable_visual_embeddings: Whether to generate visual embeddings.
+        renderer: Page renderer for visual embedding of documents/images.
         engine: Optional pre-loaded ColNomicEngine for DI/testing.
     """
 
@@ -153,7 +160,9 @@ class ShikomiIngester:
         db: Optional[Any] = None,
         generate_vtt: bool = True,
         generate_markdown: bool = True,
+        enable_visual_embeddings: bool = True,
         *,
+        renderer: Optional[PageRenderer] = None,
         engine: Optional[ColNomicEngine] = None,
     ) -> None:
         self._device = device
@@ -164,11 +173,13 @@ class ShikomiIngester:
             device=device,
             quantization=quantization,
             chunk_config=chunk_config,
+            enable_visual_embeddings=enable_visual_embeddings,
             validation_config=validation_config,
             relation_config=relation_config,
             db=db,
             generate_vtt=generate_vtt,
             generate_markdown=generate_markdown,
+            renderer=renderer,
             engine=engine,
         )
 
@@ -285,10 +296,24 @@ class ShikomiIngester:
         Safe to call from ``ThreadPoolExecutor`` workers because the loop
         is private to this instance and not shared with FastAPI.
 
+        If the loop is in a broken state (e.g. after a prior timeout or
+        cancellation), it is replaced with a fresh loop so that
+        subsequent calls can proceed.
+
         Args:
             coro: Awaitable coroutine to execute.
 
         Returns:
             The coroutine's return value.
         """
-        return self._loop.run_until_complete(coro)
+        try:
+            return self._loop.run_until_complete(coro)
+        except RuntimeError as exc:
+            if "already running" in str(exc) or self._loop.is_closed():
+                logger.warning(
+                    "shikomi_ingester.loop_reset",
+                    reason=str(exc),
+                )
+                self._loop = asyncio.new_event_loop()
+                return self._loop.run_until_complete(coro)
+            raise

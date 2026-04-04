@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.processing.shikomi_ingester import ShikomiIngester
+from src.processing.shikomi_ingester import ShikomiIngester, StatusBridge
 
 
 # ---------------------------------------------------------------------------
@@ -154,3 +154,53 @@ class TestShikomiIngesterProcess:
 
         assert result is mock_result
         ingester.close()
+
+
+# ---------------------------------------------------------------------------
+# Renderer passthrough test
+# ---------------------------------------------------------------------------
+
+
+class TestShikomiIngesterRenderer:
+    """Tests for renderer and visual embedding passthrough."""
+
+    @patch("src.processing.shikomi_ingester.Ingester")
+    def test_renderer_passed_to_ingester(
+        self, mock_ingester_cls: MagicMock,
+    ) -> None:
+        """renderer kwarg is forwarded to the inner Ingester."""
+        mock_renderer = MagicMock()
+
+        ShikomiIngester(renderer=mock_renderer)
+
+        call_kwargs = mock_ingester_cls.call_args
+        assert call_kwargs.kwargs.get("renderer") is mock_renderer
+
+    @patch("src.processing.shikomi_ingester.Ingester")
+    def test_enable_visual_passed_to_ingester(
+        self, mock_ingester_cls: MagicMock,
+    ) -> None:
+        """enable_visual_embeddings is forwarded to the inner Ingester."""
+        ShikomiIngester(enable_visual_embeddings=False)
+
+        call_kwargs = mock_ingester_cls.call_args
+        assert call_kwargs.kwargs.get("enable_visual_embeddings") is False
+
+
+# ---------------------------------------------------------------------------
+# StatusBridge forwarding test
+# ---------------------------------------------------------------------------
+
+
+class TestStatusBridgeForwarding:
+    """Tests for StatusBridge stage forwarding."""
+
+    def test_forwarded_stages_include_embedding_visual(self) -> None:
+        """StatusBridge forwards embedding_visual stage to DocuSearch."""
+        assert "embedding_visual" in StatusBridge._FORWARDED
+
+    def test_forwarded_stages(self) -> None:
+        """StatusBridge forwards the expected set of stages."""
+        assert StatusBridge._FORWARDED == frozenset({
+            "parsing", "chunking", "embedding_text", "embedding_visual",
+        })

@@ -30,6 +30,7 @@ from ..embeddings.query_engine import QueryEngine
 
 # Import documents API router (Wave 3)
 from .documents_api import router as documents_router
+from .documents_api import set_storage_client as set_documents_storage
 from shikomi.types import FileFormat
 
 # Import cleanup utilities
@@ -948,18 +949,27 @@ async def startup_event():
         logger.info(f"Opening Koji database ({koji_config.db_path})...")
         storage_client = KojiClient(koji_config)
         storage_client.open()
+        set_documents_storage(storage_client)
         logger.info("Koji database opened")
 
-        # Initialize ShikomiIngester (parser + embeddings in one)
+        # Initialize page renderer for visual embedding
+        from shikomi.config import RenderConfig
+        from shikomi.parser.renderer import LibreOfficeRenderer
+
+        render_config = RenderConfig(dpi=150)
+        renderer = LibreOfficeRenderer(render_config)
+
+        # Initialize ShikomiIngester (parser + rendering + embeddings)
         ingester = ShikomiIngester(
             device=os.getenv("DEVICE", "mps"),
             quantization=os.getenv("MODEL_PRECISION", "fp16"),
             generate_vtt=True,
             generate_markdown=True,
             db=storage_client,
+            renderer=renderer,
         )
         ingester.connect()
-        logger.info("✓ ShikomiIngester connected")
+        logger.info("✓ ShikomiIngester connected (with page renderer)")
 
         # Initialize QueryEngine sharing the ingester's ColNomicEngine
         query_engine = QueryEngine(engine=ingester.engine)

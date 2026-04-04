@@ -78,8 +78,8 @@ class TestPipelineEndToEnd:
     # 4. DOCX text-only
     # ------------------------------------------------------------------
 
-    def test_docx_text_only(self, make_processor, koji_storage, sample_docx):
-        """Process sample.docx and verify text-only storage (no visual pages)."""
+    def test_docx_produces_visual_pages(self, make_processor, koji_storage, sample_docx):
+        """Process sample.docx and verify visual page records are stored."""
         processor = make_processor(storage=koji_storage)
         confirmation = processor.process_document(str(sample_docx))
 
@@ -90,8 +90,8 @@ class TestPipelineEndToEnd:
         assert len(chunks) > 0, "DOCX should produce text chunks"
 
         pages = koji_storage.get_pages_for_document(confirmation.doc_id)
-        assert len(pages) == 0, (
-            "Text-only format should produce no visual page records"
+        assert len(pages) > 0, (
+            "DOCX should produce visual page records via renderer"
         )
 
     # ------------------------------------------------------------------

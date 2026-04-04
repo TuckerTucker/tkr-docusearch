@@ -1261,12 +1261,38 @@ def _make_default_ingest_result(
             num_tokens=64, dim=embedding_dim, data=data,
         ))
 
+    # Generate visual data for renderable formats (PDF, Office, images)
+    ext = os.path.splitext(filename)[1].lower()
+    visual_exts = {".pdf", ".docx", ".pptx", ".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"}
+    visual_embeddings = None
+    page_images = None
+
+    if ext in visual_exts:
+        # Simulate 1 page for images, 2 for documents
+        num_pages = 1 if ext in {".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"} else 2
+        visual_embeddings = []
+        page_images = []
+        for _ in range(num_pages):
+            vis_data = np.random.randn(48, embedding_dim).astype(np.float32)
+            vis_data = vis_data / np.linalg.norm(vis_data, axis=1, keepdims=True)
+            visual_embeddings.append(MultiVectorEmbedding(
+                num_tokens=48, dim=embedding_dim, data=vis_data,
+            ))
+            # Minimal valid PNG bytes for testing
+            page_images.append(b"\x89PNG\r\n\x1a\nfake_page_image")
+
+    # Determine source_type from extension
+    image_exts = {".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"}
+    source_type = "image" if ext in image_exts else "document"
+
     return IngestResult(
         chunks=chunks,
         text_embeddings=text_embeddings,
+        visual_embeddings=visual_embeddings,
+        page_images=page_images,
         metadata={"filename": filename, "format_type": "document"},
         source_path=file_path,
-        source_type="document",
+        source_type=source_type,
         content_hash=content_hash,
         chunk_count=num_chunks,
         processing_time_ms=100.0,
