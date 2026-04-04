@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import struct
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -193,6 +193,21 @@ DOCUSEARCH_SCHEMA: dict = {
             "dst_doc_id": {"type": "text", "primary_key": True},
             "relation_type": {"type": "text", "primary_key": True},
             "metadata": {"type": "text"},
+        },
+    },
+    "processing_jobs": {
+        "columns": {
+            "doc_id": {"type": "text", "primary_key": True},
+            "filename": {"type": "text"},
+            "file_path": {"type": "text"},
+            "project_id": {"type": "text"},
+            "status": {"type": "text"},
+            "progress": {"type": "float"},
+            "stage": {"type": "text"},
+            "error": {"type": "text"},
+            "queued_at": {"type": "text"},
+            "started_at": {"type": "text"},
+            "completed_at": {"type": "text"},
         },
     },
 }
@@ -1106,6 +1121,277 @@ class KojiClient:
                 error=str(exc),
             )
         self._after_write()
+
+    # -- processing jobs CRUD ------------------------------------------------
+
+    def create_job(
+        self,
+        doc_id: str,
+        filename: str,
+        file_path: str,
+        project_id: str = "default",
+    ) -> None:
+        """Create a processing job in the queue.
+
+        Args:
+            doc_id: Document identifier (SHA-256 hash of file content).
+            filename: Original filename.
+            file_path: Absolute path to the uploaded file.
+            project_id: Project to assign the document to.
+
+        Raises:
+            KojiDuplicateError: If a job with this doc_id already exists.
+        """
+        self._require_open()
+        now = datetime.now(timezone.utc).isoformat()
+        record = {
+            "doc_id": doc_id,
+            "filename": filename,
+            "file_path": file_path,
+            "project_id": project_id,
+            "status": "queued",
+            "progress": 0.0,
+            "stage": "Queued",
+            "error": None,
+            "queued_at": now,
+            "started_at": None,
+            "completed_at": None,
+        }
+        table = pa.table(
+            {k: [v] for k, v in record.items()},
+            schema=pa.schema([
+                pa.field("doc_id", pa.string(), nullable=False),
+                pa.field("filename", pa.string()),
+                pa.field("file_path", pa.string()),
+                pa.field("project_id", pa.string()),
+                pa.field("status", pa.string()),
+                pa.field("progress", pa.float64()),
+                pa.field("stage", pa.string()),
+                pa.field("error", pa.string()),
+                pa.field("queued_at", pa.string()),
+                pa.field("started_at", pa.string()),
+                pa.field("completed_at", pa.string()),
+            ]),
+        )
+        try:
+            self._db.insert("processing_jobs", table)
+            self._after_write()
+            logger.info(
+                "koji_client.job_created",
+                doc_id=doc_id,
+                filename=filename,
+            )
+        except Exception as exc:
+            if "duplicate" in str(exc).lower():
+                raise KojiDuplicateError(
+                    f"Job already exists: {doc_id}"
+                ) from exc
+            raise KojiQueryError(f"Create job failed: {exc}") from exc
+
+    def claim_next_job(self) -> Optional[dict[str, Any]]:
+        """Claim the oldest queued job for processing.
+
+        Atomically selects the oldest ``status='queued'`` row and
+        updates it to ``status='processing'``.
+
+        Returns:
+            Job dict with all fields, or None if no queued jobs.
+        """
+        self._require_open()
+        try:
+            result = self._db.query(
+                "SELECT * FROM processing_jobs "
+                "WHERE status = 'queued' "
+                "ORDER BY queued_at ASC LIMIT 1"
+            )
+            if result.num_rows == 0:
+                return None
+
+            job = self._arrow_row_to_dict(result)
+            doc_id = job["doc_id"]
+            safe_id = _sanitize_sql_value(doc_id)
+            now = datetime.now(timezone.utc).isoformat()
+
+            self._db.update(
+                "processing_jobs",
+                {"status": "processing", "started_at": now},
+                f"doc_id = '{safe_id}'",
+            )
+            self._after_write()
+
+            job["status"] = "processing"
+            job["started_at"] = now
+            logger.info("koji_client.job_claimed", doc_id=doc_id)
+            return job
+
+        except Exception as exc:
+            logger.warning("koji_client.claim_job_error", error=str(exc))
+            return None
+
+    def update_job_progress(
+        self,
+        doc_id: str,
+        status: str,
+        progress: float,
+        stage: str,
+    ) -> None:
+        """Update a job's processing progress.
+
+        Args:
+            doc_id: Job identifier.
+            status: Current status string.
+            progress: Progress fraction (0.0 to 1.0).
+            stage: Human-readable stage description.
+        """
+        self._require_open()
+        safe_id = _sanitize_sql_value(doc_id)
+        try:
+            self._db.update(
+                "processing_jobs",
+                {"status": status, "progress": progress, "stage": stage},
+                f"doc_id = '{safe_id}'",
+            )
+        except Exception as exc:
+            logger.debug(
+                "koji_client.update_job_progress_error",
+                doc_id=doc_id,
+                error=str(exc),
+            )
+
+    def complete_job(self, doc_id: str) -> None:
+        """Mark a job as completed.
+
+        Args:
+            doc_id: Job identifier.
+        """
+        self._require_open()
+        safe_id = _sanitize_sql_value(doc_id)
+        now = datetime.now(timezone.utc).isoformat()
+        self._db.update(
+            "processing_jobs",
+            {
+                "status": "completed",
+                "progress": 1.0,
+                "stage": "Completed",
+                "completed_at": now,
+            },
+            f"doc_id = '{safe_id}'",
+        )
+        self._after_write()
+        logger.info("koji_client.job_completed", doc_id=doc_id)
+
+    def fail_job(self, doc_id: str, error: str) -> None:
+        """Mark a job as failed.
+
+        Args:
+            doc_id: Job identifier.
+            error: Error message describing the failure.
+        """
+        self._require_open()
+        safe_id = _sanitize_sql_value(doc_id)
+        now = datetime.now(timezone.utc).isoformat()
+        self._db.update(
+            "processing_jobs",
+            {
+                "status": "failed",
+                "progress": 0.0,
+                "stage": "Failed",
+                "error": error,
+                "completed_at": now,
+            },
+            f"doc_id = '{safe_id}'",
+        )
+        self._after_write()
+        logger.warning("koji_client.job_failed", doc_id=doc_id, error=error)
+
+    def get_job(self, doc_id: str) -> Optional[dict[str, Any]]:
+        """Get a processing job by doc_id.
+
+        Args:
+            doc_id: Job identifier.
+
+        Returns:
+            Job dict or None if not found.
+        """
+        self._require_open()
+        safe_id = _sanitize_sql_value(doc_id)
+        try:
+            result = self._db.query(
+                f"SELECT * FROM processing_jobs "
+                f"WHERE doc_id = '{safe_id}'"
+            )
+            if result.num_rows == 0:
+                return None
+            return self._arrow_row_to_dict(result)
+        except Exception:
+            return None
+
+    def list_jobs(
+        self,
+        status: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """List processing jobs, optionally filtered by status.
+
+        Args:
+            status: Filter by status (queued, processing, completed, failed).
+            limit: Maximum number of results.
+
+        Returns:
+            List of job dicts, most recent first.
+        """
+        self._require_open()
+        if status is not None:
+            safe_status = _sanitize_sql_value(status)
+            sql = (
+                f"SELECT * FROM processing_jobs "
+                f"WHERE status = '{safe_status}' "
+                f"ORDER BY queued_at DESC LIMIT {int(limit)}"
+            )
+        else:
+            sql = (
+                f"SELECT * FROM processing_jobs "
+                f"ORDER BY queued_at DESC LIMIT {int(limit)}"
+            )
+        try:
+            result = self._db.query(sql)
+            return [
+                dict(zip(result.column_names, [col[i].as_py() for col in result.columns]))
+                for i in range(result.num_rows)
+            ]
+        except Exception:
+            return []
+
+    def cleanup_old_jobs(self, max_age_seconds: int = 86400) -> int:
+        """Delete completed and failed jobs older than the given age.
+
+        Args:
+            max_age_seconds: Maximum age in seconds (default 24 hours).
+
+        Returns:
+            Number of jobs deleted.
+        """
+        self._require_open()
+        cutoff = (
+            datetime.now(timezone.utc)
+            - timedelta(seconds=max_age_seconds)
+        ).isoformat()
+        try:
+            result = self._db.delete(
+                "processing_jobs",
+                f"status IN ('completed', 'failed') "
+                f"AND completed_at < '{cutoff}'",
+            )
+            self._after_write()
+            deleted = getattr(result, "rows_deleted", 0)
+            if deleted:
+                logger.info(
+                    "koji_client.jobs_cleaned",
+                    deleted=deleted,
+                )
+            return deleted
+        except Exception:
+            return 0
 
     def get_related_documents(
         self,
