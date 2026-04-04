@@ -40,6 +40,7 @@ NC='\033[0m'
 FORCE_MODE="${1:-}"
 FRONTEND_PORT=${VITE_FRONTEND_PORT:-3333}
 WORKER_PID_FILE="${PROJECT_ROOT}/.worker.pid"
+PROC_WORKER_PID_FILE="${PROJECT_ROOT}/.processing-worker.pid"
 RESEARCH_PID_FILE="${PROJECT_ROOT}/.research-api.pid"
 FRONTEND_PID_FILE="${PROJECT_ROOT}/.frontend.pid"
 NGROK_PID_FILE="${PROJECT_ROOT}/.ngrok.pid"
@@ -139,6 +140,31 @@ stop_native_worker() {
             done
             print_status "Orphaned workers" "ok" "Stopped"
         fi
+    fi
+}
+
+stop_processing_worker() {
+    echo -e "\n${CYAN}Stopping processing worker...${NC}\n"
+
+    if [ -f "$PROC_WORKER_PID_FILE" ]; then
+        local pid=$(cat "$PROC_WORKER_PID_FILE")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            kill "$pid" 2>/dev/null || true
+            local count=0
+            while ps -p "$pid" > /dev/null 2>&1 && [ $count -lt 10 ]; do
+                sleep 1
+                count=$((count + 1))
+            done
+            if ps -p "$pid" > /dev/null 2>&1; then
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+            print_status "Processing Worker" "ok" "Stopped"
+        else
+            print_status "Processing Worker" "info" "Not running"
+        fi
+        rm -f "$PROC_WORKER_PID_FILE"
+    else
+        print_status "Processing Worker" "info" "No PID file found"
     fi
 }
 
@@ -495,6 +521,7 @@ else
 fi
 
 stop_native_worker
+stop_processing_worker
 stop_research_api
 stop_frontend
 stop_ngrok

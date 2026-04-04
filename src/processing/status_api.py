@@ -1,103 +1,122 @@
-"""
-Status API endpoints for document processing.
+"""Status API endpoints for document processing.
 
-Provides HTTP endpoints for querying document processing status and queue information.
-
-Provider: api-endpoints-agent
-Consumers: monitoring-logic-agent (Wave 3), upload-logic-agent (Wave 3)
-Contract: status-api.contract.md
+Reads processing job status from the ``processing_jobs`` table in Koji.
+Falls back to the in-memory ``StatusManager`` for backward compatibility
+with tests that don't use the job queue.
 """
 
 import logging
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
 from .status_manager import StatusManager
-from .status_models import ErrorResponse, ProcessingStatus, QueueResponse
+from .status_models import (
+    ErrorResponse,
+    ProcessingStatus,
+    ProcessingStatusEnum,
+    QueueItem,
+    QueueResponse,
+)
 
 logger = logging.getLogger(__name__)
 
-# Router for status endpoints
 router = APIRouter(prefix="/status", tags=["status"])
 
-# StatusManager instance (will be injected at startup)
 _status_manager: Optional[StatusManager] = None
+_koji_client: Optional[Any] = None
 
 
 def set_status_manager(manager: StatusManager) -> None:
-    """
-    Set the StatusManager instance for this API router.
-
-    Args:
-        manager: StatusManager instance to use
-    """
+    """Set the StatusManager instance (legacy in-memory fallback)."""
     global _status_manager
     _status_manager = manager
     logger.info("Status API router initialized with StatusManager")
 
 
-def get_status_manager() -> StatusManager:
-    """
-    Get the StatusManager instance.
+def set_status_koji_client(client: Any) -> None:
+    """Set the KojiClient for reading processing_jobs."""
+    global _koji_client
+    _koji_client = client
 
-    Returns:
-        StatusManager instance
 
-    Raises:
-        RuntimeError: If StatusManager not initialized
-    """
-    if _status_manager is None:
-        raise RuntimeError("StatusManager not initialized. Call set_status_manager() first.")
-    return _status_manager
+def _job_to_queue_item(job: dict) -> QueueItem:
+    """Convert a Koji processing_jobs row to a QueueItem."""
+    status_str = job.get("status", "queued")
+    try:
+        status_enum = ProcessingStatusEnum(status_str)
+    except ValueError:
+        status_enum = ProcessingStatusEnum.QUEUED
+
+    queued_at = job.get("queued_at") or datetime.now(timezone.utc).isoformat()
+    try:
+        ts = datetime.fromisoformat(queued_at.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        ts = datetime.now(timezone.utc)
+
+    started = job.get("started_at")
+    elapsed = 0.0
+    if started:
+        try:
+            start_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+            elapsed = (datetime.now(timezone.utc) - start_dt).total_seconds()
+        except (ValueError, AttributeError):
+            pass
+
+    return QueueItem(
+        doc_id=job["doc_id"],
+        filename=job.get("filename", "unknown"),
+        status=status_enum,
+        progress=job.get("progress", 0.0) or 0.0,
+        elapsed_time=elapsed,
+        timestamp=ts,
+        error=job.get("error"),
+    )
 
 
 # ============================================================================
 # Endpoints
 # ============================================================================
-# NOTE: Specific routes (/queue, /health, /) must come BEFORE the /{doc_id}
-# catch-all route. FastAPI matches routes in definition order.
 
 
 @router.get(
     "/queue",
     response_model=QueueResponse,
-    responses={
-        200: {"description": "Queue retrieved successfully"},
-    },
     summary="Get processing queue",
-    description="Retrieve all documents currently being processed or queued",
 )
 async def get_processing_queue(
-    status: Optional[str] = Query(
-        None,
-        description="Filter by status (queued, parsing, embedding_visual, etc.)",
-    ),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results to return"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(100, ge=1, le=1000),
 ) -> QueueResponse:
-    """
-    Get all documents in processing queue.
+    """Get all documents in the processing queue."""
+    if _koji_client is not None:
+        jobs = _koji_client.list_jobs(status=status, limit=limit)
+        queue_items = [_job_to_queue_item(j) for j in jobs]
 
-    Args:
-        status: Optional status filter
-        limit: Maximum number of results (1-1000)
+        all_jobs = _koji_client.list_jobs(limit=1000)
+        active = sum(1 for j in all_jobs if j["status"] in ("queued", "processing"))
+        completed = sum(1 for j in all_jobs if j["status"] == "completed")
+        failed = sum(1 for j in all_jobs if j["status"] == "failed")
 
-    Returns:
-        QueueResponse with queue items and statistics
-    """
-    manager = get_status_manager()
+        return QueueResponse(
+            queue=queue_items,
+            total=len(all_jobs),
+            active=active,
+            completed=completed,
+            failed=failed,
+        )
 
-    # Get all queue items
-    queue_items = manager.list_as_queue_items(limit=limit)
+    # Fallback: in-memory StatusManager
+    if _status_manager is None:
+        return QueueResponse(queue=[], total=0, active=0, completed=0, failed=0)
 
-    # Apply status filter if provided
+    queue_items = _status_manager.list_as_queue_items(limit=limit)
     if status is not None:
-        queue_items = [item for item in queue_items if item.status.value == status]
+        queue_items = [i for i in queue_items if i.status.value == status]
+    counts = _status_manager.count_by_status()
 
-    # Get counts
-    counts = manager.count_by_status()
-
-    response = QueueResponse(
+    return QueueResponse(
         queue=queue_items,
         total=counts["total"],
         active=counts["active"],
@@ -105,119 +124,94 @@ async def get_processing_queue(
         failed=counts["failed"],
     )
 
-    logger.debug(
-        f"Retrieved queue: {len(queue_items)} items "
-        f"(active: {counts['active']}, completed: {counts['completed']}, "
-        f"failed: {counts['failed']})"
-    )
-
-    return response
-
-
-# ============================================================================
-# Health/Info Endpoints
-# ============================================================================
-
 
 @router.get(
     "/health",
-    responses={200: {"description": "Status API is healthy"}},
     summary="Health check",
-    description="Check if the status API is operational",
-    include_in_schema=True,
 )
 async def health_check():
-    """
-    Health check endpoint.
+    """Check if the status API is operational."""
+    if _koji_client is not None:
+        jobs = _koji_client.list_jobs(limit=1000)
+        active = sum(1 for j in jobs if j["status"] in ("queued", "processing"))
+        completed = sum(1 for j in jobs if j["status"] == "completed")
+        failed = sum(1 for j in jobs if j["status"] == "failed")
+        return {
+            "status": "healthy",
+            "service": "status-api",
+            "queue_stats": {
+                "total": len(jobs),
+                "active": active,
+                "completed": completed,
+                "failed": failed,
+            },
+        }
 
-    Returns:
-        Health status information
-    """
-    manager = get_status_manager()
-    counts = manager.count_by_status()
+    if _status_manager is not None:
+        counts = _status_manager.count_by_status()
+        return {
+            "status": "healthy",
+            "service": "status-api",
+            "queue_stats": counts,
+        }
 
-    return {
-        "status": "healthy",
-        "service": "status-api",
-        "queue_stats": counts,
-    }
+    return {"status": "healthy", "service": "status-api", "queue_stats": {}}
 
 
 @router.get(
     "/",
     response_model=QueueResponse,
-    responses={
-        200: {"description": "Queue retrieved successfully"},
-    },
-    summary="Get processing queue (root)",
-    description="Alias for /status/queue endpoint",
-    include_in_schema=False,  # Hide from docs (prefer /queue)
+    include_in_schema=False,
 )
 async def get_processing_queue_root(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum results to return"),
+    status: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
 ) -> QueueResponse:
-    """
-    Get all documents in processing queue (root endpoint).
-
-    This is an alias for GET /status/queue for convenience.
-    """
+    """Alias for /status/queue."""
     return await get_processing_queue(status=status, limit=limit)
 
 
 # ============================================================================
-# Document Status (catch-all path parameter route — must be LAST)
+# Document Status (catch-all — must be LAST)
 # ============================================================================
 
 
 @router.get(
     "/{doc_id}",
-    response_model=ProcessingStatus,
     responses={
-        200: {"description": "Document status retrieved successfully"},
-        404: {
-            "description": "Document not found",
-            "model": ErrorResponse,
-        },
+        200: {"description": "Document status retrieved"},
+        404: {"description": "Document not found", "model": ErrorResponse},
     },
     summary="Get document status",
-    description="Retrieve the current processing status for a specific document by doc_id",
 )
-async def get_document_status(doc_id: str) -> ProcessingStatus:
-    """
-    Get status for a specific document.
+async def get_document_status(doc_id: str):
+    """Get processing status for a specific document."""
+    # Try Koji job queue first
+    if _koji_client is not None:
+        job = _koji_client.get_job(doc_id)
+        if job is not None:
+            item = _job_to_queue_item(job)
+            return {
+                "doc_id": item.doc_id,
+                "filename": item.filename,
+                "status": item.status.value,
+                "progress": item.progress,
+                "stage": job.get("stage", ""),
+                "elapsed_time": item.elapsed_time,
+                "error": item.error,
+            }
 
-    Args:
-        doc_id: SHA-256 document hash
+    # Fallback: in-memory StatusManager
+    if _status_manager is not None:
+        status = _status_manager.get_status(doc_id)
+        if status is not None:
+            return status
 
-    Returns:
-        ProcessingStatus object
-
-    Raises:
-        HTTPException: 404 if document not found
-    """
-    manager = get_status_manager()
-
-    status = manager.get_status(doc_id)
-
-    if status is None:
-        logger.warning(f"Document not found: {doc_id}")
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "Document not found",
-                "code": "DOCUMENT_NOT_FOUND",
-                "details": {"doc_id": doc_id},
-            },
-        )
-
-    logger.debug(f"Retrieved status for document {doc_id}: {status.status.value}")
-    return status
-
-
-# ============================================================================
-# CORS Middleware Configuration
-# ============================================================================
-
-# CORS headers are configured at the FastAPI app level
-# See worker_webhook.py for CORS middleware setup
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "error": "Document not found",
+            "code": "DOCUMENT_NOT_FOUND",
+            "details": {"doc_id": doc_id},
+        },
+    )

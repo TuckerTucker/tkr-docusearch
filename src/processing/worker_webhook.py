@@ -37,7 +37,7 @@ from shikomi.types import FileFormat
 # Import cleanup utilities
 from .image_utils import cleanup_temp_directories, delete_document_images
 from .status_api import router as status_router
-from .status_api import set_status_manager
+from .status_api import set_status_koji_client, set_status_manager
 
 # Import status management components
 from .status_manager import StatusManager, get_status_manager
@@ -692,6 +692,7 @@ async def startup_event():
         koji_client = KojiClient(koji_config)
         koji_client.open()
         set_documents_storage(koji_client)
+        set_status_koji_client(koji_client)
         logger.info("Koji database opened")
 
     except Exception as e:

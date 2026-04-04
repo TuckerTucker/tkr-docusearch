@@ -162,6 +162,35 @@ start_native_worker() {
     fi
 }
 
+start_processing_worker() {
+    echo -e "\n${CYAN}Starting processing worker...${NC}\n"
+
+    PROC_WORKER_PID_FILE="${PROJECT_ROOT}/.processing-worker.pid"
+
+    if [ -f "$PROC_WORKER_PID_FILE" ]; then
+        local old_pid=$(cat "$PROC_WORKER_PID_FILE")
+        if ps -p "$old_pid" > /dev/null 2>&1; then
+            print_status "Processing Worker" "warn" "Already running (PID: $old_pid)"
+            return
+        else
+            rm -f "$PROC_WORKER_PID_FILE"
+        fi
+    fi
+
+    nohup python3 -m tkr_docusearch.processing.worker > logs/processing-worker.log 2>&1 &
+    local pid=$!
+    echo $pid > "$PROC_WORKER_PID_FILE"
+
+    # Wait briefly for startup
+    sleep 2
+    if ps -p "$pid" > /dev/null 2>&1; then
+        print_status "Processing Worker" "ok" "Running (PID: $pid)"
+    else
+        print_status "Processing Worker" "error" "Failed to start (check logs/processing-worker.log)"
+        rm -f "$PROC_WORKER_PID_FILE"
+    fi
+}
+
 start_ngrok() {
     echo -e "\n${CYAN}Starting ngrok tunnel (for vision mode)...${NC}\n"
 
@@ -504,6 +533,7 @@ echo ""
 
 # Start services
 start_native_worker
+start_processing_worker
 
     # Wait for worker to be fully ready before starting ngrok
     if [ "$VISION_ENABLED" = true ]; then
