@@ -222,17 +222,42 @@ def validate_filename(filename: str) -> bool:
     return bool(FILENAME_PATTERN.match(filename))
 
 
+_shared_storage_client: KojiClient | None = None
+
+
+def set_storage_client(client: KojiClient | None) -> None:
+    """Inject the shared storage client.
+
+    Called once at worker startup to share the single ``KojiClient``
+    instance with the documents router.  Prevents opening duplicate
+    Lance connections which cause database corruption.
+
+    Args:
+        client: The worker's ``KojiClient`` instance, or ``None``
+            to clear.
+    """
+    global _shared_storage_client
+    _shared_storage_client = client
+
+
 def get_storage_client() -> KojiClient:
-    """Get Koji storage client instance.
+    """Get the shared Koji storage client.
+
+    Returns the instance injected by ``set_storage_client()``.
+    Falls back to creating a new connection if none was injected
+    (for backward compatibility in tests).
 
     Returns:
-        KojiClient instance
+        KojiClient instance.
 
     Raises:
-        HTTPException: If client initialization fails
+        HTTPException: If no client is available.
     """
+    if _shared_storage_client is not None:
+        return _shared_storage_client
+
+    # Fallback: create a new connection (legacy behavior)
     try:
-        import os
         from tkr_docusearch.config.koji_config import KojiConfig
 
         config = KojiConfig.from_env()
