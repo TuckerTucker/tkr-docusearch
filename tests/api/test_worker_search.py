@@ -15,7 +15,7 @@ module-level globals to avoid starting real services or loading embeddings.
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -59,32 +59,26 @@ def test_client(tmp_path):
     """TestClient with patched worker globals.
 
     Patches module-level globals on the worker_webhook module so the
-    FastAPI app can be exercised without real infrastructure.
+    API server can be exercised without real infrastructure.
 
     Yields:
         Tuple of (TestClient, mock_search_engine) so tests can configure
         the mock's return_value before making requests.
     """
-    # Save originals
-    orig_query_engine = ww.query_engine
-    orig_processor = ww.document_processor
-    orig_ingester = ww.ingester
-    orig_status_manager = ww.status_manager
-    orig_uploads_dir = ww.UPLOADS_DIR
-    orig_loop = ww._loop
-    orig_executor = ww.executor
-    orig_processing_status = ww.processing_status
-    orig_pending_uploads = ww.pending_uploads
+    originals = {
+        "koji_client": ww.koji_client,
+        "query_engine": ww.query_engine,
+        "status_manager": ww.status_manager,
+        "UPLOADS_DIR": ww.UPLOADS_DIR,
+        "processing_status": ww.processing_status,
+        "pending_uploads": ww.pending_uploads,
+    }
 
-    # Patch globals
+    ww.koji_client = MagicMock()
     ww.query_engine = MagicMock()
-    ww.document_processor = MagicMock()
-    ww.ingester = MagicMock()
     ww.status_manager = MagicMock()
     ww.UPLOADS_DIR = tmp_path / "uploads"
     ww.UPLOADS_DIR.mkdir()
-    ww._loop = asyncio.new_event_loop()
-    ww.executor = MagicMock()
     ww.processing_status = {}
     ww.pending_uploads = {}
 
@@ -97,16 +91,8 @@ def test_client(tmp_path):
     client = TestClient(ww.app, raise_server_exceptions=False)
     yield client, mock_search
 
-    # Restore originals
-    ww.query_engine = orig_query_engine
-    ww.document_processor = orig_processor
-    ww.ingester = orig_ingester
-    ww.status_manager = orig_status_manager
-    ww.UPLOADS_DIR = orig_uploads_dir
-    ww._loop = orig_loop
-    ww.executor = orig_executor
-    ww.processing_status = orig_processing_status
-    ww.pending_uploads = orig_pending_uploads
+    for attr, value in originals.items():
+        setattr(ww, attr, value)
 
     if hasattr(ww.app.state, "search_engine"):
         del ww.app.state.search_engine
@@ -222,15 +208,18 @@ class TestWorkerSearch:
             query="limited", n_results=5, search_mode="hybrid"
         )
 
-    def test_search_engine_not_ready_returns_503(self, test_client):
-        """When query_engine is None the endpoint returns 503."""
+    def test_search_engine_load_failure_returns_503(self, test_client):
+        """When QueryEngine fails to load, the endpoint returns 503."""
         client, _mock_search = test_client
 
-        # Simulate search engine not initialized
         orig = ww.query_engine
         ww.query_engine = None
         try:
-            response = client.post("/search", json={"query": "anything"})
+            with patch(
+                "src.processing.worker_webhook.QueryEngine",
+                side_effect=RuntimeError("Model not found"),
+            ):
+                response = client.post("/search", json={"query": "anything"})
         finally:
             ww.query_engine = orig
 

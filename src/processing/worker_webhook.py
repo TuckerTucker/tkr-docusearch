@@ -1,8 +1,14 @@
-"""
-Document Processing Worker for DocuSearch MVP - Webhook Version.
+"""DocuSearch API Server.
 
-HTTP server that processes documents when triggered by upload webhook.
-Extracts text, generates embeddings, and stores in Koji.
+HTTP server for document upload, search, status, and retrieval.
+Document processing is handled by a separate headless worker
+(``src/processing/worker.py``).
+
+This server:
+- Accepts file uploads and creates processing jobs in Koji
+- Serves document metadata, pages, and search results
+- Broadcasts processing status via WebSocket
+- Does NOT load GPU models or process documents directly
 """
 
 import asyncio
@@ -10,7 +16,6 @@ import hashlib
 import json
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -21,14 +26,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ..config.processing_config import ProcessingConfig
-
-# Import core components
-from . import DocumentProcessor
 from .cover_art_utils import delete_document_cover_art
-from .shikomi_ingester import ShikomiIngester
 from ..embeddings.query_engine import QueryEngine
 
-# Import documents API router (Wave 3)
+# Import documents API router
 from .documents_api import router as documents_router
 from .documents_api import set_storage_client as set_documents_storage
 from shikomi.types import FileFormat
@@ -71,24 +72,17 @@ DEVICE = os.getenv("DEVICE", "mps")
 PRECISION = os.getenv("MODEL_PRECISION", "fp16")
 WORKER_PORT = int(os.getenv("WORKER_PORT", "8002"))
 
-# Processing status tracking
-processing_status: Dict[str, Dict[str, Any]] = {}
-
-# Pre-registered uploads (doc_id -> registration info)
-pending_uploads: Dict[str, Dict[str, Any]] = {}
-
 # Global components (initialized at startup)
-document_processor: Optional[DocumentProcessor] = None
-ingester: Optional[ShikomiIngester] = None
+koji_client: Optional[KojiClient] = None
 query_engine: Optional[QueryEngine] = None
 status_manager: Optional[StatusManager] = None
 processing_config: Optional[ProcessingConfig] = None
 
-# Thread pool for background processing
-executor = ThreadPoolExecutor(max_workers=2)
+# In-memory status dict for StatusManager (legacy compatibility)
+processing_status: Dict[str, Dict[str, Any]] = {}
 
-# Event loop for async operations from sync context
-_loop = None
+# Pre-registered uploads (doc_id -> registration info)
+pending_uploads: Dict[str, Dict[str, Any]] = {}
 
 # ============================================================================
 # FastAPI Application
@@ -191,226 +185,6 @@ class StatusResponse(BaseModel):
 
 
 # ============================================================================
-# Processing Function
-# ============================================================================
-
-
-def process_document_sync(
-    file_path: str,
-    filename: str,
-    doc_id: str = None,
-    project_id: str = "default",
-) -> Dict[str, Any]:
-    """
-    Process a document (runs in thread pool).
-
-    Args:
-        file_path: Absolute path to document
-        filename: Original filename
-        doc_id: Optional pre-generated document ID (SHA-256 hash)
-        project_id: Project to assign the document to.
-
-    Returns:
-        Processing result dict
-    """
-    try:
-        # Verify file exists
-        path = Path(file_path)
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-
-        # Check extension against shikomi's supported formats
-        ext = path.suffix.lstrip(".").lower()
-        fmt = FileFormat.from_extension(ext)
-        if fmt is None:
-            return {"status": "skipped", "error": f"Unsupported format: .{ext}"}
-
-        # Generate doc ID from file hash (SHA-256) if not provided
-        if doc_id is None:
-            with open(file_path, "rb") as f:
-                content = f.read()
-                doc_id = hashlib.sha256(content).hexdigest()
-
-        # Update status - must include all ProcessingStatus required fields
-        start_time = datetime.now()
-        processing_status[doc_id] = {
-            "doc_id": doc_id,
-            "filename": filename,
-            "status": "processing",
-            "progress": 0.0,
-            "stage": "started",
-            "started_at": start_time.isoformat(),
-            "updated_at": start_time.isoformat(),
-            "elapsed_time": 0.0,
-            "error": None,
-        }
-
-        logger.info(f"Processing document: {filename} (ID: {doc_id})")
-
-        # Broadcast processing start
-        broadcaster = get_broadcaster()
-        _broadcast_from_sync(
-            broadcaster.broadcast_status_update(
-                doc_id=doc_id, status="processing", progress=0.0, filename=filename, stage="started"
-            )
-        )
-        _broadcast_from_sync(
-            broadcaster.broadcast_log_message(
-                level="INFO", message=f"Started processing: {filename}", doc_id=doc_id
-            )
-        )
-
-        # Process document
-        result = document_processor.process_document(
-            file_path=file_path,
-            status_callback=lambda status: _update_processing_status(doc_id, status),
-            project_id=project_id,
-        )
-
-        if not result or not result.doc_id:
-            raise ValueError(f"Document processing failed: No result returned")
-
-        logger.info(
-            f"Processed {filename}: doc_id={result.doc_id}, visual_ids={len(result.visual_ids)}, text_ids={len(result.text_ids)}"
-        )
-
-        # Update status to completed
-        completion_time = datetime.now()
-        start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
-        elapsed = (completion_time - start_time).total_seconds()
-
-        processing_status[doc_id]["status"] = "completed"
-        processing_status[doc_id]["stage"] = "completed"
-        processing_status[doc_id]["progress"] = 1.0
-        processing_status[doc_id]["updated_at"] = completion_time.isoformat()
-        processing_status[doc_id]["completed_at"] = completion_time.isoformat()
-        processing_status[doc_id]["elapsed_time"] = elapsed
-        processing_status[doc_id]["visual_embeddings"] = len(result.visual_ids)
-        processing_status[doc_id]["text_embeddings"] = len(result.text_ids)
-
-        logger.info(f"✓ Successfully processed {filename} (ID: {result.doc_id})")
-
-        # Broadcast completion
-        _broadcast_from_sync(
-            broadcaster.broadcast_status_update(
-                doc_id=doc_id,
-                status="completed",
-                progress=1.0,
-                filename=filename,
-                stage="completed",
-                visual_embeddings=len(result.visual_ids),
-                text_embeddings=len(result.text_ids),
-            )
-        )
-        _broadcast_from_sync(
-            broadcaster.broadcast_log_message(
-                level="INFO",
-                message=f"Completed processing: {filename} "
-                f"(visual: {len(result.visual_ids)}, text: {len(result.text_ids)})",
-                doc_id=doc_id,
-            )
-        )
-
-        return {
-            "status": "completed",
-            "doc_id": result.doc_id,
-            "visual_embeddings": len(result.visual_ids),
-            "text_embeddings": len(result.text_ids),
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to process {filename}: {e}", exc_info=True)
-
-        if doc_id:
-            failure_time = datetime.now()
-            start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
-            elapsed = (failure_time - start_time).total_seconds()
-
-            processing_status[doc_id]["status"] = "failed"
-            processing_status[doc_id]["stage"] = "failed"
-            processing_status[doc_id]["error"] = str(e)
-            processing_status[doc_id]["updated_at"] = failure_time.isoformat()
-            processing_status[doc_id]["completed_at"] = failure_time.isoformat()
-            processing_status[doc_id]["elapsed_time"] = elapsed
-
-            # Broadcast failure
-            broadcaster = get_broadcaster()
-            _broadcast_from_sync(
-                broadcaster.broadcast_status_update(
-                    doc_id=doc_id,
-                    status="failed",
-                    progress=0.0,
-                    filename=filename,
-                    stage="failed",
-                    error=str(e),
-                )
-            )
-            _broadcast_from_sync(
-                broadcaster.broadcast_log_message(
-                    level="ERROR", message=f"Failed to process {filename}: {str(e)}", doc_id=doc_id
-                )
-            )
-
-        return {"status": "failed", "error": str(e)}
-
-
-def _update_processing_status(doc_id: str, status):
-    """Update processing status from DocumentProcessor callback."""
-    if doc_id in processing_status:
-        update_time = datetime.now()
-        start_time = datetime.fromisoformat(processing_status[doc_id]["started_at"])
-        elapsed = (update_time - start_time).total_seconds()
-
-        stage = status.stage if hasattr(status, "stage") else status.status
-        progress = status.progress
-
-        processing_status[doc_id]["status"] = status.status
-        processing_status[doc_id]["stage"] = stage
-        processing_status[doc_id]["progress"] = progress
-        processing_status[doc_id]["updated_at"] = update_time.isoformat()
-        processing_status[doc_id]["elapsed_time"] = elapsed
-
-        logger.info(
-            f"📊 Status update callback: {doc_id[:8]}... stage={stage}, progress={progress:.1%}"
-        )
-
-        # Broadcast progress update to WebSocket clients
-        broadcaster = get_broadcaster()
-        filename = processing_status[doc_id].get("filename", "unknown")
-
-        logger.info(f"🔔 Broadcasting status update: {filename} - {stage} ({progress:.1%})")
-
-        _broadcast_from_sync(
-            broadcaster.broadcast_status_update(
-                doc_id=doc_id,
-                status=status.status,
-                progress=progress,
-                filename=filename,
-                stage=stage,
-            )
-        )
-
-
-def _broadcast_from_sync(coro):
-    """
-    Execute async broadcast from synchronous context.
-
-    Args:
-        coro: Coroutine to execute (e.g., broadcaster.broadcast_status_update(...))
-    """
-    if _loop is None:
-        logger.warning("Event loop not available for broadcasting")
-        return
-
-    try:
-        # Schedule coroutine in event loop from thread
-        asyncio.run_coroutine_threadsafe(coro, _loop)
-        # Don't wait for result - fire and forget
-    except Exception as e:
-        logger.error(f"Failed to broadcast from sync context: {e}")
-
-
-# ============================================================================
 # API Endpoints
 # ============================================================================
 
@@ -418,12 +192,15 @@ def _broadcast_from_sync(coro):
 @app.post("/uploads/")
 @app.post("/uploads")
 async def upload_file(
-    background_tasks: BackgroundTasks,
     f: UploadFile = File(...),
     project_id: str = "default",
 ):
-    """Accept file upload, save to disk, and trigger processing."""
-    # Sanitize filename: strip directory components to prevent path traversal
+    """Accept file upload, save to disk, and create a processing job.
+
+    The file is saved to ``UPLOADS_DIR`` and a ``processing_jobs`` row
+    is created in Koji with ``status='queued'``.  The headless processing
+    worker picks up the job asynchronously.
+    """
     raw_filename = f.filename or "untitled"
     filename = Path(raw_filename).name
     if not filename or filename.startswith("."):
@@ -451,98 +228,70 @@ async def upload_file(
                 detail=f"File exceeds maximum size of {max_size_mb}MB",
             )
         save_path.write_bytes(content)
-        logger.info(f"Saved upload: {filename} → {save_path} ({len(content)} bytes)")
+        logger.info(f"Saved upload: {filename} -> {save_path} ({len(content)} bytes)")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to save upload {filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
 
-    # Trigger processing via the /process flow
-    request = ProcessRequest(
-        file_path=str(save_path),
-        filename=filename,
-        project_id=project_id,
+    # Compute doc_id from file content hash
+    doc_id = hashlib.sha256(content).hexdigest()
+
+    # Create processing job in Koji
+    try:
+        koji_client.create_job(
+            doc_id=doc_id,
+            filename=filename,
+            file_path=str(save_path),
+            project_id=project_id,
+        )
+    except Exception:
+        # Job may already exist (duplicate upload) — check existing status
+        existing = koji_client.get_job(doc_id)
+        if existing and existing["status"] in ("queued", "processing"):
+            return ProcessResponse(
+                message="Document already queued", doc_id=doc_id, status=existing["status"],
+            )
+
+    return ProcessResponse(
+        message="Document queued for processing", doc_id=doc_id, status="queued",
     )
-    return await process_document(request, background_tasks)
 
 
 @app.post("/process", response_model=ProcessResponse)
-async def process_document(request: ProcessRequest, background_tasks: BackgroundTasks):
-    """
-    Queue a document for processing.
-    """
+async def process_document(request: ProcessRequest):
+    """Create a processing job for a file already on disk."""
     logger.info(f"Received processing request for: {request.filename}")
 
-    # Validate path
     file_path = Path(request.file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
 
-    # Check if this file was pre-registered via WebSocket
-    doc_id = None
-
-    # Try to match filename with pending uploads
-    # Upload filename may have a timestamp suffix, so strip it for matching
-    base_filename = request.filename
-    # Remove timestamp pattern: filename.ext-timestamp-random.ext
-    # Pattern: original.ext-1234567890.123456-AbCdEf.ext
-    # We want to extract: original.ext
-    import re
-
-    # Match pattern: (anything)-digits.digits-random_string.extension
-    # Group 1: everything before the timestamp (the original filename with extension)
-    # The random string can contain letters, numbers, dashes, and underscores
-    match = re.match(r"(.+)-\d+\.\d+-[A-Za-z0-9_-]+\.[^.]+$", request.filename)
-    if match:
-        # The base filename is just group 1 (which already includes the original extension)
-        base_filename = match.group(1)
-        logger.info(
-            f"Detected upload filename modification: {request.filename} → {base_filename}"
-        )
-
-    # Look for matching pre-registration
-    for registered_doc_id, registration_info in list(pending_uploads.items()):
-        if (
-            registration_info["base_filename"] == base_filename
-            or registration_info["filename"] == request.filename
-        ):
-            doc_id = registered_doc_id
-            del pending_uploads[registered_doc_id]  # Consume registration
-            logger.info(f"✅ Matched pre-registered upload: {request.filename} → {doc_id[:8]}...")
-            break
-
-    # Fallback: Generate doc_id from file content hash if not pre-registered
-    if not doc_id:
-        logger.info(
-            f"No pre-registration found for {request.filename}, generating doc_id from file hash"
-        )
-        try:
-            with open(file_path, "rb") as f:
-                content = f.read()
-                doc_id = hashlib.sha256(content).hexdigest()
-        except Exception as e:
-            logger.error(f"Failed to generate doc_id for {request.filename}: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
-
-    # Create status entry via StatusManager
+    # Compute doc_id from file content hash
     try:
-        metadata = {
-            "format": file_path.suffix.lstrip(".").lower(),
-            "file_size": file_path.stat().st_size,
-        }
-        status_manager.create_status(doc_id, request.filename, metadata)
-    except ValueError:
-        # Document already exists
-        logger.warning(f"Document {doc_id} already in status tracker")
+        with open(file_path, "rb") as fh:
+            doc_id = hashlib.sha256(fh.read()).hexdigest()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read file: {e}")
 
-    # Queue for background processing (pass doc_id to ensure consistency)
-    executor.submit(
-        process_document_sync, request.file_path, request.filename,
-        doc_id, request.project_id,
-    )
+    # Create processing job in Koji
+    try:
+        koji_client.create_job(
+            doc_id=doc_id,
+            filename=request.filename,
+            file_path=str(file_path),
+            project_id=request.project_id,
+        )
+    except Exception:
+        existing = koji_client.get_job(doc_id)
+        if existing and existing["status"] in ("queued", "processing"):
+            return ProcessResponse(
+                message="Document already queued", doc_id=doc_id, status=existing["status"],
+            )
 
-    # Return immediately with doc_id (processing continues in background)
     return ProcessResponse(
-        message=f"Document queued for processing", doc_id=doc_id, status="queued"
+        message="Document queued for processing", doc_id=doc_id, status="queued",
     )
 
 
@@ -907,21 +656,20 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize components on startup."""
-    global document_processor, ingester, query_engine, status_manager, processing_config, _loop
+    """Initialize API server components.
 
-    # Capture event loop for async broadcasts from sync context
-    _loop = asyncio.get_event_loop()
+    Opens Koji for document reads and job queue management.
+    QueryEngine is lazy-loaded on first search request.
+    No GPU models are loaded — processing is handled by the
+    separate worker process.
+    """
+    global koji_client, query_engine, status_manager, processing_config
 
-    # Use print for guaranteed visibility in logs
-    print("=" * 70)
-    print("DocuSearch Processing Worker Starting (Webhook Mode)...")
-    print("=" * 70)
     logger.info("=" * 70)
-    logger.info("DocuSearch Processing Worker Starting (Webhook Mode)...")
+    logger.info("DocuSearch API Server Starting...")
     logger.info("=" * 70)
 
-    # Initialize StatusManager with global processing_status dict
+    # Initialize StatusManager
     status_manager = get_status_manager(processing_status)
     set_status_manager(status_manager)
     logger.info("StatusManager initialized")
@@ -931,71 +679,34 @@ async def startup_event():
     app.state.config = processing_config
     logger.info("ProcessingConfig initialized")
 
-    # Log configuration
     logger.info(f"Configuration:")
     logger.info(f"  Uploads Directory: {UPLOADS_DIR}")
-    logger.info(f"  Device: {DEVICE}")
-    logger.info(f"  Precision: {PRECISION}")
     logger.info(f"  Worker Port: {WORKER_PORT}")
     logger.info(f"  Supported Formats: {', '.join(processing_config.supported_formats)}")
 
-    # Initialize components
-    logger.info("Initializing components...")
-
     try:
-        # Initialize storage client
+        # Initialize Koji (for document reads + job queue)
         from ..config.koji_config import KojiConfig
         koji_config = KojiConfig.from_env()
         logger.info(f"Opening Koji database ({koji_config.db_path})...")
-        storage_client = KojiClient(koji_config)
-        storage_client.open()
-        set_documents_storage(storage_client)
+        koji_client = KojiClient(koji_config)
+        koji_client.open()
+        set_documents_storage(koji_client)
         logger.info("Koji database opened")
-
-        # Initialize page renderer for visual embedding
-        from shikomi.config import RenderConfig
-        from shikomi.parser.renderer import LibreOfficeRenderer
-
-        render_config = RenderConfig(dpi=150)
-        renderer = LibreOfficeRenderer(render_config)
-
-        # Initialize ShikomiIngester (parser + rendering + embeddings)
-        ingester = ShikomiIngester(
-            device=os.getenv("DEVICE", "mps"),
-            quantization=os.getenv("MODEL_PRECISION", "fp16"),
-            generate_vtt=True,
-            generate_markdown=True,
-            db=storage_client,
-            renderer=renderer,
-        )
-        ingester.connect()
-        logger.info("✓ ShikomiIngester connected (with page renderer)")
-
-        # Initialize QueryEngine sharing the ingester's ColNomicEngine
-        query_engine = QueryEngine(engine=ingester.engine)
-        query_engine.connect()
-        app.state.query_engine = query_engine
-        logger.info("✓ QueryEngine connected (shared engine)")
-
-        # Initialize document processor
-        document_processor = DocumentProcessor(
-            ingester=ingester,
-            storage_client=storage_client,
-        )
-        logger.info("✓ Document processor initialized")
 
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}", exc_info=True)
         raise
 
     logger.info("=" * 70)
-    logger.info("✓ Worker started successfully (Webhook Mode)")
+    logger.info("API Server started successfully")
     logger.info(f"  Listening on port: {WORKER_PORT}")
-    logger.info(f"  Waiting for webhook requests...")
+    logger.info(f"  Processing worker: separate process")
     logger.info("=" * 70)
 
-    # Start background cleanup task for stale registrations
+    # Start background tasks
     asyncio.create_task(cleanup_stale_registrations())
+    asyncio.create_task(poll_and_broadcast_job_status())
 
     # Initialize graph enrichment service
     try:
@@ -1004,11 +715,11 @@ async def startup_event():
 
         graph_config = GraphEnrichmentConfig.from_env()
         enrichment_service = GraphEnrichmentService(
-            storage_client=storage_client,
+            storage_client=koji_client,
             config=graph_config,
         )
         app.state.enrichment_service = enrichment_service
-        logger.info("✓ Graph enrichment service initialized")
+        logger.info("Graph enrichment service initialized")
 
         if graph_config.auto_enrich_on_startup:
             asyncio.create_task(_run_enrichment_once(enrichment_service))
@@ -1018,6 +729,41 @@ async def startup_event():
         )
     except Exception as exc:
         logger.warning(f"Graph enrichment init skipped: {exc}")
+
+
+async def poll_and_broadcast_job_status():
+    """Poll processing_jobs in Koji and broadcast status changes via WebSocket.
+
+    Runs every 1.5 seconds.  Detects changes in job status, progress,
+    or stage and broadcasts updates to all connected WebSocket clients.
+    """
+    last_seen: Dict[str, tuple] = {}
+    broadcaster = get_broadcaster()
+
+    while True:
+        try:
+            await asyncio.sleep(1.5)
+
+            if koji_client is None:
+                continue
+
+            jobs = koji_client.list_jobs(limit=50)
+            for job in jobs:
+                doc_id = job["doc_id"]
+                key = (job["status"], job.get("progress"), job.get("stage"))
+
+                if last_seen.get(doc_id) != key:
+                    await broadcaster.broadcast_status_update(
+                        doc_id=doc_id,
+                        status=job["status"],
+                        progress=job.get("progress", 0.0),
+                        filename=job.get("filename", ""),
+                        stage=job.get("stage", ""),
+                    )
+                    last_seen[doc_id] = key
+
+        except Exception as exc:
+            logger.debug(f"Job status poll error: {exc}")
 
 
 async def cleanup_stale_registrations():
@@ -1130,11 +876,21 @@ class SearchRequest(BaseModel):
 async def search_documents(request: SearchRequest):
     """Semantic search across indexed documents.
 
-    Called by the Research API over HTTP to avoid loading the
-    embedding model twice.
+    Lazy-loads the QueryEngine on first call (loads the embedding
+    model for query encoding).
     """
+    global query_engine
+
+    # Lazy-load QueryEngine on first search request
     if query_engine is None:
-        raise HTTPException(status_code=503, detail="Search engine not ready")
+        try:
+            query_engine = QueryEngine(device=DEVICE, quantization=PRECISION)
+            query_engine.connect()
+            app.state.query_engine = query_engine
+            logger.info("QueryEngine lazy-loaded for search")
+        except Exception as exc:
+            logger.error(f"Failed to load QueryEngine: {exc}")
+            raise HTTPException(status_code=503, detail="Search engine not ready")
 
     from ..search.koji_search import KojiSearch
 
@@ -1142,15 +898,10 @@ async def search_documents(request: SearchRequest):
     mode_map = {"visual": "visual_only", "text": "text_only", "hybrid": "hybrid"}
     search_mode = mode_map.get(request.search_mode, request.search_mode)
 
-    # Get or create KojiSearch instance (reuses app.state for storage)
+    # Get or create KojiSearch instance
     if not hasattr(app.state, "search_engine"):
-        from ..config.koji_config import KojiConfig
-        from ..storage.koji_client import KojiClient as _KC
-
-        _koji = _KC(KojiConfig.from_env())
-        _koji.open()
         app.state.search_engine = KojiSearch(
-            koji_client=_koji, shikomi_client=query_engine
+            koji_client=koji_client, shikomi_client=query_engine
         )
 
     # Run in thread — KojiSearch.search() uses run_until_complete()
@@ -1190,15 +941,14 @@ async def search_documents(request: SearchRequest):
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown."""
-    logger.info("Worker shutting down...")
+    logger.info("API server shutting down...")
     if query_engine is not None:
         query_engine.close()
         logger.info("QueryEngine closed")
-    if ingester is not None:
-        ingester.close()
-        logger.info("ShikomiIngester closed")
-    executor.shutdown(wait=True)
-    logger.info("Worker stopped")
+    if koji_client is not None:
+        koji_client.close()
+        logger.info("Koji closed")
+    logger.info("API server stopped")
 
 
 # ============================================================================
@@ -1207,8 +957,16 @@ async def shutdown_event():
 
 
 def main():
-    """Run the worker server."""
-    uvicorn.run(app, host="0.0.0.0", port=WORKER_PORT, log_level="info")
+    """Run the worker server.
+
+    Uses the standard asyncio event loop instead of uvloop to avoid
+    conflicts with Koji's internal Tokio runtime.  Both runtimes use
+    kqueue for I/O and can interfere when running in the same process.
+    """
+    uvicorn.run(
+        app, host="0.0.0.0", port=WORKER_PORT, log_level="info",
+        loop="asyncio",
+    )
 
 
 if __name__ == "__main__":

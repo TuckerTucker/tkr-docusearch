@@ -38,52 +38,36 @@ def test_client(uploads_dir, tmp_path):
     """TestClient with patched worker globals.
 
     Patches module-level globals on the worker_webhook module so the
-    FastAPI app can be exercised without real infrastructure (Koji,
-    Shikomi, DoclingParser, etc.).
+    API server can be exercised without real infrastructure.
+    The API server creates jobs in Koji — we mock koji_client so
+    create_job() is a no-op.
     """
-    # Save originals
-    orig_processor = ww.document_processor
-    orig_ingester = ww.ingester
-    orig_status_manager = ww.status_manager
-    orig_uploads_dir = ww.UPLOADS_DIR
-    orig_loop = ww._loop
-    orig_executor = ww.executor
-    orig_processing_status = ww.processing_status
-    orig_pending_uploads = ww.pending_uploads
+    originals = {
+        "koji_client": ww.koji_client,
+        "query_engine": ww.query_engine,
+        "status_manager": ww.status_manager,
+        "UPLOADS_DIR": ww.UPLOADS_DIR,
+        "processing_status": ww.processing_status,
+        "pending_uploads": ww.pending_uploads,
+    }
 
-    # Patch globals
-    ww.document_processor = MagicMock()
-    ww.document_processor.process_document.return_value = MagicMock(
-        doc_id="test-doc-id",
-        visual_ids=[],
-        text_ids=[],
-        total_size_bytes=0,
-        timestamp="2025-01-01T00:00:00Z",
-    )
-    ww.ingester = MagicMock()
+    mock_koji = MagicMock()
+    mock_koji.create_job.return_value = None
+    mock_koji.get_job.return_value = None
+
+    ww.koji_client = mock_koji
+    ww.query_engine = MagicMock()
     ww.status_manager = MagicMock()
     ww.status_manager.create_status.return_value = None
     ww.UPLOADS_DIR = uploads_dir
-    ww._loop = asyncio.new_event_loop()
     ww.processing_status = {}
     ww.pending_uploads = {}
-
-    # Mock executor to accept submissions without running them
-    mock_executor = MagicMock()
-    ww.executor = mock_executor
 
     client = TestClient(ww.app, raise_server_exceptions=False)
     yield client
 
-    # Restore originals
-    ww.document_processor = orig_processor
-    ww.ingester = orig_ingester
-    ww.status_manager = orig_status_manager
-    ww.UPLOADS_DIR = orig_uploads_dir
-    ww._loop = orig_loop
-    ww.executor = orig_executor
-    ww.processing_status = orig_processing_status
-    ww.pending_uploads = orig_pending_uploads
+    for attr, value in originals.items():
+        setattr(ww, attr, value)
 
 
 # ============================================================================
@@ -151,12 +135,8 @@ class TestUploadEndpoint:
     def test_oversized_file_rejected(self, test_client, monkeypatch):
         """Files exceeding MAX_FILE_SIZE_MB are rejected.
 
-        Note: The upload endpoint reads MAX_FILE_SIZE_MB from os.environ
-        on each call.  The 413 HTTPException raised for oversized files is
-        caught by the surrounding ``except Exception`` and re-raised as
-        500 — this is a known bug in the worker code.  The test asserts
-        the *actual* behaviour (500) rather than the *intended* behaviour
-        (413) so it passes against the current implementation.
+        The upload endpoint reads MAX_FILE_SIZE_MB from os.environ
+        on each call and rejects files that exceed the limit with 413.
         """
         # Set a very small limit so even a tiny payload exceeds it
         monkeypatch.setenv("MAX_FILE_SIZE_MB", "0")
@@ -170,7 +150,7 @@ class TestUploadEndpoint:
         # The broad except catches the 413 HTTPException and wraps it in 500.
         # If the bug is fixed (HTTPException re-raised directly), this will
         # need updating to assert 413.
-        assert response.status_code == 500
+        assert response.status_code == 413
 
     def test_filename_collision_appends_suffix(self, test_client, uploads_dir):
         """When a file with the same name already exists, a counter suffix is appended."""

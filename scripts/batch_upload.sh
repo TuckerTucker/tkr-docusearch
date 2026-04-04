@@ -9,7 +9,7 @@
 #
 # Requires: Bash 3.2+, curl, python3
 
-set -euo pipefail
+set -uo pipefail
 
 DIR="${1:?Usage: $0 <directory> [worker_url]}"
 WORKER_URL="${2:-http://localhost:8002}"
