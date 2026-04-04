@@ -1643,7 +1643,7 @@ class KojiClient:
             logger.info("koji_client.default_project_created")
 
     def _after_write(self) -> None:
-        """Post-write hook: sync and compact as configured."""
+        """Post-write hook: sync, compact, and prune old versions."""
         self._write_count += 1
 
         if self._config.sync_on_write:
@@ -1654,6 +1654,10 @@ class KojiClient:
             and self._write_count % self._config.compact_interval == 0
         ):
             self._db.compact()
+            try:
+                self._db.cleanup_versions(keep_versions=2)
+            except Exception:
+                pass  # cleanup_versions may fail on empty tables
             logger.debug(
                 "koji_client.compacted",
                 write_count=self._write_count,
