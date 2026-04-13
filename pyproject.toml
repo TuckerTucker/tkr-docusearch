@@ -18,7 +18,7 @@ dependencies = [
     # Core ML/AI dependencies
     "torch>=2.8.0",
     "torchvision>=0.15.0",
-    "transformers>=4.30.0",
+    "transformers>=5.5.4",
 
     # Image processing
     "Pillow>=10.0.0",
