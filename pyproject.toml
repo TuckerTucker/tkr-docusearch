@@ -21,7 +21,7 @@ dependencies = [
     "transformers>=4.30.0",
 
     # Image processing
-    "Pillow>=10.0.0",
+    "Pillow>=12.2.0",
 
     # Document parsing - unified with Docling
     "docling[asr]>=2.55.0",
