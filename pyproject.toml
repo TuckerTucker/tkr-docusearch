@@ -27,7 +27,7 @@ dependencies = [
     "docling[asr]>=2.55.0",
 
     # Koji hybrid database
-    "pyarrow>=14.0.0",
+    "pyarrow>=23.0.1",
 
     # Shikomi embedding service (gRPC)
     "grpcio>=1.60.0",
