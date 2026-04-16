@@ -30,7 +30,7 @@ dependencies = [
     "pyarrow>=14.0.0",
 
     # Shikomi embedding service (gRPC)
-    "grpcio>=1.60.0",
+    "grpcio>=1.80.0",
     "protobuf>=4.25.0",
 
     # Shikomi ingestion library — [enrichment] pulls mlx-vlm + mlx for
