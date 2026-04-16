@@ -33,6 +33,11 @@ dependencies = [
     "grpcio>=1.60.0",
     "protobuf>=4.25.0",
 
+    # Shikomi ingestion library — [enrichment] pulls mlx-vlm + mlx for
+    # local Gemma 4 E4B document enrichment (figure captions, summaries,
+    # code analysis, formula interpretation, semantic metadata).
+    "shikomi[enrichment]",
+
     # Data and utilities
     "numpy>=1.24.0",
     "pydantic>=2.0.0",

@@ -256,6 +256,36 @@ class TestDocumentCRUD:
         doc = client.get_document("doc-test-1234")
         assert doc["metadata"] == {"author": "Test", "tags": ["a", "b"]}
 
+    def test_create_document_with_enrichment(self, client):
+        """VLM enrichment dict round-trips through the enrichment column."""
+        enrichment = {
+            "summary": "Q3 revenue report.",
+            "key_points": ["Revenue up 12%"],
+            "document_type": "report",
+            "topics": ["finance"],
+            "entities": [{"name": "Acme", "type": "company"}],
+        }
+        client.create_document(
+            doc_id="doc-enrich-0001",
+            filename="r.pdf",
+            format="pdf",
+            enrichment=enrichment,
+        )
+
+        doc = client.get_document("doc-enrich-0001")
+        assert doc["enrichment"] == enrichment
+
+    def test_create_document_enrichment_absent_yields_null(self, client):
+        """Creating a document without enrichment stores NULL."""
+        client.create_document(
+            doc_id="doc-no-enrich",
+            filename="plain.pdf",
+            format="pdf",
+        )
+        doc = client.get_document("doc-no-enrich")
+        # Deserialized: absent JSON stays as None / falsy, not parsed.
+        assert not doc.get("enrichment")
+
 
 class TestPageOperations:
     """Test page operations."""
@@ -311,6 +341,34 @@ class TestPageOperations:
     def test_insert_pages_empty(self, client):
         """Inserting empty list is a no-op."""
         client.insert_pages([])  # Should not raise
+
+    def test_page_enrichment_round_trip(self, client):
+        """Per-page enrichment dict survives insert -> get."""
+        client.create_document(
+            doc_id="doc-enrich-page", filename="p.pdf", format="pdf",
+        )
+        page_enrichment = {
+            "figures": [
+                {
+                    "figure_id": "fig-1",
+                    "description": "Bar chart",
+                    "classification": "chart",
+                },
+            ],
+        }
+        client.insert_pages([
+            {
+                "id": "doc-enrich-page-page001",
+                "doc_id": "doc-enrich-page",
+                "page_num": 1,
+                "enrichment": page_enrichment,
+            },
+        ])
+
+        pages = client.get_pages_for_document("doc-enrich-page")
+        assert pages[0]["enrichment"] == page_enrichment
+        single = client.get_page("doc-enrich-page-page001")
+        assert single["enrichment"] == page_enrichment
 
 
 class TestChunkOperations:
@@ -374,6 +432,57 @@ class TestChunkOperations:
         """Missing required fields raises ValueError."""
         with pytest.raises(ValueError, match="require"):
             client.insert_chunks([{"doc_id": "doc-test-1234", "page_num": 1}])
+
+    def test_chunk_enrichment_round_trip(self, client):
+        """Per-chunk enrichment (figure captions on a chunk) round-trips."""
+        client.create_document(
+            doc_id="doc-enrich-chunk", filename="c.pdf", format="pdf",
+        )
+        chunk_enrichment = {
+            "figures": [
+                {
+                    "figure_id": "fig-7",
+                    "description": "Flow diagram",
+                    "classification": "diagram",
+                },
+            ],
+        }
+        client.insert_chunks([
+            {
+                "id": "doc-enrich-chunk-c1",
+                "doc_id": "doc-enrich-chunk",
+                "page_num": 2,
+                "text": "References figure 7.",
+                "enrichment": chunk_enrichment,
+            },
+        ])
+
+        chunks = client.get_chunks_for_document("doc-enrich-chunk")
+        assert chunks[0]["enrichment"] == chunk_enrichment
+        single = client.get_chunk("doc-enrich-chunk-c1")
+        assert single["enrichment"] == chunk_enrichment
+
+    def test_synthetic_enrichment_chunk(self, client):
+        """Synthetic enrichment chunk stores source metadata in enrichment."""
+        client.create_document(
+            doc_id="doc-syn", filename="s.pdf", format="pdf",
+        )
+        client.insert_chunks([
+            {
+                "id": "doc-syn:enrichment-summary",
+                "doc_id": "doc-syn",
+                "page_num": 1,
+                "text": "Document-level summary text.",
+                "enrichment": {
+                    "source": "document_summary",
+                    "document_type": "report",
+                },
+            },
+        ])
+
+        chunk = client.get_chunk("doc-syn:enrichment-summary")
+        assert chunk["enrichment"]["source"] == "document_summary"
+        assert chunk["enrichment"]["document_type"] == "report"
 
 
 class TestRelations:

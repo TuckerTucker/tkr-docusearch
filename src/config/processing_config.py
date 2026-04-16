@@ -42,6 +42,13 @@ class ProcessingConfig:
         log_level: Logging level
         log_format: Logging format
         log_file: Log file path
+        enrichment_enabled: Enable shikomi Gemma 4 E4B VLM enrichment
+            (figure captions, document summaries, semantic metadata).
+        enrichment_index_captions: Append VLM captions/summaries as
+            searchable synthetic chunks so enrichment flows into the
+            text-embedding stream and becomes retrievable at query time.
+        enrichment_model_repo: HuggingFace / MLX model repo path for
+            the VLM. Defaults to shikomi's Gemma 4 E4B 4-bit build.
     """
 
     # File handling
@@ -59,6 +66,16 @@ class ProcessingConfig:
     # Worker configuration
     worker_threads: int = int(os.getenv("WORKER_THREADS", "1"))
     enable_queue: bool = os.getenv("ENABLE_QUEUE", "false").lower() == "true"
+
+    # Enrichment (Gemma 4 E4B VLM via shikomi)
+    enrichment_enabled: bool = os.getenv("ENRICHMENT_ENABLED", "true").lower() == "true"
+    enrichment_index_captions: bool = (
+        os.getenv("ENRICHMENT_INDEX_CAPTIONS", "true").lower() == "true"
+    )
+    enrichment_model_repo: str = os.getenv(
+        "ENRICHMENT_MODEL_REPO",
+        "mlx-community/gemma-4-e4b-it-4bit",
+    )
 
     # Logging
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
@@ -142,6 +159,9 @@ class ProcessingConfig:
             "page_render_dpi": self.page_render_dpi,
             "worker_threads": self.worker_threads,
             "enable_queue": self.enable_queue,
+            "enrichment_enabled": self.enrichment_enabled,
+            "enrichment_index_captions": self.enrichment_index_captions,
+            "enrichment_model_repo": self.enrichment_model_repo,
             "log_level": self.log_level,
             "log_format": self.log_format,
         }

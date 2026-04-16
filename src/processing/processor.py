@@ -22,7 +22,13 @@ from typing import Any, Callable, Dict, List, Optional
 
 import structlog
 
-from .result_mapper import map_chunk_records, map_document_record, map_page_records
+from .result_mapper import (
+    build_synthetic_enrichment_chunks,
+    map_chunk_records,
+    map_document_record,
+    map_page_records,
+    synthetic_to_chunk_records,
+)
 from .shikomi_ingester import ShikomiIngester, StatusBridge
 
 logger = structlog.get_logger(__name__)
@@ -99,17 +105,29 @@ class DocumentProcessor:
     Args:
         ingester: Connected ``ShikomiIngester`` instance.
         storage_client: ``KojiClient`` instance for database storage.
+        index_enrichment_captions: When ``True`` (default), synthetic
+            enrichment chunks (document summaries, figure captions,
+            code analyses, formula interpretations) are embedded via
+            the shared ColNomic engine and persisted alongside organic
+            chunks. When ``False``, enrichment data is still written to
+            the dedicated ``enrichment`` JSON columns but is not indexed
+            into the text embedding stream.
     """
 
     def __init__(
         self,
         ingester: ShikomiIngester,
         storage_client: Any,
+        index_enrichment_captions: bool = True,
     ) -> None:
         self.ingester = ingester
         self.storage_client = storage_client
+        self.index_enrichment_captions = index_enrichment_captions
 
-        logger.info("processor.initialized")
+        logger.info(
+            "processor.initialized",
+            index_enrichment_captions=index_enrichment_captions,
+        )
 
     # -- public API ----------------------------------------------------------
 
@@ -361,7 +379,9 @@ class DocumentProcessor:
             )
             self.storage_client.create_document(**doc_record)
 
-            # Page records (visual formats only)
+            # Page records (visual formats only). ``result`` is passed so
+            # the mapper can attach per-page figure enrichment derived
+            # from the chunk -> figure cross-reference.
             visual_ids: list = []
             visual_size = 0
             if visual_embeddings:
@@ -369,6 +389,7 @@ class DocumentProcessor:
                     doc_id=doc_id,
                     visual_embeddings=visual_embeddings,
                     page_images=page_image_bytes,
+                    result=result,
                 )
                 self.storage_client.insert_pages(page_records)
                 visual_ids = [r["id"] for r in page_records]
@@ -388,6 +409,19 @@ class DocumentProcessor:
                     len(r.get("embedding", b"")) + len(r.get("text", "").encode())
                     for r in chunk_records
                 )
+
+            # Synthetic enrichment chunks — document summary, figure
+            # captions, code analyses, formula interpretations are
+            # embedded via the shared ColNomic engine and persisted as
+            # regular chunks so enrichment flows into the searchable
+            # text stream.
+            if self.index_enrichment_captions:
+                synthetic_ids, synthetic_size = self._store_synthetic_enrichment(
+                    doc_id=doc_id,
+                    result=result,
+                )
+                text_ids.extend(synthetic_ids)
+                text_size += synthetic_size
 
             # Relations (already detected by shikomi ingester)
             if result.relations:
@@ -422,6 +456,80 @@ class DocumentProcessor:
 
         except Exception as exc:
             raise StorageError(f"Failed to store results: {exc}") from exc
+
+    # -- synthetic enrichment ------------------------------------------------
+
+    def _store_synthetic_enrichment(
+        self,
+        doc_id: str,
+        result: Any,
+    ) -> tuple[list[str], int]:
+        """Embed and persist synthetic enrichment chunks.
+
+        Builds text-only chunks from ``result.enrichment_result``, calls
+        the shared ColNomic engine via ``ShikomiIngester.embed_texts``,
+        and inserts the resulting rows into ``chunks``. Returns the new
+        chunk IDs and an approximate byte count.
+
+        Silently skips on any error — enrichment indexing is a
+        best-effort enhancement, never a hard requirement for ingest
+        completion.
+        """
+        try:
+            synthetic = build_synthetic_enrichment_chunks(doc_id, result)
+        except Exception as exc:
+            logger.warning(
+                "processor.synthetic_enrichment_build_failed",
+                doc_id=doc_id,
+                error=str(exc),
+            )
+            return [], 0
+
+        if not synthetic:
+            return [], 0
+
+        try:
+            texts = [s.text for s in synthetic]
+            embeddings = self.ingester.embed_texts(texts)
+        except Exception as exc:
+            logger.warning(
+                "processor.synthetic_enrichment_embed_failed",
+                doc_id=doc_id,
+                count=len(synthetic),
+                error=str(exc),
+            )
+            return [], 0
+
+        if not embeddings:
+            return [], 0
+
+        records = synthetic_to_chunk_records(doc_id, synthetic, embeddings)
+        if not records:
+            return [], 0
+
+        try:
+            self.storage_client.insert_chunks(records)
+        except Exception as exc:
+            logger.warning(
+                "processor.synthetic_enrichment_insert_failed",
+                doc_id=doc_id,
+                count=len(records),
+                error=str(exc),
+            )
+            return [], 0
+
+        ids = [r["id"] for r in records]
+        size = sum(
+            len(r.get("embedding", b"")) + len(r.get("text", "").encode())
+            for r in records
+        )
+
+        logger.info(
+            "processor.synthetic_enrichment_stored",
+            doc_id=doc_id,
+            count=len(records),
+        )
+        return ids, size
 
     # -- status helpers ------------------------------------------------------
 

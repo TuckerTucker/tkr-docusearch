@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 import structlog
 
 from shikomi import Ingester, IngestResult
-from shikomi.config import ChunkConfig, RelationConfig, ValidationConfig
+from shikomi.config import ChunkConfig, EnrichmentConfig, RelationConfig, ValidationConfig
 from shikomi.status import StatusManager as ShikomiStatusManager
 from shikomi.status import calculate_progress, get_stage_description
 
@@ -63,8 +63,13 @@ class StatusBridge(ShikomiStatusManager):
         start_time: ``time.time()`` epoch when processing started.
     """
 
-    # Stages to forward — storing/completed/failed handled by DocumentProcessor
-    _FORWARDED = frozenset({"parsing", "chunking", "embedding_text", "embedding_visual"})
+    # Stages to forward — storing/completed/failed handled by DocumentProcessor.
+    # "enriching" is emitted only when shikomi's Gemma 4 E4B VLM enrichment is
+    # enabled; including it here keeps the UI status continuous between
+    # parsing and the embedding stages.
+    _FORWARDED = frozenset(
+        {"parsing", "enriching", "chunking", "embedding_text", "embedding_visual"}
+    )
 
     def __init__(
         self,
@@ -142,6 +147,10 @@ class ShikomiIngester:
         chunk_config: Chunking configuration.
         validation_config: File validation configuration.
         relation_config: Relation detection configuration.
+        enrichment_config: VLM enrichment configuration. When
+            ``enabled=True``, shikomi runs Gemma 4 E4B over parsed
+            content to produce figure captions, code analysis, formula
+            interpretations, document summaries, and semantic metadata.
         db: Storage backend for relation building (KojiClient).
         generate_vtt: Whether to generate WebVTT for audio files.
         generate_markdown: Whether to generate markdown export.
@@ -157,6 +166,7 @@ class ShikomiIngester:
         chunk_config: Optional[ChunkConfig] = None,
         validation_config: Optional[ValidationConfig] = None,
         relation_config: Optional[RelationConfig] = None,
+        enrichment_config: Optional[EnrichmentConfig] = None,
         db: Optional[Any] = None,
         generate_vtt: bool = True,
         generate_markdown: bool = True,
@@ -168,6 +178,9 @@ class ShikomiIngester:
         self._device = device
         self._quantization = quantization
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._enrichment_enabled = bool(
+            enrichment_config is not None and enrichment_config.enabled
+        )
 
         self._ingester = Ingester(
             device=device,
@@ -176,6 +189,7 @@ class ShikomiIngester:
             enable_visual_embeddings=enable_visual_embeddings,
             validation_config=validation_config,
             relation_config=relation_config,
+            enrichment_config=enrichment_config,
             db=db,
             generate_vtt=generate_vtt,
             generate_markdown=generate_markdown,
@@ -221,6 +235,7 @@ class ShikomiIngester:
             "connected": self._loop is not None,
             "device": self._device,
             "quantization": self._quantization,
+            "enrichment_enabled": self._enrichment_enabled,
             "mode": "shikomi_ingester",
         }
 
@@ -238,6 +253,29 @@ class ShikomiIngester:
             The ``ColNomicEngine`` instance from the wrapped Ingester.
         """
         return self._ingester.engine
+
+    def embed_texts(self, texts: list[str]) -> list[Any]:
+        """Embed one or more raw text strings via the shared engine.
+
+        Reuses the same ``ColNomicEngine`` that produced the chunk
+        embeddings in ``process()`` so synthetic enrichment chunks
+        (document summaries, figure captions) can be embedded with the
+        same model without loading a second copy.
+
+        Args:
+            texts: List of text strings to embed.
+
+        Returns:
+            List of ``MultiVectorEmbedding`` matching ``texts`` order.
+
+        Raises:
+            RuntimeError: If ``connect()`` has not been called.
+        """
+        self._require_connected()
+        if not texts:
+            return []
+        coro = self._ingester.engine.encode_documents(texts)
+        return self._run_async(coro)
 
     def process(
         self,

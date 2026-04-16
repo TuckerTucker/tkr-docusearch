@@ -143,13 +143,26 @@ def main() -> None:
     koji_client.open()
     logger.info("worker.koji_opened", db_path=DB_PATH)
 
-    from shikomi.config import RenderConfig
+    from shikomi.config import EnrichmentConfig, RenderConfig
     from shikomi.parser.renderer import LibreOfficeRenderer
 
+    from ..config.processing_config import ProcessingConfig
     from .processor import DocumentProcessor
     from .shikomi_ingester import ShikomiIngester
 
-    renderer = LibreOfficeRenderer(RenderConfig(dpi=150))
+    processing_config = ProcessingConfig()
+    renderer = LibreOfficeRenderer(RenderConfig(dpi=processing_config.page_render_dpi))
+
+    enrichment_config = EnrichmentConfig(
+        enabled=processing_config.enrichment_enabled,
+        model_repo=processing_config.enrichment_model_repo,
+    )
+    logger.info(
+        "worker.enrichment_config",
+        enabled=enrichment_config.enabled,
+        model_repo=enrichment_config.model_repo,
+        index_captions=processing_config.enrichment_index_captions,
+    )
 
     ingester = ShikomiIngester(
         device=DEVICE,
@@ -158,6 +171,7 @@ def main() -> None:
         generate_markdown=True,
         db=koji_client,
         renderer=renderer,
+        enrichment_config=enrichment_config,
     )
     ingester.connect()
     logger.info("worker.ingester_connected")
@@ -165,6 +179,7 @@ def main() -> None:
     processor = DocumentProcessor(
         ingester=ingester,
         storage_client=koji_client,
+        index_enrichment_captions=processing_config.enrichment_index_captions,
     )
     logger.info("worker.ready", poll_interval=POLL_INTERVAL)
 

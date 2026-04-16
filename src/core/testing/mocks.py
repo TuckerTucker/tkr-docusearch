@@ -439,8 +439,9 @@ class MockKojiClient:
         format: str,
         num_pages: Optional[int] = None,
         markdown: Optional[str] = None,
-        metadata: Optional[str] = None,
+        metadata: Optional[Any] = None,
         project_id: str = "default",
+        enrichment: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Create a document record.
 
@@ -452,6 +453,9 @@ class MockKojiClient:
             markdown: Extracted markdown content (optional).
             metadata: JSON-encoded metadata string (optional).
             project_id: Project to assign the document to.
+            enrichment: Optional VLM enrichment dict (summary, topics,
+                entities, etc.). Mirrors the real KojiClient signature
+                so DocumentProcessor can pass it unconditionally.
         """
         from datetime import datetime, timezone
 
@@ -463,6 +467,7 @@ class MockKojiClient:
             "num_pages": num_pages,
             "markdown": markdown,
             "metadata": metadata,
+            "enrichment": enrichment,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1204,7 +1209,13 @@ class MockShikomiIngester:
         self._connected = False
 
     def health_check(self):
-        return {"connected": self._connected, "device": "mock", "quantization": "mock", "mode": "mock"}
+        return {
+            "connected": self._connected,
+            "device": "mock",
+            "quantization": "mock",
+            "enrichment_enabled": False,
+            "mode": "mock",
+        }
 
     def process(self, file_path: str, status_bridge=None) -> "IngestResult":
         if self._result is not None:
@@ -1212,6 +1223,19 @@ class MockShikomiIngester:
         return _make_default_ingest_result(
             file_path, self._num_chunks, self._embedding_dim,
         )
+
+    def embed_texts(self, texts):
+        """Return deterministic mock embeddings, one per input text."""
+        from shikomi.types import MultiVectorEmbedding
+
+        embeddings = []
+        for _ in texts:
+            data = np.random.randn(8, self._embedding_dim).astype(np.float32)
+            data = data / np.linalg.norm(data, axis=1, keepdims=True)
+            embeddings.append(MultiVectorEmbedding(
+                num_tokens=8, dim=self._embedding_dim, data=data,
+            ))
+        return embeddings
 
     def _run_async(self, coro):
         """Sync stub -- mock doesn't need async bridging."""

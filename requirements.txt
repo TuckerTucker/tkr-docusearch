@@ -18,8 +18,8 @@ pypdf>=3.0.0  # PDF metadata repair for Docling compatibility
 # Koji hybrid database
 pyarrow>=14.0.0
 
-# Shikomi embedding service
-shikomi
+# Shikomi embedding service (with Gemma 4 E4B VLM enrichment extras)
+shikomi[enrichment]
 
 # Data and utilities
 numpy>=1.24.0

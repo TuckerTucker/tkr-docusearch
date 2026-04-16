@@ -158,6 +158,11 @@ DOCUSEARCH_SCHEMA: dict = {
             "num_pages": {"type": "integer"},
             "markdown": {"type": "text"},
             "metadata": {"type": "text"},
+            # JSON blob for shikomi Gemma 4 E4B VLM enrichment:
+            # {"summary", "key_points", "document_type", "topics",
+            #  "entities", "key_terms"}. Nullable — absent when
+            # enrichment is disabled or source_type is not "document".
+            "enrichment": {"type": "text"},
             "created_at": {"type": "text"},
         },
     },
@@ -170,6 +175,10 @@ DOCUSEARCH_SCHEMA: dict = {
             "thumb": {"type": "binary"},
             "embedding": {"type": "binary"},
             "structure": {"type": "text"},
+            # JSON blob — per-page aggregate of figure captions, code
+            # summaries, and formula interpretations from VLM
+            # enrichment. Nullable.
+            "enrichment": {"type": "text"},
             "width": {"type": "integer"},
             "height": {"type": "integer"},
         },
@@ -182,6 +191,13 @@ DOCUSEARCH_SCHEMA: dict = {
             "text": {"type": "text"},
             "embedding": {"type": "binary"},
             "context": {"type": "text"},
+            # JSON blob — VLM enrichment attached to this chunk. For
+            # organic chunks, holds figure descriptions matching
+            # ``context.related_figures``. For synthetic enrichment
+            # chunks (document summaries / figure captions), includes
+            # ``{"source": "document_summary"}`` or
+            # ``{"source": "figure_caption", "figure_id": ...}``.
+            "enrichment": {"type": "text"},
             "word_count": {"type": "integer"},
             "start_time": {"type": "float"},
             "end_time": {"type": "float"},
@@ -441,6 +457,7 @@ class KojiClient:
         markdown: str | None = None,
         metadata: dict[str, Any] | None = None,
         project_id: str = "default",
+        enrichment: dict[str, Any] | None = None,
     ) -> None:
         """Create a new document record.
 
@@ -452,6 +469,10 @@ class KojiClient:
             markdown: Full document markdown (optional).
             metadata: Arbitrary metadata dict, stored as JSON (optional).
             project_id: Project to assign the document to.
+            enrichment: Optional dict holding shikomi VLM enrichment
+                (``summary``, ``key_points``, ``document_type``,
+                ``topics``, ``entities``, ``key_terms``). Serialized to
+                JSON. ``None``/empty becomes ``NULL`` in storage.
 
         Raises:
             KojiDuplicateError: If ``doc_id`` already exists.
@@ -470,6 +491,7 @@ class KojiClient:
             pa.field("num_pages", pa.int64()),
             pa.field("markdown", pa.string()),
             pa.field("metadata", pa.string()),
+            pa.field("enrichment", pa.string()),
             pa.field("created_at", pa.string()),
         ])
         table = pa.table(
@@ -481,6 +503,7 @@ class KojiClient:
                 "num_pages": [num_pages],
                 "markdown": [markdown],
                 "metadata": [_serialize_metadata(metadata)],
+                "enrichment": [_serialize_metadata(enrichment)],
                 "created_at": [now],
             },
             schema=schema,
@@ -511,7 +534,9 @@ class KojiClient:
             )
             if result.num_rows == 0:
                 return None
-            rows = self._arrow_to_dicts(result, json_fields=["metadata"])
+            rows = self._arrow_to_dicts(
+                result, json_fields=["metadata", "enrichment"],
+            )
             return rows[0]
         except Exception:
             return None
@@ -561,7 +586,9 @@ class KojiClient:
         params.extend([limit, offset])
 
         result = self.query(sql, params)
-        return self._arrow_to_dicts(result, json_fields=["metadata"])
+        return self._arrow_to_dicts(
+            result, json_fields=["metadata", "enrichment"],
+        )
 
     def update_document(self, doc_id: str, **fields: Any) -> None:
         """Update fields on an existing document.
@@ -576,17 +603,21 @@ class KojiClient:
         if not fields:
             raise ValueError("No fields to update")
 
-        valid_columns = {"filename", "format", "num_pages", "markdown", "metadata", "project_id"}
+        valid_columns = {
+            "filename", "format", "num_pages", "markdown", "metadata",
+            "enrichment", "project_id",
+        }
         invalid = set(fields.keys()) - valid_columns
         if invalid:
             raise ValueError(f"Invalid document fields: {invalid}")
 
         self._require_open()
 
-        # Serialize metadata to JSON if present
-        if "metadata" in fields and fields["metadata"] is not None:
-            if not isinstance(fields["metadata"], str):
-                fields["metadata"] = json.dumps(fields["metadata"], cls=_SafeEncoder)
+        # Serialize dict-valued JSON fields before handing to Koji.
+        for json_field in ("metadata", "enrichment"):
+            value = fields.get(json_field)
+            if value is not None and not isinstance(value, str):
+                fields[json_field] = json.dumps(value, cls=_SafeEncoder)
 
         safe_id = _sanitize_sql_value(doc_id)
         result = self._db.update("documents", fields, f"doc_id = '{safe_id}'")
@@ -814,7 +845,7 @@ class KojiClient:
         Accepts a list of dictionaries and converts to PyArrow internally.
         Required keys: ``id``, ``doc_id``, ``page_num``.
         Optional keys: ``image``, ``thumb``, ``embedding``, ``structure``,
-        ``width``, ``height``.
+        ``enrichment``, ``width``, ``height``.
 
         Args:
             pages: List of page data dictionaries.
@@ -837,6 +868,7 @@ class KojiClient:
             pa.field("thumb", pa.binary()),
             pa.field("embedding", pa.binary()),
             pa.field("structure", pa.string()),
+            pa.field("enrichment", pa.string()),
             pa.field("width", pa.int64()),
             pa.field("height", pa.int64()),
         ])
@@ -851,6 +883,9 @@ class KojiClient:
                 "structure": [
                     _safe_json(p.get("structure")) for p in pages
                 ],
+                "enrichment": [
+                    _safe_json(p.get("enrichment")) for p in pages
+                ],
                 "width": [p.get("width") for p in pages],
                 "height": [p.get("height") for p in pages],
             },
@@ -863,8 +898,8 @@ class KojiClient:
 
         Accepts a list of dictionaries and converts to PyArrow internally.
         Required keys: ``id``, ``doc_id``, ``page_num``, ``text``.
-        Optional keys: ``embedding``, ``context``, ``word_count``,
-        ``start_time``, ``end_time``.
+        Optional keys: ``embedding``, ``context``, ``enrichment``,
+        ``word_count``, ``start_time``, ``end_time``.
 
         Args:
             chunks: List of chunk data dictionaries.
@@ -886,6 +921,7 @@ class KojiClient:
             pa.field("text", pa.string()),
             pa.field("embedding", pa.binary()),
             pa.field("context", pa.string()),
+            pa.field("enrichment", pa.string()),
             pa.field("word_count", pa.int64()),
             pa.field("start_time", pa.float64()),
             pa.field("end_time", pa.float64()),
@@ -899,6 +935,9 @@ class KojiClient:
                 "embedding": [c.get("embedding") for c in chunks],
                 "context": [
                     _safe_json(c.get("context")) for c in chunks
+                ],
+                "enrichment": [
+                    _safe_json(c.get("enrichment")) for c in chunks
                 ],
                 "word_count": [c.get("word_count") for c in chunks],
                 "start_time": [c.get("start_time") for c in chunks],
@@ -921,7 +960,9 @@ class KojiClient:
             "SELECT * FROM pages WHERE doc_id = ? ORDER BY page_num",
             [doc_id],
         )
-        return self._arrow_to_dicts(result, json_fields=["structure"])
+        return self._arrow_to_dicts(
+            result, json_fields=["structure", "enrichment"],
+        )
 
     def get_chunks_for_document(self, doc_id: str) -> list[dict[str, Any]]:
         """Retrieve all chunks for a document, ordered by page and chunk ID.
@@ -936,7 +977,9 @@ class KojiClient:
             "SELECT * FROM chunks WHERE doc_id = ? ORDER BY page_num, id",
             [doc_id],
         )
-        return self._arrow_to_dicts(result, json_fields=["context"])
+        return self._arrow_to_dicts(
+            result, json_fields=["context", "enrichment"],
+        )
 
     def get_page(self, page_id: str) -> dict[str, Any] | None:
         """Retrieve a single page by ID.
@@ -952,8 +995,12 @@ class KojiClient:
             row = self._db.find_by_id("pages", page_id)
             if row is None:
                 return None
-            if row.get("structure") and isinstance(row["structure"], str):
-                row["structure"] = json.loads(row["structure"])
+            for field in ("structure", "enrichment"):
+                if row.get(field) and isinstance(row[field], str):
+                    try:
+                        row[field] = json.loads(row[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
             return row
         except Exception:
             return None
@@ -972,8 +1019,12 @@ class KojiClient:
             row = self._db.find_by_id("chunks", chunk_id)
             if row is None:
                 return None
-            if row.get("context") and isinstance(row["context"], str):
-                row["context"] = json.loads(row["context"])
+            for field in ("context", "enrichment"):
+                if row.get(field) and isinstance(row[field], str):
+                    try:
+                        row[field] = json.loads(row[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
             return row
         except Exception:
             return None
@@ -1304,8 +1355,26 @@ class KojiClient:
         self._after_write()
         logger.warning("koji_client.job_failed", doc_id=doc_id, error=error)
 
+    def _fresh_job_query(self, sql: str) -> Any:
+        """Run a query against processing_jobs using a fresh DB handle.
+
+        Lance datasets cache their version in memory.  When a separate
+        worker process writes to the same database, the cached handle is
+        stale.  This method opens a short-lived connection to ensure
+        reads always see the latest data.
+        """
+        import koji as _koji
+
+        db = _koji.open(str(self._config.db_path))
+        try:
+            return db.query(sql)
+        finally:
+            pass  # short-lived, GC will close
+
     def get_job(self, doc_id: str) -> Optional[dict[str, Any]]:
         """Get a processing job by doc_id.
+
+        Uses a fresh database handle to see cross-process writes.
 
         Args:
             doc_id: Job identifier.
@@ -1316,7 +1385,7 @@ class KojiClient:
         self._require_open()
         safe_id = _sanitize_sql_value(doc_id)
         try:
-            result = self._db.query(
+            result = self._fresh_job_query(
                 f"SELECT * FROM processing_jobs "
                 f"WHERE doc_id = '{safe_id}'"
             )
@@ -1332,6 +1401,8 @@ class KojiClient:
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """List processing jobs, optionally filtered by status.
+
+        Uses a fresh database handle to see cross-process writes.
 
         Args:
             status: Filter by status (queued, processing, completed, failed).
@@ -1354,7 +1425,7 @@ class KojiClient:
                 f"ORDER BY queued_at DESC LIMIT {int(limit)}"
             )
         try:
-            result = self._db.query(sql)
+            result = self._fresh_job_query(sql)
             return [
                 dict(zip(result.column_names, [col[i].as_py() for col in result.columns]))
                 for i in range(result.num_rows)
@@ -1449,7 +1520,9 @@ class KojiClient:
         )
         docs_by_id = {
             doc["doc_id"]: doc
-            for doc in self._arrow_to_dicts(docs_result, json_fields=["metadata"])
+            for doc in self._arrow_to_dicts(
+                docs_result, json_fields=["metadata", "enrichment"],
+            )
         }
 
         results: list[dict[str, Any]] = []

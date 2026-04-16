@@ -11,9 +11,11 @@ from shikomi import IngestResult
 from shikomi.types import ChunkContext, MultiVectorEmbedding, TextChunk
 
 from src.processing.result_mapper import (
+    build_synthetic_enrichment_chunks,
     map_chunk_records,
     map_document_record,
     map_page_records,
+    synthetic_to_chunk_records,
 )
 
 
@@ -58,6 +60,7 @@ def _make_ingest_result(
     markdown_content: str | None = "# Test Document\n\nSome content.",
     metadata: dict[str, Any] | None = None,
     vtt_content: str | None = None,
+    enrichment_result: dict[str, Any] | None = None,
 ) -> IngestResult:
     """Create an IngestResult with sensible defaults."""
     if chunks is None:
@@ -76,7 +79,58 @@ def _make_ingest_result(
         source_type="pdf",
         chunk_count=len(chunks),
         vtt_content=vtt_content,
+        enrichment_result=enrichment_result,
     )
+
+
+# ---------------------------------------------------------------------------
+# Enrichment fixtures
+# ---------------------------------------------------------------------------
+
+
+def _sample_enrichment_result() -> dict[str, Any]:
+    """Fully-populated enrichment_result mimicking shikomi's serialization."""
+    return {
+        "figures": [
+            {
+                "figure_id": "fig-1",
+                "description": "A bar chart showing quarterly revenue by region.",
+                "classification": "chart",
+                "confidence": 0.92,
+            },
+            {
+                "figure_id": "fig-2",
+                "description": "Org chart for the engineering team.",
+                "classification": "diagram",
+                "confidence": 0.88,
+            },
+        ],
+        "code_blocks": [
+            {
+                "block_index": 0,
+                "language": "python",
+                "purpose": "Compute SHA-256 hash of a file.",
+                "summary": "Reads file in chunks and updates hash incrementally.",
+            },
+        ],
+        "formulas": [
+            {
+                "formula_index": 0,
+                "interpretation": "Pythagorean theorem for right triangles.",
+                "plain_text": "a squared plus b squared equals c squared",
+            },
+        ],
+        "document_summary": {
+            "summary": "This report analyzes Q3 revenue trends.",
+            "key_points": ["Revenue up 12%", "Costs flat"],
+            "document_type": "report",
+        },
+        "semantic_metadata": {
+            "topics": ["finance", "quarterly reporting"],
+            "entities": [{"name": "Acme Corp", "type": "company"}],
+            "key_terms": ["EBITDA", "run-rate"],
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -297,3 +351,169 @@ class TestMapChunkRecords:
 
         assert records[0]["id"] == "custom-id-999"
         assert records[0]["doc_id"] == "doc-id"
+
+
+# ---------------------------------------------------------------------------
+# VLM enrichment tests
+# ---------------------------------------------------------------------------
+
+
+class TestDocumentEnrichment:
+    """Document-level enrichment round-trip."""
+
+    def test_enrichment_absent_when_not_provided(self) -> None:
+        result = _make_ingest_result()
+        record = map_document_record(result, filename="r.pdf", project_id="p")
+        assert record["enrichment"] is None
+
+    def test_enrichment_populated_from_ingest_result(self) -> None:
+        result = _make_ingest_result(
+            enrichment_result=_sample_enrichment_result(),
+        )
+        record = map_document_record(result, filename="r.pdf", project_id="p")
+        enrichment = record["enrichment"]
+        assert enrichment is not None
+        assert enrichment["summary"] == "This report analyzes Q3 revenue trends."
+        assert enrichment["key_points"] == ["Revenue up 12%", "Costs flat"]
+        assert enrichment["document_type"] == "report"
+        assert enrichment["topics"] == ["finance", "quarterly reporting"]
+        assert enrichment["entities"] == [
+            {"name": "Acme Corp", "type": "company"}
+        ]
+        assert enrichment["key_terms"] == ["EBITDA", "run-rate"]
+
+    def test_partial_enrichment_still_populated(self) -> None:
+        """Either document_summary or semantic_metadata is enough to emit."""
+        result = _make_ingest_result(
+            enrichment_result={
+                "document_summary": {
+                    "summary": "Short one.",
+                    "key_points": [],
+                    "document_type": "memo",
+                },
+            },
+        )
+        record = map_document_record(result, filename="m.pdf", project_id="p")
+        assert record["enrichment"] is not None
+        assert record["enrichment"]["summary"] == "Short one."
+        assert "topics" not in record["enrichment"]
+
+
+class TestChunkEnrichmentCorrelation:
+    """Chunks gain enrichment via context.related_figures cross-reference."""
+
+    def test_chunk_with_related_figure_gets_enrichment(self) -> None:
+        ctx = ChunkContext(
+            parent_heading="Results", related_figures=["fig-1"],
+        )
+        chunk = _make_chunk(chunk_id="c-1", context=ctx, page=4)
+        result = _make_ingest_result(
+            chunks=[chunk],
+            enrichment_result=_sample_enrichment_result(),
+        )
+
+        records = map_chunk_records(doc_id="d", result=result)
+        enrichment = records[0]["enrichment"]
+        assert enrichment is not None
+        attached = enrichment["figures"]
+        assert len(attached) == 1
+        assert attached[0]["figure_id"] == "fig-1"
+        assert attached[0]["classification"] == "chart"
+
+    def test_chunk_without_related_figures_has_no_enrichment(self) -> None:
+        ctx = ChunkContext(parent_heading="Intro", related_figures=[])
+        chunk = _make_chunk(chunk_id="c-2", context=ctx)
+        result = _make_ingest_result(
+            chunks=[chunk],
+            enrichment_result=_sample_enrichment_result(),
+        )
+
+        records = map_chunk_records(doc_id="d", result=result)
+        assert "enrichment" not in records[0]
+
+
+class TestPageEnrichmentAggregation:
+    """Pages aggregate enrichment via chunks referencing figures on that page."""
+
+    def test_page_collects_figures_from_its_chunks(self) -> None:
+        ctx = ChunkContext(related_figures=["fig-1"])
+        chunk_on_p1 = _make_chunk(chunk_id="c-p1", context=ctx, page=1)
+        # Need >=2 chunks' embeddings if we pass both
+        result = _make_ingest_result(
+            chunks=[chunk_on_p1],
+            enrichment_result=_sample_enrichment_result(),
+            visual_embeddings=[_make_embedding(), _make_embedding()],
+        )
+
+        page_records = map_page_records(
+            doc_id="d",
+            visual_embeddings=result.visual_embeddings,
+            result=result,
+        )
+
+        page1 = next(p for p in page_records if p["page_num"] == 1)
+        page2 = next(p for p in page_records if p["page_num"] == 2)
+        assert page1.get("enrichment") is not None
+        assert len(page1["enrichment"]["figures"]) == 1
+        assert page1["enrichment"]["figures"][0]["figure_id"] == "fig-1"
+        assert "enrichment" not in page2  # no chunks reference its figures
+
+
+class TestSyntheticEnrichmentChunks:
+    """Synthetic chunks carry enrichment text into the embedding stream."""
+
+    def test_doc_summary_produces_one_chunk(self) -> None:
+        result = _make_ingest_result(
+            enrichment_result=_sample_enrichment_result(),
+        )
+        synthetic = build_synthetic_enrichment_chunks("docid", result)
+        summary_chunks = [
+            s for s in synthetic if s.chunk_id.endswith(":enrichment-summary")
+        ]
+        assert len(summary_chunks) == 1
+        assert "Q3 revenue" in summary_chunks[0].text
+        assert "finance" in summary_chunks[0].text
+        assert summary_chunks[0].enrichment["source"] == "document_summary"
+
+    def test_figure_chunks_correlate_page_via_related_figures(self) -> None:
+        ctx = ChunkContext(related_figures=["fig-1"])
+        organic = _make_chunk(chunk_id="c-a", context=ctx, page=7)
+        result = _make_ingest_result(
+            chunks=[organic],
+            enrichment_result=_sample_enrichment_result(),
+        )
+        synthetic = build_synthetic_enrichment_chunks("docid", result)
+        fig_chunks = [s for s in synthetic if "figure-fig-1" in s.chunk_id]
+        assert len(fig_chunks) == 1
+        assert fig_chunks[0].page_num == 7
+
+    def test_unused_figure_defaults_to_page_1(self) -> None:
+        """Figures not referenced by any organic chunk land on page 1."""
+        result = _make_ingest_result(
+            enrichment_result=_sample_enrichment_result(),
+        )
+        synthetic = build_synthetic_enrichment_chunks("docid", result)
+        fig_chunks = [s for s in synthetic if "figure-fig-2" in s.chunk_id]
+        assert len(fig_chunks) == 1
+        assert fig_chunks[0].page_num == 1
+
+    def test_empty_enrichment_returns_empty_list(self) -> None:
+        result = _make_ingest_result(enrichment_result=None)
+        assert build_synthetic_enrichment_chunks("d", result) == []
+
+    def test_synthetic_to_chunk_records_attaches_embeddings(self) -> None:
+        result = _make_ingest_result(
+            enrichment_result=_sample_enrichment_result(),
+        )
+        synthetic = build_synthetic_enrichment_chunks("docid", result)
+        embeddings = [_make_embedding() for _ in synthetic]
+        records = synthetic_to_chunk_records("docid", synthetic, embeddings)
+
+        assert len(records) == len(synthetic)
+        for rec, syn in zip(records, synthetic):
+            assert rec["id"] == syn.chunk_id
+            assert rec["text"] == syn.text
+            assert rec["page_num"] == syn.page_num
+            assert rec["doc_id"] == "docid"
+            assert isinstance(rec["embedding"], bytes)
+            assert rec["enrichment"]["source"] == syn.enrichment["source"]

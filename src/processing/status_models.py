@@ -18,10 +18,17 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class ProcessingStatusEnum(str, Enum):
-    """Valid processing status values."""
+    """Valid processing status values.
+
+    Stages flow in order: QUEUED → PARSING → ENRICHING → EMBEDDING_VISUAL
+    → EMBEDDING_TEXT → STORING → COMPLETED. ``ENRICHING`` fires only when
+    shikomi's Gemma 4 E4B VLM enrichment is enabled; otherwise the
+    pipeline skips directly from PARSING to EMBEDDING_VISUAL.
+    """
 
     QUEUED = "queued"
     PARSING = "parsing"
+    ENRICHING = "enriching"
     EMBEDDING_VISUAL = "embedding_visual"
     EMBEDDING_TEXT = "embedding_text"
     STORING = "storing"
@@ -321,6 +328,7 @@ def get_stage_description(status: ProcessingStatusEnum) -> str:
     stage_map = {
         ProcessingStatusEnum.QUEUED: "Queued for processing",
         ProcessingStatusEnum.PARSING: "Parsing document",
+        ProcessingStatusEnum.ENRICHING: "Enriching with VLM (captions, summary)",
         ProcessingStatusEnum.EMBEDDING_VISUAL: "Generating visual embeddings",
         ProcessingStatusEnum.EMBEDDING_TEXT: "Generating text embeddings",
         ProcessingStatusEnum.STORING: "Storing in database",
@@ -342,9 +350,10 @@ def calculate_progress(
 
     Progress breakdown:
     - queued: 0.0
-    - parsing: 0.1
-    - embedding_visual: 0.1 - 0.6 (based on page progress)
-    - embedding_text: 0.6 - 0.9 (based on chunk progress)
+    - parsing: 0.05
+    - enriching: 0.15 (VLM figure captions, summaries — shikomi-driven)
+    - embedding_visual: 0.20 - 0.60 (based on page progress)
+    - embedding_text: 0.60 - 0.90 (based on chunk progress)
     - storing: 0.95
     - completed: 1.0
     - failed: varies (last known progress)
@@ -362,16 +371,18 @@ def calculate_progress(
     if status == ProcessingStatusEnum.QUEUED:
         return 0.0
     elif status == ProcessingStatusEnum.PARSING:
-        return 0.1
+        return 0.05
+    elif status == ProcessingStatusEnum.ENRICHING:
+        return 0.15
     elif status == ProcessingStatusEnum.EMBEDDING_VISUAL:
         if page is not None and total_pages is not None and total_pages > 0:
             page_progress = page / total_pages
-            return 0.1 + (page_progress * 0.5)
-        return 0.35  # Default to midpoint if no page info
+            return 0.20 + (page_progress * 0.40)
+        return 0.40  # Default to midpoint if no page info
     elif status == ProcessingStatusEnum.EMBEDDING_TEXT:
         if chunk is not None and total_chunks is not None and total_chunks > 0:
             chunk_progress = chunk / total_chunks
-            return 0.6 + (chunk_progress * 0.3)
+            return 0.60 + (chunk_progress * 0.30)
         return 0.75  # Default to midpoint if no chunk info
     elif status == ProcessingStatusEnum.STORING:
         return 0.95

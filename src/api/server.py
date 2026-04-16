@@ -137,13 +137,26 @@ def create_app(
             _app_state["storage_client"] = koji_client
             logger.info(f"Koji database opened at {koji_db_path}")
 
-            # Initialize shikomi ingester (in-process library)
+            # Initialize shikomi ingester (in-process library) with
+            # Gemma 4 E4B VLM enrichment pulled from processing config.
+            from shikomi.config import EnrichmentConfig
+
+            from ..config.processing_config import ProcessingConfig
+
+            processing_config = ProcessingConfig()
+            enrichment_config = EnrichmentConfig(
+                enabled=processing_config.enrichment_enabled,
+                model_repo=processing_config.enrichment_model_repo,
+            )
+            _app_state["processing_config"] = processing_config
+
             ingester = ShikomiIngester(
                 device=device,
                 quantization=precision,
                 generate_vtt=True,
                 generate_markdown=True,
                 db=koji_client,
+                enrichment_config=enrichment_config,
             )
             ingester.connect()
             _app_state["ingester"] = ingester
@@ -170,8 +183,15 @@ def create_app(
             _app_state["document_processor"] = DocumentProcessor(
                 ingester=ingester,
                 storage_client=koji_client,
+                index_enrichment_captions=(
+                    processing_config.enrichment_index_captions
+                ),
             )
-            logger.info("Document processor initialized")
+            logger.info(
+                "Document processor initialized (enrichment_enabled=%s, index_captions=%s)",
+                processing_config.enrichment_enabled,
+                processing_config.enrichment_index_captions,
+            )
 
             logger.info("DocuSearch API ready")
 

@@ -200,7 +200,43 @@ class TestStatusBridgeForwarding:
         assert "embedding_visual" in StatusBridge._FORWARDED
 
     def test_forwarded_stages(self) -> None:
-        """StatusBridge forwards the expected set of stages."""
+        """StatusBridge forwards the expected set of stages.
+
+        ``enriching`` was added when Gemma 4 E4B enrichment landed so
+        the UI can show continuous progress between parse and embed.
+        """
         assert StatusBridge._FORWARDED == frozenset({
-            "parsing", "chunking", "embedding_text", "embedding_visual",
+            "parsing",
+            "enriching",
+            "chunking",
+            "embedding_text",
+            "embedding_visual",
         })
+
+    def test_enrichment_config_passed_to_ingester(self) -> None:
+        """enrichment_config kwarg is forwarded to the inner Ingester."""
+        from shikomi.config import EnrichmentConfig
+
+        from src.processing.shikomi_ingester import ShikomiIngester
+
+        with patch("src.processing.shikomi_ingester.Ingester") as mock_cls:
+            cfg = EnrichmentConfig(enabled=True)
+            ShikomiIngester(enrichment_config=cfg)
+
+            call_kwargs = mock_cls.call_args.kwargs
+            assert call_kwargs.get("enrichment_config") is cfg
+
+    def test_health_check_reports_enrichment_state(self) -> None:
+        """health_check surfaces whether enrichment is enabled."""
+        from shikomi.config import EnrichmentConfig
+
+        from src.processing.shikomi_ingester import ShikomiIngester
+
+        with patch("src.processing.shikomi_ingester.Ingester"):
+            ingester_off = ShikomiIngester()
+            assert ingester_off.health_check()["enrichment_enabled"] is False
+
+            ingester_on = ShikomiIngester(
+                enrichment_config=EnrichmentConfig(enabled=True),
+            )
+            assert ingester_on.health_check()["enrichment_enabled"] is True
