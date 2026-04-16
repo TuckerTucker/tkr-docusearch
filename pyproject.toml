@@ -24,7 +24,7 @@ dependencies = [
     "Pillow>=10.0.0",
 
     # Document parsing - unified with Docling
-    "docling[asr]>=2.55.0",
+    "docling[asr]>=2.89.0",
 
     # Koji hybrid database
     "pyarrow>=14.0.0",
