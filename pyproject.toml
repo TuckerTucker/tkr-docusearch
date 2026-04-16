@@ -31,7 +31,7 @@ dependencies = [
 
     # Shikomi embedding service (gRPC)
     "grpcio>=1.60.0",
-    "protobuf>=4.25.0",
+    "protobuf>=7.34.1",
 
     # Shikomi ingestion library — [enrichment] pulls mlx-vlm + mlx for
     # local Gemma 4 E4B document enrichment (figure captions, summaries,
